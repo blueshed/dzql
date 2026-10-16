@@ -14,11 +14,15 @@
  * doc-name prefixes.
  */
 import type { Pool } from "pg";
+
+/** What a path's owns asks on: the pool, or the connection a transaction holds (a walk's). */
+type Queryable = { query(sql: string, params: unknown[]): Promise<{ rows: any[] }> };
 import type { DocDef } from "./schema";
 import { splitPath, type DeltaOp } from "@blueshed/delta/core";
 import { authless, ownerless, type DeltaAuth } from "@blueshed/delta/auth";
 import { assertOnePrefix } from "@blueshed/delta/backend";
 import { openAtFunction, openFunction } from "../compile/opens";
+import { ownsFunction } from "../compile/owns";
 
 /** Who is writing, for the ledger: the identity as the ledger has it, and the cursor undo walks. */
 export type Writer = { who: string | null; cursor: string | null; undoable?: boolean; undoes?: number | null };
@@ -89,7 +93,7 @@ export interface DocType<C = any, I = unknown> {
    * it cheap (a name check, or a membership the app caches). With auth, a type needs it or `shared: true`:
    * `createDocListener` and its `register` refuse one with neither.
    */
-  owns?(identity: I, docName: string): boolean | Promise<boolean>;
+  owns?(identity: I, docName: string, db?: Queryable): boolean | Promise<boolean>;
 
   /**
    * With an `auth` module: every identity that passes the gate may open every
@@ -211,9 +215,17 @@ export function docTypeFromDef<I = unknown>(
   // Default-deny: RLS filters what `open` reads, not what the document's
   // channel carries, so a name several identities may open would hand each of
   // them every row written through it. Say who owns it, or that it is shared.
-  if (auth && !opts?.owns && !opts?.shared) throw ownerless(def.prefix, "docTypeFromDef");
+  // A path in its definition says it (compiled, `dzql_owns__<slug>`)
+  const path = def.owns !== undefined;
+  if (auth && !path && !opts?.owns && !opts?.shared) throw ownerless(def.prefix, "docTypeFromDef");
   // owns or shared with no auth module would guard nothing: the listener asks them only with one
-  if (!auth && (opts?.owns || opts?.shared)) throw authless(def.prefix, "docTypeFromDef");
+  if (!auth && (path || opts?.owns || opts?.shared)) throw authless(def.prefix, "docTypeFromDef");
+  const owns = path
+    ? async (identity: I, docName: string, db: Queryable = pool) => {
+        const person = auth!.asSqlArg ? auth!.asSqlArg(identity) : (identity as any)?.id;
+        return person != null && (await db.query(`SELECT ${ownsFunction(def.prefix)}($1, $2) AS ok`, [docName, person])).rows[0]?.ok === true;
+      }
+    : opts?.owns;
 
   // its reads compiled for it (generateSql), or the framework's for a document registered by hand:
   // asked until found, then remembered
@@ -225,7 +237,7 @@ export function docTypeFromDef<I = unknown>(
 
   return {
     prefix: def.prefix,
-    ...(opts?.owns ? { owns: opts.owns } : {}),
+    ...(owns ? { owns } : {}),
     ...(opts?.shared ? { shared: true } : {}),
     def,
 

@@ -27,38 +27,27 @@ the fan-out, the ledger's reads): nothing interprets a definition at run time. A
 framework, every time, one app per database (`docs/delta/postgres.md`, "Compiled SQL"). The plan
 is in Workshop's `docs/postgres-split-plan.md`.
 
-## The whole-stack dzql (retiring)
+## Start
 
-Before delta, dzql was a framework of its own: a `domain.ts` compiled to SQL, a typed client and
-Pinia stores, started with `bun create dzql`. It is kept working until step 5 of the plan retires
-it (the runtime, the client, the stores and `create-dzql`); nothing new is added to it. A new app
-starts from delta and moves to dzql when it moves to Postgres.
-
-### Quick start
+`bun create dzql my-app` makes a paintbrush app on dzql: link sign-in, posts as two documents,
+and tests in two real browsers, on PGlite with no database server. `DATABASE_URL` names a
+Postgres server for production.
 
 ```bash
 bun create dzql my-app
 cd my-app
-bun install
-bun run db:rebuild
+bun test
 bun run dev
 ```
 
+From 0.13 dzql is only this step. The framework it was before delta (a `domain.ts` compiled to SQL,
+a typed client, Pinia stores) is retired; its story is in the [changelog](https://github.com/blueshed/dzql/blob/main/CHANGELOG.md).
+
 ## Documentation
 
-See the [full documentation](./docs/README.md) for:
-
-- [Project Setup Guide](./docs/project-setup.md)
-- [AI Assistant Guide](./docs/for_ai.md)
-
-## Package Exports
-
-```typescript
-import { createServer } from 'dzql';           // Runtime server
-import { ws } from 'dzql/client';              // WebSocket client  
-import { compile } from 'dzql/compiler';       // CLI compiler
-import { DzqlNamespace } from 'dzql/namespace'; // Direct DB access
-```
+- [delta on Postgres](./docs/delta/postgres.md): setting up, and what is compiled
+- [Stored functions](./docs/delta/sql.md) and [row-level security](./docs/delta/rls.md)
+- `owns` as a path, and every other definition: delta's `delta-doc` skill
 
 ## License
 

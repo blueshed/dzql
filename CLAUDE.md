@@ -4,10 +4,8 @@
 
 Before working on this codebase, read:
 - `philo.md` - **what dzql is for now**: delta's compiled Postgres step, and why
-- Workshop's `docs/postgres-split-plan.md` - the plan dzql is part way through (steps 2-5)
-- `packages/dzql/docs/for_ai.md` - AI guide for the whole-stack dzql (`domain.ts`), which retires in step 5
-- `packages/dzql/docs/README.md` - General documentation
-- `packages/dzql/docs/project-setup.md` - Project setup guide
+- Workshop's `docs/postgres-split-plan.md` - the plan that made dzql delta's Postgres step
+- `packages/dzql/docs/delta/` - delta on Postgres: setting up, the stored functions, row-level security
 - `packages/create-dzql/README.md` - `bun create dzql`: a paintbrush app on dzql
 
 ## Where the Project Is
@@ -31,13 +29,12 @@ packages/
 ├── dzql/                # The dzql package on npm
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
-│   ├── src/compile/     # the compiler from delta's definitions: dzql/compile (compileOpens, ...)
-│   ├── src/cli, runtime, client, shared   # the whole-stack dzql (domain.ts), retiring in step 5
-│   ├── docs/            # Documentation of the whole-stack dzql
-│   ├── src/postgres/cli.ts  # dzql sql | init | migrate (src/cli/index.ts hands them here)
+│   ├── src/compile/     # the compiler from delta's definitions: dzql/compile (compileOpens, owns, ...)
+│   ├── docs/delta/      # delta on Postgres: postgres.md, sql.md, rls.md
+│   ├── src/postgres/cli.ts  # dzql sql | init | migrate | link (src/cli/index.ts, the bin, runs it)
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
 │   ├── bench/           # delta's bench (bun run bench), todo #25
-│   └── tests/           # delta/ (delta's cases), delta-pg/ (delta's Postgres tests), compile/ (compiled, to the framework's recorded answers), integration/ (whole stack)
+│   └── tests/           # delta/ (delta's cases), delta-pg/ (delta's Postgres tests), compile/ (compiled, to the framework's recorded answers; the path grammar over modeling-dzql's 204 rules)
 └── create-dzql/         # bun create dzql: a paintbrush app on dzql (template/), its tests the end-to-end check
 ```
 
@@ -58,25 +55,24 @@ packages/
   only with the change that explains it. One `generateSql` per database: one app's definitions.
 - **Permissions are a document's** (`owns` as a path), **migrations are delta's**: no table rules,
   no upgrade scheme of dzql's own (philo.md).
-- **The whole-stack dzql** (`src/cli`, `runtime`, `client`, the Pinia stores) is kept
-  working until step 5 retires it: fix what breaks, add nothing to it.
+- **The whole-stack dzql is retired** (0.13): the `domain.ts` compiler, runtime, client and Pinia
+  stores are gone. Its story is in CHANGELOG.md; nothing of it comes back unless a story asks.
 
 ## Testing
 
 - Run tests: `cd packages/dzql && bun run test`
 - Tests run against Docker PostgreSQL (see `packages/dzql/compose.yml`)
 - `tests/delta/` and `tests/compile/` run on PGlite with no Docker (`bun test tests/delta tests/compile`)
-- Follow patterns in `packages/dzql/tests/integration/` for the whole stack
 - The test script handles Docker lifecycle: starts fresh, runs tests, tears down
 
 **Test-Driven Development:** Write tests first. Add failing tests for new features or bugs, then implement until they pass. This ensures the feature works and prevents regressions.
 
-**End-to-End Verification:** Before publishing, always test in a real app. Unit tests passing does not guarantee the feature works end-to-end. Use Playwright to verify real-time features like subscriptions actually work in the browser.
+**End-to-End Verification:** Before publishing, always test in a real app. Unit tests passing does not guarantee the feature works end-to-end. The create-dzql template's tests are that check: two real browsers (`Bun.WebView`).
 
 ### Testing the create-dzql Template
 
-`create-dzql` makes a paintbrush app on dzql (`packages/create-dzql/template/`): register and sign in
-(`auth-jwt`), and posts as two documents, `posts:` (everyone's, read-only) and `mine:<id>` (one
+`create-dzql` makes a paintbrush app on dzql (`packages/create-dzql/template/`): sign in by
+link (`auth-link`), and posts as two documents, `posts:` (everyone's, read-only) and `mine:<id>` (one
 person's own, every write through it). Its own tests are the end-to-end check, in two real browsers
 (`Bun.WebView`), with Postgres in memory (PGlite). Before publishing `create-dzql` or `dzql`, make
 an app from the local template with the local dzql linked, and run them:

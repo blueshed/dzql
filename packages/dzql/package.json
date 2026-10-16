@@ -11,10 +11,6 @@
     "dzql": "./src/cli/index.ts"
   },
   "exports": {
-    ".": "./src/runtime/index.ts",
-    "./client": "./src/client/index.ts",
-    "./compiler": "./src/cli/index.ts",
-    "./namespace": "./src/runtime/namespace.ts",
     "./postgres": "./src/postgres/index.ts",
     "./pglite": "./src/postgres/pglite.ts",
     "./auth-jwt": "./src/postgres/auth-jwt.ts",
@@ -23,9 +19,7 @@
   },
   "files": [
     "src",
-    "docs/README.md",
-    "docs/project-setup.md",
-    "docs/for_ai.md",
+    "docs/delta",
     "README.md"
   ],
   "scripts": {
@@ -37,38 +31,28 @@
   "keywords": [
     "postgresql",
     "postgres",
-    "websocket",
-    "real-time",
-    "realtime",
     "database",
     "bun",
-    "vue",
-    "pinia",
     "typescript",
     "compiler",
-    "codegen"
+    "codegen",
+    "delta"
   ],
   "author": "Peter Bunyan",
   "license": "MIT",
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
-    "dotenv": "^16.4.5",
     "jose": "^6.2.4",
-    "pg": "^8.22.0",
-    "postgres": "^3.4.3"
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@blueshed/railroad": "^0.16.0",
     "@types/bun": "latest",
     "@types/pg": "^8.20.0",
-    "pinia": "^3.0.4",
-    "typescript": "^5.0.0",
-    "vue": "^3.5.26",
-    "@blueshed/delta": "^1.1.0"
+    "@blueshed/delta": "^1.2.0"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0",
-    "@blueshed/delta": "^1.1.0"
+    "@blueshed/delta": "^1.2.0"
   },
   "engines": {
     "bun": ">=1.0.0"

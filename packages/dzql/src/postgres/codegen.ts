@@ -38,6 +38,7 @@ import { compileCascades } from "../compile/cascades";
 import { compileLedger } from "../compile/ledger";
 import { compileLookups } from "../compile/lookups";
 import { compileTold } from "../compile/told";
+import { compileOwns } from "../compile/owns";
 
 export interface GenerateSqlOptions {
   /** Header comment included at the top of the file. */
@@ -65,66 +66,7 @@ export function generateSql(
     "",
   ];
 
-  for (const [key, table] of Object.entries(schema.tables)) {
-    const seqName = `seq_${table.name}`;
-    lines.push(`-- ${key}`);
-    lines.push(`CREATE SEQUENCE IF NOT EXISTS ${q(seqName)};`);
-    lines.push("");
-
-    const cols: string[] = [
-      `id BIGINT NOT NULL DEFAULT nextval(${lit(seqName)})`,
-    ];
-    if (table.parent) {
-      cols.push(`${q(table.parent.fkColumn)} BIGINT NOT NULL`);
-    }
-
-    for (const [col, def] of Object.entries(table.columns)) {
-      const sqlType = columnSqlType(def);
-      const notNull = def.nullable ? "" : " NOT NULL";
-      const defaultVal =
-        def.default !== undefined ? ` DEFAULT ${sqlDefault(def.default)}` : "";
-      cols.push(`${q(col)} ${sqlType}${notNull}${defaultVal}`);
-    }
-
-    if (table.temporal) {
-      cols.push("valid_from TIMESTAMPTZ NOT NULL DEFAULT NOW()");
-      cols.push("valid_to TIMESTAMPTZ");
-      cols.push("PRIMARY KEY (id, valid_from)");
-    } else {
-      cols.push("PRIMARY KEY (id)");
-    }
-
-    lines.push(`CREATE TABLE IF NOT EXISTS ${q(table.name)} (`);
-    lines.push(cols.map((c) => `  ${c}`).join(",\n"));
-    lines.push(");");
-    // A column a later schema declares, added to a table made before it (SQLite's migrateSchema): a
-    // no-op on a table just made. Nullable, with its default or its type's, as migrateSchema adds it.
-    if (table.parent) lines.push(`ALTER TABLE ${q(table.name)} ADD COLUMN IF NOT EXISTS ${q(table.parent.fkColumn)} BIGINT;`);
-    for (const [col, def] of Object.entries(table.columns)) {
-      const fill = def.default !== undefined ? def.default : def.nullable ? undefined : defaultForType(def.type);
-      lines.push(`ALTER TABLE ${q(table.name)} ADD COLUMN IF NOT EXISTS ${q(col)} ${columnSqlType(def)}${fill !== undefined ? ` DEFAULT ${sqlDefault(fill)}` : ""};`);
-    }
-    // Own the sequence to the table.id so `TRUNCATE RESTART IDENTITY`
-    // actually resets the counter — without this, re-seeds in tests and
-    // demo scripts drift by the stale sequence value.
-    lines.push(`ALTER SEQUENCE ${q(seqName)} OWNED BY ${q(table.name)}.id;`);
-
-    if (table.temporal) {
-      // security_invoker (Postgres 15+): the view reads as the caller, so the table's RLS holds through it
-      lines.push(
-        `CREATE OR REPLACE VIEW ${q("current_" + table.name)} WITH (security_invoker = true) AS SELECT * FROM ${q(table.name)} WHERE valid_to IS NULL;`,
-      );
-      lines.push(
-        `CREATE INDEX IF NOT EXISTS ${q("idx_" + table.name + "_id_valid")} ON ${q(table.name)} (id, valid_to);`,
-      );
-    }
-    if (table.parent) {
-      lines.push(
-        `CREATE INDEX IF NOT EXISTS ${q("idx_" + table.name + "_" + table.parent.fkColumn)} ON ${q(table.name)} (${q(table.parent.fkColumn)});`,
-      );
-    }
-    lines.push("");
-  }
+  for (const [key, table] of Object.entries(schema.tables)) lines.push(...tableSql(key, table));
 
   // Collection metadata
   lines.push("-- Collection metadata");
@@ -181,6 +123,74 @@ export function generateSql(
   lines.push("");
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
-  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs));
+  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs));
   return lines.join("\n");
+}
+
+/**
+ * One table's SQL, as `generateSql` writes each: its serial, the table (if it is not there), the
+ * columns a later schema adds, a temporal one's view, its indexes. Every statement is idempotent: run
+ * again over the table as it is, it adds what it lacks. A migration's createTable and addColumn run it.
+ */
+export function tableSql(key: string, table: Schema["tables"][string]): string[] {
+  const lines: string[] = [];
+  const seqName = `seq_${table.name}`;
+  lines.push(`-- ${key}`);
+  lines.push(`CREATE SEQUENCE IF NOT EXISTS ${q(seqName)};`);
+  lines.push("");
+
+  const cols: string[] = [
+    `id BIGINT NOT NULL DEFAULT nextval(${lit(seqName)})`,
+  ];
+  if (table.parent) {
+    cols.push(`${q(table.parent.fkColumn)} BIGINT NOT NULL`);
+  }
+
+  for (const [col, def] of Object.entries(table.columns)) {
+    const sqlType = columnSqlType(def);
+    const notNull = def.nullable ? "" : " NOT NULL";
+    const defaultVal =
+      def.default !== undefined ? ` DEFAULT ${sqlDefault(def.default)}` : "";
+    cols.push(`${q(col)} ${sqlType}${notNull}${defaultVal}`);
+  }
+
+  if (table.temporal) {
+    cols.push("valid_from TIMESTAMPTZ NOT NULL DEFAULT NOW()");
+    cols.push("valid_to TIMESTAMPTZ");
+    cols.push("PRIMARY KEY (id, valid_from)");
+  } else {
+    cols.push("PRIMARY KEY (id)");
+  }
+
+  lines.push(`CREATE TABLE IF NOT EXISTS ${q(table.name)} (`);
+  lines.push(cols.map((c) => `  ${c}`).join(",\n"));
+  lines.push(");");
+  // A column a later schema declares, added to a table made before it (SQLite's migrateSchema): a
+  // no-op on a table just made. Nullable, with its default or its type's, as migrateSchema adds it.
+  if (table.parent) lines.push(`ALTER TABLE ${q(table.name)} ADD COLUMN IF NOT EXISTS ${q(table.parent.fkColumn)} BIGINT;`);
+  for (const [col, def] of Object.entries(table.columns)) {
+    const fill = def.default !== undefined ? def.default : def.nullable ? undefined : defaultForType(def.type);
+    lines.push(`ALTER TABLE ${q(table.name)} ADD COLUMN IF NOT EXISTS ${q(col)} ${columnSqlType(def)}${fill !== undefined ? ` DEFAULT ${sqlDefault(fill)}` : ""};`);
+  }
+  // Own the sequence to the table.id so `TRUNCATE RESTART IDENTITY`
+  // actually resets the counter — without this, re-seeds in tests and
+  // demo scripts drift by the stale sequence value.
+  lines.push(`ALTER SEQUENCE ${q(seqName)} OWNED BY ${q(table.name)}.id;`);
+
+  if (table.temporal) {
+    // security_invoker (Postgres 15+): the view reads as the caller, so the table's RLS holds through it
+    lines.push(
+      `CREATE OR REPLACE VIEW ${q("current_" + table.name)} WITH (security_invoker = true) AS SELECT * FROM ${q(table.name)} WHERE valid_to IS NULL;`,
+    );
+    lines.push(
+      `CREATE INDEX IF NOT EXISTS ${q("idx_" + table.name + "_id_valid")} ON ${q(table.name)} (id, valid_to);`,
+    );
+  }
+  if (table.parent) {
+    lines.push(
+      `CREATE INDEX IF NOT EXISTS ${q("idx_" + table.name + "_" + table.parent.fkColumn)} ON ${q(table.name)} (${q(table.parent.fkColumn)});`,
+    );
+  }
+  lines.push("");
+  return lines;
 }

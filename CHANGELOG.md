@@ -23,6 +23,46 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Breaking
+
+- **The whole-stack dzql is retired** (Workshop's docs/postgres-split-plan.md, step 5). The
+  `domain.ts` compiler, its runtime server, the client, the namespace, the Pinia stores and the
+  manifest generators are gone, with their tests, examples and docs, and the exports `dzql`,
+  `dzql/client`, `dzql/compiler` and `dzql/namespace`. dzql is delta's Postgres step and only
+  that: `dzql/postgres`, `dzql/pglite`, `dzql/auth-jwt`, `dzql/auth-link`, `dzql/compile`, and the
+  `dzql` command (sql, init, migrate, link). The dependencies `postgres` and `dotenv` go with it.
+  An app on the old stack stays on dzql 0.12; a new one starts from delta, or `bun create dzql`.
+  Ledger items about the retired code are closed (#12-#18, #20, #23, #24).
+
+### Added
+
+- **A document's `owns` as a path, compiled** (Workshop's docs/postgres-split-plan.md, step 3).
+  delta's `defineDoc(..., { owns: "<path>" })`, the path language that moved to delta
+  (`@blueshed/delta/paths`), is compiled into each document's own function,
+  `dzql_owns__<slug>(name, person)`: the name read as its scope reads it, the path lowered by
+  delta's `pathSql`, the same SQL SQLite runs. `docTypeFromDef` asks it wherever `owns` is asked,
+  and a document with a path needs no `owns` or `shared` beside it.
+  - **A row is never handed away**: `delta_apply` asks `_delta_keeps_reach` once a write's ops are
+    applied, and a write that would leave the path not reaching the writer is refused (403,
+    SQLSTATE 42501). The framework SQL calls it, so apply this version's `generateSql` with it.
+  - delta's `permissionCases` pass on PGlite (`tests/delta/permissions-pglite.test.ts`), and every
+    one of modeling-dzql's 204 rules parses and checks with delta's `checkPath`
+    (`tests/compile/paths-model.test.ts`).
+  - A path is asked on the connection a walk holds (`DocType.owns` takes it), so a walk on PGlite
+    does not wait on itself.
+- **Migrations as a history from empty, on Postgres** (delta's todo #82, the Django way). delta's
+  `migrate` now takes migrations that are lists of changes (`@blueshed/delta/migrations`), and
+  dzql's Postgres store makes each one:
+  - a table made, or a column added, as `generateSql` makes a table (`tableSql`, now its own
+    function). Every statement in it is idempotent, so a database adopting the history is left as
+    it is, and a temporal table's view takes a column added after it;
+  - a rename or drop by the helpers that keep delta's scaffolding in step (`renameColumn`,
+    `dropColumn`, `renameTable`), and a dropped table's view, serial and metadata dropped with it.
+
+  dzql answers delta's `migrationCases` on PGlite and on a Postgres server, each case on a database
+  of its own (`tests/delta-pg/migrations-from-empty.test.ts`). `dzql migrate` runs these lists as it
+  ran the older ones. Needs the delta that ships them.
+
 ## [0.12.0] - 2026-10-16
 
 ### Added

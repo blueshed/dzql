@@ -94,7 +94,7 @@ function errMsg(err: unknown): string {
  * read-only document's 403) is answered with it. Anything else is the
  * server's (500).
  */
-const CODE_OF_SQLSTATE: Record<string, number> = { "22023": 400, "22P02": 400, "22007": 400, "22008": 400, "23502": 400, "25006": 403, P0002: 404, "23505": 409, "40001": 409, "40P01": 409 };
+const CODE_OF_SQLSTATE: Record<string, number> = { "22023": 400, "22P02": 400, "22007": 400, "22008": 400, "23502": 400, "25006": 403, "42501": 403, P0002: 404, "23505": 409, "40001": 409, "40P01": 409 };
 function wireCode(err: unknown): number {
   const state = (err as { code?: unknown } | null)?.code;
   if (typeof state === "number" && state >= 400 && state < 500) return state;
@@ -650,7 +650,7 @@ export async function createDocListener<I = unknown>(
             ? await db.query("SELECT doc_name FROM _delta_ledger_tip($1, $2)", [cursor, way === "undo"])
             : await db.query("SELECT doc_name FROM _delta_change_tip($1, $2, $3)", [cursor, change, way === "undo"])).rows[0]?.doc_name;
           const found = tip ? resolveDoc(tip) : null;
-          if (found?.type.owns && !(await found.type.owns(identity as I, tip))) {
+          if (found?.type.owns && !(await found.type.owns(identity as I, tip, db))) {
             await db.query("ROLLBACK");
             return respond({ error: NOT_FOUND });
           }

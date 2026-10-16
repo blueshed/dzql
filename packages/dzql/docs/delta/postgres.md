@@ -1,20 +1,22 @@
 # Postgres (a server, or PGlite in process)
 
 > Moved from delta's `delta-doc` skill when delta handed Postgres to dzql (delta 1.0). The
-> imports are dzql's (`dzql/postgres`, `dzql/pglite`, `dzql/auth-jwt`); the commands are
-> `dzql sql`, `dzql init` and `dzql migrate`.
+> imports are dzql's (`dzql/postgres`, `dzql/pglite`, `dzql/auth-jwt`, `dzql/auth-link`); the
+> commands are `dzql sql`, `dzql init`, `dzql migrate` and `dzql link`.
 
-As delta's kanban example ran on Postgres (it runs on SQLite in delta now): the framework, the tables, the listener.
+An app's documents, the same definitions it had on SQLite: its history of migrations makes the
+tables, the framework and the compiled SQL follow, and the listener serves the documents.
 
 ```ts
 import { Pool } from "pg";
 import { createWs } from "@blueshed/delta/server";
-import { applyFramework, applySql, generateSql, createDocListener, docTypeFromDef } from "dzql/postgres";
+import { applyFramework, applySql, generateSql, createDocListener, docTypeFromDef, fromFolder, migrate } from "dzql/postgres";
 import { schema, docs } from "./schema";
 
-const pool = new Pool({ connectionString: process.env.PG_URL });   // or: await openPglite(dir?)
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });   // or: await openPglite(dir) in tests
+await migrate(pool, await fromFolder("migrations"), { app: "board", schema });   // the history makes the tables
 await applyFramework(pool);                          // 001a–001g, idempotent
-await applySql(pool, generateSql(schema, docs));     // your tables
+await applySql(pool, generateSql(schema, docs));     // each document compiled
 
 const ws = createWs();
 const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)) });
@@ -37,15 +39,34 @@ Options: `createDocListener` and `docTypeFromDef` in `src/server/postgres/listen
   `bunx dzql init init_db --with-auth` copies `001a–001g` (and `002-users.sql`);
   `bunx dzql sql ./types.ts --out init_db/003-tables.sql` writes your tables. The SQL
   is yours, in git; only the SQL is vendored, the TypeScript is imported.
-- **Upgrading the app**: `migrate(pool, migrations, { app, schema })` first, then
-  `applyFramework` and `applySql(pool, generateSql(…))`. `generateSql` adds a column a later
-  schema declares; a migration does the rest (`migrations.md`). Give the listener your
+- **The history makes the tables**: `migrate(pool, await fromFolder("migrations"), { app, schema })`
+  first, then `applyFramework` and `applySql(pool, generateSql(…))`. The same migrations as on
+  SQLite (`delta migrations make` writes them from the definitions): a new database runs them from
+  the first; one made the older way, holding their tables, adopts them. A change the definitions
+  make is the next migration (delta's `migrations.md`). Give the listener your
   `schema` (`createDocListener(ws, pool, { types, schema })`): it sends and writes the columns
   it declares, so two versions on one database each see their own.
 - **After upgrading delta**, run `init <dir> --upgrade` (it keeps `.bak`s and says what changed)
   or `applyFramework` again. Never edit `001*` by hand: it is the stored-function contract.
 - Mount `init_db/` at `/docker-entrypoint-initdb.d`: Postgres applies it alphabetically on the
   first boot of an empty volume, then skips; `docker compose down -v` starts fresh.
+
+## Who may open a document
+
+A document is the permission: opening it is the read, a write goes only through what it holds,
+and its `owns` says who may have it, as a path from its row to the person (delta's
+`ownership.md`):
+
+```ts
+defineDoc("venue:", { root: "venues", include: ["areas"], owns: "@org_id->members[org_id=$]{active}.person_id" });
+```
+
+`generateSql` compiles each path into the document's own function, `dzql_owns__<doc>(name,
+person)`, through delta's `pathSql`: the same SQL SQLite runs. The listener asks it before open,
+write, history and a walk, and before telling each socket of a change, so someone the path stops
+reaching is let go. A write that would leave the path not reaching the writer (handing the row
+away) is refused, 403. A path that cannot be followed is an error naming the document. There are
+no table rules.
 
 ## Compiled SQL
 
@@ -72,6 +93,7 @@ its answers are recorded (`tests/compile/`) and stay the measure. It retired (to
 | A write's row SQL: lock, store a replace, mint an id, clear a moment, is it there, read, store an add | `_delta_row_lock`, `_delta_row_put`, `_delta_next_id`, `_delta_row_clear_moment`, `_delta_row_there`, `_delta_row_read`, `_delta_row_add`, per collection |
 | The ledger's reads: a document whole (an entry's inverse, a walk's guard), a field the same, a row beyond the document | `dzql_open_whole__<doc>` via `_delta_open`; `_delta_same`, `_delta_row_standing`, per collection |
 | A collection's definition, a table's serial | `_delta_collection`, `_delta_serial_new`, `_delta_serial_past`, per collection |
+| Who may have a document (`owns` as a path), and a write that keeps it in reach | `dzql_owns__<doc>`; `_delta_keeps_reach`, asked by `delta_apply` |
 | What a remove takes with it, and what a moved row carries | `dzql_cascade_remove__<coll>`, `dzql_cascade_rows__<coll>`, `dzql_hanging_rows__<coll>`, via `_delta_cascade_remove`, `_delta_cascade_rows`, `_delta_hanging_rows` |
 
 Three rules follow:
@@ -109,4 +131,5 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
 - `_delta_ops_log` is a catch-up buffer: prune it with `pruneOpsLog(pool)` (`delta_prune_ops`).
 - PGlite (`openPglite(dir?)`, `bun add @electric-sql/pglite`) is one process: a `Pool` that
   `./postgres` runs on unchanged.
-- **The superuser bypasses RLS**, even with `FORCE`: documents need a non-superuser pool (`rls.md`).
+- **Never deploy PGlite**: it needs far more memory than a small server has. Tests and development only.
+- **The superuser bypasses RLS**, even with `FORCE`: a hand-written policy needs a non-superuser pool (`rls.md`).
