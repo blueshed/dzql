@@ -7,18 +7,23 @@
  *
  * `compileLookups(schema, docs)` writes:
  * - `_delta_collection(key)`: each collection's definition, as generateSql
- *   records it in `_delta_collections`, written in; any other key the
- *   framework's (`_delta_collection_framework`);
+ *   records it in `_delta_collections`, written in; NULL fields for a key of
+ *   none;
  * - `_delta_serial_new(table, id)` and `_delta_serial_past(table, id)`: each
  *   table's sequence named, read or moved as the framework's do (as the
- *   functions' owner, for a caller with the table's privilege), any other
- *   table the framework's;
+ *   functions' owner, for a caller with the table's privilege); for a table
+ *   there is not, no id is new and nothing moves;
+ * - `_delta_find_doc(name)`: the document a name is of, by the longest prefix
+ *   it starts with, as generateSql records it in `_delta_docs`, written in;
+ *   NULL for a name of none;
  * - `delta_open_at(name, at)`: each compiled document to its own read as it
- *   stood (`dzql_open_at__<slug>`), any other to `_delta_open_at_framework`.
+ *   stood (`dzql_open_at__<slug>`), refusing a name of none.
+ *
+ * Each answers what the framework's did (recorded: tests/compile/lookups.test.ts).
  */
 import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { findCascadeOn } from "../postgres/sql";
-import { lit, openAtFunction } from "./opens";
+import { lit, noDoc, openAtFunction } from "./opens";
 
 /** The caller, as the framework's serials ask: the role set, else the session's. */
 const CALLER = "COALESCE(NULLIF(current_setting('role'), 'none'), session_user)";
@@ -50,7 +55,7 @@ ${tables.map(([key, t]) => {
     };
     return `    WHEN ${lit(key)} THEN RETURN jsonb_populate_record(null::_delta_collections, ${lit(JSON.stringify(row))}::jsonb);`;
   }).join("\n")}
-    ELSE RETURN _delta_collection_framework(p_key);
+    ELSE RETURN NULL;   -- a collection there is not
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;`;
@@ -65,7 +70,7 @@ ${tables.map(([, t]) => `    WHEN ${lit(t.name)} THEN
       IF NOT has_table_privilege(${CALLER}, p_table, 'SELECT') THEN RETURN FALSE; END IF;
       SELECT p_id >= last_value + is_called::int INTO v_new FROM ${q(`seq_${t.name}`)};
       RETURN v_new;`).join("\n")}
-    ELSE RETURN _delta_serial_new_framework(p_table, p_id);
+    ELSE RETURN FALSE;   -- a table there is not: no id is new
   END CASE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -78,11 +83,24 @@ BEGIN
 ${tables.map(([, t]) => `    WHEN ${lit(t.name)} THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(${CALLER}, p_table, 'INSERT') THEN RETURN; END IF;
       PERFORM setval(${lit(`seq_${t.name}`)}, p_id) FROM ${q(`seq_${t.name}`)} WHERE p_id >= last_value + is_called::int;`).join("\n")}
-    ELSE PERFORM _delta_serial_past_framework(p_table, p_id);
+    ELSE NULL;   -- a table there is not: nothing to move
   END CASE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ${searchPath("_delta_serial_past(text, bigint)")}`;
+
+  // longest first, as the framework's ORDER BY length(prefix) DESC: a name is of the longest prefix it starts with
+  const byLength = [...docs].sort((a, b) => b.prefix.length - a.prefix.length || (a.prefix < b.prefix ? -1 : 1));
+  const findDoc = `CREATE OR REPLACE FUNCTION _delta_find_doc(p_doc_name TEXT)
+RETURNS _delta_docs AS $$
+BEGIN
+${byLength.map((d) => {
+    const row = { prefix: d.prefix, root_collection: d.root, include: d.include, scope: d.scope, implied: !!d.implied, held: d.columns ?? {} };
+    return `  IF starts_with(p_doc_name, ${lit(d.prefix)}) THEN RETURN jsonb_populate_record(null::_delta_docs, ${lit(JSON.stringify(row))}::jsonb); END IF;`;
+  }).join("\n")}
+  RETURN NULL;   -- a name no document holds
+END;
+$$ LANGUAGE plpgsql STABLE;`;
 
   const openAt = `CREATE OR REPLACE FUNCTION delta_open_at(p_doc_name TEXT, p_at TIMESTAMPTZ)
 RETURNS JSONB AS $$
@@ -91,10 +109,10 @@ DECLARE
 BEGIN
   CASE v_def.prefix
 ${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${openAtFunction(d.prefix)}(p_doc_name, p_at);`).join("\n")}
-    ELSE RETURN _delta_open_at_framework(p_doc_name, p_at);   -- a name no document compiled here holds (none at all: the framework refuses it)
+    ELSE ${noDoc("p_doc_name")}
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 
-  return [collection, serialNew, serialPast, openAt, ""].join("\n\n");
+  return [collection, findDoc, serialNew, serialPast, openAt, ""].join("\n\n");
 }

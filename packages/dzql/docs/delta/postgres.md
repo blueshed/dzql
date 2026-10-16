@@ -49,45 +49,49 @@ Options: `createDocListener` and `docTypeFromDef` in `src/server/postgres/listen
 
 ## Compiled SQL
 
-`generateSql` writes more than your tables. It writes SQL for each of your documents, compiled
-from their definitions, in place of framework functions that read `_delta_collections` and
-`_delta_docs` at run time. Each piece answers what the framework answers: dzql's
-`tests/compile/` holds each equal to the framework's, on every document name of delta's path
-cases, on the seed and after writes. Compiled so far:
+`generateSql` writes more than your tables. It writes the SQL for each of your documents and
+collections, compiled from their definitions: nothing reads `_delta_collections` or `_delta_docs`
+to work out what a document means at run time. The framework SQL (`001*`) holds the tables, the
+write (`delta_apply`), the ledger and the listener's functions, and calls what `generateSql`
+writes. Until 16 October 2026 a framework read the definitions at run time, and every compiled piece
+was held equal to it on every document name of delta's path cases, on the seed and after writes;
+its answers are recorded (`tests/compile/`) and stay the measure. It retired (todo #26).
 
-| What | Compiled per document | The framework's, kept as |
-| --- | --- | --- |
-| Opening a document | `dzql_open__<doc>`, `dzql_open_at__<doc>` (and `_as`) | `delta_open`, `delta_open_at` |
-| Does a document hold a row | `dzql_holds__<doc>`, via `_delta_doc_holds` | `_delta_doc_holds_framework` |
-| May a write touch a row (its scope) | `dzql_in_scope__<doc>`, via `_delta_row_in_scope` | `_delta_row_in_scope_framework` |
-| What a document is told of a write | `dzql_told__<doc>`, via `_delta_told` | `_delta_told_framework` |
-| Which open documents hold a row (the fan-out) | `_delta_holders` itself, per collection | `_delta_holders_framework` |
-| Reading a name by its document's scope | `dzql_scope__<doc>`, via `_delta_resolve_scope` | `_delta_resolve_scope_framework` |
-| Is a one-row document's root there, before each op of a write | `dzql_root_there__<doc>`, via `_delta_root_there` | `_delta_root_there_framework` |
-| The columns a document writes | `dzql_columns__<doc>`, via `_delta_write_columns` | `_delta_write_columns_framework` |
-| Checking a write's fields | `_delta_assert_fields` itself, per collection and set of columns | `_delta_assert_fields_framework` |
-| A write's row SQL: lock, store a replace, mint an id, clear a moment, is it there, read, store an add | `_delta_row_lock`, `_delta_row_put`, `_delta_next_id`, `_delta_row_clear_moment`, `_delta_row_there`, `_delta_row_read`, `_delta_row_add`, per collection | each `_framework` |
-| The ledger's reads: a document whole (an entry's inverse, a walk's guard), a field the same, a row beyond the document | `dzql_open_whole__<doc>` via `_delta_open`; `_delta_same`, `_delta_row_standing`, per collection | `_delta_open_framework`, `_delta_same_framework`, `_delta_row_standing_framework` |
-| A collection's definition, a table's serial, a document as it stood | `_delta_collection`, `_delta_serial_new`, `_delta_serial_past` per collection; `delta_open_at` to `dzql_open_at__<doc>` | each `_framework` |
-| What a remove takes with it, and what a moved row carries | `dzql_cascade_remove__<coll>`, `dzql_cascade_rows__<coll>`, `dzql_hanging_rows__<coll>`, via `_delta_cascade_remove`, `_delta_cascade_rows`, `_delta_hanging_rows` | each `_framework` |
+| What | Compiled |
+| --- | --- |
+| Opening a document | `dzql_open__<doc>`, `dzql_open_at__<doc>` (and `_as`), via `delta_open`, `delta_open_at` |
+| The document a name is of | `_delta_find_doc`, each prefix written in, the longest first |
+| Does a document hold a row | `dzql_holds__<doc>`, via `_delta_doc_holds` |
+| May a write touch a row (its scope) | `dzql_in_scope__<doc>`, via `_delta_row_in_scope` |
+| What a document is told of a write | `dzql_told__<doc>`, via `_delta_told` |
+| Which open documents hold a row (the fan-out) | `_delta_holders` itself, per collection |
+| Reading a name by its document's scope | `dzql_scope__<doc>`, via `_delta_resolve_scope` |
+| Is a one-row document's root there, before each op of a write | `dzql_root_there__<doc>`, via `_delta_root_there` |
+| The columns a document writes | `dzql_columns__<doc>`, via `_delta_write_columns` |
+| Checking a write's fields | `_delta_assert_fields` itself, per collection and set of columns; another set (a walk's, another version's) by the columns given |
+| A write's row SQL: lock, store a replace, mint an id, clear a moment, is it there, read, store an add | `_delta_row_lock`, `_delta_row_put`, `_delta_next_id`, `_delta_row_clear_moment`, `_delta_row_there`, `_delta_row_read`, `_delta_row_add`, per collection |
+| The ledger's reads: a document whole (an entry's inverse, a walk's guard), a field the same, a row beyond the document | `dzql_open_whole__<doc>` via `_delta_open`; `_delta_same`, `_delta_row_standing`, per collection |
+| A collection's definition, a table's serial | `_delta_collection`, `_delta_serial_new`, `_delta_serial_past`, per collection |
+| What a remove takes with it, and what a moved row carries | `dzql_cascade_remove__<coll>`, `dzql_cascade_rows__<coll>`, `dzql_hanging_rows__<coll>`, via `_delta_cascade_remove`, `_delta_cascade_rows`, `_delta_hanging_rows` |
 
-Two rules follow:
+Three rules follow:
 
-- **The framework first, then `generateSql`, every time.** `applyFramework` (or vendored
-  `001*` files) puts the framework's own `_delta_doc_holds`, `_delta_row_in_scope`,
-  `_delta_told`, `_delta_holders`, `_delta_resolve_scope`, `_delta_root_there`, `_delta_write_columns`,
-  `_delta_assert_fields`, the row SQL, the cascades and the ledger's reads back: everything still works, and writes are answered by
-  the framework, slower (the compiled opens stay). Re-apply `generateSql` after it, and after `init
-  --upgrade`. Vendored, `003-tables.sql` sorts after `001*`, so a tool that re-applies the
-  directory in order gets this right; one that re-applies only `001*` must re-apply `003` too.
-- **A document dzql did not compile goes to the framework.** One registered by hand, or by
-  another `generateSql`, is answered by the `_framework` functions, as before. The dispatchers
-  send each document by its prefix, so a prefix compiled and then registered again by hand with
-  another definition answers by the compiled one until `generateSql` runs again.
+- **The framework first, then `generateSql`, every time.** `applyFramework` (or vendored `001*`
+  files) puts back the uncompiled forms of what `generateSql` writes, which know no document: a
+  document's name is refused (`no doc def for: <name>`) until `generateSql` is applied again.
+  Re-apply it after `applyFramework` and after `init --upgrade`. Vendored, `003-tables.sql` sorts
+  after `001*`, so a tool that re-applies the directory in order gets this right; one that
+  re-applies only `001*` must re-apply `003` too.
+- **One app per database.** Each `generateSql` writes the whole set of an app's documents and
+  collections; a later one, with other definitions, takes their place. Two apps on one Postgres
+  server each have a database of their own (`CREATE DATABASE`), which keeps their changes apart too
+  (LISTEN/NOTIFY is per database). A schema per app is not supported yet (todo #29).
+- **A document is what its definition compiles to.** Nothing registered by hand is read: add a
+  document to your definitions and apply `generateSql`.
 
 The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their `_as` forms
-(`sql.md`), which reach them. What a write costs, compiled against the framework, is in
-`bench/results-2026-10-15.md` (under RLS, as an app role).
+(`sql.md`), which reach them. What a write costs, compiled, is in `bench/results-2026-10-15.md`
+(under RLS, as an app role).
 
 ## Gotchas
 

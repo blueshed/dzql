@@ -139,7 +139,8 @@ describe("generateSql", () => {
     expect(both).toContain("INSERT INTO _delta_docs (prefix, root_collection, include, scope, implied)\n  VALUES ('room:', 'rooms', '{}', '{}', true)");
     expect(both).toContain("VALUES ('lobby:', 'rooms', '{}', '{}', false)");
     expect(both).toContain("implied = EXCLUDED.implied;");
-    expect(generateSql(schema, [lobby])).not.toContain("implied");
+    // the compiled lookup's row names it as a JSON key, which a table without the column ignores
+    expect(generateSql(schema, [lobby])).not.toMatch(/INSERT INTO _delta_docs \([^)]*implied|implied = EXCLUDED/);
   });
 
   test("empty include is an empty array literal", () => {

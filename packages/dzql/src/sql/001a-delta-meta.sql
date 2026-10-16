@@ -30,13 +30,48 @@ ALTER TABLE _delta_docs ADD COLUMN IF NOT EXISTS implied BOOLEAN NOT NULL DEFAUL
 -- collection not named, whole. It is opened, told and written by those alone.
 ALTER TABLE _delta_docs ADD COLUMN IF NOT EXISTS held JSONB NOT NULL DEFAULT '{}';
 
+-- The framework that read the definitions at run time retired (todo #26): each
+-- document and collection is compiled by generateSql (dzql/compile). Dropped
+-- where an earlier version made them.
+DROP FUNCTION IF EXISTS _delta_collection_framework(text);
+DROP FUNCTION IF EXISTS _delta_assert_fields_framework(text, jsonb, text, jsonb);
+DROP FUNCTION IF EXISTS _delta_temporal_where(timestamptz, text);
+DROP FUNCTION IF EXISTS _delta_find_doc_framework(text);
+DROP FUNCTION IF EXISTS _delta_resolve_scope_framework(_delta_docs, text, boolean);
+DROP FUNCTION IF EXISTS _delta_row_in_scope_framework(_delta_docs, text, text, bigint);
+DROP FUNCTION IF EXISTS _delta_chain_root(text, jsonb, text);
+DROP FUNCTION IF EXISTS _delta_doc_holds_framework(_delta_docs, text, text, jsonb);
+DROP FUNCTION IF EXISTS _delta_holders_framework(text, jsonb, text, text[]);
+DROP FUNCTION IF EXISTS _delta_load_collection(text, text, bigint, timestamptz);
+DROP FUNCTION IF EXISTS _delta_load_collection_all(text, timestamptz);
+DROP FUNCTION IF EXISTS _delta_read_list(_delta_docs, text, timestamptz);
+DROP FUNCTION IF EXISTS _delta_show_doc(_delta_docs, jsonb, boolean);
+DROP FUNCTION IF EXISTS _delta_open_framework(text, boolean);
+DROP FUNCTION IF EXISTS _delta_serial_past_framework(text, bigint);
+DROP FUNCTION IF EXISTS _delta_serial_new_framework(text, bigint);
+DROP FUNCTION IF EXISTS _delta_cascade_remove_framework(text, bigint);
+DROP FUNCTION IF EXISTS _delta_cascade_rows_framework(text, bigint);
+DROP FUNCTION IF EXISTS _delta_hanging_rows_framework(text, bigint);
+DROP FUNCTION IF EXISTS _delta_told_framework(_delta_docs, text, jsonb);
+DROP FUNCTION IF EXISTS _delta_row_there_framework(text, bigint);
+DROP FUNCTION IF EXISTS _delta_held_columns(_delta_docs, text, jsonb);
+DROP FUNCTION IF EXISTS _delta_root_there_framework(_delta_docs, text, jsonb, text, bigint);
+DROP FUNCTION IF EXISTS _delta_write_columns_framework(_delta_docs, text, jsonb);
+DROP FUNCTION IF EXISTS _delta_row_lock_framework(text, text, boolean, bigint);
+DROP FUNCTION IF EXISTS _delta_row_put_framework(text, text, boolean, bigint, jsonb, timestamptz);
+DROP FUNCTION IF EXISTS _delta_next_id_framework(text, text);
+DROP FUNCTION IF EXISTS _delta_row_clear_moment_framework(text, text, bigint, timestamptz);
+DROP FUNCTION IF EXISTS _delta_row_add_framework(text, text, jsonb);
+DROP FUNCTION IF EXISTS _delta_row_read_framework(text, text, bigint);
+DROP FUNCTION IF EXISTS _delta_open_at_framework(text, timestamptz);
+DROP FUNCTION IF EXISTS _delta_same_framework(text, text, jsonb, jsonb);
+DROP FUNCTION IF EXISTS _delta_row_standing_framework(text, bigint);
+
 -- _delta_collection: a collection's definition (NULL fields: there is none).
--- The framework's reads the table; dzql's compiler (`compileLookups`) writes
--- each collection it compiled in, any other sent here.
-CREATE OR REPLACE FUNCTION _delta_collection_framework(p_key TEXT)
-RETURNS _delta_collections LANGUAGE sql STABLE AS $$ SELECT * FROM _delta_collections WHERE collection_key = p_key; $$;
+-- generateSql writes each collection in (compileLookups); before it is applied,
+-- there is none.
 CREATE OR REPLACE FUNCTION _delta_collection(p_key TEXT)
-RETURNS _delta_collections LANGUAGE sql STABLE AS $$ SELECT _delta_collection_framework(p_key); $$;
+RETURNS _delta_collections LANGUAGE sql STABLE AS $$ SELECT NULL::_delta_collections; $$;
 
 CREATE TABLE IF NOT EXISTS _delta_versions (
   doc_name TEXT PRIMARY KEY,
@@ -143,8 +178,10 @@ $$;
 -- not have, or gives a column a value not of its type (SQLSTATE 22023 → 400).
 -- It used to be merged into the broadcast row, acked, and dropped (or cast) by
 -- jsonb_populate_record: stored otherwise than told. id, the parent key and
--- the temporal columns are the row's own.
-CREATE OR REPLACE FUNCTION _delta_assert_fields_framework(
+-- the temporal columns are the row's own. By the columns given (`p_columns`): a
+-- set the compiler did not write in (another version's, `delta.declared`; a
+-- walk's, as its entry was stored) is checked here.
+CREATE OR REPLACE FUNCTION _delta_assert_fields_declared(
   p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB
 ) RETURNS void LANGUAGE plpgsql IMMUTABLE AS $$
 DECLARE
@@ -186,16 +223,16 @@ BEGIN
 END;
 $$;
 
--- The checks every write asks: the framework's, until dzql's compiler
--- (`compileColumns`) replaces this with one that checks each column set it
--- compiled by its own statements, and any other by the framework's.
+-- The checks every write asks: generateSql (`compileColumns`) replaces this
+-- with one that checks each column set it compiled by its own statements, and
+-- any other by the columns given.
 CREATE OR REPLACE FUNCTION _delta_assert_fields(
   p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB
-) RETURNS void LANGUAGE sql IMMUTABLE AS $$ SELECT _delta_assert_fields_framework(p_collection, p_columns, p_parent_fk, p_value); $$;
+) RETURNS void LANGUAGE sql IMMUTABLE AS $$ SELECT _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value); $$;
 
 -- Pick the source relation for a collection.
 --   temporal + no timestamp → current_<table> view
---   temporal + timestamp    → base <table> (caller filters with _delta_temporal_where)
+--   temporal + timestamp    → base <table> (the caller filters by its time)
 --   non-temporal            → base <table>
 CREATE OR REPLACE FUNCTION _delta_source_view(
   p_table_name TEXT, p_temporal BOOLEAN, p_at TIMESTAMPTZ DEFAULT NULL
@@ -204,16 +241,4 @@ CREATE OR REPLACE FUNCTION _delta_source_view(
     WHEN p_temporal AND p_at IS NULL THEN 'current_' || p_table_name
     ELSE p_table_name
   END;
-$$;
-
--- Temporal WHERE fragment for embedding into format()-built dynamic SQL.
--- Inlines the timestamp as a %L literal so callers don't need extra param binding.
--- Aliases the row with `p_alias` (default `t`).
-CREATE OR REPLACE FUNCTION _delta_temporal_where(
-  p_at TIMESTAMPTZ, p_alias TEXT DEFAULT 't'
-) RETURNS text LANGUAGE sql IMMUTABLE AS $$
-  SELECT format(
-    '%s.valid_from <= %L AND (%s.valid_to IS NULL OR %s.valid_to > %L)',
-    p_alias, p_at, p_alias, p_alias, p_at
-  );
 $$;

@@ -37,7 +37,7 @@ BEGIN
     WHEN 'asks' THEN
       SELECT to_jsonb(t.*) INTO v_row FROM "order" t WHERE t.id = p_id AND valid_to IS NULL FOR UPDATE;
       RETURN v_row;
-    ELSE RETURN _delta_row_lock_framework(p_coll, p_table, p_temporal, p_id);
+    ELSE RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023';
   END CASE;
 END;
 $$ LANGUAGE plpgsql;
@@ -92,7 +92,7 @@ BEGIN
       INSERT INTO "order" AS t SELECT * FROM jsonb_populate_record(null::"order", p_row || jsonb_build_object('valid_from', p_ts, 'valid_to', NULL))
         RETURNING to_jsonb(t.*) INTO v_row;
       RETURN v_row;
-    ELSE RETURN _delta_row_put_framework(p_coll, p_table, p_temporal, p_id, p_row, p_ts);
+    ELSE RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023';
   END CASE;
 END;
 $$ LANGUAGE plpgsql;
@@ -121,7 +121,7 @@ BEGIN
       RETURN nextval('seq_fo_favours');
     WHEN 'asks' THEN
       RETURN nextval('seq_order');
-    ELSE RETURN _delta_next_id_framework(p_coll, p_table);
+    ELSE RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023';
   END CASE;
 END;
 $$ LANGUAGE plpgsql;
@@ -136,7 +136,7 @@ BEGIN
     WHEN 'asks' THEN
       DELETE FROM "order" WHERE id = p_id AND valid_from = p_ts AND valid_to = p_ts;
       RETURN;
-    ELSE PERFORM _delta_row_clear_moment_framework(p_coll, p_table, p_id, p_ts);
+    ELSE RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023';
   END CASE;
 END;
 $$ LANGUAGE plpgsql;
@@ -167,7 +167,7 @@ BEGIN
       RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "fo_favours" WHERE id = p_id);
     WHEN 'asks' THEN
       RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "current_order" WHERE id = p_id);
-    ELSE RETURN _delta_row_there_framework(p_collection_key, p_id);
+    ELSE RETURN FALSE;   -- a collection there is not: no row of it is there
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;
@@ -208,7 +208,7 @@ BEGIN
     WHEN 'asks' THEN
       SELECT _delta_strip_temporal(to_jsonb(t.*)) INTO v_row FROM "current_order" t WHERE t.id = p_id;
       RETURN v_row;
-    ELSE RETURN _delta_row_read_framework(p_coll, p_view, p_id);
+    ELSE RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023';
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;
@@ -224,62 +224,62 @@ BEGIN
         INSERT INTO "fo_weddings" AS t ("id", "name") SELECT "id", "name" FROM jsonb_populate_record(null::"fo_weddings", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
     WHEN 'households' THEN
       IF p_row ?& ARRAY['id', 'weddings_id', 'email', 't'] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = 4 THEN
         INSERT INTO "fo_households" AS t ("id", "weddings_id", "email", "t") SELECT "id", "weddings_id", "email", "t" FROM jsonb_populate_record(null::"fo_households", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
     WHEN 'courses' THEN
       IF p_row ?& ARRAY['id', 'weddings_id', 'name'] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = 3 THEN
         INSERT INTO "fo_courses" AS t ("id", "weddings_id", "name") SELECT "id", "weddings_id", "name" FROM jsonb_populate_record(null::"fo_courses", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
     WHEN 'drinks' THEN
       IF p_row ?& ARRAY['id', 'courses_id', 'name'] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = 3 THEN
         INSERT INTO "fo_drinks" AS t ("id", "courses_id", "name") SELECT "id", "courses_id", "name" FROM jsonb_populate_record(null::"fo_drinks", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
     WHEN 'tags' THEN
       IF p_row ?& ARRAY['id', 'label'] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = 2 THEN
         INSERT INTO "fo_tags" AS t ("id", "label") SELECT "id", "label" FROM jsonb_populate_record(null::"fo_tags", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
     WHEN 'notes' THEN
       IF p_row ?& ARRAY['id', 'weddings_id', 'text', 'valid_from', 'valid_to'] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = 5 THEN
         INSERT INTO "fo_notes" AS t ("id", "weddings_id", "text", "valid_from", "valid_to") SELECT "id", "weddings_id", "text", "valid_from", "valid_to" FROM jsonb_populate_record(null::"fo_notes", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
     WHEN 'seats' THEN
       IF p_row ?& ARRAY['id', 'weddings_id', 'table_no', 'kept', 'wishes'] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = 5 THEN
         INSERT INTO "fo_seats" AS t ("id", "weddings_id", "table_no", "kept", "wishes") SELECT "id", "weddings_id", "table_no", "kept", "wishes" FROM jsonb_populate_record(null::"fo_seats", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
     WHEN 'slots' THEN
       IF p_row ?& ARRAY['id', 'weddings_id', 'price', 'starts'] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = 4 THEN
         INSERT INTO "fo_slots" AS t ("id", "weddings_id", "price", "starts") SELECT "id", "weddings_id", "price", "starts" FROM jsonb_populate_record(null::"fo_slots", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
     WHEN 'favours' THEN
       IF p_row ?& ARRAY['id', 'weddings_id', 'households_id', 'gift'] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = 4 THEN
         INSERT INTO "fo_favours" AS t ("id", "weddings_id", "households_id", "gift") SELECT "id", "weddings_id", "households_id", "gift" FROM jsonb_populate_record(null::"fo_favours", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
     WHEN 'asks' THEN
       IF p_row ?& ARRAY['id', 'group', 'in', 'from', 'to', 'valid_from', 'valid_to'] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = 7 THEN
         INSERT INTO "order" AS t ("id", "group", "in", "from", "to", "valid_from", "valid_to") SELECT "id", "group", "in", "from", "to", "valid_from", "valid_to" FROM jsonb_populate_record(null::"order", p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);
-    ELSE RETURN _delta_row_add_framework(p_coll, p_table, p_row);
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives
+    ELSE RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023';
   END CASE;
 END;
 $$ LANGUAGE plpgsql;

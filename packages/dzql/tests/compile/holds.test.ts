@@ -112,9 +112,9 @@ describe("the compiled text", () => {
     expect(compileHolds(pathSchema, docs)).toMatchSnapshot();
   });
 
-  test("_delta_doc_holds sends a compiled document to its own, any other to the framework", () => {
+  test("_delta_doc_holds sends each document to its own, and refuses a name of none", () => {
     const sql = compileHolds(pathSchema, docs);
     expect(sql).toContain(`WHEN 'fo-board:' THEN RETURN ${holdsFunction("fo-board:")}(p_doc_name, p_coll, p_row);`);
-    expect(sql).toContain("ELSE RETURN _delta_doc_holds_framework(p_def, p_doc_name, p_coll, p_row);");
+    expect(sql).toContain("ELSE RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001';");
   });
 });

@@ -10,10 +10,9 @@
  * row hangs from, its chain written as lookups, where the document is one row
  * of an unscoped definition; else every open name of its prefix), and the
  * writer's; each name its own prefix owns and whose document holds the row
- * (`dzql_holds__<slug>`). Any other document (registered by hand, or by another
- * `generateSql`) is asked by the framework's (`_delta_holders_framework`), told
- * which prefixes were asked already. SECURITY DEFINER, with the search path it
- * was applied with and pg_temp last, as the framework's.
+ * (`dzql_holds__<slug>`). There is no other document: the framework that asked
+ * the rest retired (todo #26). SECURITY DEFINER, with the search path it was
+ * applied with and pg_temp last, as the framework's was.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
 import { chainRoot, holdsFunction } from "./holds";
@@ -39,13 +38,12 @@ ${all ? "" : `      v_rid := ${coll === doc.root ? "(p_row->>'id')::BIGINT" : ch
       END LOOP;`;
 }
 
-/** The SQL that answers who holds a row: `_delta_holders`, each of `docs` asked by its own lookups, any other by the framework's. */
+/** The SQL that answers who holds a row: `_delta_holders`, each of `docs` asked by its own lookups. */
 export function compileHolders(schema: Schema, docs: DocDef[]): string {
   const branches = Object.keys(schema.tables).flatMap((coll) => {
     const holding = docs.filter((d) => d.root === coll || d.include.includes(coll));
     return holding.length ? [`    WHEN ${lit(coll)} THEN\n${holding.map((d) => askOf(schema, d, coll)).join("\n")}`] : [];
   });
-  const asked = `ARRAY[${docs.map((d) => lit(d.prefix)).join(", ")}]::text[]`;
   return `CREATE OR REPLACE FUNCTION _delta_holders(p_coll TEXT, p_row JSONB, p_writer TEXT)
 RETURNS TEXT[] AS $$
 DECLARE
@@ -58,11 +56,7 @@ BEGIN
       upper(current_setting('transaction_isolation')) USING ERRCODE = '0A000';
   END IF;
   IF p_row IS NULL THEN RETURN v_names; END IF;
-${branches.length ? `  CASE p_coll\n${branches.join("\n")}\n    ELSE NULL;\n  END CASE;\n` : ""}  -- the documents not compiled here, as the framework asks them
-  IF EXISTS (SELECT 1 FROM _delta_docs WHERE (root_collection = p_coll OR p_coll = ANY(include)) AND NOT (prefix = ANY(${asked}))) THEN
-    v_names := v_names || _delta_holders_framework(p_coll, p_row, p_writer, ${asked});
-  END IF;
-  RETURN v_names;
+${branches.length ? `  CASE p_coll\n${branches.join("\n")}\n    ELSE NULL;\n  END CASE;\n` : ""}  RETURN v_names;
 END;
 $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 DO $$ BEGIN

@@ -20,7 +20,7 @@ export function rawPostgresAdapter(adminUrl: string, appUrl: string): Adapter {
     name: "raw-postgres",
     rtt: 1,
     async setup() {
-      await applyBenchSchema(admin, { compiled: true });
+      await applyBenchSchema(admin);
       await seedBenchRows(admin);
       await assertHeldByRls(app);
     },

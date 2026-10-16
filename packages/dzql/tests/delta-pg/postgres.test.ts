@@ -23,7 +23,6 @@ import {
 import { createWs } from "@blueshed/delta/server";
 import { setLogLevel } from "@blueshed/delta/logger";
 import {
-  PG_URL,
   newPool,
   applyFramework,
   applyItems,

@@ -13,22 +13,6 @@
 -- is pinned below, pg_temp last.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_serial_past_framework(p_table TEXT, p_id BIGINT)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  IF p_id > 9007199254740991 OR NOT EXISTS (SELECT 1 FROM _delta_collections WHERE table_name = p_table)
-     OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN
-    RETURN;
-  END IF;
-  EXECUTE format('SELECT setval(%L, $1) FROM %I WHERE $1 >= last_value + is_called::int',
-    'seq_' || p_table, 'seq_' || p_table) USING p_id;
-END;
-$$;
--- the search path it was applied with, and pg_temp last (as _delta_holders, 001b)
-DO $$ BEGIN
-  EXECUTE format('ALTER FUNCTION _delta_serial_past_framework(TEXT, BIGINT) SET search_path = %s, pg_temp', COALESCE(NULLIF(current_setting('search_path'), ''), 'public'));
-END $$;
-
 -- ---------------------------------------------------------------------------
 -- _delta_serial_new: whether an id is past every one a collection's serial has
 -- handed out (minted, or passed for an add that named it): what an add may
@@ -37,40 +21,15 @@ END $$;
 -- other every id is taken, so it learns nothing of the table's rows.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_serial_new_framework(p_table TEXT, p_id BIGINT)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-  v_new BOOLEAN;
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM _delta_collections WHERE table_name = p_table)
-     OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN
-    RETURN FALSE;
-  END IF;
-  EXECUTE format('SELECT $1 >= last_value + is_called::int FROM %I', 'seq_' || p_table) INTO v_new USING p_id;
-  RETURN v_new;
-END;
-$$;
-
--- Both run as the framework's owner, so each looks its names up only in the
--- schemas the framework is applied in, and pg_temp last: a caller's temporary
--- _delta_collections, or a temporary table named as one of delta's, never
--- stands in for the real one. (search_path FROM CURRENT took "$user", public,
--- and pg_temp is searched first when it is not named.)
-DO $$
-DECLARE
-  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
-BEGIN
-  EXECUTE format('ALTER FUNCTION _delta_serial_past_framework(text, bigint) SET search_path = %s', v_path);
-  EXECUTE format('ALTER FUNCTION _delta_serial_new_framework(text, bigint) SET search_path = %s', v_path);
-END $$;
-
--- The serials every add asks: the framework's, until dzql's compiler
--- (`compileLookups`) writes each table's sequence in. As the framework's, as
--- the functions' owner, with the path they were applied with and pg_temp last.
+-- generateSql writes each table's sequence in (compileLookups): as the
+-- functions' owner, with the path they were applied with and pg_temp last, so a
+-- caller's temporary _delta_collections, or a temporary table named as one of
+-- delta's, never stands in for the real one. Before it is applied there is no
+-- table: no id is new, and nothing moves.
 CREATE OR REPLACE FUNCTION _delta_serial_past(p_table TEXT, p_id BIGINT)
-RETURNS void LANGUAGE sql SECURITY DEFINER AS $$ SELECT _delta_serial_past_framework(p_table, p_id); $$;
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN NULL; END $$;
 CREATE OR REPLACE FUNCTION _delta_serial_new(p_table TEXT, p_id BIGINT)
-RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER AS $$ SELECT _delta_serial_new_framework(p_table, p_id); $$;
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER AS $$ SELECT FALSE; $$;
 DO $$
 DECLARE
   v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
@@ -90,91 +49,10 @@ END $$;
 -- ---------------------------------------------------------------------------
 
 DROP FUNCTION IF EXISTS _delta_cascade_remove(TEXT, BIGINT, TEXT[]);
-CREATE OR REPLACE FUNCTION _delta_cascade_remove_framework(
-  p_collection_key TEXT,
-  p_id             BIGINT
-) RETURNS JSONB AS $$
-DECLARE
-  v_coll      RECORD;
-  v_view      TEXT;
-  v_child     RECORD;
-  v_child_row RECORD;
-  v_ref       RECORD;
-  v_ref_row   RECORD;
-  v_affected  BIGINT;
-  v_ops       JSONB := '[]'::jsonb;
-BEGIN
-  SELECT * INTO v_coll FROM _delta_collections
-   WHERE collection_key = p_collection_key;
-  IF NOT FOUND THEN RETURN v_ops; END IF;
-
-  -- Close or delete the row itself
-  IF v_coll.temporal THEN
-    EXECUTE format(
-      'UPDATE %I SET valid_to = NOW() WHERE id = $1 AND valid_to IS NULL',
-      v_coll.table_name
-    ) USING p_id;
-  ELSE
-    EXECUTE format('DELETE FROM %I WHERE id = $1', v_coll.table_name)
-      USING p_id;
-  END IF;
-
-  -- Only claim a removal that actually happened. The row may already be closed,
-  -- or an RLS policy may have silently filtered the UPDATE/DELETE to zero rows —
-  -- in which case emitting the op would tell every subscriber to drop a row that
-  -- is still in the table, and cascading from it would compound the lie.
-  GET DIAGNOSTICS v_affected = ROW_COUNT;
-  IF v_affected = 0 THEN RETURN v_ops; END IF;
-
-  v_ops := v_ops || jsonb_build_array(
-    jsonb_build_object('op', 'remove', 'path', _delta_build_path(p_collection_key, p_id::text))
-  );
-
-  -- Cascade via parent relationship (children of this collection)
-  FOR v_child IN
-    SELECT * FROM _delta_collections
-     WHERE parent_collection = p_collection_key
-     ORDER BY collection_key COLLATE "C"
-  LOOP
-    v_view := _delta_source_view(v_child.table_name, v_child.temporal);
-
-    FOR v_child_row IN
-      EXECUTE format('SELECT id FROM %I WHERE %I = $1 ORDER BY id', v_view, v_child.parent_fk)
-        USING p_id
-    LOOP
-      v_ops := v_ops || _delta_cascade_remove(v_child.collection_key, v_child_row.id);
-    END LOOP;
-  END LOOP;
-
-  -- Cascade via cascadeOn (referencedBy)
-  -- Find collections whose cascade_on references this collection
-  FOR v_ref IN
-    SELECT c.collection_key, c.table_name, c.temporal,
-           elem->>'fk' AS fk_column
-      FROM _delta_collections c,
-           jsonb_array_elements(c.cascade_on) AS elem
-     WHERE elem->>'collection' = p_collection_key
-     ORDER BY c.collection_key COLLATE "C", elem->>'fk' COLLATE "C"
-  LOOP
-    v_view := _delta_source_view(v_ref.table_name, v_ref.temporal);
-
-    FOR v_ref_row IN
-      EXECUTE format('SELECT id FROM %I WHERE %I = $1 ORDER BY id', v_view, v_ref.fk_column)
-        USING p_id
-    LOOP
-      v_ops := v_ops || _delta_cascade_remove(v_ref.collection_key, v_ref_row.id);
-    END LOOP;
-  END LOOP;
-
-  RETURN v_ops;
-END;
-$$ LANGUAGE plpgsql;
-
--- the framework's, until dzql's compiler (`compileCascades`) writes one per
--- collection; the framework's own recursion goes through this name, so a
--- collection either way cascades into the other
+-- generateSql writes one for each collection (compileCascades); a collection
+-- there is not has nothing to take
 CREATE OR REPLACE FUNCTION _delta_cascade_remove(p_collection_key TEXT, p_id BIGINT)
-RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_cascade_remove_framework(p_collection_key, p_id); $$;
+RETURNS JSONB LANGUAGE sql AS $$ SELECT '[]'::jsonb; $$;
 
 -- ---------------------------------------------------------------------------
 -- _delta_cascade_rows: the rows _delta_cascade_remove would take, read before
@@ -183,55 +61,8 @@ RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_cascade_remove_framework(p_collec
 -- ---------------------------------------------------------------------------
 
 DROP FUNCTION IF EXISTS _delta_cascade_rows(TEXT, BIGINT, TEXT[]);
-CREATE OR REPLACE FUNCTION _delta_cascade_rows_framework(
-  p_collection_key TEXT,
-  p_id             BIGINT
-) RETURNS JSONB AS $$
-DECLARE
-  v_coll  RECORD;
-  v_view  TEXT;
-  v_row   JSONB;
-  v_child RECORD;
-  v_ref   RECORD;
-  v_id    BIGINT;
-  v_rows  JSONB := '[]'::jsonb;
-BEGIN
-  SELECT * INTO v_coll FROM _delta_collections WHERE collection_key = p_collection_key;
-  IF NOT FOUND THEN RETURN v_rows; END IF;
-  v_view := _delta_source_view(v_coll.table_name, v_coll.temporal);
-  EXECUTE format('SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1', v_view) INTO v_row USING p_id;
-  IF v_row IS NULL THEN RETURN v_rows; END IF;
-  v_rows := jsonb_build_array(jsonb_build_object('coll', p_collection_key, 'id', p_id, 'row', _delta_strip_temporal(v_row)));
-
-  FOR v_child IN
-    SELECT * FROM _delta_collections
-     WHERE parent_collection = p_collection_key
-     ORDER BY collection_key COLLATE "C"
-  LOOP
-    FOR v_id IN EXECUTE format('SELECT id FROM %I WHERE %I = $1 ORDER BY id', _delta_source_view(v_child.table_name, v_child.temporal), v_child.parent_fk) USING p_id
-    LOOP
-      v_rows := v_rows || _delta_cascade_rows(v_child.collection_key, v_id);
-    END LOOP;
-  END LOOP;
-
-  FOR v_ref IN
-    SELECT c.collection_key, c.table_name, c.temporal, elem->>'fk' AS fk_column
-      FROM _delta_collections c, jsonb_array_elements(c.cascade_on) AS elem
-     WHERE elem->>'collection' = p_collection_key
-     ORDER BY c.collection_key COLLATE "C", elem->>'fk' COLLATE "C"
-  LOOP
-    FOR v_id IN EXECUTE format('SELECT id FROM %I WHERE %I = $1 ORDER BY id', _delta_source_view(v_ref.table_name, v_ref.temporal), v_ref.fk_column) USING p_id
-    LOOP
-      v_rows := v_rows || _delta_cascade_rows(v_ref.collection_key, v_id);
-    END LOOP;
-  END LOOP;
-
-  RETURN v_rows;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
 CREATE OR REPLACE FUNCTION _delta_cascade_rows(p_collection_key TEXT, p_id BIGINT)
-RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_cascade_rows_framework(p_collection_key, p_id); $$;
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT '[]'::jsonb; $$;
 
 -- ---------------------------------------------------------------------------
 -- _delta_hanging_rows: the rows that hang from a row -- its children, theirs,
@@ -240,30 +71,8 @@ RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_cascade_rows_framework(p_c
 -- hanging in sqlite.ts).
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_hanging_rows_framework(p_collection_key TEXT, p_id BIGINT)
-RETURNS JSONB AS $$
-DECLARE
-  v_child RECORD;
-  v_part  JSONB;
-  v_rows  JSONB := '[]'::jsonb;
-BEGIN
-  -- a child collection at a time, in one aggregate: each row by id, the rows under it after it
-  FOR v_child IN SELECT * FROM _delta_collections WHERE parent_collection = p_collection_key ORDER BY collection_key COLLATE "C" LOOP
-    EXECUTE format(
-      'SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), ''[]''::jsonb) FROM %I t,
-         jsonb_array_elements(jsonb_build_array(jsonb_build_object(''coll'', %L, ''id'', t.id, ''row'', _delta_strip_temporal(to_jsonb(t.*))))
-                              || _delta_hanging_rows(%L, t.id)) WITH ORDINALITY AS x(e, n)
-        WHERE t.%I = $1',
-      _delta_source_view(v_child.table_name, v_child.temporal), v_child.collection_key, v_child.collection_key, v_child.parent_fk
-    ) INTO v_part USING p_id;
-    v_rows := v_rows || v_part;
-  END LOOP;
-  RETURN v_rows;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
 CREATE OR REPLACE FUNCTION _delta_hanging_rows(p_collection_key TEXT, p_id BIGINT)
-RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_hanging_rows_framework(p_collection_key, p_id); $$;
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT '[]'::jsonb; $$;
 
 -- ---------------------------------------------------------------------------
 -- _delta_tell: tell every document that holds a row a write changed what
@@ -298,49 +107,10 @@ RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_hanging_rows_framework(p_c
 -- _delta_told: what one document is told of a write -- `p_rows`, the write's
 -- touches with their holders, as _delta_tell gathers them -- by its name
 -- `p_target`: an add, a replace of each field that changed, a remove; its
--- root's arrival or leaving as a replace. The framework's answer is
--- `_delta_told_framework`; dzql's compiler (`compileTold`) replaces
--- `_delta_told` with one sending each document it compiled to its own.
-
-CREATE OR REPLACE FUNCTION _delta_told_framework(p_def _delta_docs, p_target TEXT, p_rows JSONB)
-RETURNS JSONB AS $$
-DECLARE
-  v_t      JSONB;
-  v_single BOOLEAN;
-  v_told   JSONB := '[]'::jsonb;
-  v_was    BOOLEAN;
-  v_is     BOOLEAN;
-  v_root   BOOLEAN;
-  v_path   TEXT;
-BEGIN
-  v_single := (_delta_resolve_scope(p_def, p_target)->>'mode') = 'single';
-  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
-    v_was := (v_t->'before') ? p_target;
-    v_is  := (v_t->'holders') ? p_target;
-    CONTINUE WHEN NOT v_was AND NOT v_is;
-    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and held either way: unchanged for it
-    v_root := v_single AND (v_t->>'coll') = p_def.root_collection;
-    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
-    -- each row as this document shows it: the columns it holds (_delta_show, todo #70)
-    IF v_was AND v_is THEN   -- stayed: what changed
-      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
-                                      FROM jsonb_each(_delta_show(p_def, v_t->>'coll', v_t->'after')) AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
-    ELSIF v_is THEN
-      v_told := v_told || jsonb_build_array(jsonb_build_object(
-        'op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', _delta_show(p_def, v_t->>'coll', v_t->'after')));
-    ELSIF v_root THEN   -- gone: null, or the empty root an implied document then opens with
-      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value',
-        CASE WHEN COALESCE(p_def.implied, FALSE) THEN _delta_show(p_def, v_t->>'coll', _delta_implied_root(p_def, (v_t->>'id')::BIGINT)) ELSE 'null'::jsonb END));
-    ELSE
-      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
-    END IF;
-  END LOOP;
-  RETURN v_told;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
+-- root's arrival or leaving as a replace. generateSql sends each document to
+-- its own (compileTold).
 CREATE OR REPLACE FUNCTION _delta_told(p_def _delta_docs, p_target TEXT, p_rows JSONB)
-RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_told_framework(p_def, p_target, p_rows); $$;
+RETURNS JSONB LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def for: %', p_target USING ERRCODE = 'P0001'; END $$;
 
 CREATE OR REPLACE FUNCTION _delta_tell(p_writer TEXT, p_touched JSONB, p_applied JSONB)
 RETURNS BIGINT AS $$
@@ -400,23 +170,10 @@ RETURNS BIGINT LANGUAGE sql AS $$ SELECT _delta_tell(p_writer, p_touched, NULL);
 -- not yet written opens empty). `there` in sqlite.ts.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_row_there_framework(p_collection_key TEXT, p_id BIGINT)
-RETURNS BOOLEAN AS $$
-DECLARE
-  v_coll   RECORD;
-  v_exists BOOLEAN;
-BEGIN
-  SELECT * INTO v_coll FROM _delta_collections WHERE collection_key = p_collection_key;
-  IF NOT FOUND OR p_id IS NULL THEN RETURN FALSE; END IF;
-  EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I WHERE id = $1)', _delta_source_view(v_coll.table_name, v_coll.temporal))
-    INTO v_exists USING p_id;
-  RETURN v_exists;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
--- the framework's, until dzql's compiler (`compileRows`) writes one per collection
+-- generateSql writes one for each collection (compileRows); a collection there
+-- is not has no row there
 CREATE OR REPLACE FUNCTION _delta_row_there(p_collection_key TEXT, p_id BIGINT)
-RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_row_there_framework(p_collection_key, p_id); $$;
+RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT FALSE; $$;
 
 -- ---------------------------------------------------------------------------
 -- _delta_assert_parent_held: a parent key written (in `p_value`, over the row
@@ -442,6 +199,63 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
+-- _delta_root_there: is a single document's root row `p_id` there now, and
+-- does it meet the whole of its name's scope (a column beside its id), as
+-- delta_open reads it? Asked before each op of a write (delta_apply).
+-- generateSql sends each document to its own (compileRootThere).
+CREATE OR REPLACE FUNCTION _delta_root_there(p_def _delta_docs, p_doc_name TEXT, p_scope JSONB, p_view TEXT, p_id BIGINT)
+RETURNS BOOLEAN LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001'; END $$;
+
+-- _delta_write_columns: the columns of `p_coll` a document writes -- as the
+-- process writing declares them (_delta_cols), those the document holds
+-- (`held`, todo #70), else all: a write through it names those alone
+-- (_delta_assert_fields: 400 for another), and replacing a row whole sets those
+-- alone. generateSql sends each document to its own (compileColumns).
+CREATE OR REPLACE FUNCTION _delta_write_columns(p_def _delta_docs, p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def for: %', p_def.prefix USING ERRCODE = 'P0001'; END $$;
+
+-- ---------------------------------------------------------------------------
+-- A row's SQL, as delta_apply runs it: generateSql writes each for each
+-- collection (compileRows).
+--   _delta_row_lock: a row as it stands, locked for the write (NULL: not there)
+--   _delta_row_put: a replace's row stored -- a temporal one a new version (one
+--     this write made gives way to it; the standing one closes at `p_ts`), else
+--     the row again -- answered as stored
+--   _delta_next_id: an add's id, minted
+--   _delta_row_clear_moment: a temporal version this write made and took back
+--     (it never was outside the write), so an add of its id takes its place
+--   _delta_row_add: an add's row stored, answered as stored
+--   _delta_row_read: a row as it stands, without its validity (NULL: not there)
+-- (_delta_row_there, above, is an add's "is the id there now".)
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _delta_row_lock(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT)
+RETURNS JSONB LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023'; END $$;
+CREATE OR REPLACE FUNCTION _delta_row_put(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT, p_row JSONB, p_ts TIMESTAMPTZ)
+RETURNS JSONB LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023'; END $$;
+CREATE OR REPLACE FUNCTION _delta_next_id(p_coll TEXT, p_table TEXT)
+RETURNS BIGINT LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023'; END $$;
+CREATE OR REPLACE FUNCTION _delta_row_clear_moment(p_coll TEXT, p_table TEXT, p_id BIGINT, p_ts TIMESTAMPTZ)
+RETURNS void LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023'; END $$;
+CREATE OR REPLACE FUNCTION _delta_row_add(p_coll TEXT, p_table TEXT, p_row JSONB)
+RETURNS JSONB LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023'; END $$;
+CREATE OR REPLACE FUNCTION _delta_row_read(p_coll TEXT, p_view TEXT, p_id BIGINT)
+RETURNS JSONB LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023'; END $$;
+
+-- _delta_row_add_given: a row stored by the columns it gives (_delta_insert_sql),
+-- answered as stored. A compiled add whose row gives some other set of keys
+-- than its collection's every column (a walk's row, as stored; a column a
+-- migration added, left to its default) stores it so.
+CREATE OR REPLACE FUNCTION _delta_row_add_given(p_table TEXT, p_row JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+BEGIN
+  EXECUTE _delta_insert_sql(p_table, p_row) || ' RETURNING to_jsonb(t.*)' INTO v_row USING p_row;
+  RETURN v_row;
+END;
+$$ LANGUAGE plpgsql;
+
 -- ---------------------------------------------------------------------------
 -- _delta_whole: a replace of a row itself (`/<coll>/<id>`, a single
 -- document's `/<root>`) is the row, as RFC 6902 says: each column
@@ -453,148 +267,6 @@ $$ LANGUAGE plpgsql STABLE;
 -- and asked with the value's fields, before whether the row is there (todo
 -- #3; replaceRow in sqlite.ts).
 -- ---------------------------------------------------------------------------
-
--- _delta_held_columns: the columns of `p_coll` (`p_columns`, its columns_def)
--- a document holds -- those it names (`held`, todo #70), else all. A write
--- through it names those alone (_delta_assert_fields: 400 for another, as for
--- a column there is not), and replacing a row whole sets those alone.
-
-CREATE OR REPLACE FUNCTION _delta_held_columns(p_def _delta_docs, p_coll TEXT, p_columns JSONB)
-RETURNS JSONB AS $$
-  SELECT CASE WHEN NOT COALESCE(p_def.held, '{}'::jsonb) ? p_coll THEN p_columns
-    ELSE COALESCE((SELECT jsonb_object_agg(k, v) FROM jsonb_each(p_columns) AS e(k, v) WHERE (p_def.held->p_coll) ? k), '{}'::jsonb) END;
-$$ LANGUAGE sql STABLE;
-
--- _delta_root_there: is a single document's root row `p_id` there now, and
--- does it meet the whole of its name's scope (a column beside its id), as
--- delta_open reads it? Asked before each op of a write (delta_apply). The
--- framework's runs the scope's conditions as text (`p_scope`, the resolver's
--- answer) over the root's current rows (`p_view`); dzql's compiler
--- (`compileRootThere`) replaces `_delta_root_there` with one sending each
--- document it compiled to its own.
-CREATE OR REPLACE FUNCTION _delta_root_there_framework(p_def _delta_docs, p_doc_name TEXT, p_scope JSONB, p_view TEXT, p_id BIGINT)
-RETURNS BOOLEAN AS $$
-DECLARE
-  v_exists BOOLEAN;
-BEGIN
-  EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I t WHERE t.id = $1 AND %s)', p_view, p_scope->>'where') INTO v_exists USING p_id;
-  RETURN v_exists;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
-CREATE OR REPLACE FUNCTION _delta_root_there(p_def _delta_docs, p_doc_name TEXT, p_scope JSONB, p_view TEXT, p_id BIGINT)
-RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_root_there_framework(p_def, p_doc_name, p_scope, p_view, p_id); $$;
-
--- _delta_write_columns: the columns of `p_coll` a document writes -- as the
--- process writing declares them (_delta_cols), those the document holds
--- (_delta_held_columns). The framework's, until dzql's compiler
--- (`compileColumns`) replaces it with one sending each document it compiled to
--- its own.
-CREATE OR REPLACE FUNCTION _delta_write_columns_framework(p_def _delta_docs, p_coll TEXT, p_columns_def JSONB)
-RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_held_columns(p_def, p_coll, _delta_cols(p_coll, p_columns_def)); $$;
-
-CREATE OR REPLACE FUNCTION _delta_write_columns(p_def _delta_docs, p_coll TEXT, p_columns_def JSONB)
-RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_write_columns_framework(p_def, p_coll, p_columns_def); $$;
-
--- ---------------------------------------------------------------------------
--- A row's SQL, as delta_apply runs it: the framework's, built from the table's
--- name at run time; dzql's compiler (`compileRows`) replaces each with one
--- written for each collection it compiled, any other sent here.
---   _delta_row_lock: a row as it stands, locked for the write (NULL: not there)
---   _delta_row_put: a replace's row stored -- a temporal one a new version (one
---     this write made gives way to it; the standing one closes at `p_ts`), else
---     the row again -- answered as stored
---   _delta_next_id: an add's id, minted
---   _delta_row_clear_moment: a temporal version this write made and took back
---     (it never was outside the write), so an add of its id takes its place
--- (_delta_row_there, above, is an add's "is the id there now".)
--- ---------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION _delta_row_lock_framework(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT)
-RETURNS JSONB AS $$
-DECLARE
-  v_row JSONB;
-BEGIN
-  IF p_temporal THEN
-    EXECUTE format('SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 AND valid_to IS NULL FOR UPDATE', p_table) INTO v_row USING p_id;
-  ELSE
-    EXECUTE format('SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 FOR UPDATE', p_table) INTO v_row USING p_id;
-  END IF;
-  RETURN v_row;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION _delta_row_put_framework(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT, p_row JSONB, p_ts TIMESTAMPTZ)
-RETURNS JSONB AS $$
-DECLARE
-  v_row JSONB;
-BEGIN
-  IF p_temporal THEN
-    EXECUTE format('DELETE FROM %I WHERE id = $1 AND valid_to IS NULL AND valid_from = $2', p_table) USING p_id, p_ts;
-    EXECUTE format('UPDATE %I SET valid_to = $2 WHERE id = $1 AND valid_to IS NULL', p_table) USING p_id, p_ts;
-    EXECUTE format('INSERT INTO %I AS t SELECT * FROM jsonb_populate_record(null::%I, $1) RETURNING to_jsonb(t.*)', p_table, p_table)
-      INTO v_row USING p_row || jsonb_build_object('valid_from', p_ts, 'valid_to', NULL);
-  ELSE
-    EXECUTE format('DELETE FROM %I WHERE id = $1', p_table) USING p_id;
-    EXECUTE format('INSERT INTO %I AS t SELECT * FROM jsonb_populate_record(null::%I, $1) RETURNING to_jsonb(t.*)', p_table, p_table)
-      INTO v_row USING p_row;
-  END IF;
-  RETURN v_row;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION _delta_next_id_framework(p_coll TEXT, p_table TEXT)
-RETURNS BIGINT AS $$
-DECLARE
-  v_id BIGINT;
-BEGIN
-  EXECUTE format('SELECT nextval(%L)', 'seq_' || p_table) INTO v_id;
-  RETURN v_id;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION _delta_row_clear_moment_framework(p_coll TEXT, p_table TEXT, p_id BIGINT, p_ts TIMESTAMPTZ)
-RETURNS void AS $$
-BEGIN
-  EXECUTE format('DELETE FROM %I WHERE id = $1 AND valid_from = $2 AND valid_to = $2', p_table) USING p_id, p_ts;
-END;
-$$ LANGUAGE plpgsql;
-
--- _delta_row_add: an add's row stored, naming the columns the row gives (_delta_insert_sql), answered as stored
-CREATE OR REPLACE FUNCTION _delta_row_add_framework(p_coll TEXT, p_table TEXT, p_row JSONB)
-RETURNS JSONB AS $$
-DECLARE
-  v_row JSONB;
-BEGIN
-  EXECUTE _delta_insert_sql(p_table, p_row) || ' RETURNING to_jsonb(t.*)' INTO v_row USING p_row;
-  RETURN v_row;
-END;
-$$ LANGUAGE plpgsql;
-
--- _delta_row_read: a row as it stands, without its validity (NULL: not there)
-CREATE OR REPLACE FUNCTION _delta_row_read_framework(p_coll TEXT, p_view TEXT, p_id BIGINT)
-RETURNS JSONB AS $$
-DECLARE
-  v_row JSONB;
-BEGIN
-  EXECUTE format('SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM %I t WHERE t.id = $1', p_view) INTO v_row USING p_id;
-  RETURN v_row;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
-CREATE OR REPLACE FUNCTION _delta_row_add(p_coll TEXT, p_table TEXT, p_row JSONB)
-RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_row_add_framework(p_coll, p_table, p_row); $$;
-CREATE OR REPLACE FUNCTION _delta_row_read(p_coll TEXT, p_view TEXT, p_id BIGINT)
-RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_row_read_framework(p_coll, p_view, p_id); $$;
-CREATE OR REPLACE FUNCTION _delta_row_lock(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT)
-RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_row_lock_framework(p_coll, p_table, p_temporal, p_id); $$;
-CREATE OR REPLACE FUNCTION _delta_row_put(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT, p_row JSONB, p_ts TIMESTAMPTZ)
-RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_row_put_framework(p_coll, p_table, p_temporal, p_id, p_row, p_ts); $$;
-CREATE OR REPLACE FUNCTION _delta_next_id(p_coll TEXT, p_table TEXT)
-RETURNS BIGINT LANGUAGE sql AS $$ SELECT _delta_next_id_framework(p_coll, p_table); $$;
-CREATE OR REPLACE FUNCTION _delta_row_clear_moment(p_coll TEXT, p_table TEXT, p_id BIGINT, p_ts TIMESTAMPTZ)
-RETURNS void LANGUAGE sql AS $$ SELECT _delta_row_clear_moment_framework(p_coll, p_table, p_id, p_ts); $$;
-
 CREATE OR REPLACE FUNCTION _delta_whole(p_columns JSONB, p_value JSONB)
 RETURNS JSONB AS $$
 DECLARE
@@ -653,7 +325,7 @@ DECLARE
   v_row           JSONB;
   v_new_row       JSONB;
   v_blank         JSONB;             -- a replace of the row whole: each column as an add leaves it (_delta_whole); of a field, nothing
-  v_cols          JSONB;             -- the op's collection's columns the document holds (_delta_held_columns); a walk's, all
+  v_cols          JSONB;             -- the op's collection's columns the document holds (_delta_write_columns); a walk's, all
   v_exists        BOOLEAN;
   v_missing       TEXT;
   v_ts            TIMESTAMPTZ := NOW();

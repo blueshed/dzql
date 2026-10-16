@@ -127195,7 +127195,7 @@ BEGIN
     WHEN 'fo-asks:' THEN RETURN dzql_told__fo_asks(p_target, p_rows);
     WHEN 'fo-asks-from:' THEN RETURN dzql_told__fo_asks_from(p_target, p_rows);
     WHEN 'fo-pub-courses:' THEN RETURN dzql_told__fo_pub_courses(p_target, p_rows);
-    ELSE RETURN _delta_told_framework(p_def, p_target, p_rows);
+    ELSE RAISE EXCEPTION 'no doc def for: %', p_target USING ERRCODE = 'P0001';
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;

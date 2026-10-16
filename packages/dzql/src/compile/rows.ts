@@ -15,17 +15,18 @@
  *   back, so an add of its id takes its place;
  * - `_delta_row_there`: is the row there now (a temporal one's open version)?
  * - `_delta_row_read`: the row as it stands, without its validity;
- * - `_delta_row_add`: an add's row stored. The framework's INSERT names the
- *   columns the row gives (`_delta_insert_sql`), so one it leaves out takes its
- *   database default: where the row gives exactly every column the schema
- *   declares (its id, parent key, columns and validity), that INSERT is one
- *   statement, written here; a row with any other keys is the framework's.
+ * - `_delta_row_add`: an add's row stored. An INSERT names the columns the row
+ *   gives (`_delta_insert_sql`), so one it leaves out takes its database
+ *   default: where the row gives exactly every column the schema declares (its
+ *   id, parent key, columns and validity), that INSERT is one statement,
+ *   written here; a row with any other keys is stored by the columns it gives
+ *   (`_delta_row_add_given`).
  *
- * Each answers what the framework's (`_framework`) answers, and sends any
- * collection it was not compiled for there.
+ * Each answers what the framework's did. A collection none was compiled for is
+ * refused (`unknown collection`), and a row of it is not there.
  */
 import { q, type Schema } from "@blueshed/delta/backend";
-import { lit, standingRows } from "./opens";
+import { lit, noCollection, standingRows } from "./opens";
 
 /** A CASE over the collections, each branch from `branch`, any other collection to `fallback`. */
 function dispatch(schema: Schema, branch: (coll: string, table: Schema["tables"][string]) => string | null, fallback: string): string {
@@ -36,7 +37,7 @@ function dispatch(schema: Schema, branch: (coll: string, table: Schema["tables"]
   return branches.length ? `  CASE p_coll\n${branches.join("\n")}\n    ELSE ${fallback}\n  END CASE;` : `  ${fallback}`;
 }
 
-/** The row SQL of every collection of `schema`, and the dispatch to the framework's for any other. */
+/** The row SQL of every collection of `schema`, and its dispatch. */
 export function compileRows(schema: Schema): string {
   const lock = `CREATE OR REPLACE FUNCTION _delta_row_lock(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT)
 RETURNS JSONB AS $$
@@ -44,7 +45,7 @@ DECLARE
   v_row JSONB;
 BEGIN
 ${dispatch(schema, (_, t) => `SELECT to_jsonb(t.*) INTO v_row FROM ${q(t.name)} t WHERE t.id = p_id${t.temporal ? " AND valid_to IS NULL" : ""} FOR UPDATE;
-      RETURN v_row;`, "RETURN _delta_row_lock_framework(p_coll, p_table, p_temporal, p_id);")}
+      RETURN v_row;`, noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql;`;
 
@@ -61,7 +62,7 @@ ${dispatch(schema, (_, t) => (t.temporal
       RETURN v_row;`
     : `DELETE FROM ${q(t.name)} WHERE id = p_id;
       INSERT INTO ${q(t.name)} AS t SELECT * FROM jsonb_populate_record(null::${q(t.name)}, p_row) RETURNING to_jsonb(t.*) INTO v_row;
-      RETURN v_row;`), "RETURN _delta_row_put_framework(p_coll, p_table, p_temporal, p_id, p_row, p_ts);")}
+      RETURN v_row;`), noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql;`;
 
@@ -69,7 +70,7 @@ $$ LANGUAGE plpgsql;`;
   const next = `CREATE OR REPLACE FUNCTION _delta_next_id(p_coll TEXT, p_table TEXT)
 RETURNS BIGINT AS $$
 BEGIN
-${dispatch(schema, (_, t) => `RETURN nextval(${lit(`seq_${t.name}`)});`, "RETURN _delta_next_id_framework(p_coll, p_table);")}
+${dispatch(schema, (_, t) => `RETURN nextval(${lit(`seq_${t.name}`)});`, noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql;`;
 
@@ -77,7 +78,7 @@ $$ LANGUAGE plpgsql;`;
 RETURNS void AS $$
 BEGIN
 ${dispatch(schema, (_, t) => (t.temporal ? `DELETE FROM ${q(t.name)} WHERE id = p_id AND valid_from = p_ts AND valid_to = p_ts;
-      RETURN;` : null), "PERFORM _delta_row_clear_moment_framework(p_coll, p_table, p_id, p_ts);")}
+      RETURN;` : null), noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql;`;
 
@@ -87,7 +88,7 @@ DECLARE
   p_coll TEXT := p_collection_key;
 BEGIN
 ${dispatch(schema, (_, t) => `RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM ${standingRows(t)} WHERE id = p_id);`,
-    "RETURN _delta_row_there_framework(p_collection_key, p_id);")}
+    "RETURN FALSE;   -- a collection there is not: no row of it is there")}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 
@@ -97,7 +98,7 @@ DECLARE
   v_row JSONB;
 BEGIN
 ${dispatch(schema, (_, t) => `SELECT _delta_strip_temporal(to_jsonb(t.*)) INTO v_row FROM ${standingRows(t)} t WHERE t.id = p_id;
-      RETURN v_row;`, "RETURN _delta_row_read_framework(p_coll, p_view, p_id);")}
+      RETURN v_row;`, noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 
@@ -113,8 +114,8 @@ ${dispatch(schema, (_, t) => {
         INSERT INTO ${q(t.name)} AS t (${cols}) SELECT ${cols} FROM jsonb_populate_record(null::${q(t.name)}, p_row) RETURNING to_jsonb(t.*) INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_framework(p_coll, p_table, p_row);`;
-  }, "RETURN _delta_row_add_framework(p_coll, p_table, p_row);")}
+      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives`;
+  }, noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql;`;
 

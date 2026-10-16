@@ -23,7 +23,7 @@ import { setLogLevel } from "@blueshed/delta/logger";
 import { applyFramework, newPool } from "./setup";
 import { waitFor } from "@blueshed/delta/testing";
 import {
-  assertCopiesHold, course, expectTold, field, household, openAll, pathCases, pathDocs, pathPublicDocs, pathSchema, pathSeed, readAll, told, write, type PathBackend, type PathProcess,
+  assertCopiesHold, expectTold, field, openAll, pathCases, pathDocs, pathPublicDocs, pathSchema, pathSeed, readAll, told, write, type PathBackend, type PathProcess,
 } from "@blueshed/delta/testing";
 import { postgresEmails, postgresGuests, postgresInbox, postgresMenuCard, postgresOpenSeats } from "./helpers/postgres-reads";
 import { q } from "@blueshed/delta/backend";

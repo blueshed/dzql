@@ -47,7 +47,7 @@ jobs:
 
       - name: Type check
         working-directory: packages/dzql
-        run: bunx tsc --noEmit
+        run: bun check
 
       # The service above stands in for compose.yml's database, so bun test, not bun run test
       - name: Test

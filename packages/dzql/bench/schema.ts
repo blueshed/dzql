@@ -11,7 +11,7 @@
  * about it (todo #25). Set-up runs as the admin the URL names.
  */
 import type { Pool } from "pg";
-import { applyFramework, defineSchema, defineDoc, generateSql } from "../src/postgres";
+import { defineSchema, defineDoc, generateSql } from "../src/postgres";
 
 export const BENCH_USER_ID = 1;
 export const BENCH_DOC_NAME = `bench:${BENCH_USER_ID}`;
@@ -40,13 +40,10 @@ export const benchDocs = [
 export const APP_ROLE = "bench_app";
 
 /**
- * Apply table + framework metadata + RLS policy, as the admin. Idempotent.
- * `compiled`: the document's reads and checks compiled (generateSql's); else
- * the framework's, as the framework SQL applied again leaves them.
+ * Apply the table, its document's compiled SQL and the RLS policy, as the admin. Idempotent.
  */
-export async function applyBenchSchema(admin: Pool, { compiled }: { compiled: boolean }): Promise<void> {
+export async function applyBenchSchema(admin: Pool): Promise<void> {
   await admin.query(generateSql(benchSchema, benchDocs));
-  if (!compiled) await applyFramework(admin);   // its _delta_doc_holds and _delta_row_in_scope: the framework's again
   // NULLIF: a pooled connection reads a transaction-local app.user_id as '' once that transaction is done
   await admin.query(`
     ALTER TABLE bench_items ENABLE ROW LEVEL SECURITY;

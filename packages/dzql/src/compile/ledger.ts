@@ -8,17 +8,16 @@
  * - `dzql_open_whole__<slug>(name)` for each document: its open with every
  *   column of every row, whatever columns it names (`readOf`, whole), and
  *   `_delta_open` itself, sending each compiled document to its own open, shown
- *   (`dzql_open__<slug>`) or whole, and any other to the framework's
- *   (`_delta_open_framework`);
+ *   (`dzql_open__<slug>`) or whole, and refusing a name of none;
  * - `_delta_same(collection, field, a, b)`: two values of a field the same, a
  *   time by the instant it names. The field's type is the writing process's
  *   (`delta.declared`), else the schema's, written in for each collection;
- *   any other collection is the framework's (`_delta_same_framework`);
+ *   a collection there is not, the same as JSON;
  * - `_delta_row_standing(collection, id)`: a row as it stands, as `{row}`, for
- *   every collection of the schema; any other the framework's.
+ *   every collection of the schema; NULL for one there is not.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, openFunction, openWholeFunction, readOf, standingRows } from "./opens";
+import { lit, noDoc, openFunction, openWholeFunction, readOf, standingRows } from "./opens";
 
 /** The SQL the ledger reads by, for `schema` and each of `docs`. */
 export function compileLedger(schema: Schema, docs: DocDef[]): string {
@@ -31,7 +30,7 @@ DECLARE
 BEGIN
   CASE v_def.prefix
 ${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN CASE WHEN p_whole THEN ${openWholeFunction(d.prefix)}(p_doc_name) ELSE ${openFunction(d.prefix)}(p_doc_name) END;`).join("\n")}
-    ELSE RETURN _delta_open_framework(p_doc_name, p_whole);   -- a name no document compiled here holds (none at all: the framework refuses it)
+    ELSE ${noDoc("p_doc_name")}
   END CASE;
 END;
 $$ LANGUAGE plpgsql;`;
@@ -51,7 +50,7 @@ ${colls.map(([coll, t]) => {
         v_declared := NULLIF(current_setting('delta.declared', true), '')::jsonb -> ${lit(coll)};
         v_type := CASE WHEN v_declared IS NOT NULL THEN v_declared -> p_field ->> 'type'${times.length ? ` WHEN p_field IN (${times.map(lit).join(", ")}) THEN 'timestamptz'` : ""} END;`;
   }).join("\n")}
-      ELSE RETURN _delta_same_framework(p_coll, p_field, a, b);
+      ELSE NULL;   -- a collection there is not: its values the same as JSON
     END CASE;
     IF v_type = 'timestamptz' THEN RETURN (a #>> '{}')::timestamptz = (b #>> '{}')::timestamptz; END IF;
   END IF;
@@ -64,7 +63,7 @@ RETURNS JSONB AS $$
 BEGIN
   CASE p_coll
 ${colls.map(([coll, t]) => `    WHEN ${lit(coll)} THEN RETURN jsonb_build_object('row', (SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM ${standingRows(t)} t WHERE t.id = p_id));`).join("\n")}
-    ELSE RETURN _delta_row_standing_framework(p_coll, p_id);
+    ELSE RETURN NULL;   -- a collection there is not
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;`;

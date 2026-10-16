@@ -17009,7 +17009,7 @@ BEGIN
     WHEN 'fo-asks:' THEN RETURN dzql_root_there__fo_asks(p_doc_name, p_id);
     WHEN 'fo-asks-from:' THEN RETURN dzql_root_there__fo_asks_from(p_doc_name, p_id);
     WHEN 'fo-pub-courses:' THEN RETURN dzql_root_there__fo_pub_courses(p_doc_name, p_id);
-    ELSE RETURN _delta_root_there_framework(p_def, p_doc_name, p_scope, p_view, p_id);
+    ELSE RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001';
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;

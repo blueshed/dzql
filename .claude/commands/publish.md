@@ -12,12 +12,12 @@ The release procedure of railroad, delta and eta, for dzql. The bump level is `$
 |---|---|
 | Packages | `dzql` (`packages/dzql`) and `create-dzql` (`packages/create-dzql`), one version for both |
 | Published | npm, public, by `.github/workflows/publish.yml` on a pushed tag: `dzql@x.y.z`, `create-dzql@x.y.z` |
-| Gate | `cd packages/dzql && bunx tsc --noEmit && bun run test` (Docker; port 5433 free) |
+| Gate | `cd packages/dzql && bun check && bun run test` (Docker; port 5433 free) |
 | End to end | CLAUDE.md, *Testing the create-dzql Template*: the five checks, linked to the local dzql |
 
 Run the steps in order. Stop at the first failure without changing anything further. Running this
 command is the authorisation to release -- carry it through to the end, the push included, without
-asking again. Bun only (`bunx tsc` as the gate says), and never `npm publish` from here: CI does it.
+asking again. Bun only (`bun check`, TypeScript 7, as the gate says), and never `npm publish` from here: CI does it.
 
 ## 1. Arguments
 

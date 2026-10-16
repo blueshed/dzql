@@ -9,11 +9,11 @@
  * (`scopeOf`, refused with the same message), and the root's current rows
  * asked with its conditions written as typed SQL, where the framework runs
  * the resolver's conditions as text. And `_delta_root_there` itself, which
- * sends each compiled document to its own and any other to the framework
- * (`_delta_root_there_framework`).
+ * sends each document to its own and refuses a name of none (`no doc def for`: the framework that read the rest
+ * retired, todo #26).
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, named, need, scopeOf, standingRows } from "./opens";
+import { lit, named, need, noDoc, scopeOf, standingRows } from "./opens";
 
 /** A document's root check: `dzql_root_there__<slug>`. */
 export const rootThereFunction = (prefix: string): string => named("root_there", prefix);
@@ -53,7 +53,7 @@ RETURNS BOOLEAN AS $$
 BEGIN
   CASE p_def.prefix
 ${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${rootThereFunction(d.prefix)}(p_doc_name, p_id);`).join("\n")}
-    ELSE RETURN _delta_root_there_framework(p_def, p_doc_name, p_scope, p_view, p_id);
+    ELSE ${noDoc("p_doc_name")}
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;`;

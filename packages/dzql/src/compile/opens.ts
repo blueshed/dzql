@@ -27,6 +27,12 @@ import { columnSqlType } from "../postgres/sql";
 /** A string as an SQL literal. */
 export const lit = (s: string): string => `'${s.replace(/'/g, "''")}'`;
 
+/** A name no document compiled here holds: there is none (the framework that read the rest retired, todo #26). */
+export const noDoc = (name: string): string => `RAISE EXCEPTION 'no doc def for: %', ${name} USING ERRCODE = 'P0001';`;
+
+/** A collection none was compiled for: the write asks only its own, and delta_apply refuses any other first. */
+export const noCollection = (key: string): string => `RAISE EXCEPTION 'unknown collection: %', ${key} USING ERRCODE = '22023';`;
+
 /** A compiled function's name: `dzql_<kind>__` and the document's prefix (or a collection's key), lower case, every other character `_`. */
 export const named = (kind: string, name: string): string =>
   `dzql_${kind}__${name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;

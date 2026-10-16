@@ -11,8 +11,8 @@
  * collection, every field (and one there is not), and pairs of values (times
  * in other zones, text that is no time, numbers, nulls, missing), with
  * nothing declared, the app's own declared, and another version's (a time
- * field declared as text, a text one as a time) -- `_delta_same` and
- * `_delta_same_framework` agree.
+ * field declared as text, a text one as a time) -- `_delta_same` answers as
+ * the framework's did.
  *
  * A row beyond a document as it stands: for every collection, and one there
  * is not, every id (each version), one not there, and none.
@@ -114,7 +114,7 @@ describe("after writes of every kind, still", () => {
 const VALUES: unknown[] = ["2026-01-01T10:00:00Z", "2026-01-01T11:00:00+01:00", "2026-01-01 10:00:00+00", "2026-01-01T10:00:01Z", "2026-01-02",
   "not a time", "x", 5, 5.0, 6, true, null];
 
-describe("a field the same in two values, as the framework says", () => {
+describe("a field the same in two values, as the framework said", () => {
   const declaredOf = (tweak: (cols: Record<string, any>) => Record<string, any>) =>
     JSON.stringify(Object.fromEntries(tables.map(([c, t]) => [c, tweak({ ...t.columns })])));
   const declarations: [string, string][] = [
@@ -140,7 +140,7 @@ describe("a field the same in two values, as the framework says", () => {
                 return { error: err.message };
               }
             };
-            expect({ coll, field, same: await run("_delta_same") }).toEqual({ coll, field, same: await run("_delta_same_framework") });
+            expect({ coll, field, same: await run("_delta_same") }).toMatchSnapshot();
           }
         }
       } finally {

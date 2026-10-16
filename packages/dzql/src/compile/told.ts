@@ -8,11 +8,12 @@
  * definition: whether the name makes it one row (`scopeOf`), its root, the
  * columns it shows of each collection it names them for (`columns`, the row's
  * id and parent key with them), and the empty root an implied one opens with
- * when its root leaves. And `_delta_told` itself, which sends each compiled
- * document to its own and any other to the framework (`_delta_told_framework`).
+ * when its root leaves. And `_delta_told` itself, which sends each document to
+ * its own and refuses a name of none (`no doc def for`: the framework that read the rest
+ * retired, todo #26).
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, named, need, scopeOf } from "./opens";
+import { lit, named, need, noDoc, scopeOf } from "./opens";
 
 /** A document's telling function: `dzql_told__<slug>`. */
 export const toldFunction = (prefix: string): string => named("told", prefix);
@@ -86,7 +87,7 @@ RETURNS JSONB AS $$
 BEGIN
   CASE p_def.prefix
 ${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${toldFunction(d.prefix)}(p_target, p_rows);`).join("\n")}
-    ELSE RETURN _delta_told_framework(p_def, p_target, p_rows);
+    ELSE ${noDoc("p_target")}
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;`;

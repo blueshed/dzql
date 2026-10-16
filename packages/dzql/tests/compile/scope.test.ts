@@ -109,9 +109,9 @@ describe("the compiled text", () => {
     expect(compileInScope(pathSchema, docs)).toMatchSnapshot();
   });
 
-  test("_delta_row_in_scope sends a compiled document to its own, any other to the framework", () => {
+  test("_delta_row_in_scope sends each document to its own, and refuses a name of none", () => {
     const sql = compileInScope(pathSchema, docs);
     expect(sql).toContain(`WHEN 'fo-board:' THEN RETURN ${inScopeFunction("fo-board:")}(p_doc_name, p_collection_key, p_id);`);
-    expect(sql).toContain("ELSE RETURN _delta_row_in_scope_framework(p_def, p_doc_name, p_collection_key, p_id);");
+    expect(sql).toContain("ELSE RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001';");
   });
 });
