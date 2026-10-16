@@ -36,6 +36,7 @@ import { compileColumns } from "../compile/columns";
 import { compileRows } from "../compile/rows";
 import { compileCascades } from "../compile/cascades";
 import { compileLedger } from "../compile/ledger";
+import { compileLookups } from "../compile/lookups";
 import { compileTold } from "../compile/told";
 
 export interface GenerateSqlOptions {
@@ -180,6 +181,6 @@ export function generateSql(
   lines.push("");
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
-  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs));
+  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs));
   return lines.join("\n");
 }

@@ -30,6 +30,14 @@ ALTER TABLE _delta_docs ADD COLUMN IF NOT EXISTS implied BOOLEAN NOT NULL DEFAUL
 -- collection not named, whole. It is opened, told and written by those alone.
 ALTER TABLE _delta_docs ADD COLUMN IF NOT EXISTS held JSONB NOT NULL DEFAULT '{}';
 
+-- _delta_collection: a collection's definition (NULL fields: there is none).
+-- The framework's reads the table; dzql's compiler (`compileLookups`) writes
+-- each collection it compiled in, any other sent here.
+CREATE OR REPLACE FUNCTION _delta_collection_framework(p_key TEXT)
+RETURNS _delta_collections LANGUAGE sql STABLE AS $$ SELECT * FROM _delta_collections WHERE collection_key = p_key; $$;
+CREATE OR REPLACE FUNCTION _delta_collection(p_key TEXT)
+RETURNS _delta_collections LANGUAGE sql STABLE AS $$ SELECT _delta_collection_framework(p_key); $$;
+
 CREATE TABLE IF NOT EXISTS _delta_versions (
   doc_name TEXT PRIMARY KEY,
   version  BIGINT NOT NULL DEFAULT 0

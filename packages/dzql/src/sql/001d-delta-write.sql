@@ -13,7 +13,7 @@
 -- is pinned below, pg_temp last.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_serial_past(p_table TEXT, p_id BIGINT)
+CREATE OR REPLACE FUNCTION _delta_serial_past_framework(p_table TEXT, p_id BIGINT)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   IF p_id > 9007199254740991 OR NOT EXISTS (SELECT 1 FROM _delta_collections WHERE table_name = p_table)
@@ -26,7 +26,7 @@ END;
 $$;
 -- the search path it was applied with, and pg_temp last (as _delta_holders, 001b)
 DO $$ BEGIN
-  EXECUTE format('ALTER FUNCTION _delta_serial_past(TEXT, BIGINT) SET search_path = %s, pg_temp', COALESCE(NULLIF(current_setting('search_path'), ''), 'public'));
+  EXECUTE format('ALTER FUNCTION _delta_serial_past_framework(TEXT, BIGINT) SET search_path = %s, pg_temp', COALESCE(NULLIF(current_setting('search_path'), ''), 'public'));
 END $$;
 
 -- ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ END $$;
 -- other every id is taken, so it learns nothing of the table's rows.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_serial_new(p_table TEXT, p_id BIGINT)
+CREATE OR REPLACE FUNCTION _delta_serial_new_framework(p_table TEXT, p_id BIGINT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_new BOOLEAN;
@@ -56,6 +56,21 @@ $$;
 -- _delta_collections, or a temporary table named as one of delta's, never
 -- stands in for the real one. (search_path FROM CURRENT took "$user", public,
 -- and pg_temp is searched first when it is not named.)
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION _delta_serial_past_framework(text, bigint) SET search_path = %s', v_path);
+  EXECUTE format('ALTER FUNCTION _delta_serial_new_framework(text, bigint) SET search_path = %s', v_path);
+END $$;
+
+-- The serials every add asks: the framework's, until dzql's compiler
+-- (`compileLookups`) writes each table's sequence in. As the framework's, as
+-- the functions' owner, with the path they were applied with and pg_temp last.
+CREATE OR REPLACE FUNCTION _delta_serial_past(p_table TEXT, p_id BIGINT)
+RETURNS void LANGUAGE sql SECURITY DEFINER AS $$ SELECT _delta_serial_past_framework(p_table, p_id); $$;
+CREATE OR REPLACE FUNCTION _delta_serial_new(p_table TEXT, p_id BIGINT)
+RETURNS BOOLEAN LANGUAGE sql SECURITY DEFINER AS $$ SELECT _delta_serial_new_framework(p_table, p_id); $$;
 DO $$
 DECLARE
   v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
@@ -622,11 +637,11 @@ DECLARE
   v_scope         JSONB;
   v_is_list       BOOLEAN;
   v_doc_id        BIGINT;
-  v_root_coll     RECORD;
+  v_root_coll     _delta_collections;
   v_op            JSONB;
   v_parts         TEXT[];
   v_coll_key      TEXT;
-  v_coll          RECORD;
+  v_coll          _delta_collections;
   v_view          TEXT;
   v_root_view     TEXT;
   v_opened        BOOLEAN;   -- a single document's root was there as the write began
@@ -681,8 +696,7 @@ BEGIN
     v_doc_id := (v_scope->'values'->>'id')::BIGINT;
   END IF;
 
-  SELECT * INTO v_root_coll FROM _delta_collections
-   WHERE collection_key = v_def.root_collection;
+  v_root_coll := _delta_collection(v_def.root_collection);
   v_root_view := _delta_source_view(v_root_coll.table_name, v_root_coll.temporal);
 
   -- an implied document's first write makes its root row (todo #34), told as a
@@ -749,9 +763,8 @@ BEGIN
     v_parts := _delta_split_path(v_op->>'path');
     v_coll_key := v_parts[1];
 
-    SELECT * INTO v_coll FROM _delta_collections
-     WHERE collection_key = v_coll_key;
-    IF NOT FOUND THEN
+    v_coll := _delta_collection(v_coll_key);
+    IF v_coll.collection_key IS NULL THEN
       RAISE EXCEPTION 'unknown collection: %', v_coll_key USING ERRCODE = '22023';
     END IF;
     -- a walk puts back what the ledger recorded, whole

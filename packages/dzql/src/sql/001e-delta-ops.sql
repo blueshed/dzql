@@ -30,7 +30,7 @@ $$ LANGUAGE sql STABLE;
 -- delta_open_at: time-travel — load a doc as it existed at a point in time
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION delta_open_at(p_doc_name TEXT, p_at TIMESTAMPTZ)
+CREATE OR REPLACE FUNCTION _delta_open_at_framework(p_doc_name TEXT, p_at TIMESTAMPTZ)
 RETURNS JSONB AS $$
 DECLARE
   v_def       _delta_docs;
@@ -92,6 +92,11 @@ BEGIN
   RETURN _delta_show_doc(v_def, v_result, TRUE);
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- the framework's, until dzql's compiler (`compileLookups`) sends each document
+-- it compiled to its own read as it stood (`dzql_open_at__<slug>`)
+CREATE OR REPLACE FUNCTION delta_open_at(p_doc_name TEXT, p_at TIMESTAMPTZ)
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_open_at_framework(p_doc_name, p_at); $$;
 
 -- ---------------------------------------------------------------------------
 -- delta_prune_ops: clean up old log entries -- and the names nobody holds
