@@ -240,6 +240,657 @@ exports[`every collection's definition, and one there is not, as the framework g
 }
 `;
 
+exports[`every name's document, and names of none, as the framework finds it 1`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "households",
+      "courses",
+      "drinks",
+      "tags",
+      "notes",
+    ],
+    "prefix": "fo-board:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 2`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "households",
+      "courses",
+      "drinks",
+      "tags",
+      "notes",
+    ],
+    "prefix": "fo-board:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 3`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "households",
+      "courses",
+      "drinks",
+      "tags",
+      "notes",
+    ],
+    "prefix": "fo-board:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-board:99",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 4`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "households",
+      "courses",
+      "drinks",
+      "tags",
+      "notes",
+    ],
+    "prefix": "fo-board:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 5`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "courses",
+      "drinks",
+    ],
+    "prefix": "fo-menu:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 6`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-household:",
+    "root_collection": "households",
+    "scope": {},
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 7`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "drinks",
+    ],
+    "prefix": "fo-course:",
+    "root_collection": "courses",
+    "scope": {},
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 8`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-title:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 9`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "tags",
+    ],
+    "prefix": "fo-tagged:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 10`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "notes",
+    ],
+    "prefix": "fo-notes:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 11`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-all-courses:",
+    "root_collection": "courses",
+    "scope": {},
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 12`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "drinks",
+    ],
+    "prefix": "fo-catalog:",
+    "root_collection": "courses",
+    "scope": {},
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 13`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-courses-like:",
+    "root_collection": "courses",
+    "scope": {
+      "name": "like:start",
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 14`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "seats",
+    ],
+    "prefix": "fo-seating:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 15`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-seats-kept:",
+    "root_collection": "seats",
+    "scope": {
+      "kept": ":kept",
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 16`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-slots-of:",
+    "root_collection": "slots",
+    "scope": {
+      "weddings_id": ":wedding",
+    },
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 17`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-slots-by:",
+    "root_collection": "slots",
+    "scope": {
+      "starts": "<=:end",
+    },
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 18`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-note:",
+    "root_collection": "notes",
+    "scope": {},
+  },
+  "name": "fo-note:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 19`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-all-notes:",
+    "root_collection": "notes",
+    "scope": {},
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 20`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "drinks",
+    ],
+    "prefix": "fo-drinks:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 21`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": true,
+    "include": [
+      "courses",
+      "drinks",
+    ],
+    "prefix": "fo-plan:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 22`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": true,
+    "include": [
+      "courses",
+      "drinks",
+    ],
+    "prefix": "fo-plan:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 23`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "courses",
+    ],
+    "prefix": "fo-weddings:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 24`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-guest:",
+    "root_collection": "households",
+    "scope": {
+      "email": ":email",
+      "id": ":id",
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 25`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-seat-of:",
+    "root_collection": "seats",
+    "scope": {
+      "id": ":id",
+      "table_no": ":table",
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 26`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-all-households:",
+    "root_collection": "households",
+    "scope": {},
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 27`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "households",
+      "favours",
+    ],
+    "prefix": "fo-party:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 28`] = `
+{
+  "doc": {
+    "held": {
+      "households": [
+        "email",
+      ],
+      "seats": [
+        "table_no",
+      ],
+    },
+    "implied": false,
+    "include": [
+      "households",
+      "seats",
+    ],
+    "prefix": "fo-slim:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 29`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-notes-on:",
+    "root_collection": "notes",
+    "scope": {
+      "at": "at:when",
+    },
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 30`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "notes",
+    ],
+    "prefix": "fo-board-on:",
+    "root_collection": "weddings",
+    "scope": {
+      "at": "at:when",
+      "id": ":id",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 31`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "asks",
+    ],
+    "prefix": "fo-asks:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 32`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-pub-courses:",
+    "root_collection": "courses",
+    "scope": {},
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 33`] = `
+{
+  "doc": null,
+  "name": "no-such:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 34`] = `
+{
+  "doc": null,
+  "name": "",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 35`] = `
+{
+  "doc": null,
+  "name": "fo",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 36`] = `
+{
+  "doc": null,
+  "name": "fo-board",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 37`] = `
+{
+  "doc": null,
+  "name": "FO-BOARD:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 38`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "households",
+      "courses",
+      "drinks",
+      "tags",
+      "notes",
+    ],
+    "prefix": "fo-board:",
+    "root_collection": "weddings",
+    "scope": {},
+  },
+  "name": "fo-board:1:extra",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 39`] = `
+{
+  "doc": null,
+  "name": " fo-board:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 40`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "notes",
+    ],
+    "prefix": "fo-board-on:",
+    "root_collection": "weddings",
+    "scope": {
+      "at": "at:when",
+      "id": ":id",
+    },
+  },
+  "name": "fo-board-on:",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 41`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [
+      "notes",
+    ],
+    "prefix": "fo-courses-noted-on:",
+    "root_collection": "courses",
+    "scope": {
+      "at": "at:when",
+    },
+  },
+  "name": "fo-courses-noted-on:x",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 42`] = `
+{
+  "doc": null,
+  "name": "fo_board:1",
+}
+`;
+
+exports[`every name's document, and names of none, as the framework finds it 43`] = `
+{
+  "doc": {
+    "held": {},
+    "implied": false,
+    "include": [],
+    "prefix": "fo-all-courses:",
+    "root_collection": "courses",
+    "scope": {},
+  },
+  "name": "fo-all-courses:%",
+}
+`;
+
 exports[`each table's serial, as the framework reads and moves it fo_weddings 1`] = `
 {
   "id": 0,
@@ -8294,6 +8945,53 @@ BEGIN
     WHEN 'asks' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"asks","table_name":"order","columns_def":{"in":{"type":"integer","nullable":true},"from":{"type":"text","nullable":true},"to":{"type":"text","nullable":true}},"parent_collection":"weddings","parent_fk":"group","temporal":true,"cascade_on":[]}'::jsonb);
     ELSE RETURN _delta_collection_framework(p_key);
   END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_find_doc(p_doc_name TEXT)
+RETURNS _delta_docs AS $$
+BEGIN
+  IF starts_with(p_doc_name, 'fo-courses-noted-on:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-courses-noted-on:","root_collection":"courses","include":["notes"],"scope":{"at":"at:when"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-all-households:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-all-households:","root_collection":"households","include":[],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-course-guests:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-course-guests:","root_collection":"courses","include":["households"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-courses-noted:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-courses-noted:","root_collection":"courses","include":["notes"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-tags-labelled:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-tags-labelled:","root_collection":"tags","include":[],"scope":{"label":":label"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-courses-like:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-courses-like:","root_collection":"courses","include":[],"scope":{"name":"like:start"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-seats-wished:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-seats-wished:","root_collection":"seats","include":[],"scope":{"wishes":":wishes"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-all-courses:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-all-courses:","root_collection":"courses","include":[],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-pub-courses:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-pub-courses:","root_collection":"courses","include":[],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-slots-under:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-slots-under:","root_collection":"slots","include":[],"scope":{"weddings_id":"<=:most"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-seats-kept:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-seats-kept:","root_collection":"seats","include":[],"scope":{"kept":":kept"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-seats-upto:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-seats-upto:","root_collection":"seats","include":[],"scope":{"kept":"<=:kept"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-slots-upto:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-slots-upto:","root_collection":"slots","include":[],"scope":{"price":"<=:max"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-all-notes:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-all-notes:","root_collection":"notes","include":[],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-asks-from:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-asks-from:","root_collection":"asks","include":[],"scope":{"from":":from"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-household:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-household:","root_collection":"households","include":[],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-menu-like:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-menu-like:","root_collection":"courses","include":["drinks"],"scope":{"name":"like:start"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-board-on:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-board-on:","root_collection":"weddings","include":["notes"],"scope":{"id":":id","at":"at:when"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-notes-on:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-notes-on:","root_collection":"notes","include":[],"scope":{"at":"at:when"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-seats-at:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-seats-at:","root_collection":"seats","include":[],"scope":{"table_no":":table"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-slots-by:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-slots-by:","root_collection":"slots","include":[],"scope":{"starts":"<=:end"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-slots-of:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-slots-of:","root_collection":"slots","include":[],"scope":{"weddings_id":":wedding"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-slots-on:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-slots-on:","root_collection":"slots","include":[],"scope":{"starts":":on"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-weddings:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-weddings:","root_collection":"weddings","include":["courses"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-catalog:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-catalog:","root_collection":"courses","include":["drinks"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-seat-of:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-seat-of:","root_collection":"seats","include":[],"scope":{"id":":id","table_no":":table"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-seating:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-seating:","root_collection":"weddings","include":["seats"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-course:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-course:","root_collection":"courses","include":["drinks"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-drinks:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-drinks:","root_collection":"weddings","include":["drinks"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-tagged:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-tagged:","root_collection":"weddings","include":["tags"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-board:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-board:","root_collection":"weddings","include":["households","courses","drinks","tags","notes"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-guest:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-guest:","root_collection":"households","include":[],"scope":{"id":":id","email":":email"},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-notes:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-notes:","root_collection":"weddings","include":["notes"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-party:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-party:","root_collection":"weddings","include":["households","favours"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-title:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-title:","root_collection":"weddings","include":[],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-asks:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-asks:","root_collection":"weddings","include":["asks"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-menu:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-menu:","root_collection":"weddings","include":["courses","drinks"],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-note:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-note:","root_collection":"notes","include":[],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-plan:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-plan:","root_collection":"weddings","include":["courses","drinks"],"scope":{},"implied":true,"held":{}}'::jsonb); END IF;
+  IF starts_with(p_doc_name, 'fo-slim:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-slim:","root_collection":"weddings","include":["households","seats"],"scope":{},"implied":false,"held":{"households":["email"],"seats":["table_no"]}}'::jsonb); END IF;
+  RETURN _delta_find_doc_framework(p_doc_name);
 END;
 $$ LANGUAGE plpgsql STABLE;
 

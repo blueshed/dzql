@@ -67,6 +67,15 @@ test("every collection's definition, and one there is not, as the framework give
   }
 });
 
+test("every name's document, and names of none, as the framework finds it", async () => {
+  const probes = ["", "fo", "fo-board", "FO-BOARD:1", "fo-board:1:extra", " fo-board:1", "fo-board-on:", "fo-courses-noted-on:x", "fo_board:1", "fo-all-courses:%"];
+  for (const name of [...names, ...probes]) {
+    const doc = await answer("SELECT row_to_json(_delta_find_doc($1)) AS r", [name]);
+    expect({ name, doc }).toEqual({ name, doc: await answer("SELECT row_to_json(_delta_find_doc_framework($1)) AS r", [name]) });
+    expect({ name, doc }).toMatchSnapshot();
+  }
+});
+
 describe("each table's serial, as the framework reads and moves it", () => {
   for (const [, t] of [...tables, ["no_such", { name: "no_such" }] as const]) {
     test(t.name, async () => {
@@ -142,5 +151,10 @@ describe("the compiled text", () => {
   test("is the same for the same definitions, and pinned", () => {
     expect(compileLookups(pathSchema, docs)).toBe(compileLookups(pathSchema, docs));
     expect(compileLookups(pathSchema, docs)).toMatchSnapshot();
+  });
+
+  test("a name is of the longest prefix it starts with: a longer prefix is tried before a shorter one it starts with", () => {
+    const sql = compileLookups(pathSchema, [pathDocs[0]!, { ...pathDocs[0]!, prefix: "fo-board:1:" }]);
+    expect(sql.indexOf("starts_with(p_doc_name, 'fo-board:1:')")).toBeLessThan(sql.indexOf("starts_with(p_doc_name, 'fo-board:')"));
   });
 });

@@ -13,6 +13,9 @@
  *   table's sequence named, read or moved as the framework's do (as the
  *   functions' owner, for a caller with the table's privilege), any other
  *   table the framework's;
+ * - `_delta_find_doc(name)`: the document a name is of, by the longest prefix
+ *   it starts with, as generateSql records it in `_delta_docs`, written in;
+ *   any other name the framework's (`_delta_find_doc_framework`);
  * - `delta_open_at(name, at)`: each compiled document to its own read as it
  *   stood (`dzql_open_at__<slug>`), any other to `_delta_open_at_framework`.
  */
@@ -84,6 +87,19 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ${searchPath("_delta_serial_past(text, bigint)")}`;
 
+  // longest first, as the framework's ORDER BY length(prefix) DESC: a name is of the longest prefix it starts with
+  const byLength = [...docs].sort((a, b) => b.prefix.length - a.prefix.length || (a.prefix < b.prefix ? -1 : 1));
+  const findDoc = `CREATE OR REPLACE FUNCTION _delta_find_doc(p_doc_name TEXT)
+RETURNS _delta_docs AS $$
+BEGIN
+${byLength.map((d) => {
+    const row = { prefix: d.prefix, root_collection: d.root, include: d.include, scope: d.scope, implied: !!d.implied, held: d.columns ?? {} };
+    return `  IF starts_with(p_doc_name, ${lit(d.prefix)}) THEN RETURN jsonb_populate_record(null::_delta_docs, ${lit(JSON.stringify(row))}::jsonb); END IF;`;
+  }).join("\n")}
+  RETURN _delta_find_doc_framework(p_doc_name);
+END;
+$$ LANGUAGE plpgsql STABLE;`;
+
   const openAt = `CREATE OR REPLACE FUNCTION delta_open_at(p_doc_name TEXT, p_at TIMESTAMPTZ)
 RETURNS JSONB AS $$
 DECLARE
@@ -96,5 +112,5 @@ ${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${openAtFunction(d.pref
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 
-  return [collection, serialNew, serialPast, openAt, ""].join("\n\n");
+  return [collection, findDoc, serialNew, serialPast, openAt, ""].join("\n\n");
 }

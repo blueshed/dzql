@@ -6,7 +6,7 @@
 -- _delta_find_doc: match a doc name to its definition
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_find_doc(p_doc_name TEXT)
+CREATE OR REPLACE FUNCTION _delta_find_doc_framework(p_doc_name TEXT)
 RETURNS _delta_docs AS $$
   -- Exact prefix match (NOT LIKE): a prefix containing `_` or `%` would
   -- otherwise be treated as a LIKE wildcard and over-match. Mirrors the
@@ -16,6 +16,9 @@ RETURNS _delta_docs AS $$
    ORDER BY length(prefix) DESC
    LIMIT 1;
 $$ LANGUAGE sql STABLE;
+-- generateSql writes each document in (dzql/compile/lookups.ts)
+CREATE OR REPLACE FUNCTION _delta_find_doc(p_doc_name TEXT)
+RETURNS _delta_docs LANGUAGE sql STABLE AS $$ SELECT _delta_find_doc_framework(p_doc_name); $$;
 
 -- ---------------------------------------------------------------------------
 -- _delta_resolve_scope: turn a doc name + def into WHERE clause + metadata
