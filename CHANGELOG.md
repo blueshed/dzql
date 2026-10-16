@@ -23,6 +23,31 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Changed
+
+- **A collection's definition, a table's serial and a document as it stood are compiled lookups**
+  (2c, the step before the framework retires).
+  - `_delta_collection(key)` gives a collection's definition (its table, parent, columns,
+    validity and what cascades on it). `generateSql` writes each collection in, with any other
+    key going to `_delta_collection_framework`.
+  - The write (`delta_apply`'s root and each op), an implied root and its first write,
+    `_delta_show` and `_delta_show_ops` now ask it. No function that survives the framework reads
+    `_delta_collections` itself.
+  - `_delta_serial_new` and `_delta_serial_past` name each table's sequence. They stay definer
+    functions, with the same privilege checks and search path.
+  - `delta_open_at` sends each compiled document to its own read as it stood
+    (`dzql_open_at__<prefix>`).
+  - Each has a `_framework` version for anything not compiled, as the earlier pieces do.
+
+  Held equal (`tests/compile/lookups.test.ts`):
+  - every collection's row, and one that doesn't exist;
+  - every table's serial at ids around its sequence and past 2^53, set back between (a sequence
+    does not roll back), and for a caller without the table's privilege;
+  - every path-case name read as it stood at five times, on the seed and after writes.
+
+  Six mutations each fail it. A write is unchanged (0.588 ms p50 compiled): what this slice buys
+  is the framework's retirement.
+
 ## [0.10.0] - 2026-10-15
 
 ### Changed

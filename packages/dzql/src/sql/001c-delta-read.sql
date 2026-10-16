@@ -193,14 +193,14 @@ RETURNS JSONB LANGUAGE sql STABLE AS $$
              WHEN d->>'type' IN ('integer', 'real') THEN '0'::jsonb
              WHEN d->>'type' = 'boolean' THEN 'false'::jsonb
              ELSE 'null'::jsonb END)
-      FROM _delta_collections c, jsonb_each(_delta_cols(c.collection_key, c.columns_def)) AS x(k, d)
-     WHERE c.collection_key = p_def.root_collection), '{}'::jsonb);
+      FROM (SELECT _delta_collection(p_def.root_collection) AS c) AS r,
+           jsonb_each(_delta_cols((r.c).collection_key, (r.c).columns_def)) AS x(k, d)), '{}'::jsonb);
 $$;
 
 CREATE OR REPLACE FUNCTION _delta_make_implied(p_def _delta_docs, p_id BIGINT, p_ops JSONB, p_ts TIMESTAMPTZ)
 RETURNS void AS $$
 DECLARE
-  v_coll   RECORD;
+  v_coll   _delta_collections;
   v_exists BOOLEAN;
   v_row    JSONB;
 BEGIN
@@ -210,8 +210,8 @@ BEGIN
                 AND (_delta_split_path(o->>'path'))[1] = p_def.root_collection) THEN
     RETURN;
   END IF;
-  SELECT * INTO v_coll FROM _delta_collections WHERE collection_key = p_def.root_collection;
-  IF NOT FOUND THEN RETURN; END IF;
+  v_coll := _delta_collection(p_def.root_collection);
+  IF v_coll.collection_key IS NULL THEN RETURN; END IF;
   v_exists := _delta_row_there(p_def.root_collection, p_id);
   IF v_exists THEN RETURN; END IF;
   -- Not there, as the writer reads it: made under the add rule (todo #71) -- an
@@ -288,7 +288,7 @@ RETURNS JSONB AS $$
   SELECT CASE WHEN NOT COALESCE(p_def.held, '{}'::jsonb) ? p_coll OR jsonb_typeof(p_row) IS DISTINCT FROM 'object' THEN p_row
     ELSE (SELECT COALESCE(jsonb_object_agg(f, v), '{}'::jsonb) FROM jsonb_each(p_row) AS e(f, v)
            WHERE f = 'id' OR (p_def.held->p_coll) ? f
-              OR f = (SELECT parent_fk FROM _delta_collections WHERE collection_key = p_coll)) END;
+              OR f = (_delta_collection(p_coll)).parent_fk) END;
 $$ LANGUAGE sql STABLE;
 
 CREATE OR REPLACE FUNCTION _delta_show_doc(p_def _delta_docs, p_doc JSONB, p_single BOOLEAN)
@@ -319,13 +319,13 @@ DECLARE
   v_out   JSONB := '[]'::jsonb;
   v_op    JSONB;
   v_parts TEXT[];
-  v_coll  RECORD;
+  v_coll  _delta_collections;
   v_field TEXT;
 BEGIN
   IF v_def.prefix IS NULL OR COALESCE(v_def.held, '{}'::jsonb) = '{}'::jsonb OR jsonb_typeof(p_ops) <> 'array' THEN RETURN p_ops; END IF;
   FOR v_op IN SELECT jsonb_array_elements(p_ops) LOOP
     v_parts := _delta_split_path(v_op->>'path');
-    SELECT * INTO v_coll FROM _delta_collections WHERE collection_key = v_parts[1];
+    v_coll := _delta_collection(v_parts[1]);
     v_field := CASE WHEN array_length(v_parts, 1) >= 3 THEN v_parts[3]
                     WHEN array_length(v_parts, 1) = 2 AND (_delta_cols(v_coll.collection_key, v_coll.columns_def) ? v_parts[2] OR v_parts[2] = v_coll.parent_fk) THEN v_parts[2] END;
     IF v_field IS NOT NULL THEN

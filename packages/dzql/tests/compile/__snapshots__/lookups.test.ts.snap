@@ -1,0 +1,177 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the compiled text is the same for the same definitions, and pinned 1`] = `
+"CREATE OR REPLACE FUNCTION _delta_collection(p_key TEXT)
+RETURNS _delta_collections AS $$
+BEGIN
+  CASE p_key
+    WHEN 'weddings' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"weddings","table_name":"fo_weddings","columns_def":{"name":{"type":"text","nullable":false}},"parent_collection":null,"parent_fk":null,"temporal":false,"cascade_on":[]}'::jsonb);
+    WHEN 'households' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"households","table_name":"fo_households","columns_def":{"email":{"type":"text","nullable":false},"t":{"type":"text","nullable":true}},"parent_collection":"weddings","parent_fk":"weddings_id","temporal":false,"cascade_on":[]}'::jsonb);
+    WHEN 'courses' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"courses","table_name":"fo_courses","columns_def":{"name":{"type":"text","nullable":false}},"parent_collection":"weddings","parent_fk":"weddings_id","temporal":false,"cascade_on":[]}'::jsonb);
+    WHEN 'drinks' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"drinks","table_name":"fo_drinks","columns_def":{"name":{"type":"text","nullable":false}},"parent_collection":"courses","parent_fk":"courses_id","temporal":false,"cascade_on":[]}'::jsonb);
+    WHEN 'tags' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"tags","table_name":"fo_tags","columns_def":{"label":{"type":"text","nullable":false}},"parent_collection":null,"parent_fk":null,"temporal":false,"cascade_on":[]}'::jsonb);
+    WHEN 'notes' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"notes","table_name":"fo_notes","columns_def":{"text":{"type":"text","nullable":false}},"parent_collection":"weddings","parent_fk":"weddings_id","temporal":true,"cascade_on":[]}'::jsonb);
+    WHEN 'seats' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"seats","table_name":"fo_seats","columns_def":{"table_no":{"type":"integer","nullable":false},"kept":{"type":"boolean","nullable":false},"wishes":{"type":"json","nullable":true}},"parent_collection":"weddings","parent_fk":"weddings_id","temporal":false,"cascade_on":[]}'::jsonb);
+    WHEN 'slots' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"slots","table_name":"fo_slots","columns_def":{"price":{"type":"real","nullable":true},"starts":{"type":"timestamptz","nullable":true}},"parent_collection":"weddings","parent_fk":"weddings_id","temporal":false,"cascade_on":[]}'::jsonb);
+    WHEN 'favours' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"favours","table_name":"fo_favours","columns_def":{"households_id":{"type":"integer","nullable":false},"gift":{"type":"text","nullable":false}},"parent_collection":"weddings","parent_fk":"weddings_id","temporal":false,"cascade_on":[{"fk":"households_id","collection":"households"}]}'::jsonb);
+    WHEN 'asks' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"asks","table_name":"order","columns_def":{"in":{"type":"integer","nullable":true},"from":{"type":"text","nullable":true},"to":{"type":"text","nullable":true}},"parent_collection":"weddings","parent_fk":"group","temporal":true,"cascade_on":[]}'::jsonb);
+    ELSE RETURN _delta_collection_framework(p_key);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_serial_new(p_table TEXT, p_id BIGINT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_new BOOLEAN;
+BEGIN
+  CASE p_table
+    WHEN 'fo_weddings' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_fo_weddings";
+      RETURN v_new;
+    WHEN 'fo_households' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_fo_households";
+      RETURN v_new;
+    WHEN 'fo_courses' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_fo_courses";
+      RETURN v_new;
+    WHEN 'fo_drinks' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_fo_drinks";
+      RETURN v_new;
+    WHEN 'fo_tags' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_fo_tags";
+      RETURN v_new;
+    WHEN 'fo_notes' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_fo_notes";
+      RETURN v_new;
+    WHEN 'fo_seats' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_fo_seats";
+      RETURN v_new;
+    WHEN 'fo_slots' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_fo_slots";
+      RETURN v_new;
+    WHEN 'fo_favours' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_fo_favours";
+      RETURN v_new;
+    WHEN 'order' THEN
+      IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_order";
+      RETURN v_new;
+    ELSE RETURN _delta_serial_new_framework(p_table, p_id);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION _delta_serial_new(text, bigint) SET search_path = %s', v_path);
+END $$;
+
+CREATE OR REPLACE FUNCTION _delta_serial_past(p_table TEXT, p_id BIGINT)
+RETURNS void AS $$
+BEGIN
+  CASE p_table
+    WHEN 'fo_weddings' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_fo_weddings', p_id) FROM "seq_fo_weddings" WHERE p_id >= last_value + is_called::int;
+    WHEN 'fo_households' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_fo_households', p_id) FROM "seq_fo_households" WHERE p_id >= last_value + is_called::int;
+    WHEN 'fo_courses' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_fo_courses', p_id) FROM "seq_fo_courses" WHERE p_id >= last_value + is_called::int;
+    WHEN 'fo_drinks' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_fo_drinks', p_id) FROM "seq_fo_drinks" WHERE p_id >= last_value + is_called::int;
+    WHEN 'fo_tags' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_fo_tags', p_id) FROM "seq_fo_tags" WHERE p_id >= last_value + is_called::int;
+    WHEN 'fo_notes' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_fo_notes', p_id) FROM "seq_fo_notes" WHERE p_id >= last_value + is_called::int;
+    WHEN 'fo_seats' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_fo_seats', p_id) FROM "seq_fo_seats" WHERE p_id >= last_value + is_called::int;
+    WHEN 'fo_slots' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_fo_slots', p_id) FROM "seq_fo_slots" WHERE p_id >= last_value + is_called::int;
+    WHEN 'fo_favours' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_fo_favours', p_id) FROM "seq_fo_favours" WHERE p_id >= last_value + is_called::int;
+    WHEN 'order' THEN
+      IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
+      PERFORM setval('seq_order', p_id) FROM "seq_order" WHERE p_id >= last_value + is_called::int;
+    ELSE PERFORM _delta_serial_past_framework(p_table, p_id);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION _delta_serial_past(text, bigint) SET search_path = %s', v_path);
+END $$;
+
+CREATE OR REPLACE FUNCTION delta_open_at(p_doc_name TEXT, p_at TIMESTAMPTZ)
+RETURNS JSONB AS $$
+DECLARE
+  v_def _delta_docs := _delta_find_doc(p_doc_name);
+BEGIN
+  CASE v_def.prefix
+    WHEN 'fo-board:' THEN RETURN dzql_open_at__fo_board(p_doc_name, p_at);
+    WHEN 'fo-menu:' THEN RETURN dzql_open_at__fo_menu(p_doc_name, p_at);
+    WHEN 'fo-household:' THEN RETURN dzql_open_at__fo_household(p_doc_name, p_at);
+    WHEN 'fo-course:' THEN RETURN dzql_open_at__fo_course(p_doc_name, p_at);
+    WHEN 'fo-title:' THEN RETURN dzql_open_at__fo_title(p_doc_name, p_at);
+    WHEN 'fo-tagged:' THEN RETURN dzql_open_at__fo_tagged(p_doc_name, p_at);
+    WHEN 'fo-notes:' THEN RETURN dzql_open_at__fo_notes(p_doc_name, p_at);
+    WHEN 'fo-all-courses:' THEN RETURN dzql_open_at__fo_all_courses(p_doc_name, p_at);
+    WHEN 'fo-catalog:' THEN RETURN dzql_open_at__fo_catalog(p_doc_name, p_at);
+    WHEN 'fo-courses-noted:' THEN RETURN dzql_open_at__fo_courses_noted(p_doc_name, p_at);
+    WHEN 'fo-courses-like:' THEN RETURN dzql_open_at__fo_courses_like(p_doc_name, p_at);
+    WHEN 'fo-menu-like:' THEN RETURN dzql_open_at__fo_menu_like(p_doc_name, p_at);
+    WHEN 'fo-tags-labelled:' THEN RETURN dzql_open_at__fo_tags_labelled(p_doc_name, p_at);
+    WHEN 'fo-seating:' THEN RETURN dzql_open_at__fo_seating(p_doc_name, p_at);
+    WHEN 'fo-seats-kept:' THEN RETURN dzql_open_at__fo_seats_kept(p_doc_name, p_at);
+    WHEN 'fo-seats-upto:' THEN RETURN dzql_open_at__fo_seats_upto(p_doc_name, p_at);
+    WHEN 'fo-seats-at:' THEN RETURN dzql_open_at__fo_seats_at(p_doc_name, p_at);
+    WHEN 'fo-seats-wished:' THEN RETURN dzql_open_at__fo_seats_wished(p_doc_name, p_at);
+    WHEN 'fo-slots-upto:' THEN RETURN dzql_open_at__fo_slots_upto(p_doc_name, p_at);
+    WHEN 'fo-slots-of:' THEN RETURN dzql_open_at__fo_slots_of(p_doc_name, p_at);
+    WHEN 'fo-slots-under:' THEN RETURN dzql_open_at__fo_slots_under(p_doc_name, p_at);
+    WHEN 'fo-slots-by:' THEN RETURN dzql_open_at__fo_slots_by(p_doc_name, p_at);
+    WHEN 'fo-slots-on:' THEN RETURN dzql_open_at__fo_slots_on(p_doc_name, p_at);
+    WHEN 'fo-note:' THEN RETURN dzql_open_at__fo_note(p_doc_name, p_at);
+    WHEN 'fo-all-notes:' THEN RETURN dzql_open_at__fo_all_notes(p_doc_name, p_at);
+    WHEN 'fo-drinks:' THEN RETURN dzql_open_at__fo_drinks(p_doc_name, p_at);
+    WHEN 'fo-course-guests:' THEN RETURN dzql_open_at__fo_course_guests(p_doc_name, p_at);
+    WHEN 'fo-plan:' THEN RETURN dzql_open_at__fo_plan(p_doc_name, p_at);
+    WHEN 'fo-weddings:' THEN RETURN dzql_open_at__fo_weddings(p_doc_name, p_at);
+    WHEN 'fo-guest:' THEN RETURN dzql_open_at__fo_guest(p_doc_name, p_at);
+    WHEN 'fo-seat-of:' THEN RETURN dzql_open_at__fo_seat_of(p_doc_name, p_at);
+    WHEN 'fo-all-households:' THEN RETURN dzql_open_at__fo_all_households(p_doc_name, p_at);
+    WHEN 'fo-party:' THEN RETURN dzql_open_at__fo_party(p_doc_name, p_at);
+    WHEN 'fo-slim:' THEN RETURN dzql_open_at__fo_slim(p_doc_name, p_at);
+    WHEN 'fo-notes-on:' THEN RETURN dzql_open_at__fo_notes_on(p_doc_name, p_at);
+    WHEN 'fo-courses-noted-on:' THEN RETURN dzql_open_at__fo_courses_noted_on(p_doc_name, p_at);
+    WHEN 'fo-board-on:' THEN RETURN dzql_open_at__fo_board_on(p_doc_name, p_at);
+    WHEN 'fo-asks:' THEN RETURN dzql_open_at__fo_asks(p_doc_name, p_at);
+    WHEN 'fo-asks-from:' THEN RETURN dzql_open_at__fo_asks_from(p_doc_name, p_at);
+    WHEN 'fo-pub-courses:' THEN RETURN dzql_open_at__fo_pub_courses(p_doc_name, p_at);
+    ELSE RETURN _delta_open_at_framework(p_doc_name, p_at);   -- a name no document compiled here holds (none at all: the framework refuses it)
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+"
+`;
