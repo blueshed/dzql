@@ -94,6 +94,12 @@ bun check && bun test
 `node_modules/dzql` must be a link to the global one (`ls -la node_modules/dzql`): otherwise the
 tests ran npm's dzql. To see it by hand: `bun run db:up` (a Postgres server in Docker) and `bun dev`.
 
+Against a delta not yet on npm (the template names its next version), link it too: `bun link` in
+delta, and `"@blueshed/delta": "link:@blueshed/delta"` in the app. A linked delta brings its own
+railroad, and two copies of railroad break the page ("A second copy of @blueshed/railroad has
+loaded" in the console; signals don't cross copies). Make it one: `rm -rf node_modules/@blueshed/railroad &&
+ln -s <delta>/node_modules/@blueshed/railroad node_modules/@blueshed/railroad` in the app.
+
 ### Cleanup
 
 ```bash

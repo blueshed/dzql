@@ -3,17 +3,17 @@ import type { DeltaOp } from "@blueshed/delta/core";
 import { Pencil, Send, Trash2 } from "lucide";
 import { Icon } from "../icon";
 import { toast } from "../toast";
-import type { Me } from "../auth/auth-api";
+import type { Person } from "../people/people-api";
 import { me } from "../auth/auth";
 import type { Post } from "./posts-api";
 import { openMine, openPosts } from "./posts";
 
 /** Every post, newest first, for whoever is signed in: their own they may change and take away. */
 export function PostsView() {
-  return <>{when(me, (m$) => <Board who={m$.peek() as Me} />)}</>;
+  return <>{when(me, (m$) => <Board who={m$.peek() as Person} />)}</>;
 }
 
-function Board({ who }: { who: Me }) {
+function Board({ who }: { who: Person }) {
   const posts = openPosts();
   const mine = openMine(who.id);
   const all = posts.data.map((d) => Object.values(d?.posts ?? {}).sort((a, b) => b.id - a.id));

@@ -23,6 +23,36 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **Link sign-in on Postgres: `dzql/auth-link`.** delta 1.1.0's `auth-link` signs people in with no
+  passwords: a link is someone, its tap a session cookie, and the socket is signed in by it.
+  - `postgresLinkStore(pool)` keeps its links and sessions in Postgres, in `_auth_links` and
+    `_auth_sessions` (made if not there): hashes, the person's id, times. A link is used in one
+    statement, so two taps at once make one session, on one server or several.
+  - It answers delta's `linkStoreCases`, on PGlite and on a Postgres server
+    (`tests/delta-pg/auth-link.test.ts`).
+  - `dzql link <database> <person> [--origin] [--opens]` prints the first person's link (a
+    `postgres://` URL or a PGlite folder; a SQLite file is `delta link`'s).
+  - dzql now needs delta ^1.1.0.
+
+### Changed
+
+- **`bun create dzql` signs people in by link**, in place of `auth-jwt`'s email and password (Peter,
+  16 October: "it would make development a pleasure and not a desperate memory of email and
+  password").
+  - The app has a `people` collection, and `people:` is everyone, for everyone signed in: anyone adds
+    someone new, and makes anyone's link to send them.
+  - `bun run link <name>` gives the first person their link, making them if they are new: on the
+    developer's machine, or on the server.
+  - In development the page asks "Who are you?" and lists everyone, so one click is anyone and two
+    windows are two people. Production lists nobody.
+  - The app's tables and documents are made in one place, `src/db.ts`: one schema, one
+    `generateSql`.
+  - Its tests pick who they are in two browsers. Then: post, see it arrive, edit, delete, the other
+    person unable to change it; and a link made for someone new in one window signs them in in the
+    other, keeps them through a reload, and is used once.
+
 ## [0.11.0] - 2026-10-16
 
 ### Breaking

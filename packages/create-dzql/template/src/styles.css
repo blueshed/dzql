@@ -101,6 +101,12 @@ form input, form textarea { margin-bottom: 0.5rem; }
 .posts .toolbar { margin-bottom: 0; }
 button.delete { color: var(--danger); }
 
+.pick { flex-wrap: wrap; }
+.people { list-style: none; margin: 0.5rem 0 1rem; }
+.people li { display: flex; align-items: center; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid var(--border-mid); }
+.sent code.link { display: block; margin-top: 0.25rem; word-break: break-all; }
+.add-person input { margin-bottom: 0; }
+
 /* An edit opens in a sheet over the list, never in place */
 .sheet {
   position: fixed;

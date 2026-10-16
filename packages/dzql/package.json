@@ -18,6 +18,7 @@
     "./postgres": "./src/postgres/index.ts",
     "./pglite": "./src/postgres/pglite.ts",
     "./auth-jwt": "./src/postgres/auth-jwt.ts",
+    "./auth-link": "./src/postgres/auth-link.ts",
     "./compile": "./src/compile/opens.ts"
   },
   "files": [
@@ -63,11 +64,11 @@
     "pinia": "^3.0.4",
     "typescript": "^5.0.0",
     "vue": "^3.5.26",
-    "@blueshed/delta": "^1.0.0"
+    "@blueshed/delta": "^1.1.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0",
-    "@blueshed/delta": "^1.0.0"
+    "@blueshed/delta": "^1.1.0"
   },
   "engines": {
     "bun": ">=1.0.0"

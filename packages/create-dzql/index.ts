@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `bun create dzql my-app`: a paintbrush app on dzql. People register and sign in, and share posts,
+ * `bun create dzql my-app`: a paintbrush app on dzql. People sign in by link, and share posts,
  * kept in Postgres: everyone's live, each person's own to change. Copies `template/`, puts the app's
  * name in it, and says what to run.
  */
@@ -44,8 +44,9 @@ Done. To start:
 
   cd ${name}
   bun install
-  bun run db:up      # a Postgres server in Docker (compose.yml)
-  bun dev            # http://localhost:3000
+  bun run db:up            # a Postgres server in Docker (compose.yml)
+  bun run link "Your name" # you, and the link that signs you in
+  bun dev                  # http://localhost:3000: open the link, or pick your name
 
   bun test           # the app's tests: Postgres in memory, two browsers
 `);
