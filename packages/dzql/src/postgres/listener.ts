@@ -123,6 +123,15 @@ interface DocState {
 const FETCH_PAGE = 1000;
 
 /**
+ * What a custom document hears of a log entry: each write once, as it was applied. The writer's
+ * entry carries it (`applied`) where the writer was told otherwise, and null where it was told the
+ * write as applied; each other told document's entry of the write carries none ([]). Told, a row
+ * that left a document is a remove, which is not a delete, and a row told to two documents would be
+ * heard twice (todo #44). An entry logged some other way carries null too: heard as told.
+ */
+const appliedOf = (row: any): DeltaOp[] => (row.applied ?? row.ops) as DeltaOp[];
+
+/**
  * How the listener reads a document's log. `_delta_fetch_log` (001e) gives each
  * entry with the write as applied, for custom documents (todo #44). Framework
  * SQL older than this listener -- vendored with `delta init` into an initdb
@@ -306,7 +315,7 @@ export async function createDocListener<I = unknown>(
       state.until = Number.MAX_SAFE_INTEGER;   // the notifications while away are gone: read to the end
       if (state.notifying) { state.pending = true; continue; }
       state.notifying = true;
-      try { await drainDoc(docName, state); }
+      try { await drainDoc(docName, state, true); }
       catch (err) { log.error(`resync ${docName}: ${errMsg(err)}`); }
       finally { state.notifying = false; }
     }
@@ -320,38 +329,38 @@ export async function createDocListener<I = unknown>(
     throw err;
   }
 
-  // A document's own subscribers need only its own order, so each document drains on its own.
-  // A custom document hears writes made through every document: with any registered, the
-  // notifications are handled one after another, as Postgres delivers them (in commit order),
-  // or a slow drain of one document would tell it a later write through another first.
+  // A document's own subscribers need only its own order, so each document drains on its own
+  // (onNotification), and none waits on another's. A custom document hears writes made through
+  // every document, so it is told them one after another, as Postgres delivers the notifications
+  // (in commit order): told from each document's drain, a slow read of one told it a later write,
+  // made through another, first.
   let inCommitOrder: Promise<void> = Promise.resolve();
   function heard(msg: any) {
-    if (custom.size === 0) void onNotification(msg);
-    else inCommitOrder = inCommitOrder.then(() => onNotification(msg));
+    void onNotification(msg);
+    if (custom.size > 0) inCommitOrder = inCommitOrder.then(() => hearCustom(msg));
   }
 
-  // Notification handler — fans out LISTEN/NOTIFY to WS subscribers, plus
-  // custom-doc cross-pollination when any predicate-based doc is registered.
+  /** The custom documents told the one write a notification announces: its document's entry at that version. */
+  async function hearCustom(msg: any) {
+    if (destroyed || msg.channel !== "delta_changes" || !msg.payload) return;
+    try {
+      const { doc: docName, v } = JSON.parse(msg.payload);
+      const rows = (await pool.query(fetchSql, [docName, v - 1])).rows.filter((row: any) => Number(row.version) === v);
+      if (auth && rows.length > 0) await custom.letGoWatching(rows.flatMap(appliedOf));
+      for (const row of rows) custom.tell(appliedOf(row));
+    } catch (err) {
+      log.error(`notify error (custom): ${errMsg(err)}`);
+    }
+  }
+
+  // Notification handler — fans out LISTEN/NOTIFY to the document's WS subscribers.
   async function onNotification(msg: any) {
     if (destroyed) return;
     if (msg.channel !== "delta_changes" || !msg.payload) return;
     try {
       const { doc: docName, v } = JSON.parse(msg.payload);
-      let state = tracked.get(docName);
-
-      // Even without direct subscribers, we still process notifications if any
-      // custom doc is registered — a watched collection's rows may need fan-out.
-      if (!state && custom.size === 0) return;
-      if (!state) {
-        // Initialize at v-1 so we fetch only the current notification's row.
-        // Custom docs loaded their initial state via `def.query` on open, so
-        // pre-existing ops are already reflected — replaying history would
-        // duplicate them. Same logic protects close-then-reopen.
-        state = { version: Math.max(0, v - 1), until: v, subscribers: new Set(), notifying: false, pending: false };
-        tracked.set(docName, state);
-      }
-
-      if (v <= state.version) return;
+      const state = tracked.get(docName);
+      if (!state || v <= state.version) return;
       state.until = Math.max(state.until, v);
       if (state.notifying) {
         // A fetch is already running for this doc. Coalesce instead of dropping:
@@ -374,8 +383,9 @@ export async function createDocListener<I = unknown>(
   // Drain a doc's ops to its subscribers. Loops while a full page comes back
   // (a backlog larger than the fetch's LIMIT) and re-runs if another
   // notification arrived mid-drain (the coalesced `pending` flag). Caller owns
-  // the `notifying` guard.
-  async function drainDoc(docName: string, state: DocState) {
+  // the `notifying` guard. After a reconnect (`resync`) the custom documents
+  // are told what it reads too: the notifications while away are gone.
+  async function drainDoc(docName: string, state: DocState, resync = false) {
     do {
       state.pending = false;
       let more = true;
@@ -384,11 +394,10 @@ export async function createDocListener<I = unknown>(
         // only what a notification has announced (`until`): the rest is heard with its own
         const rows = page.filter((row: any) => Number(row.version) <= state.until);
         more = page.length >= FETCH_PAGE && rows.length === page.length;
-        // Told to those who may still hear it (todo #17): the document's own
-        // subscribers, and the custom documents' that watch what it changed.
+        // Told to those who may still hear it (todo #17): the document's own subscribers
         if (auth && rows.length > 0) {
           await custom.letGo(docName, state.subscribers, ownsOf(docName));
-          await custom.letGoWatching(rows.flatMap((row: any) => (row.applied ?? row.ops) as DeltaOp[]));
+          if (resync) await custom.letGoWatching(rows.flatMap(appliedOf));
         }
         for (const row of rows) {
           if (state.subscribers.size > 0) {
@@ -400,14 +409,7 @@ export async function createDocListener<I = unknown>(
             ws.publish(docName, { doc: docName, ops: shownOps(resolveDoc(docName)?.type.def, row.ops), v: Number(row.version) });
           }
           state.version = Number(row.version);
-          // A custom document hears each write once, as it was applied: the
-          // writer's entry carries it (`applied`) where the writer was told
-          // otherwise, and null where it was told the write as applied; each
-          // other told document's entry of the write carries none ([]). Told,
-          // a row that left a document is a remove, which is not a delete, and
-          // a row told to two documents would be heard twice (todo #44). An
-          // entry logged some other way carries null too: heard as told.
-          custom.tell((row.applied ?? row.ops) as DeltaOp[]);
+          if (resync) custom.tell(appliedOf(row));
         }
       }
     } while (state.pending);
