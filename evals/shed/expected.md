@@ -102,8 +102,8 @@ same thing pass.
 - A name nobody may open answers as one that is not there.
 - A non-member opens the list and nothing else (story 5).
 - Members' phone numbers are in a document only the committee may open (story 4).
-- `owns` as a path is dzql's step 3 (`docs/postgres-split-plan.md`). Until it ships, `owns` as a
-  function passes. Say which was used in the run's results.
+- Each `owns` is a path (delta's, compiled by dzql) where a path can say it; a function passes only
+  where one cannot. Say which was used in the run's results.
 - Every earlier story still passes against the Postgres server (story 6), with the tests from
   stages 1 to 4 run on it.
 

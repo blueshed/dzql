@@ -3,11 +3,12 @@
 // Post-create setup: `bun create blueshed/paintbrush my-app` runs this as the
 // template's postinstall, after `bun install` and before the first commit.
 //
-// It turns the template into an app. What is about developing the template goes
-// (its ledger, its changelog, its logo, this script and the template's own tests); the
-// app starts with fresh ones; its name replaces "Paintbrush"; and railroad's and delta's
-// skills are copied into .claude/skills, so a session starts knowing how railroad's JSX
-// behaves and how a document is kept and changed.
+// It turns the template into an app. What is about developing the template goes (its
+// ledger, changelog and logo, this script, the template's own tests, the evolve skill's test
+// with its script and CI step, and evals/); the app starts with a fresh ledger, changelog and
+// README; its name replaces "Paintbrush"; and railroad's and delta's skills are copied into
+// .claude/skills, so a session starts knowing how railroad's JSX behaves and how a document
+// is kept and changed.
 
 import { cpSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -145,9 +146,11 @@ bun test           # tests, held at 100% coverage
 bun run typecheck
 \`\`\`
 
-\`CLAUDE.md\` says what is here and the rules. The \`evolve\` skill is how the app grows:
-a new document, two on one page, SQLite and Postgres when they earn their place, and
-HTTP routes for what isn't communication.
+Ask for something, and it is written into \`stories.md\` as stories, then made true, with
+tests named for them. \`CLAUDE.md\` says what is here and the rules. The \`evolve\` skill is
+how the app grows: a new document, two on one page, SQLite and then Postgres when they earn
+their place, migrations, sign-in by link, HTTP routes for what isn't communication, and a
+build.
 
 \`CHANGELOG.md\` and \`todo.jsonl\` are a pair, the project's memory between sessions:
 the changelog is where it has been, the ledger what is open now. When work lands it

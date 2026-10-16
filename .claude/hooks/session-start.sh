@@ -4,7 +4,7 @@
 #
 # WHY: the web sandbox's Bun is OLDER than this app needs (Bun.WebView wants 1.4), and the
 # sandbox has NO BROWSER, and the hosts browsers are downloaded from are blocked. npm and
-# GitHub are reachable. So this installs the latest Bun from npm, and a headless Chromium
+# GitHub are reachable. So, when its Bun is older than engines.bun, this installs Bun from npm, and a headless Chromium
 # from an npm package, and points BUN_CHROME_PATH at it. If browser tests fail in the sandbox,
 # run it by hand: CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR=$PWD CLAUDE_ENV_FILE=/dev/null bash .claude/hooks/session-start.sh
 #

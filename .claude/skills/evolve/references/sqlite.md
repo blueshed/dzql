@@ -1,6 +1,6 @@
 # Store documents in SQLite
 
-When documents share rows, or for undo and history. The kitchen needs every open order: a third document over the rows of each order. The tables follow from the documents of [two-documents.md](two-documents.md); only `order-api.ts` changes, and the names the page opens, and the tables are made by a history of migrations from empty.
+When documents share rows, or for undo and history. The kitchen needs every open order: a third document over the rows of each order. The tables follow from the documents of [two-documents.md](two-documents.md). `order-api.ts` changes, and the names the page opens; the tables are made by the resource's history of migrations, from its first, `001-order`.
 
 ```ts
 // src/resources/order/order-api.ts

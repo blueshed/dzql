@@ -14,5 +14,5 @@
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "include": ["src", "tests", "create", ".railway/railway.ts"]
+  "include": ["src", "tests", "scripts", "create", ".railway/railway.ts"]
 }

@@ -40,8 +40,8 @@
     "query": "The order page is live and people have orders in it. Now an order should count an item: two teas are one line with a quantity of 2, not two lines. Don't lose anyone's order.",
     "files": [],
     "expected_behavior": [
-      "Declares quantity in the schema and writes a migration for what a schema cannot say (an order's lines of one item folded into one, with its count), in src/resources/order/migrations/NNN-name.ts exporting up",
-      "Runs migrate, with the resource's app and schema, before createTables and migrateSchema at start-up, before any document opens",
+      "Declares quantity in the schema, then lets `delta migrations make` write the next migration (an addColumn), and adds beside it an up that folds an order's lines of one item into one, with its count",
+      "Keeps the history from empty: migrate runs it at start-up, with the resource's app and schema, before any document opens; no createTables",
       "Tests an upgrade: a database as the earlier version left it, with lines in it, comes through with every order kept, and a second start runs nothing",
       "Leaves the page and its documents as they were",
       "bun test passes at 100% coverage and bun run typecheck is clean"

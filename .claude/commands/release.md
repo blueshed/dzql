@@ -19,7 +19,7 @@ Running this is the authority to release, which includes the push. Carry it thro
 2. On `main`, with a clean tree (`git status --porcelain` prints nothing), and not behind `origin/main` (`git fetch`, then `git rev-list --count HEAD..origin/main` is `0`).
 3. `## [Unreleased]` in `CHANGELOG.md` has entries. None means nothing to release: stop and say so.
 4. The pair agrees. Every `fixed` item in `todo.jsonl` has a changelog entry under `[Unreleased]` that settles it, and a dated `note` saying so; a `not fixed` item has a `note` saying why. Report any that don't, and stop: fix the record first.
-5. The new version: bump `package.json`'s `version` by the argument, or take the exact one. Its tag `vX.Y.Z` must not exist (`git rev-parse -q --verify refs/tags/vX.Y.Z` prints nothing). If it does, stop and name the next free version: never reuse or move a tag.
+5. Work out the new version: `package.json`'s `version` bumped by the argument, or the exact one given (it is written in step 4). Its tag `vX.Y.Z` must not exist (`git rev-parse -q --verify refs/tags/vX.Y.Z` prints nothing). If it does, stop and name the next free version: never reuse or move a tag.
 
 ## 2. Gate
 

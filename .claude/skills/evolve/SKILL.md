@@ -1,6 +1,6 @@
 ---
 name: evolve
-description: "Grows this app: a new shared document, two documents on one page, keeping documents in SQLite (rows shared between documents, undo and history) or Postgres, a schema change on a database that holds data (a migration), sign-in by link with no passwords, HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for a change to a schema in use, for people signing in, for files, or for a build."
+description: "Grows this app from its stories: a new shared document, two documents on one page, keeping documents in SQLite (rows shared between documents, undo and history) or Postgres, a schema change on a database that holds data (a migration), sign-in by link with no passwords, HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for a change to a schema in use, for people signing in, for files, or for a build."
 ---
 
 # Growing the app
@@ -16,7 +16,7 @@ description: "Grows this app: a new shared document, two documents on one page, 
 ```
 - [ ] Write what the user asked into stories.md as stories: sentences someone could call true or false
 - [ ] Ask what someone needs in front of them to make each true: those are the documents
-- [ ] Copy the closest reference below, or message / status in src/resources/
+- [ ] Copy the closest reference below (each says when it is the one), or message / status in src/resources/
 - [ ] A test named for each story: what a person sees and clicks (a refused change included), and every route and method
 - [ ] bun test (100% coverage) and bun run typecheck
 - [ ] CHANGELOG.md under [Unreleased]; in todo.jsonl the item settled marked fixed, or one for what is left open
@@ -28,17 +28,17 @@ description: "Grows this app: a new shared document, two documents on one page, 
 - A resource is `src/resources/<name>/`: `<name>-api.ts` (server side, and the type both sides share), `<name>.ts` (the document it opens, or what it fetches), `<name>-view.tsx`. Wire the server side in `src/server.ts`, the view as a route in `src/app.tsx`.
 - A document is never set in the page: `send` the change, and the change that comes back draws it, in this window too.
 - A row is addressed by its id, never its position.
-- The schema is the contract: a database may hold more than it declares, never less. A change it cannot say (a rename, a drop, data moved) on a database holding data is a migration; one that has run is never edited.
+- The schema is the contract: a database may hold more than it declares, never less. Its tables are made by its migrations, from empty: every change to the schema is the next migration, written by `bunx @blueshed/delta migrations make`; one that has run is never edited.
 - The client imports a shared type with `import type`, so no server code reaches the browser.
 - Coverage stays at 100%: write the missing test, never lower the threshold.
 
 ## The types
 
-delta's are in `node_modules/@blueshed/delta/src/`: `server/server.ts` (`registerDoc`), `client/client.ts` (`openDoc`, `connectWs`), `core.ts` (`DeltaOp`), `schema.ts`, `server/migrate.ts` (`Migration`), and a file per backend under `server/`. The app's: `startServer` in `src/server.ts`, the page helpers in `tests/browser.ts`. The `delta-doc` skill is delta's manual; `railroad` is the page's.
+delta's are in `node_modules/@blueshed/delta/src/`: `server/server.ts` (`registerDoc`), `client/client.ts` (`openDoc`, `connectWs`), `core.ts` (`DeltaOp`), `schema.ts`, `server/changes.ts` (a migration's changes), `server/migrate.ts` (`Migration`), `server/auth-link.ts`, and a file per backend under `server/`. The app's: `startServer` in `src/server.ts`, the page helpers in `tests/browser.ts`. The `delta-doc` skill is delta's manual; `railroad` is the page's.
 
 ## References
 
-Each leads with its example, code and tests that `bun run test:evolve` applies to a new app and runs:
+Each leads with its example: code and tests, proven by applying them to a new app and running its tests.
 
 - [references/document.md](references/document.md): a new shared document (notes: add and remove)
 - [references/testing.md](references/testing.md): the document in the browser: two windows, a refusal

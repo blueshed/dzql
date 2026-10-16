@@ -1,6 +1,5 @@
 node_modules/
 .server.pid
-tests/out/
 data/
 dist/
 .env

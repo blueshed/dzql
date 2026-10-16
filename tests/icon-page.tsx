@@ -1,4 +1,4 @@
-// A page with both kinds of <Icon>, for site.test.ts: the app itself has no icon on its own yet.
+// A page with both kinds of <Icon>, for site.test.ts: the app draws one beside a label (Save), never one on its own.
 import { mount } from "@blueshed/railroad";
 import { Save, X } from "lucide";
 import { Icon } from "../src/resources/icon";

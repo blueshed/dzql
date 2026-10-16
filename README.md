@@ -39,11 +39,12 @@ Every route and document is visible in the code. An AI, or a person, can read `s
 
 ## How it grows
 
-Think in documents, not entities: ask what someone needs in front of them to do something, and the tables follow. To place an order you need the catalogue and your order, two documents on one page; the kitchen needs every open order, another document over the same rows. The `evolve` skill shows each, and where to keep them as the app grows, with code and tests; a test applies each of its references to a new app and runs it.
+Think in documents, not entities: ask what someone needs in front of them to do something, and the tables follow. To place an order you need the catalogue and your order, two documents on one page; the kitchen needs every open order, another document over the same rows. The `evolve` skill shows each, and where to keep them as the app grows (a JSON file, SQLite, then Postgres on dzql), with code and tests: migrations, sign-in by link, routes and a build among them.
 
 ## What's in the box
 
 ```
+stories.md           what the app was asked to make true, a sentence each
 src/server.ts        Bun.serve(): the routes, and the documents on one WebSocket
 src/main.ts          the entry point: a pid file, so a server started in the background can be stopped
 src/app.tsx          the socket every document rides, and railroad's routes
@@ -58,10 +59,10 @@ tests/               routes with fetch, documents with a client, the page in a r
 
 ## Made to be worked on with Claude
 
-`CLAUDE.md` says what is here and the rules. The `evolve` skill (`.claude/skills/evolve/`) is how the app grows, and its `references/` has a file per step, each with code and tests. `CHANGELOG.md` and `todo.jsonl` are a pair, the project's memory between sessions: the changelog is where it has been, the ledger what is open now. They move together: when work lands it gets a changelog entry, and the item it settles is marked fixed. `/release` (`.claude/commands/release.md`) checks, tests, turns `[Unreleased]` into a version, takes the settled items out of the ledger, bumps, commits, tags and pushes. The Claude Code web sandbox has an older Bun and no browser, so a SessionStart hook is there to install both; a test proves it does nothing anywhere else, but its install in the sandbox is not tested. On GitHub, CI gets Bun from setup-bun and sets up the runner's Chrome, and every push runs the tests with it.
+Ask for something, and Claude writes it into `stories.md` as stories, then makes them true with tests named for them. `CLAUDE.md` says what is here and the rules; the `evolve` skill is how the app grows; `CHANGELOG.md` and `todo.jsonl` are the project's memory between sessions, and `/release` turns one into a version. On GitHub, CI runs the tests in the runner's Chrome on every push.
 
 ## Starting from it
 
-`bun create` runs `create/setup.ts` after installing. Your app gets its own name, a fresh ledger and changelog, railroad's and delta's skills, and a first commit. The template's logo, the script and the template's own tests are not copied across. The app's changelog starts by naming the paintbrush version it came from: to bring an app up to date, read this changelog from that version on, and carry across what applies.
+`bun create` runs `create/setup.ts` after installing. Your app gets its own name, a fresh ledger and changelog, railroad's and delta's skills, and a first commit. What is about the template stays behind: its logo, ledger and changelog, the setup script, its own tests and the skill's evaluations. The app's changelog starts by naming the paintbrush version it came from: to bring an app up to date, read this changelog from that version on, and carry across what applies.
 
 MIT

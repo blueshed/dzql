@@ -1,6 +1,6 @@
 # Store in Postgres
 
-When servers share the data, or people should see only their own. That step is **dzql**, delta's Postgres: the schema, documents, history of migrations, page and tests carry over from [sqlite.md](sqlite.md), and only `orderDocs` changes, and its imports. A Postgres server when `DATABASE_URL` names one (what you deploy); else PGlite, Postgres in this process, keeps it in the data folder, for development and tests.
+When servers share the data, or people should see only their own. That step is **dzql**, delta's Postgres: the schema, documents, history of migrations, page and tests carry over from [sqlite.md](sqlite.md); `orderDocs` and its imports change. A resource still on SQLite (the people of [auth.md](auth.md)) stays there: each resource moves when it needs to. A Postgres server when `DATABASE_URL` names one (what you deploy); else PGlite, Postgres in this process, keeps it in the data folder, for development and tests.
 
 ```sh
 bun add dzql
@@ -100,7 +100,7 @@ test("started on a data folder not there yet, stopped and started again, the ord
 - `@types/pg` is for the typecheck only: dzql ships TypeScript source that names `pg`'s types.
 - One process owns the folder: `startServer` runs the close pushed onto `closing` when it stops (and before `bun --hot` starts again).
 - Unclosed, Postgres recovers the folder as after a crash and skips the 32 ids it set aside: the second line is 34, not 2.
-- The documents are the listener's own (`types`): every server has its own.
+- Each server registers its own documents with its listener (`types`): two servers in one process each answer for theirs.
 - Rows come across with `exportTables` from SQLite and `importTables` here.
 - **Deploy a Postgres server, never PGlite**: PGlite is Postgres compiled to WebAssembly, and needs far more memory than a small server has. On Railway, a Postgres service, its `DATABASE_URL` set on the app. Its documents hear every process's writes: the step to more than one replica.
 - **One app to a database**: `generateSql` writes one app's documents. Two apps on one server each have a database of their own.

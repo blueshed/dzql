@@ -12,8 +12,8 @@
 // - Set OWNER/REPO before the first plan.
 // - This file is the WHOLE environment: a resource left out of it is deleted on apply.
 //   Add things (a postgres("db"), another volume); do not rewrite it.
-// - Railway sets PORT, which startServer() reads. Keep one replica: open sockets, in-memory state
-//   and the JSON file all live in one process.
+// - Railway sets PORT, which startServer() reads. Keep one replica: open sockets, in-memory state,
+//   the JSON file and SQLite all live in one process. Postgres on dzql is the step to more.
 // - Secrets are set in the Railway dashboard and named here with preserve() (from "railway/iac").
 // - tsconfig.json names this file in `include`, so `bun run typecheck` checks it; naming the
 //   folder is not enough, the default skips dot-folders.

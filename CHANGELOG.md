@@ -6,110 +6,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The documents say what is built.** The 0.8.0 entry is one net statement. The evolve skill states
+  the migration rule as it is (every change to the tables is the next migration), names its
+  references without the template-only test, and its Postgres and SQLite steps open plainly; the
+  build step says a built app cannot find its migrations yet (todo #11, rewritten). README and the
+  generated README name stories, migrations and sign-in; `stories.md` numbers once through, with
+  Cmd+Enter in its story. The file-tools rule moved into the part of CLAUDE.md an app keeps; the
+  Shed's `expected.md`, run 1's record and the skill's evaluations match what shipped;
+  `tsconfig.json` type-checks `scripts/`.
+
 ## [0.8.0] - 2026-10-16
 
-### Changed
-
-- **delta 1.2.0** (`@blueshed/delta` `^1.2.0`): migrations from empty and `owns` as a path, which
-  the steps below build on; link sign-in came in 1.1.0.
-- **Migrations are a history from empty** (`references/sqlite.md`, `migrations.md`,
-  `postgres.md`; todo #12). A resource's tables are made by its migrations, the first
-  `001-order`, which `bunx @blueshed/delta migrations make` writes from the schema; `orderDocs`
-  runs `migrate` in place of `createTables`. A schema change is the next migration (`make` writes
-  the column; data moved is an `up` beside it), and its test builds the database as version one
-  left it from the history's first migration. The Postgres step runs the same history before
-  dzql's compiled SQL, from a `DATABASE_URL` server, else PGlite; it says never to deploy PGlite,
-  and one app to a database.
-
 ### Added
 
-- **Sign-in with no passwords** (`references/auth.md`, todo #14). delta's link sign-in: a link is
-  someone, tapped once, and makes a session cookie the socket is signed in by. A `people`
-  resource with its own history, "Who are you?" in development, anyone's link from the People
-  list, and `bun run link <name>` for the first person. Its tests sign in through a real socket
-  and follow a link in a second window.
-- **Stories** (`stories.md`, todo #15). The template keeps the stories it makes true, and
-  CLAUDE.md and the evolve skill's order of work start from them: a request is written there as
-  stories first, then made true with tests named for them.
-- **The Shed says who may see who has a tool** (`evals/shed/`, todo #16): the list shows a tool
-  out, not who has it; Sam's board does.
+- **Stories** (`stories.md`). An app keeps the stories it was asked to make true, each a sentence
+  someone could call true or false. CLAUDE.md and the evolve skill's order of work start from it:
+  a request is written there as stories first, then made true with tests named for them.
+- **Sign-in with no passwords** (`references/auth.md`). delta's link sign-in: a link is someone,
+  tapped once, and makes a session cookie the socket is signed in by. A `people` resource with its
+  own history, "Who are you?" in development, anyone's link from the People list, and
+  `bun run link <name>` for the first person.
+- **Migrations, a history from empty** (`references/sqlite.md`, `migrations.md`, `postgres.md`). A
+  resource's tables are made by its migrations, from `001-order` on, each written by
+  `bunx @blueshed/delta migrations make` from the schema; a schema change is the next migration,
+  with an `up` beside it for data. The Postgres step runs the same history before dzql's compiled
+  SQL.
+- **The Shed** (`evals/shed/`): a held-out example for the evolve skill. An allotment society's
+  tool library, told as stories in five stages; a fresh session is given only a stage's stories,
+  and `expected.md` holds what each stage is checked against.
+
+### Changed
+
+- **delta 1.2.0, and Postgres is dzql's.** The Postgres step adds `dzql` and imports
+  `dzql/postgres` and `dzql/pglite`: a `DATABASE_URL` server in production, PGlite in tests (never
+  deployed), one app to a database.
+- **The evolve skill is a compass and a file per step**: `SKILL.md` holds the model, the order of
+  work and the invariants; `references/` has `document`, `testing`, `two-documents`, `sqlite`,
+  `migrations`, `postgres`, `auth`, `http` and `build`, each leading with its example.
+  `tests/evolve.ts` applies each to a new app and runs its tests, and fails if a reference is not
+  in its list. A holder is told the fields that changed (`replace /lines/1/item`), and the
+  kitchen's test checks exactly that.
 
 ### Fixed
 
-- **The Postgres step starts on a data folder not made yet** (`references/postgres.md`, todo #17).
-  `orderDocs` opened PGlite in `pg/` without making the data folder first, so a new app's first
-  start failed (ENOENT on mkdir `<dataDir>/pg`); it makes the folder first, as the SQLite step
-  does. Its test starts the server on a folder that is not there yet, where it had passed a
-  folder `mkdtempSync` had made.
-- **The two-documents step's lists stay inside the page** (`references/two-documents.md`). The
-  reset takes a list's padding, so the catalogue's and the order's bullets hung outside it; the
-  step adds styles that draw each list as rows with a rule between them, and the total in bold.
-
-### Added
-
-- **The Shed, a held-out example for the evolve skill** (`evals/shed/`). An allotment society's tool
-  library, told as stories in five stages: one shared document, two on a page, rows shared and
-  undo, a change on a database holding loans, and two servers on dzql with each member seeing
-  their own. It appears in no skill or reference. A fresh session is given only a stage's
-  stories (`stories.md`); `expected.md` holds the behaviour, the structure and what must not be
-  done, for each stage. The cafe stays the skill's worked example.
-
-### Changed
-
-- **delta 1.0, and the Postgres step is dzql's.** `@blueshed/delta` is `^1.0.0`: delta keeps the
-  documents on a JSON file and SQLite, and Postgres moved to dzql, delta's Postgres. The `evolve`
-  skill's Postgres step (`references/postgres.md`) adds `dzql` and imports `dzql/postgres` and
-  `dzql/pglite`; its schema, documents, page and tests are as they were, and `test:evolve` runs it.
-
-### Added
-
-- **The evolve skill's migrations step** (`references/migrations.md`), on delta 0.14.0's
-  `migrate`: when a resource's schema changes on a database that holds data. The schema is the
-  contract; a column it adds needs no migration (`migrateSchema` adds it), and a migration is for
-  what a schema cannot say. Version two of the order counts an item: its migration,
-  `src/resources/order/migrations/001-one-line-per-item.ts`, folds an order's lines of one item
-  into one line with its `quantity`, and `orderDocs` runs `migrate` (with the resource's name as
-  `app`, and its schema) from `fromFolder`, before `createTables` and `migrateSchema`. Its test makes
-  the database as version one left it, starts version two on it, and checks the order came
-  through and that a second start runs nothing (`migrationStatus`); the kitchen's test, on a new
-  folder, is the other side. `test:evolve` runs it, and the skill's evaluations have a scenario
-  for it.
-
-### Changed
-
-- **delta 0.16.0.** The template's documents and tests are unchanged on it (0.16.0 adds only
-  `@blueshed/delta/backend`, for dzql). The evolve skill's SQLite step runs `migrateSchema`
-  after `createTables`, so a column a later version declares is added to a table made before
-  it, and says what a holder is told since delta 0.13.0: a row that stays is told the fields
-  that changed (`replace /lines/1/item`), not the whole row, and the kitchen's test now checks
-  exactly that with `onOps` (on SQLite, and on PGlite in the Postgres step). Its testing step says
-  that delta's case suite in `@blueshed/delta/testing` (0.15.0) is for a backend of one's own,
-  dzql for Postgres, not for an app. The Postgres step is as it was: it moves to dzql in a later
-  step of the Postgres split.
-
-- **The evolve skill is cut to a compass.** `SKILL.md` holds the mental model, the order of work,
-  the invariants and where the types are; `references.md` is now a file per step under
-  `references/` (`document`, `testing`, `two-documents`, `sqlite`, `postgres`, `http`, `build`),
-  each leading with its example and ending with its gotchas, one line each. `tests/evolve.ts`
-  applies each file in place of each section, and fails if a reference file is not in its list.
-  The order page's test no longer repeats the refused change (the notes test has it), and the
-  closing line about eta leaves the skill.
-
-### Fixed
-
-- **A slow browser start no longer fails the page tests after it** (todo #13). On CI's Chrome the
-  first navigation could take a page test past its 30 s, and the tests after it failed on "a
-  navigation is already pending" (the delta 1.0 PR, 15 October; GitHub mailed it before the re-run
-  passed). `browser()` in `tests/browser.ts` now:
-  - makes the first navigation itself, in a `beforeAll` with two minutes of its own, so a cold
-    start is not charged to a test;
-  - takes navigations one at a time, each after the last has settled, so a test cut off while its
-    page loads leaves the next test a page to wait for.
-
-  No test file changes, and nor does any `evolve` reference. Proven with a scratch test whose server
-  holds the first page past a test's time: without the change it fails as CI did, with it it passes;
-  and, holding a test's page past its time, the test after it passes with the change and fails on
-  the pending navigation without it.
+- **The Postgres step starts on a data folder not made yet**: it makes the folder before PGlite
+  opens `pg/` in it.
+- **The two-documents step's lists stay inside the page**: each list is drawn as rows, the total in
+  bold.
+- **A slow browser start no longer fails the page tests after it** (`tests/browser.ts`): the first
+  navigation has two minutes of its own, and navigations go one at a time.
 
 ## [0.7.0] - 2026-10-12
 

@@ -45,4 +45,5 @@ test("the build serves the page, without hot reload", async () => {
 ```
 
 - `--production` matters: without it the built server runs with hot reload on.
+- **Not with migrations yet**: a resource loads its history from the `migrations` folder beside its source (`import.meta.dir`), and in a bundle that is `dist/`, where none are. An app with a history (sqlite.md on) runs from source, `bun run start` (todo #11).
 - `dist/` is git-ignored. In `.railway/railway.ts`: `build: "bun install && bun run build"`, `start: "bun run serve:dist"`.
