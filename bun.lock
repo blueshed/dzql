@@ -27,18 +27,18 @@
         "pg": "^8.22.0",
       },
       "devDependencies": {
-        "@blueshed/delta": "^1.1.0",
+        "@blueshed/delta": "^1.2.0",
         "@blueshed/railroad": "^0.16.0",
         "@types/bun": "latest",
         "@types/pg": "^8.20.0",
       },
       "peerDependencies": {
-        "@blueshed/delta": "^1.1.0",
+        "@blueshed/delta": "^1.2.0",
       },
     },
   },
   "packages": {
-    "@blueshed/delta": ["@blueshed/delta@1.1.0", "", { "peerDependencies": { "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0 || ^0.16.0" }, "optionalPeers": ["@blueshed/railroad"], "bin": { "delta": "cli.ts" } }, "sha512-DQNCY2yc7mzdQVMzMVlsQ9vkPgC4j0SnsEbX3QElngFo14tXqiTkYtqxOfORgaeMZAm4CTplGeCx2FPe3f9bsQ=="],
+    "@blueshed/delta": ["@blueshed/delta@1.2.0", "", { "peerDependencies": { "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0 || ^0.16.0" }, "optionalPeers": ["@blueshed/railroad"], "bin": { "delta": "cli.ts" } }, "sha512-H7ewuSP0OragV1R6gu/WydXGUa9A9/RhwiEH1dgmOLM9Qf/UAKw0NEyzwg8Dl3TQX2jcdjSo6SVVyWVM67lI+w=="],
 
     "@blueshed/railroad": ["@blueshed/railroad@0.16.2", "", {}, "sha512-dYInSLGVTocDpk9vFOmvBQe2juCJHU0gy+8J8W25lFmxUbPt7BRH9nLJbjzuLXGGrVwZOAXGrVUTzsB/qDCgmA=="],
 

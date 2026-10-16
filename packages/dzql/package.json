@@ -49,10 +49,10 @@
     "@blueshed/railroad": "^0.16.0",
     "@types/bun": "latest",
     "@types/pg": "^8.20.0",
-    "@blueshed/delta": "^1.1.0"
+    "@blueshed/delta": "^1.2.0"
   },
   "peerDependencies": {
-    "@blueshed/delta": "^1.1.0"
+    "@blueshed/delta": "^1.2.0"
   },
   "engines": {
     "bun": ">=1.0.0"
