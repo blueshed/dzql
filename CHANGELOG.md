@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **The Shed, a held-out example for the evolve skill** (`evals/shed/`). An allotment society's tool
+  library, told as stories in five stages: one shared document, two on a page, rows shared and
+  undo, a change on a database holding loans, and two servers on dzql with each member seeing
+  their own. It appears in no skill or reference. A fresh session is given only a stage's
+  stories (`stories.md`); `expected.md` holds the behaviour, the structure and what must not be
+  done, for each stage. The cafe stays the skill's worked example.
+
 ### Changed
 
 - **delta 1.0, and the Postgres step is dzql's.** `@blueshed/delta` is `^1.0.0`: delta keeps the

@@ -23,6 +23,9 @@ export const NAMED = [
   "bun.lock", // the root package's name
 ];
 
+// What is about the template, not the app: deleted from a new app (a folder whole)
+export const DELETED = ["todo.jsonl", "CHANGELOG.md", "logo.png", "create", "tests/setup.test.ts", "tests/evolve.ts", "evals"];
+
 // The skills a new app starts with, from the packages that ship them
 const SKILLS = [
   ["@blueshed/railroad", "railroad"],
@@ -63,7 +66,7 @@ export async function setup(root: string) {
   const name = root.split("/").pop() || "my-app";
   console.log(`Setting up ${name}...`);
 
-  for (const path of ["todo.jsonl", "CHANGELOG.md", "logo.png", "create", "tests/setup.test.ts", "tests/evolve.ts", "evals"]) {
+  for (const path of DELETED) {
     rmSync(join(root, path), { recursive: true, force: true });
   }
   // The template's version goes in the changelog, so the app knows which of the template's changes

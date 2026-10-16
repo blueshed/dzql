@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { NAMED, setup } from "../create/setup";
+import { DELETED, NAMED, setup } from "../create/setup";
 
 // A scratch "template" folder named like an app, with just enough of the template in it
 async function scratchTemplate(files: Record<string, string>) {
@@ -115,11 +115,12 @@ test("every file setup renames exists, and the template's name is nowhere else",
   const root = `${import.meta.dir}/..`;
   for (const path of NAMED) expect(await Bun.file(`${root}/${path}`).exists()).toBe(true);
 
-  // Files that may say "paintbrush": the ones setup renames, replaces or deletes, and package.json (bun create renames it)
-  const allowed = new Set([...NAMED, "README.md", "CHANGELOG.md", "todo.jsonl", "package.json", "create/setup.ts", "tests/setup.test.ts"]);
+  // Files that may say "paintbrush": the ones setup renames, replaces or deletes (a deleted folder whole), and package.json (bun create renames it)
+  const allowed = new Set([...NAMED, "README.md", "package.json"]);
+  const deleted = (path: string) => DELETED.some((d) => path === d || path.startsWith(`${d}/`));
   const listed = Bun.spawnSync(["git", "ls-files", "--cached", "--others", "--exclude-standard"], { cwd: root }).stdout.toString();
   const strays: string[] = [];
-  for (const path of listed.split("\n").filter((p) => p && !p.endsWith(".png") && !allowed.has(p))) {
+  for (const path of listed.split("\n").filter((p) => p && !p.endsWith(".png") && !allowed.has(p) && !deleted(p))) {
     if (!existsSync(`${root}/${path}`)) continue; // listed, then deleted
     if (/paintbrush/i.test(await Bun.file(`${root}/${path}`).text())) strays.push(path);
   }
