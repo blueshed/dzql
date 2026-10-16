@@ -1,25 +1,25 @@
 /**
- * Auth — who is at the page. Someone registers with their name, email and a password, or signs in
- * with the email and password; the server answers a token the page keeps, and signs in again with
- * on every connect, so a reload or a reconnect is still them. dzql's `auth-jwt`: the people and
- * their hashed passwords are a table of its own (`users`), in no document.
+ * Auth — who is at the page, with no passwords: link sign-in (`@blueshed/delta/auth-link`). A link
+ * is someone; its tap makes a session cookie, and the socket is signed in by it. Anyone signed in
+ * sends anyone their link; the first person's comes from `bun run link <name>`. In development the
+ * page asks "Who are you?" and you pick; production answers no such thing.
  *
- * The types are shared: the client imports them as types only (`import type`).
+ * The links and sessions are kept in Postgres (`dzql/auth-link`), in tables of their own.
  */
 import type { Pool } from "pg";
 import type { WsServer } from "@blueshed/delta/server";
 import { wireAuth } from "@blueshed/delta/auth";
-import { applyAuthJwtSchema, jwtAuth, type User } from "dzql/auth-jwt";
+import { linkAuth } from "@blueshed/delta/auth-link";
+import { postgresLinkStore } from "dzql/auth-link";
+import type { Person } from "../people/people-api";
 
-/** Someone signed in: their id, name and email. */
-export type Me = User & { id: number; name: string; email: string };
-/** What registering or signing in answers: who you are, and the token to sign in with next time. */
-export type SignedIn = Me & { token: string };
-
-/** Register, sign in, sign in again and sign out, on the socket every document rides. */
-export async function signInOn(ws: WsServer, pool: Pool, secret: string) {
-  await applyAuthJwtSchema(pool); // the users table, and register and login
-  const auth = jwtAuth({ pool, secret });
-  wireAuth(ws, auth);
+/** Sign in by link on the socket every document rides: who someone is, from `people`. */
+export async function signInOn(ws: WsServer, pool: Pool) {
+  const auth = linkAuth<Person>({
+    store: await postgresLinkStore(pool),
+    personOf: async (id) => (await pool.query("SELECT id::int AS id, name FROM people WHERE id = $1", [id])).rows[0] ?? null,
+    people: async () => (await pool.query("SELECT id::int AS id, name FROM people ORDER BY name, id")).rows,
+  });
+  wireAuth(ws, auth); // me, link
   return auth;
 }

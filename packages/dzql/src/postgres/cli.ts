@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
- * dzql's Postgres commands, as delta's CLI had them: `dzql sql`, `dzql init`
- * and `dzql migrate` (a postgres:// URL or a PGlite directory). Run through
- * `dzql <command>` (src/cli/index.ts hands these three here).
+ * dzql's Postgres commands, as delta's CLI had them: `dzql sql`, `dzql init`,
+ * `dzql migrate` (a postgres:// URL or a PGlite directory), and `dzql link`. Run through
+ * `dzql <command>` (src/cli/index.ts hands these four here).
  */
 import { parseArgs } from "node:util";
 import { resolve, basename, join, dirname } from "node:path";
@@ -26,6 +26,8 @@ const USAGE =
     `  dzql init <dir> [--with-auth] [--upgrade]\n` +
     `  dzql migrate <database> [--app <name>] [--dir <migrations>] [--status] [--json]\n` +
     `        <database>: a PGlite directory or a postgres:// URL; --dir defaults to ./migrations\n` +
+    `  dzql link <database> <person> [--origin <url>] [--opens <path>] [--json]\n` +
+    `        a link to sign in as someone (link sign-in): the first person's, on the server\n` +
     `\n` +
     `Exit codes: 0 done, 1 an error, 2 a bad argument.\n`;
 
@@ -300,6 +302,41 @@ async function cmdMigrate(target: string | undefined, values: Record<string, unk
 }
 
 // ---------------------------------------------------------------------------
+// dzql link
+// ---------------------------------------------------------------------------
+
+/**
+ * A link to sign in as `person` (link sign-in, `dzql/auth-link`), made in the app's Postgres: how
+ * the first person signs in, before anyone can send them one. The site is --origin, else ORIGIN,
+ * else Railway's domain. The database as `migrate` takes it. A SQLite file is delta's (`delta link`).
+ */
+async function cmdLink(target: string | undefined, person: string | undefined, values: Record<string, unknown>) {
+  if (!target || !person) usageError("link takes a <database> and a <person>: dzql link postgres://… 1", true);
+  if (!/^\d+$/.test(person)) usageError(`<person> is a person's id, a number: ${person}`);
+  const isUrl = /^postgres(ql)?:\/\//.test(target);
+  const path = resolve(process.cwd(), target);
+  if (!isUrl && (!existsSync(path) || !statSync(path).isDirectory())) usageError(`no PGlite database at ${target} (a SQLite file is delta's: bunx @blueshed/delta link)`);
+  const { makeLink, siteOrigin } = await import("@blueshed/delta/auth-link");
+  let origin: string;
+  try { origin = (values.origin as string | undefined) ?? siteOrigin(); }
+  catch (err) { usageError(`${(err as Error).message}, or pass --origin`); }
+  const { postgresLinkStore } = await import("./auth-link");
+  let pool: any;
+  if (isUrl) {
+    const { Pool } = await import("pg");
+    pool = new Pool({ connectionString: target });
+  } else {
+    const { openPglite } = await import("./pglite");
+    pool = await openPglite(path);
+  }
+  try {
+    const made = await makeLink(await postgresLinkStore(pool), Number(person), { origin, opens: values.opens as string | undefined });
+    if (json) return print(made);
+    process.stdout.write(`${made.url}\n(used once, until ${made.expires})\n`);
+  } finally { await pool.end(); }
+}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -318,6 +355,8 @@ export async function main(argv: string[]) {
       dir: { type: "string" },
       app: { type: "string" },
       status: { type: "boolean", default: false },
+      origin: { type: "string" },
+      opens: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
     allowPositionals: true,
@@ -327,11 +366,12 @@ export async function main(argv: string[]) {
   const { values, positionals } = parsed;
   json = !!values.json;
   if (values.help) { process.stdout.write(USAGE); return; }
-  const [cmd, arg] = positionals;
+  const [cmd, arg, arg2] = positionals;
   switch (cmd) {
     case "sql":     return cmdSql(arg, values);
     case "init":    return cmdInit(arg, values);
     case "migrate": return cmdMigrate(arg, values);
+    case "link":    return cmdLink(arg, arg2, values);
     default:        usageError(cmd ? `no command ${cmd}` : "a command, please", true);
   }
 }

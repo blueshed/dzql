@@ -23,6 +23,49 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **Link sign-in on Postgres: `dzql/auth-link`.** delta 1.1.0's `auth-link` signs people in with no
+  passwords: a link is someone, its tap a session cookie, and the socket is signed in by it.
+  - `postgresLinkStore(pool)` keeps its links and sessions in Postgres, in `_auth_links` and
+    `_auth_sessions` (made if not there): hashes, the person's id, times. A link is used in one
+    statement, so two taps at once make one session, on one server or several.
+  - It answers delta's `linkStoreCases`, on PGlite and on a Postgres server
+    (`tests/delta-pg/auth-link.test.ts`).
+  - `dzql link <database> <person> [--origin] [--opens]` prints the first person's link (a
+    `postgres://` URL or a PGlite folder; a SQLite file is `delta link`'s).
+  - dzql now needs delta ^1.1.0.
+
+### Fixed
+
+- **Two writes to one row at once: the second no longer finds it "not there".** A write locks the
+  row first (`_delta_row_lock`, `SELECT … FOR UPDATE`). One that waited on another's lock woke to
+  find the row stored again: a non-temporal row deleted and inserted, a temporal one's version
+  closed for a new one. So Postgres skipped it, and the second write answered 404, "row not found".
+  CI caught it once (review-findings, "Finding #1").
+  - Now a lock that finds no row asks afresh whether one stands. Each statement sees what has
+    committed since, so a standing row is locked in its turn, and only a row really gone is not
+    there.
+  - `tests/delta-pg/row-race.test.ts` makes the race certain on the Postgres server, for both kinds
+    of row: one write holds the lock, the other waits, the first commits.
+
+### Changed
+
+- **`bun create dzql` signs people in by link**, in place of `auth-jwt`'s email and password (Peter,
+  16 October: "it would make development a pleasure and not a desperate memory of email and
+  password").
+  - The app has a `people` collection, and `people:` is everyone, for everyone signed in: anyone adds
+    someone new, and makes anyone's link to send them.
+  - `bun run link <name>` gives the first person their link, making them if they are new: on the
+    developer's machine, or on the server.
+  - In development the page asks "Who are you?" and lists everyone, so one click is anyone and two
+    windows are two people. Production lists nobody.
+  - The app's tables and documents are made in one place, `src/db.ts`: one schema, one
+    `generateSql`.
+  - Its tests pick who they are in two browsers. Then: post, see it arrive, edit, delete, the other
+    person unable to change it; and a link made for someone new in one window signs them in in the
+    other, keeps them through a reload, and is used once.
+
 ## [0.11.0] - 2026-10-16
 
 ### Breaking

@@ -44,8 +44,16 @@ RETURNS JSONB AS $$
 DECLARE
   v_row JSONB;
 BEGIN
-${dispatch(schema, (_, t) => `SELECT to_jsonb(t.*) INTO v_row FROM ${q(t.name)} t WHERE t.id = p_id${t.temporal ? " AND valid_to IS NULL" : ""} FOR UPDATE;
-      RETURN v_row;`, noCollection("p_coll"))}
+${dispatch(schema, (_, t) => {
+    const standing = `t.id = p_id${t.temporal ? " AND t.valid_to IS NULL" : ""}`;
+    // A write that waited on another's lock finds the row it waited on stored again (a new version,
+    // or put again): the row it locked is not the standing one. Asked afresh (each statement sees what
+    // has committed since), a standing row is locked in its turn; none standing is not there.
+    return `LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM ${q(t.name)} t WHERE ${standing} FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM ${q(t.name)} t WHERE ${standing}) THEN RETURN v_row; END IF;
+      END LOOP;`;
+  }, noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql;`;
 

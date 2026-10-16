@@ -5,19 +5,25 @@
  */
 import { connectWs, WS } from "@blueshed/delta/client";
 import { provide, routes } from "@blueshed/railroad";
-import { signInAgain } from "./resources/auth/auth";
+import { takeLink, whoAmI } from "./resources/auth/auth";
 import { AuthView } from "./resources/auth/auth-view";
+import { PeopleView } from "./resources/people/people-view";
 import { PostsView } from "./resources/posts/posts-view";
+import { toast } from "./resources/toast";
 
-// One socket for every document the page opens; it reconnects, and reopens them, by itself,
-// signed in again first as whoever this browser signed in as
-provide(WS, connectWs("/ws", { onConnect: signInAgain }));
+// Opened by a link (#/in/<token>)? Its tap signs in, before the socket connects with the cookie it set
+const taken = await takeLink();
+if (taken && "error" in taken) toast(taken.error, "alert");
+
+// One socket for every document the page opens; it reconnects, and reopens them, by itself
+provide(WS, connectWs("/ws", { onConnect: whoAmI }));
 
 routes(document.getElementById("app")!, {
   "/": () => (
     <>
       <AuthView />
       <PostsView />
+      <PeopleView />
     </>
   ),
   "*": () => (

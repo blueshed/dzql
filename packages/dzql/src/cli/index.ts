@@ -15,8 +15,8 @@ const VERSION = packageJson.version;
 
 const args = process.argv.slice(2);
 
-// delta's Postgres commands (dzql is delta's Postgres step): sql, init, migrate
-if (["sql", "init", "migrate"].includes(args[0] ?? "")) {
+// delta's Postgres commands (dzql is delta's Postgres step): sql, init, migrate, link
+if (["sql", "init", "migrate", "link"].includes(args[0] ?? "")) {
   const { main } = await import("../postgres/cli.ts");
   await main(args);
   process.exit(0);
