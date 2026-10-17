@@ -36,6 +36,11 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **One front door, saying what it offers** (17 October, Peter: start on one front door, remove
+  nothing without discussion). `bun create blueshed my-app` gives an app whose README is the offer and
+  shows it in the app's own code, with the model's page and the modelling skill that only
+  `bun create dzql` had. Nothing was removed; create-blueshed's test makes such an app and starts
+  its model page.
 - **An app's documents are a schema and a `defineDoc` from its first document** (17 October,
   Peter: go with the judgement that the documents you model are the app's documents from the first
   story). paintbrush's `message` and the evolve skill's notes and order are on delta's JSON file

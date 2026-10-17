@@ -1,5 +1,8 @@
 # create-blueshed
 
+**You write your stories, a schema and documents. You get a live page, and proof that every story
+holds: on a JSON file today, on SQLite or Postgres later.**
+
 Start a Bun website from [paintbrush](../paintbrush): routes and resources, [railroad](../railroad)
 for the page, [delta](../delta) for the documents, Railway for the deploy.
 

@@ -90,12 +90,13 @@ export async function setup(root: string) {
     await Bun.write(file, text);
   }
 
-  // The skills the app's packages ship (railroad's, delta's), by delta's install-skills. railroad's
-  // bun-route is left out: it scaffolds a bare project with `bun init`, and this app grows through its
-  // own evolve skill instead.
+  // The skills the app's packages ship (railroad's, delta's, and dzql's modelling, which package.json's
+  // claudeSkills names), by delta's install-skills. railroad's bun-route is left out: it scaffolds a bare
+  // project with `bun init`, and this app grows through its own evolve skill instead; so is dzql's
+  // eta-app, which builds a page the server draws.
   const cli = join(root, "node_modules/@blueshed/delta/cli.ts");
-  const installed = existsSync(cli) && Bun.spawnSync([process.execPath, cli, "install-skills", "--skip", "bun-route"], { cwd: root, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
-  if (!installed) console.warn("  the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route`");
+  const installed = existsSync(cli) && Bun.spawnSync([process.execPath, cli, "install-skills", "--skip", "bun-route,eta-app"], { cwd: root, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
+  if (!installed) console.warn("  the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route,eta-app`");
 
   await commitEverything(root);
 
@@ -106,6 +107,7 @@ export async function setup(root: string) {
   bun run stop       # stop a server started in the background
   bun test           # tests, held at 100% coverage
   bun run typecheck  # bun check: TypeScript 7, built into Bun
+  bun run model      # http://localhost:3001: tell Claude your app's stories
 
   Read CLAUDE.md first: it says what is here. The evolve skill is how the app grows.
 `);
@@ -122,26 +124,71 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Started from [paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)${from ? ` ${from}. To bring this app up to date, read [its changelog](https://github.com/blueshed/dzql/blob/main/packages/paintbrush/CHANGELOG.md) from that version on` : ""}.
 `;
 
-const readme = (name: string) => `# ${name}
+export const readme = (name: string) => `# ${name}
 
-A Bun website where people share documents: open one and every change anyone makes
-reaches you as it happens. railroad draws the page, delta keeps the documents, and
-Railway deploys it. Started from [paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush).
+**You write your stories, a schema and documents. You get a live page, and proof that every
+story holds: on a JSON file today, on SQLite or Postgres later.**
 
-Open it in two windows: a save in one shows in the other.
+## What you write
+
+A story, in \`stories.ts\`: a sentence someone using the app could call true or false.
+
+\`\`\`ts
+// stories.ts
+  follows: story("Anyone who opens the page sees the message, and a change made anywhere else shows in it, with nothing to reload."),
+\`\`\`
+
+A schema and a document, in \`src/resources/message/message-api.ts\`: the rows, and what someone
+has in front of them.
+
+\`\`\`ts
+// src/resources/message/message-api.ts
+export const schema = defineSchema({
+  messages: { columns: { text: { type: "text", default: "Hello" } }, temporal: false },
+});
+export const docs = [defineDoc("message:", { root: "messages", include: [], implied: true })];
+\`\`\`
+
+A test named from the story, in \`tests/message.test.ts\`: its proof.
+
+\`\`\`ts
+// tests/message.test.ts
+test(\`\${stories.follows.name} -- the message is in the box, and a change made anywhere else shows in it\`, async () => {
+\`\`\`
+
+## What you get
 
 \`\`\`sh
-bun dev            # http://localhost:3000, hot reload
+bun dev            # the live page, http://localhost:3000: open it in two windows, a save in one shows in the other
+bun test           # the proof: every story is told by a test named from it, and coverage is 100%
+\`\`\`
+
+\`tests/stories.test.ts\` fails a story no test tells. The message keeps its rows in a JSON file;
+the same \`defineSchema\` and \`defineDoc\` run on SQLite and Postgres, so moving changes the
+import and carries the rows, and the page stays the same (the \`evolve\` skill).
+
+## Your app
+
+The message is there to show the pattern. Your app starts with its own stories:
+
+\`\`\`sh
+bun run model      # the model's page, http://localhost:3001: tell Claude the stories (the modelling skill)
+\`\`\`
+
+Each story lands on the model's page as it is told, with the documents it needs and what they
+hold. When every story reads true, Claude writes them into \`stories.ts\` and builds them, the
+least that makes the next one pass, growing the app with the \`evolve\` skill.
+
+## Working on it
+
+\`\`\`sh
 bun run start      # the same source in production: nothing to build
-bun test           # tests, held at 100% coverage
 bun run typecheck
 \`\`\`
 
-Ask for something, and it is written into \`stories.ts\` as stories, then made true, with
-tests named for them. \`CLAUDE.md\` says what is here and the rules. The \`evolve\` skill is
-how the app grows: a new document, two on one page, SQLite and then Postgres when they earn
-their place, migrations, sign-in by link, HTTP routes for what isn't communication, and a
-build.
+\`CLAUDE.md\` says what is here and the rules. The \`evolve\` skill is how the app grows: a new
+document, two on one page, SQLite and then Postgres when they earn their place, migrations,
+sign-in by link, HTTP routes for what isn't communication, and a build.
 
 \`CHANGELOG.md\` and \`todo.jsonl\` are a pair, the project's memory between sessions:
 the changelog is where it has been, the ledger what is open now. When work lands it

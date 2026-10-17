@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **A new app opens with what it offers, and with the model's page.** Its README says it in one
+  sentence (you write your stories, a schema and documents; you get a live page and proof that every
+  story holds, on a JSON file today and SQLite or Postgres later) and quotes the three things you
+  write from the app's own files, which a test holds it to. `bun run model` and `bun run cli:model`
+  start dzql's model page beside the app, as `bun create dzql`'s do, and setup installs dzql's
+  `modelling` skill (`claudeSkills`), leaving out `eta-app`.
+
 - **Breaking: every document is a schema and a `defineDoc` from the start, kept in a JSON file**
   (`@blueshed/delta/json`). `message` is `message:1`, one row of `messages`: it opens as Hello,
   the first save makes the row, and a save is `replace /messages/1/text`. The schema refuses what it

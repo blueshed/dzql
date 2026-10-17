@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DELETED, NAMED, setup } from "../create/setup";
+import { DELETED, NAMED, readme, setup } from "../create/setup";
 
 // A scratch "template" folder named like an app, with just enough of the template in it
 async function scratchTemplate(files: Record<string, string>) {
@@ -106,7 +106,7 @@ test("setup says so when the skills are not installed (no delta yet), and skips 
   console.warn = (...args) => void warnings.push(args.join(" "));
   try {
     await setup(root);
-    expect(warnings.join("\n")).toContain("the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route`");
+    expect(warnings.join("\n")).toContain("the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route,eta-app`");
     expect(existsSync(join(root, ".claude/skills"))).toBe(false);
   } finally {
     console.warn = warn;
@@ -191,5 +191,17 @@ test("setup waits out a git lock, and commits once it clears", async () => {
     expect(git(root, "status", "--porcelain")).toBe("");
   } finally {
     done();
+  }
+});
+
+// The README a new app opens with shows what you write: each of its TypeScript blocks names a file on
+// its first line, and every line after it is a line of that file, so the README cannot drift from the code
+test("the new app's README quotes its own files", async () => {
+  const blocks = [...readme("my-app").matchAll(/^```ts\n([\s\S]*?)^```$/gm)].map(([, body]) => body!.trimEnd().split("\n"));
+  expect(blocks.length).toBe(3);
+  for (const [first, ...lines] of blocks) {
+    const path = first!.match(/^\/\/ ([\w./-]+)$/)![1]!;
+    const file = (await Bun.file(join(import.meta.dir, "..", path)).text()).split("\n");
+    for (const line of lines) expect(file).toContain(line);
   }
 });

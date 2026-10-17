@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -29,3 +29,31 @@ test("without --local the app's packages are npm's, and a name already there is 
   expect(again.exitCode).toBe(1);
   expect(again.stderr.toString()).toContain('"plain" already exists');
 });
+
+// The front door: an app as bun create makes one, its packages the workspace's own (the root's
+// node_modules, linked in, as create-dzql's test does), then paintbrush's setup
+test("bun create blueshed gives an app that says what it offers, with the model's page and its skill", async () => {
+  const made = Bun.spawnSync([process.execPath, cli, "door", "--no-install", "--no-git"], { cwd: parent, stdout: "pipe", stderr: "pipe" });
+  expect(made.exitCode).toBe(0);
+  const app = join(parent, "door");
+  symlinkSync(join(packages, "../node_modules"), join(app, "node_modules"));
+  const set = Bun.spawnSync([process.execPath, "create/setup.ts"], { cwd: app, stdout: "pipe", stderr: "pipe" });
+  expect(set.exitCode).toBe(0);
+
+  expect(await Bun.file(join(app, "README.md")).text()).toContain("**You write your stories, a schema and documents. You get a live page, and proof that every\nstory holds");
+  for (const skill of ["evolve", "modelling", "railroad", "delta-doc"]) expect(existsSync(join(app, ".claude/skills", skill, "SKILL.md"))).toBe(true);
+  for (const skill of ["eta-app", "bun-route"]) expect(existsSync(join(app, ".claude/skills", skill))).toBe(false);
+
+  const proc = Bun.spawn(["bun", "run", "model"], { cwd: app, stdout: "pipe", stderr: "inherit", env: { ...process.env, MODEL_PORT: "0" } });
+  try {
+    let out = "";
+    for await (const chunk of proc.stdout) {
+      out += new TextDecoder().decode(chunk);
+      if (/Listening on \S+/.test(out)) break;
+    }
+    expect((await fetch(out.match(/Listening on (\S+)/)![1]!)).status).toBe(200);
+  } finally {
+    proc.kill();
+    await proc.exited;
+  }
+}, 60_000);
