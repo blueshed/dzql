@@ -34,6 +34,16 @@ what is open across them. Newest first.
   room "3" was told an empty room (dzql/rendering). Each has a test that failed before. railroad's
   `waitIn` no longer waits forever under `setSystemTime`.
 
+### Added
+
+- **dzql says three things, each standing alone** (17 October, Peter: "install dzql and use
+  rendering", "install dzql and use modelling for json, sqlite or postgres", "install dzql and we
+  can compile a postgres server"). dzql's README opens with each: a file, the commands, and a test
+  that runs them as written. Modelling now ends in delta's definitions (`dzql model export`,
+  `dzql/modelling/definitions`), which delta's JSON file, SQLite and dzql's Postgres all take, so it
+  no longer needs a page the server draws; `dzql serve` and `dzql model` start the page and the
+  model's page from any project. Detail in packages/dzql/CHANGELOG.md.
+
 ### Changed
 
 - **One front door, saying what it offers** (17 October, Peter: start on one front door, remove

@@ -34,7 +34,7 @@
     "test": "bun run test:setup && bun --config=tests/bunfig.toml test tests/; status=$?; bun run test:teardown; exit $status",
     "test:setup": "docker compose down -v && docker compose up -d --wait",
     "test:teardown": "docker compose down -v",
-    "test:eta": "bun test --parallel src/rendering src/modelling examples/chat examples/leave examples/modeling examples/starter examples/ticker examples/wedding",
+    "test:eta": "bun test --parallel src/rendering src/modelling readme examples/chat examples/leave examples/modeling examples/starter examples/ticker examples/wedding",
     "bench": "bun run bench/run.ts",
     "dev": "bun --watch src/rendering/start.ts",
     "dev:wedding": "ETA_EXAMPLE=wedding PORT=3001 bun --watch src/rendering/start.ts",
@@ -51,7 +51,7 @@
     "test:fast:pg": "bun check && bun --config=tests/fast.bunfig.toml test tests/compile/",
     "test:fast:eta": "bun check && bun scripts/fast-eta.ts",
     "test:slow": "bun run test && bun run test:eta && bun run stories:all && bun run costs --check",
-    "test:eta:ci": "bun test --parallel=2 --timeout=30000 src/rendering src/modelling examples/chat examples/leave examples/modeling examples/starter examples/ticker examples/wedding",
+    "test:eta:ci": "bun test --parallel=2 --timeout=30000 src/rendering src/modelling readme examples/chat examples/leave examples/modeling examples/starter examples/ticker examples/wedding",
     "start": "NODE_ENV=production bun src/rendering/start.ts",
     "stop": "delta stop"
   },

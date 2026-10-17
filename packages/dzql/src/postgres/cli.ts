@@ -22,6 +22,10 @@ const PKG_VERSION = (() => {
 
 const USAGE =
     `Usage:\n` +
+    `  dzql serve [<dir>]                       the app in <dir> (default ./src), its page drawn by the server\n` +
+    `  dzql model                               the model's page (MODEL_PORT, default 3001), kept in model.sqlite\n` +
+    `  dzql model <login|story|document|...>    the model's CLI, against that page\n` +
+    `  dzql model export [<file>] [--out <f>]   the model as delta's definitions (defineSchema, defineDoc)\n` +
     `  dzql sql <module> [--out <file>] [--force] [--schema-export <name>] [--docs-export <name>]\n` +
     `  dzql init <dir> [--with-auth] [--upgrade]\n` +
     `  dzql migrate <database> [--app <name>] [--dir <migrations>] [--status] [--json]\n` +

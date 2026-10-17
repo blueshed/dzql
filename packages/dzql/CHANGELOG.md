@@ -51,6 +51,24 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **Three things to say, each standing alone, at the top of the README** (17 October, Peter: "I
+  should be able to say install dzql and use rendering... install dzql and use modelling for json,
+  sqlite or postgres... install dzql and we can compile a postgres server"). Each is a file and the
+  commands that run it, and `readme/readme.test.ts` runs them as written in an app of its own
+  (`readme/browser.test.ts` types into the rendering page in a real browser): a page the server
+  draws over one message kept in delta's JSON file (`readme/rendering/`); the model told on the
+  model's page and exported (`readme/model.ts`); and the same definitions compiled to Postgres on
+  PGlite (`readme/server.ts`).
+- **The model as delta's definitions** (`dzql/modelling/definitions`): `definitionsOf(model)` makes
+  the model's documents into a `defineSchema` of their entities and a `defineDoc` each, and
+  `sourceOf(model)` writes them as a file. The same definitions open, take a write and read back
+  alike on delta's JSON file, SQLite and dzql's compiled Postgres (`definitions.test.ts`). A
+  document that is each person's own is marked in a comment: whose it is (`owns`) is not in the model.
+- **`dzql serve [<dir>]`**, the app in a folder with its page drawn by the server; **`dzql model`**,
+  the model's page for any project (port 3001 or `MODEL_PORT`, kept in `model.sqlite`, empty and
+  named for the project, not seeded with leave's); **`dzql model <verb>`**, its CLI; and
+  **`dzql model export [--out <file>]`**, the definitions above from the model the page keeps.
+
 - **delta's unique constraints on Postgres**: `generateSql` (`tableSql`) makes each of a table's
   `unique` as a unique index, among a temporal table's current rows; a row that would share one is
   23505, 409, as on SQLite. `migrate` makes `addUnique` and drops `dropUnique`. An `up` is given

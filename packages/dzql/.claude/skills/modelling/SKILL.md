@@ -1,6 +1,6 @@
 ---
 name: modelling
-description: Use only while someone is telling you the stories of an app to be built on eta, there to answer -- to write each story down on the model's page as it is told, describe the documents it needs (root, what each holds, who holds it), and read the gaps back, before any of the app is built. Then the eta-app skill builds from the model. reference.md has the verbs, the gaps and the move to an app, with a contents table.
+description: Use only while someone is telling you the stories of an app to be built, there to answer -- to write each story down on the model's page as it is told, describe the documents it needs (root, what each holds, who holds it), and read the gaps back, before any of the app is built. Then `dzql model export` writes its schema and documents for any store (a JSON file, SQLite, Postgres), and the app is built from the model. reference.md has the verbs, the gaps and the move to an app, with a contents table.
 metadata:
   version: 0.53.0
 ---
@@ -27,4 +27,6 @@ and go on.
 5. **Read the page back** (`show` prints it). Each gap is a question for the teller, never something to fix quietly.
    → *The gaps*
 6. **Build nothing yet.** The model is done enough when the teller reads the page and calls each
-   story true. Then load the **eta-app** skill. → *From the model to the app*
+   story true. Then `dzql model export --out model.ts` writes its schema and documents as delta's
+   definitions, which every store takes, and the app is built from them: the **eta-app** skill for
+   a page the server draws. → *From the model to the app*

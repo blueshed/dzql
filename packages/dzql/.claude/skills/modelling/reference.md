@@ -15,11 +15,12 @@ work in.
 
 ## Where it runs
 
-| | In a project (`bun create dzql`) | In dzql itself (`packages/dzql`) |
-|---|---|---|
-| The page | `bun run model`, port 3001 | `bun run dev:modeling`, port 3005 |
-| A verb | `bun run cli:model <verb>` | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
-| Sign in | `login claude@modeling.example claude-password` (or `.env`'s `MODEL_PASSWORD`) | `login claude@modeling.example claude-password` |
+| | Wherever dzql is installed | In a project (`bun create dzql`) | In dzql itself (`packages/dzql`) |
+|---|---|---|---|
+| The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), kept in `model.sqlite`, named for the project | `bun run model`, port 3001 | `bun run dev:modeling`, port 3005 |
+| A verb | `bunx dzql model <verb>` | `bun run cli:model <verb>` | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
+| Sign in | `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) | `login claude@modeling.example claude-password` (or `.env`'s `MODEL_PASSWORD`) | `login claude@modeling.example claude-password` |
+| The definitions | `bunx dzql model export [--out model.ts]` | the same | the same, `bun src/cli/index.ts model export` |
 
 The CLI keeps its session in `.eta-session`. A refused write prints `refused: <why>` and exits 1:
 it is the model saying no. Everyone signs in as `<name, lower case>@modeling.example`; `.env`'s
@@ -77,7 +78,15 @@ each, who is told, what permit lets through that no page offers) and hjeli's pre
 
 ## From the model to the app
 
-Load the **eta-app** skill; the model says what to build, story by story:
+`bunx dzql model export --out model.ts` writes the model as delta's two definitions: a
+`defineSchema` of its entities (each with the fields documents give it, hanging from its parent)
+and a `defineDoc` for each document, saying in a comment which stories it is for. Every store takes
+them: delta's JSON file and SQLite, and dzql's Postgres; the file imports from the JSON file's, and
+moving changes that import. In code, `definitionsOf(model)` (`dzql/modelling/definitions`) does the
+same. Who owns a document that is each person's own is not in the model: the file says so, to be
+given with sign-in.
+
+For a page the server draws, load the **eta-app** skill; the model says what to build, story by story:
 
 | In the model | In the app |
 |---|---|

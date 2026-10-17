@@ -2,6 +2,145 @@
 
 **Stories to documents to pages, and delta's compiled Postgres step.**
 
+Three things you can say, each standing alone. Each file below is run as written by
+`readme/readme.test.ts`.
+
+### Install dzql and use rendering: the server draws the page
+
+A page is drawn on the server from the documents it reads, and redrawn on every page that holds a
+document when anyone changes it; the browser only morphs what it is sent. One file, `index.ts`:
+
+```ts
+import { createLocal } from "@blueshed/delta/local";
+import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/json";
+import type { Example } from "dzql/rendering/example";
+import { read } from "dzql/rendering/documents";
+import { esc, write } from "dzql/rendering/html";
+import index from "./index.html";
+
+// One shared message, kept in a JSON file. The server draws the page, redraws every page that
+// holds the message when anyone saves, and Undo comes with the ledger.
+const schema = defineSchema({ messages: { columns: { text: { type: "text", default: "Hello" } }, temporal: false } });
+const delta = createLocal();
+registerDocs(delta.server, `${process.env.DATA_PATH ?? "data"}/message.json`, schema, [
+  defineDoc("message:", { root: "messages", include: [], implied: true }),
+], [], { ledger: true });
+
+const text = () => read<{ messages: { text: string } }>("message:1").messages.text;
+
+export const example: Example = {
+  name: "message",
+  resources: [{ docType: "message", resolveDoc: () => "1", permit: (_ws, op) => op.op === "replace" && op.path === "/messages/1/text" }],
+  render: () => `<h1>${esc(text())}</h1><form${write("message", "replace", "/messages/1/text")}><input name="text" aria-label="Message"><button>Save</button></form>`,
+  active: () => true,
+  index,
+  delta,
+};
+```
+
+with the page it is drawn into, `index.html`:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Message</title></head>
+  <body>
+    <main id="app">Connecting&hellip;</main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
+```
+
+and its one line of script, `main.ts`, the kernel's client:
+
+```ts
+import "dzql/rendering/client/app";
+```
+
+```sh
+bun add dzql @blueshed/delta
+bunx dzql serve .
+```
+
+Two windows on http://localhost:3000 show the same message; a save in one shows in both, and it is
+kept in `data/message.json`. Growing it: the `eta-app` skill.
+
+### Install dzql and use modelling, for a JSON file, SQLite or Postgres
+
+Modelling records the stories, derives from them the documents each person needs in front of them,
+and builds the entities from those. Tell it on the model's page, then export it as delta's two
+definitions, which every store takes:
+
+```sh
+bun add dzql @blueshed/delta
+bunx dzql model
+bunx dzql model login claude@modeling.example claude-password
+bunx dzql model story ann does Ann asks for two days off, and Mo sees them waiting
+bunx dzql model document team teams 1
+bunx dzql model holds 1 teams name
+bunx dzql model holds 1 requests under teams starts:date days:number status
+bunx dzql model heldby 1 ann mo
+bunx dzql model export --out model.ts
+```
+
+The model's page is http://localhost:3001, watched live as the stories land. The export, `model.ts`:
+
+```ts
+// The model, as delta's definitions: written by `dzql model export` from the model's page.
+// Every store takes them: change the import to move to SQLite (`@blueshed/delta/sqlite`) or Postgres (`dzql/postgres`).
+import { defineDoc, defineSchema } from "@blueshed/delta/json";
+
+export const schema = defineSchema({
+  teams: { columns: { name: "text?" }, temporal: false },
+  requests: { columns: { starts: "text?", days: "real?", status: "text?" }, temporal: false, parent: "teams" },
+});
+
+export const docs = [
+  // for: Ann asks for two days off, and Mo sees them waiting
+  defineDoc("team:", { root: "teams", include: ["requests"], implied: true }),
+];
+```
+
+`registerDocs(ws, "data/app.json", schema, docs)` from `@blueshed/delta/json` keeps it in a file;
+the same from `@blueshed/delta/sqlite` with a database; the next section, Postgres. In code,
+`definitionsOf(model)` (`dzql/modelling/definitions`) does the same from the model's document.
+Telling the stories: the `modelling` skill.
+
+### Install dzql and compile a Postgres server, for scale and performance
+
+The same definitions compiled to SQL: every document's reads and writes are stored functions, and
+every server on the database hears every change. `server.ts`:
+
+```ts
+import { createWs } from "@blueshed/delta/server";
+import { run, serve } from "@blueshed/delta/serve";
+import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "dzql/postgres";
+import { openPglite } from "dzql/pglite";
+import { docs, schema } from "./model";
+
+// The same definitions, compiled to Postgres: every write is a stored function, and every server
+// on the database hears every change. PGlite runs Postgres in this process; on a Postgres server,
+// `new Pool({ connectionString })` from `pg` takes its place.
+const pool = await openPglite(process.env.PGLITE_DIR);
+await applyFramework(pool);
+await applySql(pool, generateSql(schema, docs));
+
+const ws = createWs();
+const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)) });
+await run(() => serve({ ws, routes: {}, close: [() => listener.destroy(), () => pool.end()] }));
+```
+
+```sh
+bun add dzql @blueshed/delta @electric-sql/pglite
+bunx dzql sql model.ts
+bun server.ts
+```
+
+`dzql sql` prints the SQL it compiles. A client talks to it exactly as to delta's JSON file or
+SQLite, and `exportTables` / `importTables` carry the rows across.
+
+## The parts
+
 - **`dzql/modelling`**: the stories an app is for, each saying who does what and who then sees it,
   told against the app by a harness, and by hand in a phone-sized browser.
 - **`dzql/rendering`**: pages the server draws as HTML from the documents they read, each sent only
