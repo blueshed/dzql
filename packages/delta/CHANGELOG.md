@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`install-skills` follows a package linked into `node_modules`**, as a workspace links its
+  packages: a link was passed over as not a folder, so an app in the monorepo got no skills from a
+  sibling its `claudeSkills` named. The consumer's own `node_modules` is read first, so what it
+  installed wins a skill's name over the CLI's own neighbours.
+- **The delta-doc skill says the shape and the one server**: an app is routes and resources on
+  both sides of the socket, joined by documents, entities behind them; `auth.md` and `testing.md`
+  start delta's `serve`, never a `Bun.serve` of the app's own.
+
 ### Added
 
 - **A unique constraint in the schema** (#81): `unique: ["name"]`, columns together

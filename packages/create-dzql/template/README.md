@@ -9,6 +9,7 @@ it. It begins as nothing but its page, waiting for its first story.
 bun dev          # http://localhost:3000
 bun test         # the page is served and drawn, and every story passes
 bun run stories  # each story in src/stories.ts, told against the app
+bun run model    # http://localhost:3001: the model's page, where the stories are told first
 bun run stop     # a server started in the background
 ```
 

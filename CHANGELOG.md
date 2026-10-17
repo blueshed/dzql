@@ -19,6 +19,11 @@ what is open across them. Newest first.
   Detail in `packages/dzql/CHANGELOG.md`. Run only the fast tier and the stories here (a cloud
   container, no Docker, no Chrome of its own): **the browser and Postgres tiers still need a run on
   Peter's Mac** (`bun run affected --slow`).
+- **The skills an agent builds from say what the code does** (17 October, from
+  /mnt/project-files/concepts-review/alignment.md). bun-route and delta-doc add a route to delta's
+  `serve`, never a `Bun.serve` of the app's own; eta-app and modelling describe a `bun create dzql`
+  project, which now gets its skills on `bun install` and the model's page (`bun run model`);
+  delta's `install-skills` follows a workspace's linked packages.
 - **What the Shed's run 2 tripped on is fixed at its source** (17 October). delta: a unique
   constraint in the schema, on every backend (#81); a migration's `up` takes `nextId`, so no app
   writes `_delta_sequences`; whether a tool is out is worked out by a recompute document, never

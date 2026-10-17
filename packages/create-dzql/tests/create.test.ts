@@ -18,13 +18,35 @@ beforeAll(async () => {
 afterAll(() => rmSync(parent, { recursive: true, force: true }));
 
 test("the app is eta's starter in src/, named, its dotfiles dotted", () => {
-  for (const file of ["src/index.ts", "src/stories.ts", "src/delta.ts", "src/page.ts", "src/client/index.html", ".gitignore", "README.md"]) expect(existsSync(join(app, file))).toBe(true);
+  for (const file of ["src/index.ts", "src/stories.ts", "src/delta.ts", "src/page.ts", "src/client/index.html", ".gitignore", "README.md", "CLAUDE.md"]) expect(existsSync(join(app, file))).toBe(true);
   expect(JSON.parse(readFileSync(join(app, "package.json"), "utf8")).name).toBe("my-app");
   expect(readFileSync(join(app, "src/index.ts"), "utf8")).toContain('name: "my-app"');
   expect(readFileSync(join(app, "src/page.ts"), "utf8")).toContain("My App");
   expect(readFileSync(join(app, "src/client/styles.css"), "utf8")).toContain('@import "dzql/rendering/bento.css";');
   expect(readFileSync(join(app, "README.md"), "utf8")).not.toContain("{{name}}");
 });
+
+test("installing gives the app its skills: eta-app, modelling and delta-doc", () => {
+  const installed = Bun.spawnSync(["bun", "run", "prepare"], { cwd: app, stdout: "pipe", stderr: "pipe" });
+  expect(installed.exitCode).toBe(0);
+  for (const skill of ["eta-app", "modelling", "delta-doc"]) expect(existsSync(join(app, ".claude/skills", skill, "SKILL.md"))).toBe(true);
+});
+
+test("the model's page starts beside the app, from dzql's modeling example", async () => {
+  const proc = Bun.spawn(["bun", "run", "model"], { cwd: app, stdout: "pipe", stderr: "inherit", env: { ...process.env, MODEL_PORT: "0" } });
+  try {
+    let out = "";
+    for await (const chunk of proc.stdout) {
+      out += new TextDecoder().decode(chunk);
+      if (/Listening on \S+/.test(out)) break;
+    }
+    const url = out.match(/Listening on (\S+)/)![1]!;
+    expect((await fetch(url)).status).toBe(200);
+  } finally {
+    proc.kill();
+    await proc.exited;
+  }
+}, 30_000);
 
 test("a name that is not one is refused", () => {
   const made = Bun.spawnSync(["bun", join(import.meta.dir, "../index.ts"), "My App"], { cwd: parent, stderr: "pipe" });

@@ -13,8 +13,11 @@
     "stop": "delta stop",
     "stories": "ETA_EXAMPLE=./src bun node_modules/dzql/src/modelling/stories-run.ts",
     "cli": "ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/cli.ts",
+    "model": "PORT=${MODEL_PORT:-3001} DB_PATH=model.sqlite ETA_EXAMPLE=node_modules/dzql/examples/modeling bun node_modules/dzql/src/rendering/start.ts",
+    "cli:model": "ETA_URL=ws://localhost:${MODEL_PORT:-3001} ETA_EXAMPLE=node_modules/dzql/examples/modeling bun node_modules/dzql/src/rendering/cli.ts",
     "typecheck": "bun check",
-    "test": "bun test"
+    "test": "bun test",
+    "prepare": "delta install-skills"
   },
   "dependencies": {
     "@blueshed/delta": "^1.2.0",
@@ -22,5 +25,8 @@
   },
   "devDependencies": {
     "@types/bun": "^1.4.3"
-  }
+  },
+  "claudeSkills": [
+    "dzql"
+  ]
 }

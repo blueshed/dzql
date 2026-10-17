@@ -354,6 +354,14 @@ function allowedSkillPackages(): Set<string> {
   }
 }
 
+/** A folder, or a link to one: a workspace links its packages into node_modules. */
+function isDir(parent: string, entry: import("node:fs").Dirent): boolean {
+  if (entry.isDirectory()) return true;
+  if (!entry.isSymbolicLink()) return false;
+  try { return statSync(join(parent, entry.name)).isDirectory(); }
+  catch { return false; }
+}
+
 function discoverSkillSources(): SkillSource[] {
   const sources = new Map<string, SkillSource>();   // by name: the first found wins
   const add = (s: SkillSource) => void (sources.has(s.name) || sources.set(s.name, s));
@@ -362,10 +370,10 @@ function discoverSkillSources(): SkillSource[] {
   // Our own skill — always present, ships in this package.
   listSkillsIn(resolve(import.meta.dir, ".claude/skills"), "@blueshed/delta").forEach(add);
 
-  // Sibling packages. Look in both: the package the CLI lives in (its own
-  // node_modules during dev) AND the consumer's cwd-rooted node_modules.
+  // Sibling packages. Look in both: the consumer's cwd-rooted node_modules first (what
+  // it installed wins a name), then the package the CLI lives in (its own node_modules during dev).
   const candidateRoots = new Set<string>();
-  for (const start of [import.meta.dir, process.cwd()]) {
+  for (const start of [process.cwd(), import.meta.dir]) {
     const nm = findNodeModulesDir(start);
     if (nm) candidateRoots.add(nm);
   }
@@ -376,14 +384,14 @@ function discoverSkillSources(): SkillSource[] {
     try { entries = readdirSync(nm, { withFileTypes: true }); }
     catch { continue; }
     for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
+      if (!isDir(nm, entry)) continue;
       const pkgDirs: { name: string; dir: string }[] = [];
       if (entry.name.startsWith("@")) {
         let subEntries: import("node:fs").Dirent[];
         try { subEntries = readdirSync(join(nm, entry.name), { withFileTypes: true }); }
         catch { continue; }
         for (const sub of subEntries) {
-          if (sub.isDirectory()) {
+          if (isDir(join(nm, entry.name), sub)) {
             pkgDirs.push({ name: `${entry.name}/${sub.name}`, dir: join(nm, entry.name, sub.name) });
           }
         }

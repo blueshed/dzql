@@ -8,7 +8,7 @@
  * switch case) that an in-process test would miss.
  */
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, symlinkSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -148,6 +148,21 @@ describe("install-skills", () => {
     expect(res.code).toBe(0);
     expect(existsSync(join(dir, ".claude/skills/single-skill/SKILL.md"))).toBe(true);
     expect(res.stderr).toContain("single-pkg");
+  });
+
+  // A workspace (Bun's, npm's) links its packages into node_modules: a link was skipped as not a
+  // folder, so an app in the monorepo got no skills from a sibling it named.
+  test("installs the skills of a package linked into node_modules, as a workspace links it", async () => {
+    const real = join(dir, "packages", "linked");
+    mkdirSync(join(real, ".claude/skills/linked-skill"), { recursive: true });
+    writeFileSync(join(real, ".claude/skills/linked-skill/SKILL.md"), "# linked");
+    mkdirSync(join(dir, "node_modules"), { recursive: true });
+    symlinkSync(real, join(dir, "node_modules", "linked"));
+    symlinkSync(join(dir, "nowhere"), join(dir, "node_modules", "dangling"));
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ claudeSkills: ["linked"] }));
+    const res = await runInstall(dir);
+    expect(res.code).toBe(0);
+    expect(existsSync(join(dir, ".claude/skills/linked-skill/SKILL.md"))).toBe(true);
   });
 
   test("skips, and says so, a package that ships a skill nobody asked for (F5)", async () => {

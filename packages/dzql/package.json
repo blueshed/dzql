@@ -25,6 +25,8 @@
   "files": [
     "src",
     "!src/**/*.test.*",
+    "examples/modeling",
+    "!examples/modeling/**/*.test.*",
     ".claude/skills",
     "README.md"
   ],
