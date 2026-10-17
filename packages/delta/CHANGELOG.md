@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **One server: `@blueshed/delta/serve`.** `serve(app)` serves an app's routes, delta's socket on its
+  path (told the server, so a change reaches every page), `/health` and a 404 for the rest, and closes
+  what the app's resources opened when it stops. `run(start)` is the process around it: a pid file
+  (`.server.pid`, or `PID_FILE`) that refuses a second start, `bun --hot` serving again in the same
+  process, SIGINT and SIGTERM stopping it within five seconds. `delta stop` stops it. An app is its
+  routes and resources; it writes no `Bun.serve` of its own.
+
 ### Changed
 
 - **delta lives in the bluetools monorepo, the blueshed/dzql repository** (`packages/delta`, with its history), beside railroad

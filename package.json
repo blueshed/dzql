@@ -9,7 +9,8 @@
   "scripts": {
     "test": "cd packages/dzql && bun run test",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
-    "cache:clear": "bun pm cache rm"
+    "cache:clear": "bun pm cache rm",
+    "affected": "bun scripts/affected.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2"

@@ -19,6 +19,7 @@ const PKG_VERSION = (() => {
 const USAGE =
     `Usage:\n` +
     `  delta install-skills [--user] [--dry-run]\n` +
+    `  delta stop                             stop the server run() started here (.server.pid, or $PID_FILE)\n` +
     `  delta migrate <database> [--app <name>] [--dir <migrations>] [--status]   run (or list) an app's migrations\n` +
     `        <database>: a SQLite file; --dir defaults to ./migrations (Postgres: dzql migrate)\n` +
     `  delta migrations make <module> [--dir <migrations>] [--name <name>] [--export <name>]\n` +
@@ -676,6 +677,7 @@ async function main() {
 
   switch (cmd) {
     case "install-skills":  return cmdInstallSkills(values);
+    case "stop":            return console.log(await (await import("./src/server/serve")).stop());
     case "open":            return cmdOpen(arg, values);
     case "watch":           return cmdWatch(arg, values);
     case "delta":           return cmdDelta(arg, arg2, values);

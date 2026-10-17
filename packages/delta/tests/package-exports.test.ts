@@ -89,6 +89,7 @@ describe("package exports", () => {
     "./client": "openDoc",
     "./dom-ops": "applyOpsToCollection",
     "./server": "createWs",
+    "./serve": "serve",
     "./sqlite": "registerDocs",
     "./json": "registerDocs",
     "./local": "createLocal",

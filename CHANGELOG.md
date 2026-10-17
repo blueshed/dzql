@@ -26,9 +26,18 @@ what is open across them. Newest first.
 - **Two test configurations in dzql**: `bunfig.toml` is eta's (100% coverage, the client's read
   from Chrome), and dzql's Postgres tests run with `tests/bunfig.toml`. CI's `dzql.yml` has an eta
   job; railroad's job that checked out eta's repository is gone.
+- **The gate is `bun run affected`**: each package a change touches, and each that depends on one,
+  runs its fast tier (a type check, the tests with no browser and no Postgres server): railroad
+  1.4 s, delta 18 s, dzql 26 s, about 46 s for all three. The slow tier (browsers, Postgres, eta's
+  stories and costs) is CI's and a release's (`--slow`). CI's eta job runs two workers with a
+  longer wait, as a runner is slower than a Mac.
+- **One server, in delta** (`@blueshed/delta/serve`): `serve()` serves an app's routes with delta's
+  socket, `/health` and a 404; `run()` is the process around it (the pid file, `bun --hot`, the
+  signals, closing what the resources opened); `delta stop` stops it. The apps move onto it next.
 
 ### Removed
 
+- `feedback.md`, on Peter's word: its findings are fixed and its tensions are in `todo.jsonl`.
 - The empty `.agents/` and `.gemini/` folders on the Mac (made by a tool outside the repos on
   16 October), and `.gitignore` keeps them out.
 

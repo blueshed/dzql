@@ -16,9 +16,14 @@ only what is shared.
 - `bun install` runs at the root: one `bun.lock`, committed; CI installs with `--frozen-lockfile`.
   A sibling's version range resolves to its folder, so a change in railroad is what delta and dzql
   run against at once, with no release.
-- **Test what changed.** Run the gate of the package you changed and of each package that depends
-  on it (the table), not every package. CI does the same: `.github/workflows/<package>.yml` runs
-  when its package or a sibling it depends on changes.
+- **The gate is `bun run affected`** (`scripts/affected.ts`): each package a change touches, and
+  each that depends on one, runs its fast tier (`test:fast`: a type check and the tests that need no
+  browser and no Postgres server), well under a minute. Commit, push, go on: never wait for CI.
+  The slow tier (`test:slow`: browsers, dzql's Postgres suite in Docker, eta's stories and costs)
+  runs in CI, path-filtered the same way (`.github/workflows/<package>.yml`), and by
+  `bun run affected --slow` before a release. A red CI is fixed at the next push.
+- **What is going on** is `CHANGELOG.md` (what changed, across packages) and `todo.jsonl` (what is
+  open across them) here; keep both current with every change, as each package keeps its own.
 - Bun only, pinned in CI to 1.4.3.
 
 ## Releasing

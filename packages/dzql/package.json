@@ -45,7 +45,12 @@
     "stories:all": "STORY_BY_HAND=1 ETA_EXAMPLE=chat bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=ticker bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=wedding bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=leave bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=modeling bun run stories",
     "costs": "bun --env-file=.env.test src/modelling/costs.ts",
     "model:check": "LOG_LEVEL=warn bun --env-file=.env.test examples/modeling/loader/check.ts",
-    "model:load": "LOG_LEVEL=warn bun --env-file=.env.test examples/modeling/loader/load.ts"
+    "model:load": "LOG_LEVEL=warn bun --env-file=.env.test examples/modeling/loader/load.ts",
+    "test:fast": "bun check && bun run test:fast:pg && bun scripts/fast-eta.ts",
+    "test:fast:pg": "bun check && bun --config=tests/fast.bunfig.toml test tests/compile/",
+    "test:fast:eta": "bun check && bun scripts/fast-eta.ts",
+    "test:slow": "bun run test && bun run test:eta && bun run stories:all && bun run costs --check",
+    "test:eta:ci": "bun test --parallel=2 --timeout=30000 src/rendering src/modelling examples/chat examples/leave examples/modeling examples/starter examples/ticker examples/wedding"
   },
   "keywords": [
     "postgresql",

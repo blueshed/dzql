@@ -1,0 +1,4 @@
+# The fast tier (bun run test:fast, and the root's `bun run affected`): no browser, no Postgres server,
+# no coverage gate. The whole of each tier runs in CI, and before a release.
+[test]
+coverage = false
