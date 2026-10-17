@@ -12,6 +12,7 @@ import {
   applyFramework, applySql, createDocListener, defineCustomDoc, docTypeFromDef, generateSql,
 } from "../../../src/postgres";
 import { createWs } from "@blueshed/delta/server";
+import { serve } from "@blueshed/delta/serve";
 import { schema, worldDoc, parse, matches, type BBox } from "./schema";
 
 const sitesInBbox = defineCustomDoc<BBox>("sites-in-bbox:", {
@@ -36,12 +37,7 @@ const { rows: [world] } = await pool.query("SELECT min(id)::int AS id FROM world
 const ws = createWs();
 const listener = await createDocListener(ws, pool, { types: [docTypeFromDef(worldDoc, pool)], custom: [sitesInBbox] });
 
-const server = Bun.serve({
-  port: Number(process.env.PORT ?? 0),
-  routes: { [ws.path]: ws.upgrade },
-  websocket: ws.websocket,
-});
-ws.setServer(server);
+const { server } = serve({ ws, routes: {} }, { port: Number(process.env.PORT ?? 0) });
 
 console.log(`sites-bbox (Postgres) on ws://localhost:${server.port}${ws.path}`);
 console.log(`  open "world:${world.id}" to read and write every site`);

@@ -33,7 +33,9 @@ what is open across them. Newest first.
   longer wait, as a runner is slower than a Mac.
 - **One server, in delta** (`@blueshed/delta/serve`): `serve()` serves an app's routes with delta's
   socket, `/health` and a 404; `run()` is the process around it (the pid file, `bun --hot`, the
-  signals, closing what the resources opened); `delta stop` stops it. The apps move onto it next.
+  signals, closing what the resources opened); `delta stop` stops it. paintbrush, eta's `createServer` (`bun run start`/`stop` in dzql), delta's
+  examples, the recipe and the skills are on it; no package writes a `Bun.serve` of its own. The
+  create-dzql template is left as it is, as `bun create dzql` is to make eta's starter instead.
 
 - **paintbrush is in, at `packages/paintbrush`**, with its history: the starting website, run and
   tested where it lives (`bun run test:paintbrush`). **`bun create blueshed my-app`** makes one:

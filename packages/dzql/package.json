@@ -49,7 +49,9 @@
     "test:fast:pg": "bun check && bun --config=tests/fast.bunfig.toml test tests/compile/",
     "test:fast:eta": "bun check && bun scripts/fast-eta.ts",
     "test:slow": "bun run test && bun run test:eta && bun run stories:all && bun run costs --check",
-    "test:eta:ci": "bun test --parallel=2 --timeout=30000 src/rendering src/modelling examples/chat examples/leave examples/modeling examples/starter examples/ticker examples/wedding"
+    "test:eta:ci": "bun test --parallel=2 --timeout=30000 src/rendering src/modelling examples/chat examples/leave examples/modeling examples/starter examples/ticker examples/wedding",
+    "start": "NODE_ENV=production bun src/rendering/start.ts",
+    "stop": "delta stop"
   },
   "keywords": [
     "postgresql",

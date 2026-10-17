@@ -3,7 +3,7 @@
  *
  *   createWs()                                  -- WS action router + pub/sub
  *   registerDocs(ws, db, schema, docs)          -- the "board:" document over SQLite
- *   Bun.serve({ routes, websocket })            -- HTTP + WebSocket
+ *   serve({ ws, routes })                       -- delta's one server: HTTP + WebSocket
  *
  * No hand-written SQL in the write path: a write is applied to the tables its
  * paths name, and `ws.publish(docName, {doc, ops})` reaches every subscriber.
@@ -11,6 +11,7 @@
 import type { Database } from "bun:sqlite";
 import type { Server } from "bun";
 import { createWs } from "../../src/server/server";
+import { serve } from "../../src/server/serve";
 import { registerDocs } from "../../src/server/sqlite";
 import { schema, docs } from "./schema";
 
@@ -25,12 +26,7 @@ export async function startServer(db: Database): Promise<KanbanServer> {
   const ws = createWs();
   registerDocs(ws, db, schema, docs);
 
-  const server = Bun.serve({
-    port: 0,                                        // let the OS pick
-    routes: { [ws.path]: ws.upgrade },
-    websocket: ws.websocket,
-  });
-  ws.setServer(server);
+  const { server } = serve({ ws, routes: {} }, { port: 0, dev: false }); // port 0: the OS picks
 
   const port  = server.port!;
   const wsUrl = `ws://localhost:${port}${ws.path}`;

@@ -54,13 +54,14 @@ await doc.send([{ op: "add", path: "/cards/7", value: { id: 7, title: "new card"
 ```
 
 ```ts
-// server.ts: one Bun.serve hosts the page and the socket
+// server.ts: delta's one server hosts the page and the socket
 import home from "./index.html";
 import { createWs, registerDoc } from "@blueshed/delta/server";
+import { run, serve } from "@blueshed/delta/serve";
 
 const ws = createWs();
 await registerDoc(ws, "board:1", { file: "./board.json", empty: { cards: {} } });
-Bun.serve({ routes: { "/": home, [ws.path]: ws.upgrade }, websocket: ws.websocket });
+await run(() => serve({ ws, routes: { "/": home } }));
 ```
 
 - `doc.data` is a railroad `ReadonlySignal<T | null>`: it drops into JSX, `when()` and `list()` with no glue. Change the document with `doc.send(ops)`, never `doc.data.set()`.

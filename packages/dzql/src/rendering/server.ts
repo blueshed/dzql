@@ -12,6 +12,7 @@ import { diff, drawnValues, type Drawn } from "./parts";
 import { Refusal, refuse, tell } from "./refusal";
 import { handleOf, newHandle } from "./compartments/ledger";
 import { refuseOrigin } from "@blueshed/delta/server";
+import { serve } from "@blueshed/delta/serve";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
@@ -351,8 +352,8 @@ export function createServer(example: Example, port: number | string = process.e
     await documents.release(keep);
   }
 
-  const server = Bun.serve<ConnectionData>({
-    port,
+  // The one server is delta's (`serve`): these routes and this socket, on Bun.serve
+  const server = serve<string>({
     routes: {
       ...example.routes,
       "/": example.index,
@@ -412,8 +413,7 @@ export function createServer(example: Example, port: number | string = process.e
         });
       },
     },
-    development: process.env.NODE_ENV !== "production",
-  });
+  }, { port: Number(port) }).server as Bun.Server<ConnectionData>;
 
   const stop = server.stop.bind(server);
   let stopped = false;

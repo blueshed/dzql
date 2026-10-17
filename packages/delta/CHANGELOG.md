@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what the app's resources opened when it stops. `run(start)` is the process around it: a pid file
   (`.server.pid`, or `PID_FILE`) that refuses a second start, `bun --hot` serving again in the same
   process, SIGINT and SIGTERM stopping it within five seconds. `delta stop` stops it. An app is its
-  routes and resources; it writes no `Bun.serve` of its own.
+  routes and resources; it writes no `Bun.serve` of its own. The examples, the recipe and the
+  delta-doc skill's server page use it.
 
 ### Changed
 

@@ -28,18 +28,14 @@ export interface Room { rooms: { id: number; name: string | null }; messages: Re
 ```ts
 import index from "./index.html";
 import { createWs } from "@blueshed/delta/server";
+import { run, serve } from "@blueshed/delta/serve";
 import { registerDocs } from "@blueshed/delta/json";
 import { room, schema } from "./types";
 
 const ws = createWs();
 registerDocs(ws, "./chat.json", schema, [room]);   // where the documents are kept
 
-const server = Bun.serve({
-  port: 3100,
-  routes: { "/": index, [ws.path]: ws.upgrade },
-  websocket: ws.websocket,
-});
-ws.setServer(server);
+await run(() => serve({ ws, routes: { "/": index } }, { port: 3100 }));
 ```
 
 ### `client.ts`

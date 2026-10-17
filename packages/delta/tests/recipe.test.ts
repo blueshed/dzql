@@ -60,14 +60,14 @@ test("the recipe (reference/recipe.md), as written: one browser sends a message,
   };
   try {
     const server = blockAfter("### `server.ts`");
-    expect(server).toContain("port: 3100,");   // the one line changed: a free port, said on stdout
-    await Bun.write(join(dir, "server.ts"), server.replace("port: 3100,", "port: 0,") + 'console.log("port=" + server.port);\n');
+    expect(server).toContain("{ port: 3100 }");   // the one change: a free port, which run says on stdout
+    await Bun.write(join(dir, "server.ts"), server.replace("{ port: 3100 }", "{ port: 0 }"));
     await Bun.write(join(dir, "types.ts"), blockAfter("### `types.ts`"));
     await Bun.write(join(dir, "client.ts"), blockAfter("### `client.ts`"));
     await Bun.write(join(dir, "index.html"), blockAfter("### `index.html`"));
     await Bun.write(join(dir, "browser.ts"), BROWSER);
 
-    const [, port] = await until(spawn("server.ts"), /port=(\d+)/);
+    const [, port] = await until(spawn("server.ts"), /Listening on http:\/\/[^/]*:(\d+)/);
     const reader = spawn("browser.ts", { PORT: port!, HEAR: "hello from ada" });
     await until(reader, /ready/);
     const writer = spawn("browser.ts", { PORT: port!, HEAR: "hello from ada", SAY: "hello from ada" });

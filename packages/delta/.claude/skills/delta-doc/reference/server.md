@@ -1,29 +1,29 @@
-# The server: one `Bun.serve` for the page and the socket
+# The server: delta's one server for the page and the socket
 
 From the recipe's `server.ts` (`recipe.md`):
 
 ```ts
 import index from "./index.html";
 import { createWs } from "@blueshed/delta/server";
+import { run, serve } from "@blueshed/delta/serve";
 import { registerDocs } from "@blueshed/delta/json";
 import { room, schema } from "./types";
 
 const ws = createWs();
 registerDocs(ws, "./chat.json", schema, [room]);
 
-const server = Bun.serve({
-  port: 3100,
-  routes: { "/": index, [ws.path]: ws.upgrade },   // Bun bundles the HTML and its TS
-  websocket: ws.websocket,
-});
-ws.setServer(server);
+await run(() => serve({ ws, routes: { "/": index } }, { port: 3100 }));   // Bun bundles the HTML and its TS
 ```
 
-`WsOptions` and `WsServer` in `src/server/server.ts` are the contract (`path` defaults to `/ws`).
+`serve(app, { port, dev })` (`src/server/serve.ts`, `@blueshed/delta/serve`) is Bun.serve with the socket on its path (told the
+server, so a change reaches every page), `/health`, a 404, and the app's `close` list run when it stops. `run(start)` is the
+process: a pid file (`.server.pid`, `PID_FILE`) refusing a second start, `bun --hot`, SIGINT/SIGTERM; `delta stop` stops it.
+An app writes no `Bun.serve` of its own. `WsOptions` and `WsServer` in `src/server/server.ts` are the socket's contract (`path`
+defaults to `/ws`).
 
 ## Rules
 
-- **`ws.setServer(server)` is required**: without it nothing is broadcast.
+- **`serve` tells the socket its server** (`ws.setServer`): by hand, without it nothing is broadcast.
 - Route order does not matter: the upgrade is its own request.
 - `registerMethod(ws, name, (params, client) => …)` adds a `call` method; a name starting with
   `_` is private and throws. Mark one that signs a socket in with `ws.changesIdentity(name)` (`auth.md`).

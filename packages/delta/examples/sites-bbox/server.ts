@@ -7,6 +7,7 @@
 import { Database } from "bun:sqlite";
 import { createTables, defineCustomDoc, registerDocs } from "../../src/server/sqlite";
 import { createWs } from "../../src/server/server";
+import { serve } from "../../src/server/serve";
 import { schema, worldDoc, parse, matches, type BBox } from "./schema";
 
 const sitesInBbox = defineCustomDoc<BBox>("sites-in-bbox:", {
@@ -27,12 +28,7 @@ db.run("INSERT OR IGNORE INTO worlds (id, label) VALUES (1, 'Earth')");
 const ws = createWs();
 registerDocs(ws, db, schema, [worldDoc], [sitesInBbox]);
 
-const server = Bun.serve({
-  port: Number(process.env.PORT ?? 0),   // 0: the OS picks a free port
-  routes: { [ws.path]: ws.upgrade },
-  websocket: ws.websocket,
-});
-ws.setServer(server);
+const { server } = serve({ ws, routes: {} }, { port: Number(process.env.PORT ?? 0) }); // 0: the OS picks a free port
 
 console.log(`sites-bbox (SQLite) on ws://localhost:${server.port}${ws.path}`);
 console.log(`  open "world:1" to read and write every site`);

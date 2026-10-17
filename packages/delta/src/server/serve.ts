@@ -74,6 +74,9 @@ export function serve<R extends string>(app: App<R>, { port = Number(process.env
   };
 }
 
+/** What `run` needs of a server: where it is, how it stops, and what to close (a `Served`, or a Bun server). */
+export type Runnable = { url: URL; stop(force?: boolean): Promise<void> | void; close?(): Promise<void> };
+
 /** Where the pid file is: `$PID_FILE`, else `.server.pid` where the command runs. */
 export const pidFile = (): string => process.env.PID_FILE ?? `${process.cwd()}/.server.pid`;
 
@@ -98,7 +101,7 @@ declare global {
  * flight, then closing what the resources opened. Under `bun --hot` the entry runs again in the
  * same process: what the last run opened is closed first, so this run can open it again.
  */
-export async function run(start: () => Served | Promise<Served>, { file = pidFile() }: { file?: string } = {}): Promise<Served> {
+export async function run<S extends Runnable>(start: () => S | Promise<S>, { file = pidFile() }: { file?: string } = {}): Promise<S> {
   const pid = Bun.file(file);
   if (await pid.exists()) {
     const other = Number(await pid.text());
@@ -110,13 +113,13 @@ export async function run(start: () => Served | Promise<Served>, { file = pidFil
   const firstRun = !globalThis.__deltaShutdown;
   await globalThis.__deltaClose?.();
   const served = await start();
-  globalThis.__deltaClose = served.close;
+  globalThis.__deltaClose = () => served.close?.() ?? Promise.resolve();
   await Bun.write(file, String(process.pid));
 
   globalThis.__deltaShutdown = async () => {
     // a graceful stop waits for what is in flight; an open socket (HMR's in dev) could hold it for ever
     await Promise.race([served.stop(), Bun.sleep(5_000)]);
-    await served.close(); // what stop had not got to, if the wait ran out
+    await served.close?.(); // what stop had not got to, if the wait ran out
     process.exit(0);
   };
   if (firstRun) {

@@ -34,6 +34,9 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   wedding) are in `examples/` and import dzql as an app does; its skills (modelling, eta-app) in
   `.claude/skills/`; its docs, changelog and ledger in `docs/eta/`. eta's own `bun create` and
   `eta:update`, which copied the kernel into an app, retire: an app installs dzql.
+- **Pages are served by delta's one server**: `createServer` gives its routes and socket to
+  `@blueshed/delta/serve`, and `src/rendering/start.ts` is `run`: a pid file, so `bun run start`
+  and `bun run stop` (`delta stop`) start and stop it, and the signals.
 - Two test configurations: `bunfig.toml` is eta's (`bun run test:eta`, 100% coverage, the client's
   read from Chrome), and dzql's Postgres tests run with `tests/bunfig.toml` (`bun run test`). CI's
   `dzql.yml` has an eta job (the tests, `stories:all`, `costs --check`), which replaces railroad's

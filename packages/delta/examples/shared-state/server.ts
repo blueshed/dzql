@@ -9,21 +9,14 @@
  */
 import index from "./index.html";
 import { createWs } from "../../src/server/server";
+import { serve } from "../../src/server/serve";
 import { registerDocs } from "../../src/server/json";
 import { room, schema } from "./types";
 
 const ws = createWs();
 registerDocs(ws, "./examples/shared-state/chat-room.json", schema, [room]);   // where the documents are kept
 
-const server = Bun.serve({
-  port: Number(process.env.PORT ?? 3100),
-  routes: {
-    "/": index,
-    [ws.path]: ws.upgrade,
-  },
-  websocket: ws.websocket,
-});
-ws.setServer(server);
+const { server } = serve({ ws, routes: { "/": index } }, { port: Number(process.env.PORT ?? 3100) });
 
 console.log(`shared-state demo on http://localhost:${server.port}`);
 console.log(`  open two tabs, type messages, watch them sync`);

@@ -13,6 +13,7 @@
 import index from "./index.html";
 import { openBoard, DB_PATH } from "./setup";
 import { createWs } from "../../src/server/server";
+import { serve } from "../../src/server/serve";
 import { registerDocs } from "../../src/server/sqlite";
 import { schema, docs } from "./schema";
 
@@ -21,16 +22,7 @@ const db = openBoard();
 const ws = createWs();
 registerDocs(ws, db, schema, docs);
 
-const server = Bun.serve({
-  port: Number(process.env.PORT ?? 3100),
-  routes: {
-    "/": index,
-    [ws.path]: ws.upgrade,
-  },
-  websocket: ws.websocket,
-  development: { hmr: true, console: true },
-});
-ws.setServer(server);
+const { server } = serve({ ws, routes: { "/": index } }, { port: Number(process.env.PORT ?? 3100) });
 
 console.log(`kanban (railroad UX) on http://localhost:${server.port}  (DB: ${DB_PATH})`);
 console.log(`  open two tabs · click a card to cycle columns · double-click a header to rename`);
