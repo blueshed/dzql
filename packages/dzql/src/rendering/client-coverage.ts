@@ -126,7 +126,7 @@ export function shared(dir: string, name: string, mine: Kept): Kept[] {
 }
 
 /** Once what is `kept` loaded every one of `tests`, the files held and the lines no page ran; until then undefined: a partial run is not judged. */
-export function judge(kept: Kept[], tests: string[]): { held: number; missed: string[] } | undefined {
+export function judge(kept: Kept[], tests: string[]): { held: number; missed: string[]; shown: string[] } | undefined {
   const loaded = new Set(kept.flatMap((k) => k.loaded));
   if (!tests.every((t) => loaded.has(t))) return undefined;
   const ran: Ran = new Map();
@@ -135,7 +135,9 @@ export function judge(kept: Kept[], tests: string[]): { held: number; missed: st
     for (const [line, r] of lines) all.set(line, all.get(line) === true || r);
   }
   const held = (file: string) => judged(file, [...loaded]);
-  return { held: [...ran.keys()].filter(held).length, missed: gaps(ran, held) };
+  // an example's own lines are said, not held: 100% guards the kernel
+  const example = (file: string) => file.startsWith(`file://${root}/examples/`) && /\.tsx?$/.test(file) && !/\/node_modules\/|\.test[.-]/.test(file) && !loaded.has(Bun.fileURLToPath(file));
+  return { held: [...ran.keys()].filter(held).length, missed: gaps(ran, held), shown: gaps(ran, example) };
 }
 
 const ran: Ran = new Map();
@@ -209,5 +211,6 @@ afterAll(async () => {
   if (verdict === undefined) return void (worker || console.log("src/rendering/client-coverage.ts: a run of some test files, so the client's coverage is not judged: a whole run judges it"));
   if (worker) rmSync(dir, { recursive: true, force: true });
   console.log(`src/rendering/client-coverage.ts: ${verdict.held} files a page ran, beside bun's table, held to it`);
+  for (const gap of verdict.shown) console.log(`  an example's line no page ran (said, not held): ${gap}`);
   expect(verdict.missed, "a line of the client no page ran (src/rendering/client-coverage.ts)").toEqual([]);
 });

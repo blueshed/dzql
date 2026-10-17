@@ -119,6 +119,8 @@ what is open across them. Newest first.
   `tests/stories.test.ts` fails a story no test tells. So paintbrush pulls none of Postgres,
   **dzql's `pg`, `@electric-sql/pglite` and `jose` are optional peers**: an app at the Postgres step
   adds them (`bun add dzql pg @electric-sql/pglite`).
+- eta's whole test run says each line of an example's client no page ran, without holding it to
+  every line (the kernel's are held), as the CI design asked.
 
 ### Fixed
 

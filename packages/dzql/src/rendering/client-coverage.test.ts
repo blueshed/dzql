@@ -92,10 +92,13 @@ describe("the client's coverage", () => {
     try {
       expect(shared(dir, "one", first)).toEqual([first]);
       const all = shared(dir, "other", kept(ran(true), [other]));
-      expect(judge(all, [one, other])).toEqual({ held: 1, missed: [] });
-      expect(judge([first, kept(ran(false), [other])], [one, other])).toEqual({ held: 1, missed: ["src/rendering/client/morph.ts: 2"] });
+      expect(judge(all, [one, other])).toEqual({ held: 1, missed: [], shown: [] });
+      expect(judge([first, kept(ran(false), [other])], [one, other])).toEqual({ held: 1, missed: ["src/rendering/client/morph.ts: 2"], shown: [] });
       // a file a test loads is bun's to judge, whichever file loaded it
-      expect(judge([first, kept(ran(false), [other, Bun.fileURLToPath(morph)])], [one, other])).toEqual({ held: 0, missed: [] });
+      expect(judge([first, kept(ran(false), [other, Bun.fileURLToPath(morph)])], [one, other])).toEqual({ held: 0, missed: [], shown: [] });
+      // an example's line no page ran is said, never held: 100% guards the kernel
+      const main = `${root}/examples/chat/client/main.ts`;
+      expect(judge([first, kept(new Map([[morph, new Map([[1, true], [2, true]])], [main, new Map([[3, false]])]]), [other])], [one, other])).toEqual({ held: 1, missed: [], shown: ["examples/chat/client/main.ts: 3"] });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
