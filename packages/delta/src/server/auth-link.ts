@@ -1,6 +1,6 @@
 /**
- * Link sign-in: a `DeltaAuth` in which nobody types a password (Can You?'s, made general; Workshop's
- * docs/link-sign-in-plan.md).
+ * Link sign-in: a `DeltaAuth` in which nobody types a password (Can You?'s, made general; the monorepo's
+ * docs/delta/link-sign-in-plan.md).
  *
  * - A **link** is someone: `<site>/#/in/<token>`, a random token kept only as its hash, used once,
  *   for 7 days. Its token is in the part after `#`, which a browser never sends to a server: it is in

@@ -20,24 +20,29 @@ import { asItStoodCases, temporalCases } from "./path/temporal";
 import { columnCases, documentCases, registrationCases, serialCases } from "./path/documents";
 import { customDocCases } from "./path/custom";
 import { drivenCases } from "./path/driven";
-import { fanOutCases } from "./path/fanout";
+import { fanOutCases as fanOut } from "./path/fanout";
 import { impliedCases } from "./path/implied";
 import { ledgerCases } from "./path/ledger";
 import type { PathBackend } from "./path/law";
 
 export * from "./path/fixture";
 export { assertCopiesHold, everyDocument, expectSilent, expectTold, openAll, readAll, told, toldOps, write, type PathBackend, type PathProcess } from "./path/law";
-export { asItStoodCases, columnCases, customDocCases, documentCases, drivenCases, fanOutCases, impliedCases, ledgerCases, registrationCases, serialCases, temporalCases };
+export { asItStoodCases, columnCases, documentCases, drivenCases, registrationCases, serialCases };
+
+/** Fan-out, and what rides it: temporal rows, the ledger, implied documents, custom documents. */
+export function fanOutCases(backend: () => PathBackend): void {
+  fanOut(backend);
+  temporalCases(backend);
+  ledgerCases(backend);
+  impliedCases(backend);
+  customDocCases(backend);
+}
 
 /** Every case, asked of the backend `backend()` answers (a fresh one per case), a file a feature under `./path/`. */
 export function pathCases(backend: () => PathBackend): void {
   documentCases(backend);
   columnCases(backend);
   fanOutCases(backend);
-  temporalCases(backend);
-  ledgerCases(backend);
-  impliedCases(backend);
-  customDocCases(backend);
   serialCases(backend);
   asItStoodCases(backend);
   registrationCases(backend);
