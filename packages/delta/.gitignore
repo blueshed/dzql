@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build output / caches
+dist/
+coverage/
+.tsbuildinfo
+*.tsbuildinfo
+
+# Bun
+.bun/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test runtime artifacts
+test-results/
+playwright-report/
+handoff.md
+
+# SQLite databases (examples / test runs)
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+
+# Demo persistence files
+examples/shared-state/chat-room.json
+
+# A README example a test writes and runs (tests/readme.test.ts)
+tests/.try-readme-*.ts
+tests/.recipe-*/
+
+# railroad's skill, installed from node_modules by `bun install` (package.json `prepare`)
+.claude/skills/railroad/

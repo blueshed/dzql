@@ -1,0 +1,263 @@
+import { describe, expect, test } from "bun:test";
+import { createLocal } from "../src/server/local";
+import { registerMemory, registerSource, registerStatic } from "../src/server/kinds";
+import { dropClientSubscriptions, registerDoc } from "../src/server/server";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { setLogLevel } from "../src/server/logger";
+import {
+  assertCopiesHold, openAll, write, type PathBackend,
+} from "@blueshed/delta/testing";
+
+setLogLevel("silent");
+
+function setup() {
+  const local = createLocal();
+  const heard: any[] = [];
+  local.onPublish((_c, data) => heard.push(data));
+  return { local, heard };
+}
+
+describe("memory: live documents", () => {
+  test("open empty, written by the server, heard as a change with its version; never over the socket", async () => {
+    const { local, heard } = setup();
+    const here = registerMemory(local.server, { prefix: "here:", empty: () => ({ people: {} as Record<string, string> }) });
+    expect((await local.call("open", { doc: "here:general" })).result).toEqual({ people: {}, _v: 0 });
+    expect((await local.call("delta", { doc: "here:general", ops: [{ op: "add", path: "/people/p1", value: "Ada" }] })).result).toMatchObject({ ack: true, version: 1 });
+    expect(heard).toEqual([{ doc: "here:general", ops: [{ op: "add", path: "/people/p1", value: "Ada" }], v: 1 }]);
+    expect(here.peek("here:general")).toEqual({ people: { p1: "Ada" } });
+
+    // a socket client -- not in this process -- may not write it
+    let answer: any;
+    const handlers: any[] = [];
+    const server = { on: (a: string, h: any) => a === "delta" && handlers.push(h), publish() {} } as any;
+    registerMemory(server, { prefix: "here:", empty: () => ({}) });
+    handlers[0]({ doc: "here:x", ops: [] }, { data: { clientId: "c" } }, (r: any) => (answer = r));
+    expect(answer.error.code).toBe(403);
+  });
+
+  test("an op that does not land is refused and changes nothing; forget starts it again", async () => {
+    const { local } = setup();
+    const here = registerMemory(local.server, { prefix: "here:", empty: () => ({ people: {} }) });
+    expect((await local.call("delta", { doc: "here:a", ops: [{ op: "replace", path: "/nobody/x", value: 1 }] })).error?.code).toBe(404);
+    await local.call("delta", { doc: "here:a", ops: [{ op: "add", path: "/people/p1", value: "Ada" }] });
+    here.forget("here:a");
+    expect(here.peek("here:a")).toBeUndefined();
+    expect((await local.call("close", { doc: "here:a" })).result).toEqual({ ack: true });
+  });
+
+  test("a refusal carries the code the other backends answer with: 404 for what is not there, 400 for a malformed path", async () => {
+    const { local, heard } = setup();
+    const here = registerMemory(local.server, { prefix: "here:", empty: () => ({ people: { p1: "Ada" } as Record<string, string> }) });
+    const code = async (ops: unknown[]) => (await local.call("delta", { doc: "here:a", ops })).error?.code;
+    expect(await code([{ op: "remove", path: "/people/p1" }])).toBeUndefined();   // there: removed
+    expect(await code([{ op: "remove", path: "/people/p1" }])).toBe(404);         // the second remove: not there
+    expect(await code([{ op: "replace", path: "/people/p9", value: "Bo" }])).toBe(404);
+    expect(await code([{ op: "replace", path: "/nobody/x", value: 1 }])).toBe(404);
+    expect(await code([{ op: "remove", path: "people" }])).toBe(400);
+    expect(await code([{ op: "add", path: "/people/__proto__", value: 1 }])).toBe(400);
+    expect(here.peek("here:a")).toEqual({ people: {} });
+    expect(heard).toHaveLength(1);   // only the write that landed
+  });
+
+  test("an op that is not add, replace or remove is a 400: nothing applied, nothing heard", async () => {
+    const { local, heard } = setup();
+    const here = registerMemory(local.server, { prefix: "here:", empty: () => ({ a: { x: 1 } }) });
+    const code = async (ops: unknown[]) => (await local.call("delta", { doc: "here:a", ops })).error?.code;
+    expect(await code([{ op: "frobnicate", path: "/a", value: 9 }])).toBe(400);
+    expect(await code([{ op: "copy", from: "/a", path: "/b" }])).toBe(400);
+    expect(here.peek("here:a")).toEqual({ a: { x: 1 } });
+    expect(heard).toEqual([]);
+  });
+
+  test("add /<coll>/- makes a row the server names, as the JSON file does: answered, heard and kept under its id (#14)", async () => {
+    const { local, heard } = setup();
+    const here = registerMemory(local.server, { prefix: "here:", empty: () => ({ people: {} as Record<string, any> }) });
+    const { result } = await local.call("delta", { doc: "here:general", ops: [{ op: "add", path: "/people/-", value: { name: "Ada" } }] });
+    const [op] = result.ops;
+    const id = op.path.split("/")[2];
+    expect(id).not.toBe("-");
+    expect(op).toEqual({ op: "add", path: `/people/${id}`, value: { name: "Ada", id } });
+    expect(heard).toEqual([{ doc: "here:general", ops: result.ops, v: 1 }]);
+    expect(here.peek("here:general")).toEqual({ people: { [id]: { name: "Ada", id } } });
+  });
+
+  test("anyone may write one that says so", async () => {
+    const handlers: any[] = [];
+    const server = { on: (a: string, h: any) => a === "delta" && handlers.push(h), publish() {} } as any;
+    registerMemory(server, { prefix: "cursor:", empty: () => ({ at: 0 }), writable: "any" });
+    let answer: any;
+    handlers[0]({ doc: "cursor:x", ops: [{ op: "replace", path: "/at", value: 3 }] }, { data: { clientId: "c" } }, (r: any) => (answer = r));
+    expect(answer.result.ack).toBe(true);
+  });
+});
+
+describe("static: fixed for the release", () => {
+  test("read, never written; one that is not there is not found", async () => {
+    const { local } = setup();
+    const units: Record<string, { symbol: string }> = { metre: { symbol: "m" } };
+    registerStatic(local.server, { prefix: "unit:", value: (id) => units[id] });
+    expect((await local.call("open", { doc: "unit:metre" })).result).toEqual({ symbol: "m", _v: 1 });
+    expect((await local.call("open", { doc: "unit:furlong" })).error?.code).toBe(404);
+    expect((await local.call("delta", { doc: "unit:metre", ops: [{ op: "replace", path: "/symbol", value: "M" }] })).error?.code).toBe(403);
+    expect((await local.call("close", { doc: "unit:metre" })).result).toEqual({ ack: true });
+  });
+});
+
+describe("source: the truth is outside", () => {
+  test("read when first opened, polled while watched, stamped with its time; the second watcher shares it; the last to close stops it", async () => {
+    const { local, heard } = setup();
+    let temperature = 300;
+    let reads = 0;
+    let clock = 1000;
+    const reactor = registerSource(local.server, { prefix: "reactor:", read: () => (reads++, temperature), every: 15, now: () => clock });
+    expect((await local.call("open", { doc: "reactor:1" })).result).toEqual({ reading: 300, at: 1000, stale: false, _v: 0 });
+    await local.as("b").call("open", { doc: "reactor:1" });
+    expect(reads).toBe(1); // one reading, shared
+
+    temperature = 312;
+    clock = 2000;
+    await Bun.sleep(40);
+    expect(heard.find((h) => h.ops.some((o: any) => o.path === "/reading"))).toMatchObject({ doc: "reactor:1", ops: [{ op: "replace", path: "/reading", value: 312 }, { op: "replace", path: "/at", value: 2000 }] });
+
+    await local.call("close", { doc: "reactor:1" });
+    const polled = reads;
+    await Bun.sleep(40);
+    expect(reads).toBeGreaterThan(polled); // one watcher left: still polled
+    await local.as("b").call("close", { doc: "reactor:1" });
+    const last = reads;
+    await Bun.sleep(40);
+    expect(reads).toBe(last); // nobody watching: stopped
+    reactor.stopAll();
+  });
+
+  test("a reading equal to the last only moves at", async () => {
+    const { local, heard } = setup();
+    let clock = 1000;
+    let push!: (reading: { c: number }) => void;
+    registerSource(local.server, { prefix: "reactor:", read: () => ({ c: 300 }), subscribe: (_id, p) => ((push = p), () => {}), now: () => clock });
+    await local.call("open", { doc: "reactor:1" });
+    clock = 2000;
+    push({ c: 300 });
+    expect(heard).toEqual([{ doc: "reactor:1", ops: [{ op: "replace", path: "/at", value: 2000 }], v: 1 }]);
+    expect((await local.call("open", { doc: "reactor:1" })).result).toEqual({ reading: { c: 300 }, at: 2000, stale: false, _v: 1 });
+  });
+
+  test("a source that goes quiet makes its document stale; the next reading makes it fresh", async () => {
+    const { local, heard } = setup();
+    let push: (r: number) => void = () => {};
+    let clock = 0;
+    registerSource(local.server, { prefix: "reactor:", read: () => 300, subscribe: (_id, p) => ((push = p), () => {}), stale: 40, now: () => clock });
+    await local.call("open", { doc: "reactor:1" });
+    clock = 100;
+    await Bun.sleep(30);
+    expect(heard.at(-1)).toEqual({ doc: "reactor:1", ops: [{ op: "replace", path: "/stale", value: true }], v: 1 });
+    push(305);
+    expect(heard.at(-1).ops).toEqual([{ op: "replace", path: "/reading", value: 305 }, { op: "replace", path: "/at", value: 100 }, { op: "replace", path: "/stale", value: false }]);
+    expect((await local.call("delta", { doc: "reactor:1", ops: [] })).error?.code).toBe(403);
+    await local.call("close", { doc: "reactor:1" });
+  });
+
+  test("a source that cannot be read opens stale, with no reading; a failed poll leaves the last reading to age", async () => {
+    const { local } = setup();
+    let fail = true;
+    const r = registerSource(local.server, { prefix: "api:", read: () => { if (fail) throw new Error("down"); return 1; }, every: 10 });
+    expect((await local.call("open", { doc: "api:x" })).result).toEqual({ reading: null, at: null, stale: true, _v: 0 });
+    fail = false;
+    await Bun.sleep(30);
+    expect((await local.as("c").call("open", { doc: "api:x" })).result).toMatchObject({ reading: 1, stale: false });
+    fail = true;
+    await Bun.sleep(30); // polls fail: nothing published, nothing thrown
+    r.stopAll();
+  });
+
+  test("two watchers opening at once share one start", async () => {
+    const { local } = setup();
+    let reads = 0;
+    registerSource(local.server, { prefix: "slow:", read: async () => (await Bun.sleep(5), ++reads) });
+    const [a, b] = await Promise.all([local.call("open", { doc: "slow:1" }), local.as("b").call("open", { doc: "slow:1" })]);
+    expect(reads).toBe(1);
+    expect(a.result.reading).toBe(1);
+    expect(b.result.reading).toBe(1);
+  });
+
+  test("a watcher that leaves while the first reading is taken leaves nothing polling (#65)", async () => {
+    const { local } = setup();
+    let reads = 0;
+    const r = registerSource(local.server, { prefix: "slow:", read: async () => (await Bun.sleep(10), ++reads), every: 5 });
+    const opening = local.call("open", { doc: "slow:1" });
+    dropClientSubscriptions(local.client); // the socket closes before the first reading is in
+    await opening;
+    await Bun.sleep(40);
+    expect(reads).toBe(1);
+    r.stopAll();
+  });
+
+  test("one who opens just after the first watcher left during the reading is still polled (#65 review)", async () => {
+    for (let hops = 0; hops < 6; hops++) {
+      const { local } = setup();
+      let reads = 0;
+      let release = () => {};
+      const r = registerSource(local.server, { prefix: "slow:", every: 5, read: async () => { if (reads === 0) await new Promise<void>((go) => (release = go)); return ++reads; } });
+      const opening = local.call("open", { doc: "slow:1" });
+      await Bun.sleep(1);
+      dropClientSubscriptions(local.client);
+      release();
+      let later = Promise.resolve();
+      for (let i = 0; i < hops; i++) later = later.then(() => {});
+      await later;
+      await local.as("b").call("open", { doc: "slow:1" });
+      await opening;
+      await Bun.sleep(40);
+      expect({ hops, polled: reads > 2 }).toEqual({ hops, polled: true });
+      r.stopAll();
+    }
+  });
+});
+
+/**
+ * The law for the documents with no tables -- a memory document and
+ * the free-form document (`registerDoc`): a copy, with everything it was told
+ * applied, equals a fresh open after every kind of write either takes: an add,
+ * one the server names (`/-`), a field and a row replaced, a remove. Neither
+ * keeps a ledger, so there is no walk to ask; nor a schema, so no cascade or move.
+ */
+describe("the law for a memory document and the free-form document", () => {
+  const writes = [
+    [{ op: "add", path: "/people/p2", value: { name: "Bo", age: 3 } }],
+    [{ op: "add", path: "/people/-", value: { name: "Cy" } }],
+    [{ op: "replace", path: "/people/p1/name", value: "Ada L" }],
+    [{ op: "replace", path: "/people/p2", value: { name: "Bob" } }, { op: "remove", path: "/people/p1" }],
+    [{ op: "replace", path: "/title", value: "renamed" }],
+  ];
+  const empty = () => ({ title: "t", people: { p1: { name: "Ada" } } as Record<string, any> });
+  const asked = (local: ReturnType<typeof createLocal>): PathBackend => {
+    const heard: { channel: string; data: any }[] = [];
+    local.onPublish((channel, data) => heard.push({ channel, data }));
+    return { process: { call: (action, msg) => local.call(action, msg), heard }, quiet: async () => {}, exportTables: async () => ({ tables: {} }) };
+  };
+
+  test("a memory document", async () => {
+    const local = createLocal();
+    registerMemory(local.server, { prefix: "here:", empty });
+    const b = asked(local);
+    const copies = await openAll(b.process, ["here:a", "here:b"]);
+    for (const ops of writes) await write(b.process, "here:a", ops);
+    await assertCopiesHold(b, copies);
+  });
+
+  test("the free-form document", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "delta-law-"));
+    try {
+      const local = createLocal();
+      await registerDoc(local.server, "free", { file: join(dir, "free.json"), empty: empty() });
+      const b = asked(local);
+      const copies = await openAll(b.process, ["free"]);
+      for (const ops of writes) await write(b.process, "free", ops);
+      await assertCopiesHold(b, copies);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

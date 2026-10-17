@@ -1,0 +1,413 @@
+import { describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { createLocal } from "../src/server/local";
+import { createTables, defineCustomDoc, defineDoc, defineSchema, inverseOf, registerDocs } from "../src/server/sqlite";
+import { registerDoc } from "../src/server/server";
+import { registerMemory } from "../src/server/kinds";
+import { applyOps, type DeltaOp } from "../src/core";
+import { setLogLevel } from "../src/server/logger";
+
+setLogLevel("silent");
+
+const schema = defineSchema({
+  rooms: { columns: { topic: "text?" }, temporal: false },
+  messages: { parent: "rooms", columns: { text: "text" }, temporal: false },
+});
+const room = defineDoc("room:", { root: "rooms", include: ["messages"], implied: true });
+
+function setup() {
+  const db = new Database(":memory:");
+  createTables(db, schema);
+  const local = createLocal();
+  const heard: { channel: string; data: any }[] = [];
+  local.onPublish((channel, data) => heard.push({ channel, data }));
+  const { evict } = registerDocs(local.server, db, schema, [room]);
+  return { db, local, heard, evict };
+}
+
+describe("createLocal", () => {
+  test("opens, writes and hears the broadcast, with no socket", async () => {
+    const { local, heard } = setup();
+    expect((await local.call("open", { doc: "room:a" })).result).toEqual({ rooms: { id: "a", topic: null }, messages: {} });
+    expect((await local.call("delta", { doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { text: "hi" } }] })).result).toEqual({ ack: true });
+    expect(heard).toEqual([{ channel: "room:a", data: { doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { id: "m1", rooms_id: "a", text: "hi" } }] } }]);
+  });
+
+  test("a custom document's name is answered by the longest prefix it starts with, whichever registered first, as a table document's is", async () => {
+    const db = new Database(":memory:");
+    createTables(db, schema);
+    const local = createLocal();
+    const named = (prefix: string) => defineCustomDoc(prefix, { watch: ["messages"], parse: (id: string) => id, recompute: () => ({ prefix }) });
+    registerDocs(local.server, db, schema, [], [named("said:"), named("said:loud:")]);
+    expect((await local.call("open", { doc: "said:loud:hi" })).result).toEqual({ prefix: "said:loud:" });
+    expect((await local.call("open", { doc: "said:hi" })).result).toEqual({ prefix: "said:" });
+  });
+
+  test("an action nothing is registered for is a 400, and one whose handlers all pass is a 404, as over a socket", async () => {
+    const { local } = setup();
+    expect((await local.call("nope", {})).error).toEqual({ code: 400, message: "Unknown action: nope" });
+    expect((await local.call("open", { doc: "nobody:1" })).error).toEqual({ code: 404, message: "No handler matched: open" });
+  });
+
+  test("a handler that throws is answered with its code, as a socket answers it, never a rejection: the free-form document's 404", async () => {
+    const file = `/tmp/delta-local-throws-${Date.now()}.json`;
+    const local = createLocal();
+    await registerDoc(local.server, "free", { file, empty: { a: { x: 1 } } as any });
+    expect((await local.call("delta", { doc: "free", ops: [{ op: "replace", path: "/nope", value: 1 }] })).error)
+      .toEqual({ code: 404, message: 'Path not found: "/nope" is not there to replace' });
+    expect((await local.call("delta", { doc: "free", ops: [{ op: "move", from: "/a", path: "/b" }] })).error?.code).toBe(400);
+    local.server.on("boom", () => { throw new Error("kaboom"); });
+    expect((await local.call("boom", {})).error).toEqual({ code: 500, message: "kaboom" });
+    try { (await import("node:fs")).unlinkSync(file); } catch {}
+  });
+
+  test("a handler that answers after an await is waited for", async () => {
+    const local = createLocal();
+    local.server.on("slow", async (_m, _c, respond) => { await Bun.sleep(1); respond({ result: 1 }); });
+    expect((await local.call("slow", {})).result).toBe(1);
+  });
+
+  test("a listener that throws is logged, and every document is still told: the others, and the custom documents", async () => {
+    const db = new Database(":memory:");
+    createTables(db, schema);
+    const local = createLocal();
+    const said = defineCustomDoc("said:", {
+      watch: ["messages"],
+      parse: (text: string) => text,
+      query: (d: any, text: string) => ({ messages: d.query("SELECT * FROM messages WHERE text = ?").all(text) }),
+      matches: (_coll: string, row: any, text: string) => row.text === text,
+    });
+    registerDocs(local.server, db, schema, [room, defineDoc("all-messages:", { root: "messages", include: [] })], [said]);
+    local.onPublish(() => { throw new Error("a listener's own mistake"); });
+    const heard: string[] = [];
+    local.onPublish((channel) => heard.push(channel));
+    for (const doc of ["room:a", "all-messages:", "said:hi"]) await local.call("open", { doc });
+    const errors: string[] = [];
+    const error = console.error;
+    console.error = (line: string) => void errors.push(String(line));
+    setLogLevel("error");
+    try {
+      const r = await local.call("delta", { doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { text: "hi" } }] });
+      expect(r.result).toEqual({ ack: true });
+    } finally {
+      console.error = error;
+      setLogLevel("silent");
+    }
+    expect(heard.sort()).toEqual(["all-messages:", "room:a", "said:hi"]);
+    expect(errors.length).toBe(3);   // one per telling, each to the listener that threw
+    expect(errors.every((e) => e.includes("fan-out failed (write committed)") && e.includes("a listener's own mistake"))).toBe(true);
+  });
+
+  test("a message sent to one caller alone (a view of its own) is heard with who it went to, each listener its own copy; one that throws is logged and the rest still hear it", async () => {
+    const local = createLocal();
+    local.server.on("open", (msg, client, respond) => {
+      client.send(JSON.stringify({ doc: msg.doc, ops: [{ op: "replace", path: "", value: { me: client.data.identity ?? null } }] }));
+      respond({ result: {} });
+    });
+    local.onPublish(() => { throw new Error("a listener's own mistake"); });
+    const heard: { channel: string; data: any; to: unknown }[] = [];
+    local.onPublish((channel, data, to) => { heard.push({ channel, data, to }); if (data.ops[0]) data.ops[0].value.me = "changed"; });
+    local.onPublish((channel, data, to) => heard.push({ channel, data, to }));
+    const errors: string[] = [];
+    const error = console.error;
+    console.error = (line: string) => void errors.push(String(line));
+    setLogLevel("error");
+    try {
+      await local.as({ id: 7 }).call("open", { doc: "mine:x" });
+      await local.call("open", { doc: "mine:x" });
+      local.server.publish("mine:x", { doc: "mine:x", ops: [] });
+    } finally {
+      console.error = error;
+      setLogLevel("silent");
+    }
+    const view = (me: unknown) => ({ doc: "mine:x", ops: [{ op: "replace", path: "", value: { me } }] });
+    expect(heard).toEqual([
+      { channel: "mine:x", data: { doc: "mine:x", ops: [{ op: "replace", path: "", value: { me: "changed" } }] }, to: { identity: { id: 7 } } },
+      { channel: "mine:x", data: view({ id: 7 }), to: { identity: { id: 7 } } },
+      { channel: "mine:x", data: { doc: "mine:x", ops: [{ op: "replace", path: "", value: { me: "changed" } }] }, to: { identity: undefined } },
+      { channel: "mine:x", data: view(null), to: { identity: undefined } },
+      { channel: "mine:x", data: { doc: "mine:x", ops: [] }, to: undefined },
+      { channel: "mine:x", data: { doc: "mine:x", ops: [] }, to: undefined },
+    ]);
+    expect(errors).toHaveLength(3);   // one per message, each to the listener that threw
+    expect(errors.every((e) => e.includes("fan-out failed (write committed)") && e.includes("a listener's own mistake"))).toBe(true);
+  });
+
+  test("unsubscribing from publish stops the hearing", async () => {
+    const local = createLocal();
+    const heard: string[] = [];
+    const off = local.onPublish((channel) => heard.push(channel));
+    local.server.publish("x", {});
+    off();
+    local.server.publish("y", {});
+    expect(heard).toEqual(["x"]);
+  });
+});
+
+describe("in process, an answer is the caller's own, as over the socket", () => {
+  /** Open, keep the answer, write: it is unchanged. Change it, reopen: the change is not served. */
+  async function ownAnswer(local: ReturnType<typeof createLocal>, doc: string, ops: DeltaOp[], mutate: (kept: any) => void) {
+    const kept = (await local.call("open", { doc })).result;
+    const was = structuredClone(kept);
+    expect((await local.call("delta", { doc, ops })).error).toBeUndefined();
+    expect(kept).toEqual(was);
+    mutate(kept);
+    expect(JSON.stringify((await local.call("open", { doc })).result)).not.toContain("MUTATED");
+  }
+
+  test("the JSON file (registerDoc)", async () => {
+    const file = `/tmp/delta-local-own-${Date.now()}.json`;
+    const local = createLocal();
+    await registerDoc(local.server, "chat:room", { file, empty: { messages: { m1: { text: "hi" }, m2: { text: "yo" } } as Record<string, any>, title: "t" } });
+    await ownAnswer(local, "chat:room", [{ op: "replace", path: "/messages/m1/text", value: "edited" }, { op: "remove", path: "/messages/m2" }],
+      (kept) => { kept.messages.m1.text = "MUTATED"; kept.title = "MUTATED"; });
+    try { (await import("node:fs")).unlinkSync(file); } catch {}
+  });
+
+  test("a memory document, and what peek gives", async () => {
+    const local = createLocal();
+    const here = registerMemory(local.server, { prefix: "here:", empty: () => ({ people: { p1: { name: "Ada" } } as Record<string, any> }) });
+    await ownAnswer(local, "here:a", [{ op: "add", path: "/people/p2", value: { name: "Bo" } }], (kept) => { kept.people.p1.name = "MUTATED"; });
+    here.peek("here:a")!.people.p1.name = "MUTATED";
+    expect(JSON.stringify((await local.call("open", { doc: "here:a" })).result)).not.toContain("MUTATED");
+  });
+
+  test("the copy keeps what is not plain data as it is: an own __proto__ stays a key, a Date a Date, a function handed over", async () => {
+    const local = createLocal();
+    const fn = () => 1;
+    const value = { row: JSON.parse('{"__proto__":{"polluted":true},"a":1}'), at: new Date(0), fn, list: [{ b: 2 }] };
+    local.server.on("probe", (_m, _c, respond) => respond({ result: value }));
+    const { result } = await local.call("probe", {});
+    expect(result).not.toBe(value);
+    expect(Object.getPrototypeOf(result.row)).toBe(Object.prototype);
+    expect(Object.keys(result.row)).toEqual(["__proto__", "a"]);
+    expect(result.row.polluted).toBeUndefined();
+    expect(result.at).toEqual(new Date(0));
+    expect(result.at).not.toBe(value.at);
+    expect(result.list).toEqual([{ b: 2 }]);
+    expect(result.list[0]).not.toBe(value.list[0]);
+    expect(result.fn).toBe(fn);
+  });
+
+  test("a cyclic value is still copied, whole: an answer, and a broadcast a listener changes", async () => {
+    const local = createLocal();
+    const value: any = { row: { n: 1 } };
+    value.self = value;
+    local.server.on("probe", (_m, _c, respond) => respond({ result: value }));
+    const { result } = await local.call("probe", {});
+    expect(result).not.toBe(value);
+    expect(result.self).toBe(result);   // the cycle, copied
+    result.row.n = 2;
+    local.onPublish((_channel, data) => { data.row.n = 3; data.self.row.n = 4; });
+    local.server.publish("x", value);
+    expect(value.row.n).toBe(1);
+  });
+
+  test("a copy kept eta's way -- the open spread, each told change applied to a clone -- takes a remove (#4)", async () => {
+    // eta's documents.ts: `const { _v, ...value } = answer.result`, then applyOps(structuredClone(held), data.ops)
+    const db = new Database(":memory:");
+    createTables(db, schema);
+    const local = createLocal();
+    registerDocs(local.server, db, schema, [room, defineDoc("all-messages:", { root: "messages", include: [] })], [], { ledger: true });
+    await local.call("open", { doc: "room:a" });
+    await local.call("delta", { doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { text: "hi" } }] });
+    const held = new Map<string, any>();
+    const failed: string[] = [];
+    local.onPublish((doc, data) => {
+      if (!held.has(doc)) return;
+      try { const next = structuredClone(held.get(doc)); applyOps(next, data.ops); held.set(doc, next); }
+      catch (err: any) { failed.push(`${doc}: ${err.message}`); }
+    });
+    for (const doc of ["room:a", "all-messages:"]) {
+      const { _v, ...value } = (await local.call("open", { doc })).result;
+      held.set(doc, value);
+    }
+    await local.call("delta", { doc: "room:a", ops: [{ op: "remove", path: "/messages/m1" }] });
+    expect(failed).toEqual([]);
+    for (const [doc, value] of held) {
+      const { _v, ...fresh } = (await local.call("open", { doc })).result;
+      expect({ doc, value }).toEqual({ doc, value: fresh });
+    }
+    expect(held.get("all-messages:").messages).toEqual({});
+  });
+});
+
+describe("implied docs", () => {
+  test("open empty without making a row; the first write makes it", async () => {
+    const { db, local } = setup();
+    await local.call("open", { doc: "room:attic" });
+    expect(db.query("SELECT COUNT(*) AS n FROM rooms").get()).toEqual({ n: 0 });
+    await local.call("delta", { doc: "room:attic", ops: [{ op: "add", path: "/messages/m1", value: { text: "up here" } }] });
+    expect(db.query("SELECT id FROM rooms").all()).toEqual([{ id: "attic" }]);
+    expect(db.query("SELECT rooms_id FROM messages").all()).toEqual([{ rooms_id: "attic" }]);
+  });
+
+  test("a failed first write makes no row", async () => {
+    const { db, local } = setup();
+    await local.call("open", { doc: "room:attic" });
+    const answer = await local.call("delta", { doc: "room:attic", ops: [{ op: "replace", path: "/messages/ghost/text", value: "x" }] });
+    expect(answer.error).toBeDefined();
+    expect(db.query("SELECT COUNT(*) AS n FROM rooms").get()).toEqual({ n: 0 });
+  });
+
+  test("an implied doc cannot also declare a scope", async () => {
+    expect(() => defineDoc("x:", { root: "rooms", include: [], scope: { id: ":docId" }, implied: true })).toThrow("implied");
+  });
+
+  test("a doc that is not implied still 404s", async () => {
+    const local = createLocal();
+    const db = new Database(":memory:");
+    createTables(db, schema);
+    registerDocs(local.server, db, schema, [defineDoc("plain:", { root: "rooms", include: ["messages"] })]);
+    expect((await local.call("open", { doc: "plain:nowhere" })).error?.code).toBe(404);
+  });
+});
+
+describe("savepoints", () => {
+  test("a write inside the caller's transaction rolls back with it", async () => {
+    const { db, local, evict } = setup();
+    db.exec("BEGIN");
+    await local.call("open", { doc: "room:a" });
+    await local.call("delta", { doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { text: "hi" } }] });
+    expect(db.query("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 1 });
+    db.exec("ROLLBACK");
+    evict("room:a");
+    expect(db.query("SELECT COUNT(*) AS n FROM messages").get()).toEqual({ n: 0 });
+    expect((await local.call("open", { doc: "room:a" })).result.messages).toEqual({});
+  });
+
+  test("a failed write inside the caller's transaction leaves the caller's own work alone", async () => {
+    const { db, local } = setup();
+    await local.call("open", { doc: "room:a" });
+    await local.call("delta", { doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { text: "hi" } }] });
+    db.exec("BEGIN");
+    db.run("UPDATE messages SET text = 'mine' WHERE id = 'm1'");
+    const answer = await local.call("delta", { doc: "room:a", ops: [{ op: "replace", path: "/messages/ghost/text", value: "x" }] });
+    expect(answer.error).toBeDefined();
+    expect(db.query("SELECT text FROM messages").get()).toEqual({ text: "mine" });
+    db.exec("COMMIT");
+  });
+});
+
+describe("inverse", () => {
+  test("asked for, the answer carries what was applied and its inverse", async () => {
+    const { local } = setup();
+    await local.call("open", { doc: "room:a" });
+    const answer = await local.call("delta", { doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { text: "hi" } }], inverse: true });
+    expect(answer.result.ops).toEqual([{ op: "add", path: "/messages/m1", value: { id: "m1", rooms_id: "a", text: "hi" } }]);
+    expect(answer.result.inverse).toEqual([{ op: "remove", path: "/messages/m1" }]);
+  });
+
+  test("applying the inverse restores the document, and its own inverse is the write again", async () => {
+    const { local } = setup();
+    const open = async () => (await local.call("open", { doc: "room:a" })).result;
+    await open();
+    await local.call("delta", { doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { text: "hi" } }, { op: "replace", path: "/rooms/topic", value: "tea" }] });
+    const before = structuredClone(await open());
+    const write = await local.call("delta", { doc: "room:a", ops: [{ op: "remove", path: "/messages/m1" }, { op: "replace", path: "/rooms/topic", value: "coffee" }], inverse: true });
+    const after = structuredClone(await open());
+    const undo = await local.call("delta", { doc: "room:a", ops: write.result.inverse, inverse: true });
+    expect(await open()).toEqual(before);
+    await local.call("delta", { doc: "room:a", ops: undo.result.inverse });
+    expect(await open()).toEqual(after);
+  });
+
+  test("a run of removes comes back parent first; other ops in reverse", async () => {
+    const before = { p: { 1: { id: "1" } }, c: { 2: { id: "2", p_id: "1" } }, r: { id: "r", x: 1 } };
+    expect(inverseOf(before, [
+      { op: "replace", path: "/r", value: { id: "r", x: 2 } },
+      { op: "remove", path: "/p/1" },
+      { op: "remove", path: "/c/2" },
+      { op: "add", path: "/c/3", value: { id: "3" } },
+    ])).toEqual([
+      { op: "remove", path: "/c/3" },
+      { op: "add", path: "/p/1", value: { id: "1" } },
+      { op: "add", path: "/c/2", value: { id: "2", p_id: "1" } },
+      { op: "replace", path: "/r", value: { id: "r", x: 1 } },
+    ]);
+  });
+
+  test("told what was asked, each remove asked for starts its own run: an undo's removes, children first, come back parent first", async () => {
+    const before = { p: { 1: { id: 1 } }, c: { 2: { id: 2, p_id: 1 }, 3: { id: 3, p_id: 1 } } };
+    const back = [
+      { op: "add", path: "/p/1", value: { id: 1 } },
+      { op: "add", path: "/c/2", value: { id: 2, p_id: 1 } },
+      { op: "add", path: "/c/3", value: { id: 3, p_id: 1 } },
+    ] as const;
+    const undo = [{ op: "remove", path: "/c/3" }, { op: "remove", path: "/c/2" }, { op: "remove", path: "/p/1" }] as const;
+    expect(inverseOf(before, [...undo], [...undo])).toEqual([...back]);
+    // the parent asked for (as /p/01, told at /p/1), its children cascaded: one run
+    const cascade = [{ op: "remove", path: "/p/1" }, { op: "remove", path: "/c/2" }, { op: "remove", path: "/c/3" }] as const;
+    expect(inverseOf(before, [...cascade], [{ op: "remove", path: "/p/01" }])).toEqual([...back]);
+  });
+
+  test("rows a write makes and takes out again -- a parent, and the child its removal cascades to -- have no inverse; a row removed and made again keeps its own", () => {
+    const before = { p: { 1: { id: 1 } }, c: {} };
+    const asked = [{ op: "add", path: "/p/9", value: { id: 9 } }, { op: "add", path: "/c/9", value: { id: 9, p_id: 9 } }, { op: "replace", path: "/c/9", value: { id: 9, p_id: 9, x: 1 } }, { op: "remove", path: "/p/9" }] as const;
+    expect(inverseOf(before, [...asked, { op: "remove", path: "/c/9" }], [...asked])).toEqual([]);
+    const again = [{ op: "remove", path: "/p/1" }, { op: "add", path: "/p/1", value: { id: 1, x: 2 } }, { op: "remove", path: "/p/1" }] as const;
+    expect(inverseOf(before, [...again], [...again])).toEqual([{ op: "add", path: "/p/1", value: { id: 1 } }]);
+  });
+});
+
+describe("fan-out onto a document whose root is the row", () => {
+  // One table seen two ways: a map of rows in the wedding's document, the root of a household's own.
+  const s = defineSchema({
+    weddings: { columns: { name: "text" }, temporal: false },
+    households: { parent: "weddings", columns: { email: "text" }, temporal: false },
+  });
+  const board = defineDoc("board:", { root: "weddings", include: ["households"] });
+  const household = defineDoc("household:", { root: "households", include: [] });
+
+  function setupBoth() {
+    const db = new Database(":memory:");
+    createTables(db, s);
+    db.run("INSERT INTO weddings (id, name) VALUES ('w1', 'ours')");
+    db.run("INSERT INTO households (id, weddings_id, email) VALUES ('h1', 'w1', 'a@x'), ('h2', 'w1', 'b@x')");
+    const local = createLocal();
+    const heard: { channel: string; data: any }[] = [];
+    local.onPublish((channel, data) => heard.push({ channel, data }));
+    registerDocs(local.server, db, s, [board, household]);
+    return { local, heard };
+  }
+
+  test("a row written in the map arrives as the field of the household's root that changed", async () => {
+    const { local, heard } = setupBoth();
+    await local.call("open", { doc: "board:w1" });
+    await local.call("open", { doc: "household:h1" });
+    await local.call("delta", { doc: "board:w1", ops: [{ op: "replace", path: "/households/h1/email", value: "new@x" }, { op: "replace", path: "/households/h2/email", value: "other@x" }] });
+    expect(heard.filter((h) => h.channel === "household:h1").map((h) => h.data.ops)).toEqual([[{ op: "replace", path: "/households/email", value: "new@x" }]]);
+    expect((await local.call("open", { doc: "household:h1" })).result).toEqual({ households: { id: "h1", weddings_id: "w1", email: "new@x" } });
+  });
+
+  test("the row taken out of the map takes the household's root with it", async () => {
+    const { local, heard } = setupBoth();
+    await local.call("open", { doc: "board:w1" });
+    await local.call("open", { doc: "household:h1" });
+    await local.call("delta", { doc: "board:w1", ops: [{ op: "remove", path: "/households/h1" }] });
+    expect(heard.filter((h) => h.channel === "household:h1").map((h) => h.data.ops)).toEqual([[{ op: "replace", path: "/households", value: null }]]);
+  });
+});
+
+describe("fan-out of rows whose parent comes in the same write", () => {
+  const s = defineSchema({
+    weddings: { columns: { name: "text" }, temporal: false },
+    courses: { parent: "weddings", columns: { name: "text" }, temporal: false },
+    drinks: { parent: "courses", columns: { name: "text" }, temporal: false },
+  });
+
+  test("a course and its drinks, added in one write, reach the other document that holds them", async () => {
+    const db = new Database(":memory:");
+    createTables(db, s);
+    db.run("INSERT INTO weddings (id, name) VALUES ('w1', 'ours')");
+    const local = createLocal();
+    const heard: { channel: string; data: any }[] = [];
+    local.onPublish((channel, data) => heard.push({ channel, data }));
+    registerDocs(local.server, db, s, [defineDoc("board:", { root: "weddings", include: ["courses", "drinks"] }), defineDoc("menu:", { root: "weddings", include: ["courses", "drinks"] })]);
+    await local.call("open", { doc: "board:w1" });
+    await local.call("open", { doc: "menu:w1" });
+    await local.call("delta", { doc: "board:w1", ops: [{ op: "add", path: "/courses/c1", value: { name: "The toast" } }, { op: "add", path: "/drinks/d1", value: { courses_id: "c1", name: "Champagne" } }] });
+    expect(heard.filter((h) => h.channel === "menu:w1").flatMap((h) => h.data.ops.map((o: any) => o.path))).toEqual(["/courses/c1", "/drinks/d1"]);
+  });
+});
+

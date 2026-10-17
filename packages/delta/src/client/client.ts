@@ -1,0 +1,794 @@
+/**
+ * Delta Client — WebSocket client + reactive document sync for the browser.
+ *
+ * Provides the client half of the delta-doc system:
+ *   - connectWs()  — reconnecting WebSocket with request/response and notifications
+ *   - openDoc()    — open a persisted document as a reactive signal
+ *   - call()       — invoke a stateless RPC method
+ *
+ * Usage:
+ *   import { connectWs, openDoc, call, WS } from "@blueshed/delta/client";
+ *   import { provide } from "@blueshed/railroad/shared";
+ *
+ *   provide(WS, connectWs("/ws"));
+ *
+ *   const message = openDoc<Message>("message");
+ *   effect(() => console.log(message.data.get()));
+ *   message.send([{ op: "replace", path: "/message", value: "hello" }]);
+ *   message.close();   // release — automatic when opened inside a railroad scope
+ *
+ *   const status = await call<Status>("status");
+ *
+ * Rendering collections: with railroad in the project, its keyed `list()`
+ * over `doc.data` is the idiom — per-row surgical updates come free: a
+ * broadcast tells what changed (a row that arrives whole, a field that
+ * changes by itself), and the row it lands in is a fresh object
+ * (`freshen`), so the default equality sees it. `doc.onOps(handler)` +
+ * `applyOpsToCollection` (see `@blueshed/delta/dom-ops`) is the vanilla-DOM
+ * equivalent for projects without a keyed reactive list primitive; pick one
+ * per project.
+ */
+// Subpaths, not the root barrel: the barrel loads railroad's JSX, whose global
+// `JSX` namespace clashes with React's in an app that only wants the socket.
+import { signal, batch, hasActiveDisposeScope, trackDispose, type ReadonlySignal } from "@blueshed/railroad/signals";
+import { key, inject, tryInject } from "@blueshed/railroad/shared";
+import { createLogger } from "@blueshed/railroad/logger";
+import { applyOps, splitPath, type DeltaOp } from "../core";
+
+export type { DeltaOp } from "../core";
+
+/**
+ * Rejection shape of `call()` and `doc.send()` — returned by the server when
+ * an action errors. `code` is numeric (401 for auth, 400 for bad input, etc).
+ * `DeltaError.isDeltaError(e)` narrows a caught unknown to this shape.
+ */
+export interface DeltaError {
+  code: number;
+  message: string;
+}
+
+export const DeltaError = {
+  isDeltaError(e: unknown): e is DeltaError {
+    return (
+      !!e && typeof e === "object"
+      && typeof (e as any).code === "number"
+      && typeof (e as any).message === "string"
+    );
+  },
+};
+
+/**
+ * Copy, once a broadcast, the row an op changes something inside -- and what
+ * lies under it -- below the document itself, which is held by reference:
+ * `/<coll>/<id>/<field>` copies the row, a single document's root field
+ * (`/<root>/<field>`, replaced) the root. Anything that compares rows by
+ * reference (railroad's keyed `list()`, a `computed`) then sees the row that
+ * changed as changed, and the rows that did not as they were. A collection's
+ * map is changed in place: copying it on each broadcast cost about 0.4 ms a
+ * time at 10,000 rows, where a field op itself costs 1 µs. (A whole row
+ * replaced in a map, `/<coll>/<id>`, as a memory document may send, reads as a
+ * root's field and copies the map: the path cannot tell the two apart.)
+ */
+function freshen(doc: any, ops: DeltaOp[]): void {
+  const fresh = new Set<object>();
+  for (const op of ops) {
+    let parent = doc;
+    let segments: string[];
+    try { segments = splitPath(op.path); } catch { return; }   // applyOps refuses it
+    segments.slice(0, -1).forEach((seg, depth) => {
+      const child = parent && Object.hasOwn(parent, seg) ? parent[seg] : undefined;
+      if (child === null || typeof child !== "object") { parent = undefined; return; }
+      // depth 0 is a collection's map, or a single document's root: copied only as the root a field is replaced in
+      if ((depth > 0 || (segments.length === 2 && op.op === "replace")) && !fresh.has(child)) {
+        parent[seg] = Array.isArray(child) ? [...child] : { ...child };
+        fresh.add(parent[seg]);
+      }
+      parent = parent[seg];
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reconnecting WebSocket
+// ---------------------------------------------------------------------------
+
+function reconnectingWebSocket(url: string): WebSocket {
+  let ws!: WebSocket;
+  const proxy = new EventTarget();
+  let backoff = 500;
+  let closed = false;
+
+  function connect() {
+    ws = new WebSocket(url);
+    ws.addEventListener("open", () => {
+      backoff = 500;
+      proxy.dispatchEvent(new Event("open"));
+    });
+    ws.addEventListener("message", (e: MessageEvent) => {
+      proxy.dispatchEvent(new MessageEvent("message", { data: e.data }));
+    });
+    ws.addEventListener("close", () => {
+      proxy.dispatchEvent(new Event("close"));
+      // Suppress reconnect when close() was called explicitly — otherwise
+      // every server restart (tests, demos, HMR) loops forever.
+      if (closed) return;
+      setTimeout(connect, (backoff = Math.min(backoff * 2, 30_000)));
+    });
+    ws.addEventListener("error", () => {
+      proxy.dispatchEvent(new Event("error"));
+    });
+  }
+
+  (proxy as any).send = (data: string) => {
+    if (ws.readyState === WebSocket.OPEN) ws.send(data);
+  };
+  (proxy as any).close = () => {
+    closed = true;
+    try { ws.close(); } catch { /* already closed */ }
+  };
+  // Drop this connection and make the next, as a transport drop would.
+  (proxy as any).reconnect = () => {
+    try { ws.close(); } catch { /* already closed */ }
+  };
+
+  Object.defineProperty(proxy, "readyState", {
+    get: () => ws.readyState,
+  });
+
+  connect();
+  return proxy as unknown as WebSocket;
+}
+
+// ---------------------------------------------------------------------------
+// WebSocket client
+// ---------------------------------------------------------------------------
+
+export type NotifyHandler = (msg: any) => void;
+
+export interface WsClient {
+  connected: ReturnType<typeof signal<boolean>>;
+  send(msg: any): Promise<any>;
+  on(event: string, handler: NotifyHandler): () => void;
+  /**
+   * Close the socket and suppress reconnection. Any in-flight `send` promises
+   * are rejected: explicit close() rejects with `{code:0, message:"closed"}`,
+   * and an unexpected transport drop (which may reconnect) rejects with
+   * `{code:0, message:"disconnected"}`. Idempotent.
+   */
+  close(): void;
+  /**
+   * Internal — per-client map of `openDoc` subscribers. Each `connectWs`
+   * instance has its own, so multiple clients in one process don't share
+   * state. Consumers shouldn't read this directly; use `openDoc(name, ws)`.
+   */
+  _docs: Map<string, OpenDocEntry>;
+}
+
+export type OpsHandler = (ops: DeltaOp[]) => void;
+
+export interface OpenDocEntry {
+  data: ReturnType<typeof signal<any>>;
+  dataVersion: ReturnType<typeof signal<number>>;
+  opsHandlers: Set<OpsHandler>;
+  /** Called with the full doc state on open and every reconnect. */
+  onOpen: (state: any) => void;
+  /** Live Doc handles sharing this entry — openDoc dedupes by name, close()
+   *  only unregisters when the last handle releases. */
+  refs: number;
+  /** Pending doc.ready resolvers; resolved and cleared on (each) open. */
+  readyResolvers: Array<() => void>;
+  /** The WsClient this entry is registered with, once known. */
+  client: WsClient | null;
+  /** Set when deferred registration found the name already registered under a
+   *  different entry (mixed explicit-client + DI opens) — handles follow the
+   *  chain to the canonical entry. */
+  mergedInto?: OpenDocEntry;
+  /**
+   * Last authoritative server doc version applied — seeded from `_v` on the
+   * open snapshot and advanced by `v` on each broadcast. `undefined` means the
+   * backend doesn't version this doc (a free-form document, custom docs, SQLite or
+   * the JSON file without a ledger), so no
+   * gap detection runs and ops apply as-is.
+   */
+  serverVersion?: number;
+  /** True while a gap-triggered re-open is in flight (de-dupes resyncs). */
+  resyncing?: boolean;
+  /** True once the first open response has landed. Broadcasts arriving before
+   *  that are dropped — the open snapshot is the authoritative starting state. */
+  opened?: boolean;
+  /** `send()`s acked at a version this doc has not applied yet: each resolves when it has. */
+  echoWaiters?: Array<{ v: number; done: () => void }>;
+}
+
+/**
+ * Resolve the sends waiting for a version the doc has now applied -- all of
+ * them when the doc no longer versions, or is let go (`all`).
+ */
+function settleEchoes(entry: OpenDocEntry, all = false): void {
+  if (!entry.echoWaiters?.length) return;
+  const sv = entry.serverVersion;
+  entry.echoWaiters = entry.echoWaiters.filter((w) => {
+    if (!all && sv != null && w.v > sv) return true;
+    w.done();
+    return false;
+  });
+}
+
+/** How long a send waits for its echo before it resolves anyway (a backend that acks a version it never broadcasts). */
+const ECHO_WAIT_MS = 5000;
+
+/**
+ * `doc.send()` resolves once the doc has applied the write's own echo, on
+ * every backend: the JSON file and SQLite broadcast before they answer, and
+ * Postgres answers first and broadcasts through NOTIFY, so on Postgres the
+ * send waits for the version its ack names.
+ */
+function afterEcho(entry: OpenDocEntry, result: any): Promise<any> {
+  const v = Number(result?.version);
+  if (!Number.isFinite(v) || entry.serverVersion == null || entry.serverVersion >= v) return Promise.resolve(result);
+  return new Promise((resolve) => {
+    const waiter = { v, done: () => { clearTimeout(timer); resolve(result); } };
+    const timer = setTimeout(() => {
+      entry.echoWaiters = entry.echoWaiters?.filter((w) => w !== waiter);
+      resolve(result);
+    }, ECHO_WAIT_MS);
+    (entry.echoWaiters ??= []).push(waiter);
+  });
+}
+
+export const WS = key<WsClient>("ws");
+
+export interface ConnectOptions {
+  /** Keep this id across reconnects (the server's `clientId`, and so the ledger's cursor). */
+  clientId?: string;
+  /**
+   * Runs on every connect -- the first and each reconnect -- before
+   * `connected` turns true and before any document is opened or re-opened. Say
+   * who you are here, and a reconnect's re-opens go out signed in:
+   *
+   *   connectWs("/ws", { onConnect: (ws) => call("authenticate", { token }, ws) })
+   *
+   * While it runs, a request goes out at once, through the client it is given
+   * or through DI (`call("authenticate", { token })`), and the server handles
+   * them in the order they were sent; the documents' opens and re-opens, and
+   * requests made before the connect, wait for it. A hook that throws is
+   * logged, and the documents open anyway (and may 401).
+   */
+  onConnect?: (client: WsClient) => unknown;
+}
+
+/**
+ * The socket URL: an absolute `ws:`/`wss:` URL as it is, `http:`/`https:` as
+ * `ws:`/`wss:`, and a relative one against the page, taking the page's
+ * scheme. Outside a browser there is no page, so the URL must be absolute.
+ */
+function socketUrl(wsPath: string): URL {
+  const page = typeof location === "undefined" ? undefined : location.href;
+  let url: URL;
+  try { url = new URL(wsPath, page); }
+  catch { throw new Error(`connectWs("${wsPath}"): outside a browser the URL must be absolute, e.g. ws://localhost:3000/ws`); }
+  if (url.protocol === "http:") url.protocol = "ws:";
+  else if (url.protocol === "https:") url.protocol = "wss:";
+  return url;
+}
+
+/** Connect to a delta-server WebSocket endpoint. */
+export function connectWs(
+  wsPath: string = "/ws",
+  opts?: ConnectOptions,
+): WsClient {
+  const log = createLogger("[ws]");
+  const url = socketUrl(wsPath);
+  if (opts?.clientId) url.searchParams.set("clientId", opts.clientId);
+  const connected = signal(false);
+  const ws = reconnectingWebSocket(url.href);
+  const pending = new Map<
+    number,
+    { resolve: (v: any) => void; reject: (e: any) => void }
+  >();
+  const listeners = new Map<string, Set<NotifyHandler>>();
+  // Per-client doc subscriptions. Moved off module scope so two connectWs()
+  // instances in the same process don't share reactive state.
+  const docs = new Map<string, OpenDocEntry>();
+  const docLog = createLogger("[doc]");
+  let nextId = 1;
+  let isClosed = false;
+  let readyResolve: () => void;
+  let ready = new Promise<void>((r) => {
+    readyResolve = r;
+  });
+  let isReady = false;
+  // The connect whose onConnect is running, 0 when none is: while one runs,
+  // requests go straight out on its socket (see `sendInternal`).
+  let connects = 0;
+  let hooking = 0;
+
+  /** A request on the socket as it is now. */
+  function request(msg: any): Promise<any> {
+    if (isClosed) return Promise.reject({ code: 0, message: "closed" });
+    return new Promise((resolve, reject) => {
+      const id = nextId++;
+      pending.set(id, { resolve, reject });
+      log.debug(`#${id} ${msg.action} ${msg.doc ?? msg.method ?? ""}`);
+      ws.send(JSON.stringify({ ...msg, id }));
+    });
+  }
+
+  /**
+   * A request once the socket is ready: connected, and `onConnect` done. While
+   * `onConnect` runs, one goes straight out instead, so a hook that calls
+   * through DI (`call("authenticate", params)`, no client) is not waiting for
+   * itself: the page has no way to tell its requests from the hook's, and the
+   * server handles a socket's messages in the order they came, so they are
+   * handled behind what the hook has sent.
+   */
+  async function sendInternal(msg: any): Promise<any> {
+    if (isClosed) throw { code: 0, message: "closed" };
+    if (!hooking) await ready;
+    return request(msg);
+  }
+
+  // Apply a broadcast's ops: fire onOps subscribers FIRST (so DOM patchers see
+  // the op that matches the state change about to land), then patch `data`.
+  // False when the ops do not apply to the copy -- a remove or replace of a
+  // row it does not hold (RFC 6902): the copy has drifted from the server's,
+  // so it is left as it was and the doc re-opened, as for a version gap.
+  function applyBroadcast(name: string, entry: OpenDocEntry, ops: DeltaOp[]): boolean {
+    for (const handler of entry.opsHandlers) {
+      try { handler(ops); }
+      catch (err: any) { docLog.error(`onOps handler threw: ${err.message}`); }
+    }
+    const current = entry.data.peek();
+    if (current) {
+      // The document is changed in place, and what changed under it is fresh
+      // (`freshen`): a row the broadcast leaves alone keeps its reference (one
+      // bound into a drag-handler closure stays valid). `set(sameRef)` is a
+      // no-op under Object.is — `touch()` is the escape hatch that fires subs.
+      try {
+        freshen(current, ops);
+        applyOps(current, ops);   // whole or not at all
+      } catch (err: any) {
+        docLog.warn(`a broadcast on ${name} does not apply to its copy (${err.message}) — resyncing`);
+        resyncDoc(name, entry);
+        return false;
+      }
+      // One consistent flush per broadcast: an effect reading both data and
+      // dataVersion runs once, never in a half-updated window between the two.
+      batch(() => {
+        entry.dataVersion.set(entry.dataVersion.peek() + 1);
+        entry.data.touch();
+      });
+    }
+    return true;
+  }
+
+  // A versioned broadcast arrived out of sequence (we missed at least one op).
+  // Applying it would corrupt state, so re-open the doc to get an authoritative
+  // snapshot; onOpen's synthetic root-replace lets onOps consumers reconcile.
+  // De-duped: only one re-open in flight per doc.
+  function resyncDoc(name: string, entry: OpenDocEntry): void {
+    if (entry.resyncing) return;
+    entry.resyncing = true;
+    docLog.debug(`version gap on ${name} — resyncing`);
+    sendInternal({ action: "open", doc: name })
+      .then((state) => { entry.resyncing = false; entry.onOpen(state); })
+      .catch((err: any) => { entry.resyncing = false; docLog.error(`resync ${name}: ${err.message}`); });
+  }
+
+  // The server let this socket go of a document it may no longer hear (#17),
+  // and said why. A write of it waiting for its echo has none coming: it
+  // resolves now. A 401 is the socket's session: connect again, so onConnect
+  // signs it in and every document re-opens. Anything else (a 404: taken off
+  // it) is the document's: open it again -- taken, it is the server's copy and
+  // hears on; refused, the copy is let go, null, and onOps told so. It stays
+  // tracked, so the next connect opens it again.
+  function letGoDoc(name: string, entry: OpenDocEntry, error: DeltaError): void {
+    docLog.warn(`${name}: let go by the server (${error.code} ${error.message})`);
+    settleEchoes(entry, true);
+    if (error.code === 401) { (ws as any).reconnect(); return; }
+    sendInternal({ action: "open", doc: name })
+      .then((state) => entry.onOpen(state))
+      .catch((err: any) => {
+        docLog.error(`re-open ${name}: ${err?.message ?? String(err)}`);
+        if (docs.get(name) === entry && entry.data.peek() !== null) entry.onOpen(null);
+      });
+  }
+
+  ws.addEventListener("open", async () => {
+    log.info("connected");
+    if (opts?.onConnect) {
+      // Before anything else goes out: requests made while it runs skip the
+      // `ready` queue (its own, through the client it is given or through
+      // DI), and the re-opens below wait for it.
+      const connect = hooking = ++connects;
+      try { await opts.onConnect({ ...client, send: request }); }
+      catch (err: any) { log.error(`onConnect: ${err?.message ?? String(err)}`); }
+      finally { if (hooking === connect) hooking = 0; }
+      if (isClosed || ws.readyState !== WebSocket.OPEN) return;   // dropped meanwhile; the next open runs it again
+    }
+    connected.set(true);
+    isReady = true;
+    readyResolve();
+    listeners.get("open")?.forEach((fn) => fn({}));
+
+    // Re-open every tracked doc. Fires on initial connect AND on reconnect,
+    // so a doc opened before the socket came up or during an outage catches
+    // up as soon as the socket is ready.
+    for (const [name, entry] of docs) {
+      sendInternal({ action: "open", doc: name })
+        .then((state) => entry.onOpen(state))
+        .catch((err: any) => docLog.error(`re-open ${name}: ${err.message}`));
+    }
+  });
+
+  ws.addEventListener("close", () => {
+    log.info("disconnected");
+    connected.set(false);
+    hooking = 0;   // its socket is gone: what is sent now waits for the next connect
+    // A new gate only once the last one opened: what waits on one that never
+    // did (a failed attempt, a drop during onConnect) waits for the next connect.
+    if (isReady) {
+      isReady = false;
+      ready = new Promise<void>((r) => {
+        readyResolve = r;
+      });
+    }
+    // Drain in-flight requests on EVERY socket drop (including those that will
+    // reconnect) so outstanding `send`/`call` awaits fail fast instead of
+    // hanging forever. Use a DISTINCT message ("disconnected") so callers can
+    // tell a retryable transport drop from an explicit close() ("closed").
+    pending.forEach(({ reject }) => reject({ code: 0, message: "disconnected" }));
+    pending.clear();
+    listeners.get("close")?.forEach((fn) => fn({}));
+  });
+
+  ws.addEventListener(
+    "message",
+    ((ev: MessageEvent) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.id != null && pending.has(msg.id)) {
+        const { resolve, reject } = pending.get(msg.id)!;
+        pending.delete(msg.id);
+        if (msg.error) {
+          log.error(`#${msg.id} error: ${msg.error.message}`);
+          reject(msg.error);
+        } else {
+          log.debug(`#${msg.id} ack`);
+          resolve(msg.result);
+        }
+      } else {
+        log.debug(`notify ${JSON.stringify(msg).slice(0, 80)}`);
+
+        // A document the server let this socket go of, and why.
+        if (msg.doc && msg.error && !msg.ops) {
+          const entry = docs.get(msg.doc);
+          if (entry && entry.opened) letGoDoc(msg.doc, entry, msg.error);
+        }
+
+        // Doc op broadcast — dispatch to the matching entry if any.
+        if (msg.doc && msg.ops) {
+          const entry = docs.get(msg.doc);
+          // Drop broadcasts that arrive before the first open response: the
+          // snapshot is the authoritative starting state, and firing onOps
+          // against a not-yet-rendered doc (or seeding a version the snapshot
+          // then resets) would diverge the onOps DOM from doc.data.
+          if (entry && entry.opened) {
+            // Coerce defensively — a versioning backend may send the number as
+            // a string (e.g. pg BIGINT columns), and strict comparison below
+            // must not silently mis-classify a string vs the numeric baseline.
+            // A non-numeric/NaN `v` falls into the unversioned path rather than
+            // poisoning serverVersion (NaN comparisons are always false).
+            const n = Number(msg.v);
+            const v: number | undefined = (msg.v == null || Number.isNaN(n)) ? undefined : n;
+            const sv = entry.serverVersion;
+            if (v != null && sv != null) {
+              // Versioned doc — validate the server sequence.
+              if (v <= sv) {
+                // Duplicate / superseded echo — already applied. Ignore.
+              } else if (v > sv + 1) {
+                // GAP: at least one op was missed. Don't apply out of order —
+                // re-open to resync from an authoritative snapshot.
+                resyncDoc(msg.doc, entry);
+              } else if (applyBroadcast(msg.doc, entry, msg.ops)) {
+                // Contiguous (v === sv + 1) — applied; advance. (One that did
+                // not apply is re-opening, which sets the version.)
+                entry.serverVersion = v;
+                settleEchoes(entry);
+              }
+            } else if (applyBroadcast(msg.doc, entry, msg.ops)) {
+              // Unversioned backend (or no baseline yet) — applied as-is.
+              if (v != null) entry.serverVersion = v;
+              settleEchoes(entry);
+            }
+          }
+        }
+
+        listeners.get("message")?.forEach((fn) => fn(msg));
+      }
+    }) as EventListener,
+  );
+
+  const client: WsClient = {
+    connected,
+    send: sendInternal,
+    on(event: string, handler: NotifyHandler): () => void {
+      if (!listeners.has(event)) listeners.set(event, new Set());
+      listeners.get(event)!.add(handler);
+      return () => listeners.get(event)!.delete(handler);
+    },
+    close() {
+      if (isClosed) return;
+      isClosed = true;
+      (ws as any).close?.();
+      listeners.clear();
+      for (const entry of docs.values()) settleEchoes(entry, true);
+      docs.clear();
+      pending.forEach(({ reject }) => reject({ code: 0, message: "closed" }));
+      pending.clear();
+    },
+    _docs: docs,
+  };
+  return client;
+}
+
+// ---------------------------------------------------------------------------
+// Document — reactive signal backed by a server-side delta-doc
+// ---------------------------------------------------------------------------
+
+export interface Doc<T> {
+  /**
+   * The document as the server has it: null until the first open lands, then
+   * kept by the server's broadcasts, your own writes' echoes among them.
+   * Read-only: `doc.send(ops)` changes it, never a `set()` here (an optimistic
+   * update double-applies when the op echoes back).
+   */
+  data: ReadonlySignal<T | null>;
+  dataVersion: ReturnType<typeof signal<number>>;
+  ready: Promise<void>;
+  /**
+   * Send ops; resolves with the ack once this doc has applied the write's own
+   * echo, on every backend (on Postgres the echo follows the ack). Rejects
+   * with a `DeltaError`. With `{ inverse: true }` the ack carries `ops`, the
+   * ops as applied, on every backend: `add /rooms/-` comes back as
+   * `add /rooms/<id>` (and `inverse` where the backend gives one).
+   */
+  send(ops: DeltaOp[], options?: { inverse?: boolean }): Promise<any>;
+  /**
+   * Subscribe to the raw JSON-Patch ops as they arrive — BEFORE they are
+   * applied to `doc.data`. Use this to route `add` / `replace` / `remove`
+   * straight to DOM nodes via `applyOpsToCollection` (see `dom-ops.ts`)
+   * instead of re-rendering from the full state signal. Returns an
+   * unsubscribe function.
+   */
+  onOps(handler: OpsHandler): () => void;
+  /**
+   * Release this handle. When the last handle for the doc name closes, the
+   * doc is unregistered (broadcasts stop dispatching, reconnects stop
+   * re-opening it) and a best-effort `close` action tells the server to
+   * unsubscribe the socket. Idempotent per handle.
+   *
+   * Called automatically on scope teardown when the doc was opened inside a
+   * railroad dispose scope (a component, a routes() handler, when()/list(),
+   * or mount()) — so per-route docs don't accumulate for the life of the
+   * page. Module-level opens have no scope and stay open.
+   */
+  close(): void;
+}
+
+const docLog = createLogger("[doc]");
+
+// DI-based opens that run before `provide(WS, ...)` park their entries here,
+// keyed by doc name, so duplicate openDoc(name) calls share ONE entry (one
+// set of signals) even before the client exists. Entries move into the
+// client's _docs map on registration.
+const pendingDocs = new Map<string, OpenDocEntry>();
+
+// First open renders from the caller reading `doc.data`; subsequent opens
+// are reconnects, where onOps consumers (a DOM built from
+// applyOpsToCollection) need a reconciliation signal because state may have
+// drifted during the outage. `opened` lives on the entry so the broadcast
+// handler can drop ops that arrive before the first open lands.
+function createEntry(): OpenDocEntry {
+  const data = signal<any>(null);
+  const dataVersion = signal(0);
+  const entry: OpenDocEntry = {
+    data,
+    dataVersion,
+    opsHandlers: new Set<OpsHandler>(),
+    refs: 1,
+    readyResolvers: [],
+    client: null,
+    opened: false,
+    onOpen: (state: any) => {
+      // (Re)establish the authoritative version SOLELY from this snapshot: seed
+      // from `_v` (added by versioning backends) and strip it so it never leaks
+      // into `doc.data`; clear it when absent so a stale baseline (possibly set
+      // from a broadcast) can't survive a re-open and cause a false gap.
+      if (state && typeof state === "object" && "_v" in state) {
+        entry.serverVersion = Number((state as any)._v);
+        delete (state as any)._v;
+      } else {
+        entry.serverVersion = undefined;
+      }
+      // One flush: consumers of data + dataVersion see a single settled pass.
+      batch(() => {
+        data.set(state);
+        dataVersion.set(dataVersion.peek() + 1);
+      });
+      if (entry.opened) {
+        // RECONNECT: emit a synthetic whole-doc replace so onOps consumers can
+        // reconcile against the authoritative post-reconnect snapshot. (No
+        // emission on the FIRST open — initial render is the caller's job.)
+        const reconcileOps: DeltaOp[] = [{ op: "replace", path: "", value: state }];
+        for (const handler of entry.opsHandlers) {
+          // Mirror the broadcast dispatch: one throwing handler must not break
+          // the others.
+          try { handler(reconcileOps); }
+          catch (err: any) { docLog.error(`onOps reconcile handler threw: ${err.message}`); }
+        }
+      }
+      entry.opened = true;
+      settleEchoes(entry, entry.serverVersion == null);
+      const resolvers = entry.readyResolvers;
+      entry.readyResolvers = [];
+      for (const r of resolvers) r();
+    },
+  };
+  return entry;
+}
+
+/**
+ * Register `entry` as the canonical entry for `name` on client `c`. If the
+ * name is already registered under a DIFFERENT entry (mixed explicit-client +
+ * DI opens of the same doc), merge into it: fold refs, ops handlers, and
+ * ready resolvers, and leave a `mergedInto` pointer for handles to follow.
+ * Idempotent once `entry.client` is set.
+ */
+function registerEntry(c: WsClient, name: string, entry: OpenDocEntry): void {
+  if (entry.client) return;
+  if (pendingDocs.get(name) === entry) pendingDocs.delete(name);
+  const existing = c._docs.get(name);
+  if (existing && existing !== entry) {
+    existing.refs += entry.refs;
+    for (const h of entry.opsHandlers) existing.opsHandlers.add(h);
+    if (existing.opened) {
+      for (const r of entry.readyResolvers) r();
+    } else {
+      existing.readyResolvers.push(...entry.readyResolvers);
+    }
+    entry.readyResolvers = [];
+    entry.mergedInto = existing;
+    entry.client = c;
+    return;
+  }
+  entry.client = c;
+  c._docs.set(name, entry);
+  // If the socket is already open when we register, kick off the initial
+  // open now. Otherwise the `open`-event handler inside connectWs will
+  // fire the open for every tracked doc once the socket is up.
+  if (c.connected.peek()) {
+    c.send({ action: "open", doc: name })
+      .then(entry.onOpen)
+      .catch((err: any) => docLog.error(`openDoc("${name}"): ${err.message}`));
+  }
+}
+
+/**
+ * Open a persisted doc as a reactive signal. Safe to call at module level —
+ * if no `client` is passed, the WsClient is resolved from DI
+ * (`provide(WS, connectWs(...))`), eagerly when already provided, else via a
+ * deferred registration that also self-heals on first `send()`. For scripts
+ * or tests that want multiple independent clients in one process, pass the
+ * `client` explicitly.
+ *
+ * Repeated openDoc(name) calls on the same client share one underlying entry
+ * — the same signals — with a refcount; `close()` releases a handle and
+ * unregisters the doc when the last one goes. Opened inside a railroad
+ * dispose scope, the handle closes automatically on scope teardown.
+ */
+export function openDoc<T>(name: string, client?: WsClient): Doc<T> {
+  let entry: OpenDocEntry;
+  let closed = false;
+
+  // Follow merges so every access sees the canonical entry.
+  const cur = (): OpenDocEntry => {
+    while (entry.mergedInto) entry = entry.mergedInto;
+    return entry;
+  };
+
+  // Resolve the client as early as possible: an explicit argument, or DI when
+  // provide(WS, ...) has already run — the common case, and the one where
+  // dedupe is exact. Only otherwise do we park in pendingDocs and defer.
+  const eager = client ?? tryInject(WS) ?? null;
+  if (eager) {
+    const existing = eager._docs.get(name);
+    if (existing) {
+      existing.refs++;
+      entry = existing;
+    } else {
+      entry = createEntry();
+      registerEntry(eager, name, entry);
+    }
+  } else {
+    const pending = pendingDocs.get(name);
+    if (pending) {
+      pending.refs++;
+      entry = pending;
+    } else {
+      entry = createEntry();
+      pendingDocs.set(name, entry);
+    }
+    // Defer DI resolution so openDoc can be called at module load before
+    // `provide(WS, ...)` has run. If WS still isn't provided by then, stay
+    // parked — send() retries registration, so a late provide self-heals.
+    queueMicrotask(() => {
+      // Guard on the SHARED entry's refcount, not this handle's `closed` flag —
+      // the entry may still be held by a co-handle that opened the same name,
+      // and one handle closing must not suppress registration for the others.
+      // Today every pending handle queues its own microtask, so a handle-local
+      // guard happens to be covered by the co-handle's; this states the
+      // invariant directly instead of relying on that. `registerEntry` is
+      // idempotent once `client` is set, so the duplicate calls are free.
+      if (cur().refs <= 0) return;
+      const c = tryInject(WS);
+      if (c) registerEntry(c, name, cur());
+      else docLog.error(`openDoc("${name}"): no WS provided — will register on first send()`);
+    });
+  }
+
+  let readyResolve!: () => void;
+  const ready = new Promise<void>((r) => { readyResolve = r; });
+  if (entry.opened) readyResolve();
+  else entry.readyResolvers.push(readyResolve);
+
+  const ensureClient = (): WsClient => {
+    const e = cur();
+    const c = e.client ?? client ?? inject(WS);
+    // Same invariant as the deferred path: register while the entry is still
+    // held by someone, rather than while THIS handle happens to be open.
+    if (e.refs > 0) registerEntry(c, name, e);
+    return c;
+  };
+
+  const doc: Doc<T> = {
+    get data() { return cur().data; },
+    get dataVersion() { return cur().dataVersion; },
+    ready,
+    send(ops: DeltaOp[], options?: { inverse?: boolean }) {
+      // Resolves once this doc has applied the write's echo (see afterEcho).
+      const msg = options?.inverse ? { action: "delta", doc: name, ops, inverse: true } : { action: "delta", doc: name, ops };
+      return ensureClient().send(msg).then((result) => afterEcho(cur(), result));
+    },
+    onOps(handler) {
+      cur().opsHandlers.add(handler);
+      return () => { cur().opsHandlers.delete(handler); };
+    },
+    close() {
+      if (closed) return;
+      closed = true;
+      const e = cur();
+      e.refs--;
+      if (e.refs > 0) return;
+      settleEchoes(e, true);
+      if (pendingDocs.get(name) === e) pendingDocs.delete(name);
+      if (e.client) {
+        e.client._docs.delete(name);
+        // Best-effort server unsubscribe — ignore transport failures.
+        e.client.send({ action: "close", doc: name }).catch(() => {});
+      }
+    },
+  };
+
+  // Opened inside a railroad dispose scope (a component, a routes() handler,
+  // a when()/list() render, or mount()): release with the scope, so per-route
+  // docs don't accumulate subscriptions for the life of the page.
+  if (hasActiveDisposeScope()) trackDispose(() => doc.close());
+
+  return doc;
+}
+
+/** Call a stateless RPC method. Accepts an explicit client for multi-client scripts. */
+export function call<T>(method: string, params?: any, client?: WsClient): Promise<T> {
+  const c = client ?? inject(WS);
+  return c.send({ action: "call", method, params });
+}

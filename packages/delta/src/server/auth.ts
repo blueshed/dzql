@@ -1,0 +1,177 @@
+/**
+ * Auth — pluggable authentication contract for delta-doc.
+ *
+ * Delta does not ship an authentication scheme. Instead it exposes a single
+ * extension point — the `DeltaAuth<Identity>` interface — and a wiring helper
+ * (`wireAuth`) that plugs an implementation into the WebSocket action router.
+ *
+ * Why not a token in the WebSocket URL: query strings are written to proxy
+ * logs, browser history, and referrer headers. The contract below never reads
+ * the URL — auth happens either on upgrade (cookies / Authorization header)
+ * or via a dedicated in-band WS message (deferred auth). That structure makes
+ * the URL-token flaw impossible to introduce.
+ *
+ * A reference JWT implementation, which checks passwords in Postgres, is
+ * dzql's (`dzql/auth-jwt`). With your own:
+ *
+ *   import { wireAuth, type DeltaAuth } from "@blueshed/delta/auth";
+ *
+ *   wireAuth(ws, auth);
+ *   registerDocs(ws, db, schema, docs, [], { auth, owns });
+ */
+import { refuseOrigin, type WsServer } from "./server";
+
+// ---------------------------------------------------------------------------
+// Contract
+// ---------------------------------------------------------------------------
+
+/** An error result from auth hooks — `{ error: string }` is always a failure. */
+export interface AuthError { error: string; }
+
+export function isAuthError(v: unknown): v is AuthError {
+  return !!v && typeof v === "object" && "error" in v;
+}
+
+/**
+ * Extension point for authentication. Implementations define where identity
+ * comes from (headers, in-band tokens, etc.) and how it maps to SQL session
+ * variables for RLS. Delta never assumes a specific shape — `Identity` is
+ * whatever the implementation says it is.
+ */
+export interface DeltaAuth<Identity = unknown> {
+  /**
+   * Optional synchronous check on the HTTP upgrade request — read cookies or
+   * the `Authorization` header here. Return an identity to authenticate the
+   * connection immediately, or `null` to accept unauthenticated and defer to
+   * an in-band `authenticate` action.
+   */
+  onUpgrade?(req: Request): Identity | null | Promise<Identity | null>;
+
+  /**
+   * WS actions this module handles (e.g. `login`, `register`, `authenticate`).
+   * Each action receives the raw params plus the client; it should set
+   * `client.data.identity` on success and return `{ result }` or `{ error }`.
+   */
+  actions?: Record<string, AuthAction<Identity>>;
+
+  /**
+   * Called before every authenticated message (open, delta). Return the
+   * identity to continue, or `{ error }` to reject with a 401.
+   */
+  gate(client: any): Identity | AuthError;
+
+  /**
+   * Convert an identity to the value passed to `SET LOCAL app.user_id` when
+   * wrapping queries for RLS. Omit to skip RLS session setup.
+   */
+  asSqlArg?(identity: Identity): string | number;
+}
+
+/**
+ * Default-deny, on every backend: with auth, a document says who owns it --
+ * `registerDocs` (the JSON file and SQLite), `defineCustomDoc`, and dzql's
+ * `docTypeFromDef` and `createDocListener` (Postgres) -- or is refused with this.
+ */
+export function ownerless(prefix: string, what: string): Error {
+  return new Error(
+    `${what}("${prefix}"): with auth, say who may open it -- ` +
+    `owns: (identity, docName) => boolean, or shared: true if every signed-in identity may hear every write to it. ` +
+    `A document's name is its broadcast channel: RLS filters what open reads, not what the channel carries.`,
+  );
+}
+
+/**
+ * The other half, on every backend: `owns` and `shared` are asked only with an
+ * auth module, so given without one they would say a document is guarded when
+ * every socket may open it -- refused with this.
+ */
+export function authless(prefix: string, what: string): Error {
+  return new Error(
+    `${what}("${prefix}"): owns and shared are asked only with an auth module -- ` +
+    `pass auth (and wire it: wireAuth, upgradeWithAuth), or leave them out: without auth, every socket may open every document of the prefix.`,
+  );
+}
+
+export type AuthAction<Identity> = (
+  params: any,
+  client: any,
+) => Promise<{ result: any } | AuthError>;
+
+// ---------------------------------------------------------------------------
+// Wiring
+// ---------------------------------------------------------------------------
+
+/**
+ * Register an auth module's actions with a WebSocket server. Each declared
+ * action becomes a `call` handler that delegates to the implementation, and
+ * a call that changes who the socket is (`ws.changesIdentity`): it starts once
+ * what the socket sent before it has finished, and what the socket sends after
+ * it waits, then runs under the identity it left -- so an `open` sent straight
+ * behind `authenticate`, without waiting for its answer, is handled signed in,
+ * and one sent before `logout` is handled signed in and let go by the logout.
+ *
+ * Call this once at server startup, before the documents are registered.
+ */
+export function wireAuth<I>(ws: WsServer, auth: DeltaAuth<I>): void {
+  if (!auth.actions) return;
+  const actions = auth.actions;
+  for (const name of Object.keys(actions)) ws.changesIdentity?.(name);
+
+  ws.on("call", async (msg, client, respond) => {
+    // Index by own-property only: `msg.method` is client-supplied, so a bare
+    // `actions[msg.method]` would resolve inherited members like
+    // "constructor" / "hasOwnProperty" to functions and dispatch them.
+    if (
+      typeof msg.method !== "string" ||
+      !Object.prototype.hasOwnProperty.call(actions, msg.method)
+    ) {
+      return;
+    }
+    const fn = actions[msg.method];
+    if (typeof fn !== "function") return;
+    const outcome = await fn(msg.params ?? {}, client);
+    if (isAuthError(outcome)) {
+      respond({ error: { code: 401, message: outcome.error } });
+    } else {
+      respond({ result: outcome.result });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Upgrade helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Wrap the WsServer upgrade handler with an `onUpgrade` auth check. Returns a
+ * new upgrade function that calls `auth.onUpgrade` (if defined) and stashes
+ * the resulting identity on `client.data.identity`. A browser on another
+ * origin than the server's, and not in `createWs({ origins })`, is refused
+ * with 403 first, before `onUpgrade` reads a cookie it sent.
+ *
+ *   server = Bun.serve({
+ *     routes: { [ws.path]: upgradeWithAuth(ws, auth), ...otherRoutes },
+ *     websocket: ws.websocket,
+ *   });
+ */
+export function upgradeWithAuth<I>(
+  ws: WsServer,
+  auth: DeltaAuth<I>,
+): (req: Request, server: any) => Response | undefined | Promise<Response | undefined> {
+  return async (req, server) => {
+    const refused = refuseOrigin(req, ws.origins);
+    if (refused) return refused;
+    let identity: I | null = null;
+    if (auth.onUpgrade) {
+      try {
+        identity = await auth.onUpgrade(req);
+      } catch {
+        identity = null;
+      }
+    }
+    const clientId =
+      new URL(req.url).searchParams.get("clientId") ?? crypto.randomUUID();
+    if (server.upgrade(req, { data: { clientId, identity } })) return undefined;
+    return new Response("WebSocket upgrade failed", { status: 400 });
+  };
+}

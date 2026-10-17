@@ -1,0 +1,177 @@
+/**
+ * Package export map — resolvable-from-outside checks.
+ *
+ * `package.json` declared `main`/`types` but its `exports` map had no `"."`
+ * key. When `exports` is present, `main` is IGNORED, so the bare specifier
+ * `import ... from "@blueshed/delta"` threw ERR_PACKAGE_PATH_NOT_EXPORTED and
+ * those two fields actively misled — while being the first import anyone
+ * writes (v0.5.0 review #11).
+ *
+ * Asserting the JSON alone would be circular, so each subpath is resolved for
+ * real: a temp package with a symlink to this repo, importing through the
+ * published specifier exactly as a consumer would.
+ */
+import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { mkdtempSync, mkdirSync, symlinkSync, rmSync, writeFileSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
+
+const repoRoot = join(import.meta.dir, "..");
+const pkg = await Bun.file(join(repoRoot, "package.json")).json();
+
+let sandbox: string;
+
+beforeAll(() => {
+  sandbox = mkdtempSync(join(tmpdir(), "delta-exports-"));
+  const scope = join(sandbox, "node_modules", "@blueshed");
+  mkdirSync(scope, { recursive: true });
+  symlinkSync(repoRoot, join(scope, "delta"), "dir");
+  // Mark it a module so the probe files are treated as ESM.
+  writeFileSync(join(sandbox, "package.json"), JSON.stringify({ type: "module" }));
+});
+
+afterAll(() => {
+  try { rmSync(sandbox, { recursive: true, force: true }); } catch {}
+});
+
+/** Import `specifier` from a throwaway package; resolve to its exit code + stderr. */
+async function importFrom(specifier: string, named: string) {
+  const file = join(sandbox, `probe-${Math.random().toString(36).slice(2)}.ts`);
+  writeFileSync(file, `import { ${named} } from "${specifier}";\n`
+    + `if (typeof ${named} === "undefined") { throw new Error("missing export: ${named}"); }\n`);
+  const proc = Bun.spawn(["bun", file], { cwd: sandbox, stdout: "pipe", stderr: "pipe" });
+  const [code, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()]);
+  return { code, stderr };
+}
+
+describe("package exports", () => {
+  test('the bare specifier "@blueshed/delta" resolves', async () => {
+    const { code, stderr } = await importFrom("@blueshed/delta", "applyOps");
+    expect(stderr).not.toContain("ERR_PACKAGE_PATH_NOT_EXPORTED");
+    expect(code).toBe(0);
+  });
+
+  test("railroad is an optional peer: only the client imports it", async () => {
+    // A server that doesn't use delta's client needs no railroad, so nothing
+    // under src/server or src/core may import it (the logger is a copy).
+    expect(pkg.peerDependencies["@blueshed/railroad"]).toBeDefined();
+    expect(pkg.peerDependenciesMeta?.["@blueshed/railroad"]?.optional).toBe(true);
+    const glob = new Bun.Glob("src/{server,sql}/**/*.ts");
+    const root = new URL("..", import.meta.url).pathname;
+    for await (const f of glob.scan(root)) {
+      expect([f, (await Bun.file(root + f).text()).includes('from "@blueshed/railroad')]).toEqual([f, false]);
+    }
+    expect((await Bun.file(root + "src/core.ts").text()).includes("@blueshed/railroad")).toBe(false);
+  });
+
+  test('"." is declared and agrees with main/types', () => {
+    // main/types are only reachable when a matching "." export exists; if a
+    // future edit drops one of the three they must not drift apart silently.
+    expect(pkg.exports["."]).toBeDefined();
+    expect(pkg.exports["."]).toBe(`./${pkg.main}`);
+    expect(pkg.exports["."]).toBe(`./${pkg.types}`);
+  });
+
+  test("the bare specifier and ./core are the same module", async () => {
+    const file = join(sandbox, "same.ts");
+    writeFileSync(file,
+      `import * as bare from "@blueshed/delta";\n` +
+      `import * as core from "@blueshed/delta/core";\n` +
+      `if (bare.applyOps !== core.applyOps) throw new Error("bare and ./core diverged");\n`);
+    const proc = Bun.spawn(["bun", file], { cwd: sandbox, stdout: "pipe", stderr: "pipe" });
+    expect(await proc.exited).toBe(0);
+  });
+
+  // Every declared subpath, so a typo or a moved file is caught at the map
+  // level rather than by whichever consumer imports it first.
+  const probes: Record<string, string> = {
+    "./core": "applyOps",
+    "./client": "openDoc",
+    "./dom-ops": "applyOpsToCollection",
+    "./server": "createWs",
+    "./sqlite": "registerDocs",
+    "./json": "registerDocs",
+    "./local": "createLocal",
+    "./kinds": "registerSource",
+    "./logger": "createLogger",
+    "./auth": "wireAuth",
+    "./auth-link": "linkAuth",
+    "./auth-link/client": "takeLink",
+    "./migrations": "createTable",
+    "./paths": "parsePath",
+    "./testing": "mockClient",
+    "./backend": "resolveScope",
+  };
+
+  test("every declared subpath is covered by this test", () => {
+    const declared = Object.keys(pkg.exports).filter((k) => k !== ".").sort();
+    expect(declared).toEqual(Object.keys(probes).sort());
+  });
+
+  test('"./json" gives an app what it defines its documents with, as "./sqlite" does: one import moves', async () => {
+    const json = await import("../src/server/json");
+    const sqlite = await import("../src/server/sqlite");
+    for (const name of ["defineSchema", "defineDoc", "defineCustomDoc"] as const) expect([name, json[name]]).toEqual([name, sqlite[name]]);
+  });
+
+  test('"./testing" gives the pointer and walk vectors, and the package ships them as data', async () => {
+    const { pointerVectors, walkVectors } = await import("../src/testing");
+    expect(pointerVectors).toEqual(await Bun.file(join(repoRoot, "src/pointer-vectors.json")).json());
+    expect(walkVectors).toEqual(await Bun.file(join(repoRoot, "src/walk-vectors.json")).json());
+    expect(pkg.files).toContain("src/pointer-vectors.json");
+    expect(pkg.files).toContain("src/walk-vectors.json");
+  });
+
+  test('"./testing" gives the case suite another backend runs: the path, the law, owns, isolation and the writes', async () => {
+    const testing = await import("../src/testing");
+    for (const name of [
+      "pathSchema", "pathDocs", "pathPublicDocs", "pathSeed", "inboxDoc", "emailsDoc", "guestsDoc", "openSeatsDoc", "menuCardDoc",
+      "pathCases", "drivenCases", "registrationCases", "serialCases", "asItStoodCases", "columnCases", "documentCases", "fanOutCases",
+      "drive", "onSqlite", "onJson", "lawSeeds", "lawSteps",
+      "ownsCases", "permissionCases", "assertDocIsolation",
+      "errorCodeCases", "createRowCases", "writeScopeCases", "roomsApp", "tenantsApp", "membershipsApp",
+    ]) {
+      expect([name, typeof (testing as any)[name]]).not.toEqual([name, "undefined"]);
+    }
+  });
+
+  test('"./backend" gives what a backend kept outside the package builds on, and nothing more', async () => {
+    const backend = await import("../src/backend");
+    expect(Object.keys(backend).sort()).toEqual([
+      "NOT_FOUND", "appOf", "assertOnePrefix", "assertOwned", "assertScopeKeys", "authless", "createCustomDocs", "defaultForType", "defineDoc", "defineSchema",
+      "dropClientSubscriptions", "fenced", "fromFolder", "holdsField", "isAuthError", "isDeltasOwn", "isEntryId", "isIsoTime",
+      "isoTime", "lastId", "ledgerWho", "onClientDrop", "ownerless", "pastSafeId", "q", "resolveScope", "runMigrations", "sendTo",
+      "showDoc", "showOps", "showRow", "socketCursor", "statusOf", "trackSubscribe", "trackUnsubscribe",
+    ]);
+  });
+
+  for (const [subpath, named] of Object.entries(probes)) {
+    // Keys carry the exports-map's leading "." — drop it to get the specifier
+    // a consumer writes ("./core" -> "@blueshed/delta/core").
+    const specifier = `@blueshed/delta${subpath.slice(1)}`;
+    test(`"${specifier}" resolves`, async () => {
+      const { code, stderr } = await importFrom(specifier, named);
+      if (code !== 0) console.log(`STDERR ${specifier} >>`, stderr.slice(0, 400));
+      expect(stderr).not.toContain("ERR_PACKAGE_PATH_NOT_EXPORTED");
+      expect(code).toBe(0);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// The release gate runs one Bun: `bun-version: latest` let a Bun
+// release turn the gate red with no change here. CLAUDE.md says how to move it.
+// ---------------------------------------------------------------------------
+
+describe("the release gate", () => {
+  test("ci.yml and publish.yml set up the same Bun, pinned to an exact version", async () => {
+    const pinned: Record<string, string | undefined> = {};
+    for (const workflow of ["ci.yml", "publish.yml"]) {
+      const yml = await Bun.file(join(repoRoot, ".github", "workflows", workflow)).text();
+      const step = yml.match(/uses: oven-sh\/setup-bun@\S+\n(?:\s+with:\n(?:\s+[\w-]+:.*\n)*)?/)?.[0] ?? "";
+      pinned[workflow] = step.match(/bun-version:\s*"?([^\s"]+)"?/)?.[1];
+    }
+    expect(pinned["ci.yml"]).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pinned["publish.yml"]).toBe(pinned["ci.yml"]);
+  });
+});
