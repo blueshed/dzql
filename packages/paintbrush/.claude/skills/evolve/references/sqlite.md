@@ -129,3 +129,9 @@ test("a line changed reaches the kitchen as the field that changed, not the row"
 - `{ ledger: true }` keeps each change with what undoes it: delta-doc's `reference/ledger.md`.
 - Seed only an empty table.
 - Every change to the tables is the next migration: change the schema, run `migrations make`, commit what it writes. A rename, a change of type or rows moved it leaves to you: [migrations.md](migrations.md). Started with the schema saying more than the history, `migrate` says so (its `drift`).
+
+What the rows are, as the documents grow:
+
+- **A line or a part is a row under its parent**, as an order's `lines` are: a loan's tools are `loan_tools` rows with `parent: "loans"`, a kit's parts `parts` rows with `parent: "tools"`. Never a JSON column of ids, and never a link column on the other row: a document includes the rows, and each holder is told the one that arrives or leaves.
+- **A fact from other rows is worked out, never stored.** Whether a tool is out comes from its open loans; a column on the tool, written beside each loan, is a second copy every write must keep honest. A row has one parent, so the tools' list cannot include the loans: a recompute document reads both (`defineCustomDoc` with `watch: ["tools", "loans"]` and a `LEFT JOIN`), told again on every write to either, and registered beside the others in `registerDocs`. delta-doc's `reference/custom-docs.md` has it whole.
+- **"One at a time" is the schema's**: `unique: [{ columns: ["tool"], whereNull: ["returned"] }]` on the loans refuses a second open loan of a tool, 409, on SQLite and Postgres alike; `unique: ["name"]` keeps names apart. `migrations make` writes it (`addUnique`). Never a trigger or an index written by hand beside the history.

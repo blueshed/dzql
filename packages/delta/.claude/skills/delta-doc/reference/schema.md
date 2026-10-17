@@ -34,6 +34,17 @@ The contract is `TableDef`, `ColumnDef`, `ColumnShorthand` and `DocDef` in `src/
   `"PrMixed"` throws. A keyword (`order`, `from`) is fine: names are quoted.
 - A root row added through a list document is given its scope's equality values from the name
   (`scope.md`), so it need not repeat them.
+- `unique: ["name"]` (or `[["shed_id", "name"]]`, columns together) refuses a row that would share
+  those values with another, **409**, on every backend; `{ columns: ["tool"], whereNull:
+  ["returned"] }` holds it only among rows where `returned` is null: a tool on one open loan at a
+  time. A table that keeps versions holds it among its current rows. A migration adds it with
+  `addUnique` (`migrations.md`).
+- **A line or a part is a row under its parent** (`loan_tools` with `parent: "loans"`), never a
+  JSON column of ids or a link column on the other row: a document includes its rows, and every
+  holder is told each one that arrives or leaves.
+- **A fact that comes from other rows is worked out, never stored**: whether a tool is out, from
+  its open loans. A recompute document reads it (`custom-docs.md`); a column written beside each
+  loan is a second copy the app must keep honest.
 
 ## Validating before a write
 

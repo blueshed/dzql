@@ -24,6 +24,29 @@ go through the documents over the watched collections. Pick by shape, and never 
   whole on every write to a watched collection and sent as a root replace (`replace ""`).
   Return `null` for not found (404 on open; on a write, subscribers are let go with 404).
 
+## A fact from another parent's rows
+
+From `tests/derived-fact.test.ts`: whether each tool is out, and when it is due, from the open loans,
+which hang from members. A row has one parent, so the tools' list cannot include the loans; the
+board reads both, again on every write to either, and nothing stores `out`.
+
+```ts
+const board = defineCustomDoc("board:", {
+  watch: ["tools", "loans"],
+  parse: (id: string) => id,
+  recompute: (db: Database) => ({
+    tools: Object.fromEntries((db.query(`
+      SELECT t.id, t.name, l.id IS NOT NULL AS out, l.due
+        FROM tools t LEFT JOIN loans l ON l.tool = t.id AND l.returned IS NULL
+       ORDER BY t.id`).all() as any[]).map((t) => [t.id, { ...t, out: !!t.out }])),
+  }),
+});
+registerDocs(ws, db, schema, [shed, member], [board]);   // borrow through member:, the board follows
+```
+
+Pages that change the tools or borrow write through `shed:` and `member:`; the board is read-only.
+`unique: [{ columns: ["tool"], whereNull: ["returned"] }]` on the loans keeps a tool on one open loan.
+
 ## Gotchas
 
 - **The callbacks take a synchronous `bun:sqlite` handle**, on SQLite and the JSON file alike

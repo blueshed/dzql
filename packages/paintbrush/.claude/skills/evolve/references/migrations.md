@@ -39,6 +39,8 @@ export function up(db: Database) {
 }
 ```
 
+A row an `up` adds takes its id from `nextId`, the collection's serial, never from `_delta_sequences`: `export async function up(db: Database, { nextId }: MigrationTools) { const id = await nextId("items"); db.run("INSERT INTO items (id, name, price, valid_from) VALUES (?, 'Scone', 2, datetime('now'))", [id]); }`. A row that names another (a kit's parts, the tool they belong to) finds it by its id, never its name.
+
 The test makes the database as version one left it (its history, `001-order`, and the orders people made), and starts version two on it:
 
 ```ts
