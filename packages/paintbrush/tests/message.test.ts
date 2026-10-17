@@ -45,11 +45,12 @@ test("the message is Hello until someone changes it, and a change that is not a 
       [{ op: "remove", path: "/text" }],
       [{ op: "add", path: "/other", value: "x" }],
       [null],
-      "not ops",
     ];
     for (const ops of refused) {
       await expect(doc.send(ops as DeltaOp[])).rejects.toMatchObject({ code: 400, message: "a message is a replace of /text with a string" });
     }
+    // not a list of changes at all: delta's own answer
+    await expect(doc.send("not ops" as unknown as DeltaOp[])).rejects.toMatchObject({ code: 400, message: "ops must be an array" });
     expect(doc.data.peek()).toEqual({ text: "Hello" });
   });
 });

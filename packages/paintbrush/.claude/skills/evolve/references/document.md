@@ -91,5 +91,5 @@ import { NotesView } from "./resources/notes/notes-view";
 - Never set a document in the page: `send` the change; it comes back to every window holding it, this one included, and draws there. Adding it locally as well draws it twice.
 - A new row is `add /<collection>/-`: the server names it, in the path and as the row's `id`. Address a row by its id, never its position.
 - Draw a collection with `list()`, keyed by id. Say "Not saved" when a `send` rejects.
-- `registerDoc` applies any well-formed change. To allow only some, refuse the rest before delta applies them, as `src/resources/message/message-api.ts` does: a throw with a `code` is the answer, and nothing changes.
+- `registerDoc` applies any well-formed change. To allow only some, give it `accept`, as `src/resources/message/message-api.ts` does: an op it does not take (`false`, or a reason) refuses the whole write with 400 and that reason, and nothing changes. An empty write writes nothing.
 - The page has one socket, in `src/app.tsx`; every document rides it, and it reconnects and reopens them itself.

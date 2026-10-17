@@ -80,6 +80,8 @@ what is open across them. Newest first.
   tag tests to collapse were not found in railroad's suite: its SVG tests are each a different case.)
 - **A browser test kit in railroad**: `@blueshed/railroad/webview` (`browser`, `waitIn`, and the
   Bun.WebView rules), from paintbrush's `tests/browser.ts`, which keeps only its `refuseWrites`.
+- **delta's `registerDoc` takes `accept`** (validation, and an empty write writes nothing), so
+  paintbrush's `message-api.ts` is a type and one call.
 
 ### Removed
 

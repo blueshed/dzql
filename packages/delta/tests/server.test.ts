@@ -324,6 +324,33 @@ describe("registerDoc", () => {
     expect(persisted.items).toContain("buy milk");
   });
 
+  test("accept refuses a write it does not take, whole, with 400 and its reason; an empty write writes nothing", async () => {
+    const ws = createWs();
+    const handle = await registerDoc(ws, "note", {
+      file: `${tmpFile}.note`,
+      empty: { text: "Hello" },
+      accept: (op) => (op.op === "replace" && op.path === "/text" && typeof op.value === "string") || "a note is a replace of /text with a string",
+    });
+    const sock = mockSocket();
+    const send = (id: number, ops: unknown) => ws.websocket.message(sock, JSON.stringify({ id, action: "delta", doc: "note", ops }));
+    await send(1, [{ op: "replace", path: "/text", value: "kept" }, { op: "replace", path: "/text", value: 7 }]);
+    expect(sock.sent.at(-1)).toEqual({ id: 1, error: { code: 400, message: "a note is a replace of /text with a string" } });
+    await send(2, "not ops");
+    expect(sock.sent.at(-1)).toEqual({ id: 2, error: { code: 400, message: "ops must be an array" } });
+    expect(handle.getDoc()).toEqual({ text: "Hello" }); // nothing of either write
+    await send(3, []);
+    expect(sock.sent.at(-1)).toEqual({ id: 3, result: { ack: true } });
+    await send(4, [{ op: "replace", path: "/text", value: "kept" }]);
+    expect(handle.getDoc()).toEqual({ text: "kept" });
+
+    const plain = await registerDoc(ws, "plain", { file: `${tmpFile}.plain`, empty: { n: 0 }, accept: () => false });
+    await ws.websocket.message(sock, JSON.stringify({ id: 5, action: "delta", doc: "plain", ops: [{ op: "replace", path: "/n", value: 1 }] }));
+    expect(sock.sent.at(-1)).toEqual({ id: 5, error: { code: 400, message: "plain does not take replace /n" } });
+    expect(plain.getDoc()).toEqual({ n: 0 });
+    await handle.persist();
+    for (const f of [`${tmpFile}.note`, `${tmpFile}.plain`]) try { unlinkSync(f); } catch {}
+  });
+
   test("a writer that asks (inverse: true) is answered the ops as applied: ids minted, a field write as its row", async () => {
     const ws = createWs();
     await registerDoc(ws, "todo", { file: tmpFile, empty: { rows: { a: { id: "a", text: "x", done: false } } } as any });

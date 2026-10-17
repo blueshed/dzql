@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The page tests' kit is railroad's** (`@blueshed/railroad/webview`, so the next railroad first):
   `tests/browser.ts` is railroad's `browser()` and the app's own `refuseWrites`; the Bun.WebView
   rules are in railroad's `webview.ts`.
+- **The message refuses with delta's `accept`**: `message-api.ts` is its type and one `registerDoc`
+  call; a write that is not a list of changes gets delta's own answer, "ops must be an array".
 - paintbrush lives in blueshed/dzql (`packages/paintbrush`); `bun create blueshed my-app` makes one.
   Its ignores travel as `gitignore`, which setup dots.
 

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`registerDoc` takes `accept`**: asked of each op before any is applied, `true` takes it, `false`
+  or a reason refuses the whole write with 400 and that reason. A write whose `ops` is not a list is
+  refused (400, "ops must be an array"), and an empty one is answered and writes nothing, tells nobody.
 - **One server: `@blueshed/delta/serve`.** `serve(app)` serves an app's routes, delta's socket on its
   path (told the server, so a change reaches every page), `/health` and a 404 for the rest, and closes
   what the app's resources opened when it stops. `run(start)` is the process around it: a pid file

@@ -74,6 +74,11 @@ export interface DocOptions<T> {
   file: string;
   /** The document while there is no file. */
   empty: T;
+  /**
+   * Asked of each op of a write before any is applied: `true` takes it; `false`, or a reason, refuses
+   * the whole write with 400 and that reason, and nothing changes. Without it, every op is taken.
+   */
+  accept?: (op: DeltaOp) => boolean | string;
 }
 
 // ---------------------------------------------------------------------------
@@ -609,6 +614,12 @@ export async function registerDoc<T>(
 
   ws.on("delta", (msg, _client, respond) => {
     if (msg.doc !== name) return;
+    if (!Array.isArray(msg.ops)) throw Object.assign(new Error("ops must be an array"), { code: 400 });
+    for (const op of msg.ops) {
+      const taken = opts.accept?.(op) ?? true;
+      if (taken !== true) throw Object.assign(new Error(taken || `${name} does not take ${op?.op} ${op?.path}`), { code: 400 });
+    }
+    if (msg.ops.length === 0) return respond({ result: { ack: true } }); // nothing to change: nothing written, nobody told
     const ops = applyAndBroadcast(msg.ops);
     // the ops as applied to a writer that asks (`inverse: true`, as SQLite takes it): it has no inverse to give
     respond({ result: msg.inverse ? { ack: true, ops } : { ack: true } });

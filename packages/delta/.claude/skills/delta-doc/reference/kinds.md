@@ -52,3 +52,5 @@ single typed document with no schema (settings, a scratchpad).
 - Saved whole or not at all (a temp file beside it, renamed); a file there but not JSON is
   refused at start, naming it.
 - Broadcasts carry no `v`; `inverse: true` answers `{ ack, ops }`.
+- `accept: (op) => true | false | reason` takes or refuses each op before any is applied: one it
+  does not take refuses the whole write, 400 with that reason. An empty write writes nothing.
