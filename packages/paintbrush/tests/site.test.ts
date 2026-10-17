@@ -10,17 +10,9 @@ import iconPage from "./icon-page.html";
 // spawning them. Every route and everything a person sees or clicks has a test: the app's shell
 // and status here, each resource in its own file (message.test.ts).
 //
-// Bun.WebView (experimental; follow these exactly):
-// - evaluate() takes a string expression, not a function: view.evaluate("document.title").
-//   Wrap statements in an IIFE string. Results come back as JSON; give them a type: evaluate<string>(...).
-// - await every call. A view takes one navigate, evaluate, screenshot or input at a time, or throws ERR_INVALID_STATE.
-// - click(selector) waits until the element is visible, stable and not covered. It does not scroll.
-// - type() appends. To replace a field's text, use replaceText (browser.ts).
-// - view.title is empty after the first navigate on macOS WebKit: read document.title with evaluate.
-// - One WebView per file: browser() in browser.ts. A test that needs a second window uses withOtherWindow.
-//   browser() makes the first navigation before the file's tests, and open() waits for the last to settle.
-// - macOS uses the system WebKit. Linux needs Chrome, found through BUN_CHROME_PATH: CI and, in the
-//   Claude Code web sandbox, .claude/hooks/session-start.sh set that up (see CLAUDE.md).
+// Bun.WebView's rules are at the top of railroad's `webview.ts` (`@blueshed/railroad/webview`): follow them.
+// Linux needs Chrome, found through BUN_CHROME_PATH: CI and, in the Claude Code web sandbox,
+// .claude/hooks/session-start.sh set that up (see CLAUDE.md).
 
 setDefaultTimeout(30_000); // first browser start can be slow
 

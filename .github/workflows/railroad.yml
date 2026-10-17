@@ -51,8 +51,8 @@ jobs:
           if [ -z "$chrome" ]; then echo "No Chrome/Chromium found on runner" >&2; exit 1; fi
           echo "BUN_CHROME_PATH=$chrome" >> "$GITHUB_ENV"
 
-      - run: bun test --path-ignore-patterns=tests/webview.test.ts
+      - run: bun test --path-ignore-patterns="tests/webview*.test.ts"
 
       # The real-browser layer, once, as its own step. In CI a missing browser fails it rather
       # than skipping it.
-      - run: bun test ./tests/webview.test.ts
+      - run: bun run test:webview

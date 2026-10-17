@@ -31,9 +31,9 @@ src/
   styles.css           the design, with its rules at the top
   resources/           a folder per resource (<name>-api.ts, <name>.ts, <name>-view.tsx), toast.ts, icon.tsx
 tests/
-  site.test.ts         the status, the page's shell and the entry point; the Bun.WebView rules are at its top
+  site.test.ts         the status, the page's shell and the entry point
   message.test.ts      the message document: refused changes, and in the browser, saving and following
-  browser.ts           a Bun.WebView at the page, and the helpers page tests share
+  browser.ts           railroad's browser() (@blueshed/railroad/webview, whose header has the Bun.WebView rules) and refuseWrites
   icon-page.*          a small page with both kinds of <Icon>, for site.test.ts
 .railway/railway.ts    the deploy; its rules are at its top
 ```

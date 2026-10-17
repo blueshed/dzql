@@ -26,16 +26,16 @@ here; `bun install` runs at the root.
 ```sh
 bun install              # dev deps only; bun.lock is committed
 bun check                # Bun's type check (TypeScript 7): strict, noUncheckedIndexedAccess, jsx: react
-bun run check:consumer   # tests/consumer-types/ and the README's files as a consumer compiles, under TypeScript 7 and 5.9
+bun run check:consumer   # tests/consumer-types/ and the README's files as a consumer compiles (bun check)
 bun test --coverage      # unit suite (happy-dom) + coverage table
 bun run test:webview     # real-browser suite, by explicit path
 ```
 
 The release gate is `bun check && bun run check:consumer && bun test --coverage`.
-CI (the root's `.github/workflows/railroad.yml`, run when railroad changes) also runs `bun run test:webview` on its own step,
-and a `floor` job runs `bun test` without the browser file on the Bun that
-`engines` names (1.3.14), and an `eta` job runs eta's `src/island.test.ts` with
-this checkout linked in place of npm's railroad.
+CI (the root's `.github/workflows/railroad.yml`, run when railroad changes) runs the browser suite
+once, on its own step; a release first runs `bun test` without the browser file on the Bun that
+`engines` names (1.3.14). dzql's islands run against this railroad in `dzql-eta.yml`, and delta's
+tests that load railroad in `delta-railroad.yml`.
 Where no browser is found (no `BUN_CHROME_PATH`, nothing on `PATH`) and `CI` is
 unset, the browser tests skip with a warning, so a green bare `bun test` is not
 proof they ran; in CI a missing browser fails them.
@@ -67,7 +67,8 @@ so after a dependency change run `bun install` and commit `bun.lock`.
   | `routes.ts` | `routes` `route` `navigate` `matchRoute` | signals, jsx (SVG adoption only; loads without a DOM) |
   | `shared.ts` | `key` `provide` `inject` `tryInject` `clearProviders` | — |
   | `logger.ts` | `createLogger` `setLogLevel` `getLogLevel` `loggedRequest` | — |
-  | `index.ts` | the public surface | all of the above |
+  | `webview.ts` | `browser` `waitIn`: a page in a real browser, for tests only (`bun:test`, `Bun.WebView`; never imported by railroad) | — |
+  | `index.ts` | the public surface | all of the above but webview |
   | `jsx-runtime.ts` / `jsx-dev-runtime.ts` | `jsx` `jsxs` `jsxDEV` `Fragment`, and `JSX` re-exported from jsx | jsx |
 
 - **Tests pin the behaviour.** `signals.test.tsx`, `jsx.test.tsx`,

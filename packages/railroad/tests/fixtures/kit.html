@@ -1,0 +1,10 @@
+<!doctype html>
+<html>
+  <head><title>kit</title></head>
+  <body>
+    <h1>hello</h1>
+    <input id="f" value="old" oninput="document.querySelector('h1').textContent = this.value" />
+    <p id="seen"></p>
+    <script>fetch("/").then((r) => (document.querySelector("#seen").textContent = r.status));</script>
+  </body>
+</html>

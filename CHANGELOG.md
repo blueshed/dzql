@@ -78,6 +78,8 @@ what is open across them. Newest first.
   delta; railroad's browser suite runs once, not twice; and railroad's oldest-Bun check (1.3.14)
   moved to the release workflow. (The TypeScript 5.9 check had already gone with `tsc`. The 27 SVG
   tag tests to collapse were not found in railroad's suite: its SVG tests are each a different case.)
+- **A browser test kit in railroad**: `@blueshed/railroad/webview` (`browser`, `waitIn`, and the
+  Bun.WebView rules), from paintbrush's `tests/browser.ts`, which keeps only its `refuseWrites`.
 
 ### Removed
 

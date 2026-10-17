@@ -12,6 +12,7 @@
     "./routes": "./routes.ts",
     "./shared": "./shared.ts",
     "./logger": "./logger.ts",
+    "./webview": "./webview.ts",
     "./jsx-runtime": "./jsx-runtime.ts",
     "./jsx-dev-runtime": "./jsx-dev-runtime.ts",
     "./package.json": "./package.json"
@@ -32,9 +33,9 @@
   "scripts": {
     "check:consumer": "bun check -p tests/consumer-types/tsconfig.json && bun check -p tests/consumer-types/tsconfig.react.json && bun check -p tests/fixtures/readme/tsconfig.server.json",
     "test": "bun test",
-    "test:webview": "bun test ./tests/webview.test.ts",
-    "test:fast": "bun check && bun test --path-ignore-patterns=tests/webview.test.ts",
-    "test:slow": "bun run check:consumer && bun test ./tests/webview.test.ts"
+    "test:webview": "bun test ./tests/webview.test.ts ./tests/webview-kit.test.ts",
+    "test:fast": "bun check && bun test --path-ignore-patterns=\"tests/webview*.test.ts\"",
+    "test:slow": "bun run check:consumer && bun run test:webview"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.11.1",

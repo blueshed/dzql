@@ -6,6 +6,14 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **`@blueshed/railroad/webview`**: a page in a real browser, for tests (`bun:test`, Bun.WebView):
+  `browser(url)` gives a view at the page, made before the file's tests, and `open`, `waitFor`,
+  `replaceText`, `failFetch`, `withOtherWindow`, `close`; `waitIn(view, expr)` polls an expression.
+  Its header has the Bun.WebView rules. Test-only: railroad imports none of it. From paintbrush's
+  `tests/browser.ts`, so an app's page tests start from railroad's.
+
 ### Changed
 
 - **railroad lives in the bluetools monorepo, the blueshed/dzql repository** (`packages/railroad`, with its history), beside

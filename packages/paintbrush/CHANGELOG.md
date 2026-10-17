@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   run as the entry (`bun dev`, `bun start`), `run` keeps the pid file and the signals. `bun run stop`
   is `delta stop`. The evolve skill's references edit `src/routes.ts`; a build's entry is
   `dist/routes.js`.
+- **The page tests' kit is railroad's** (`@blueshed/railroad/webview`, so the next railroad first):
+  `tests/browser.ts` is railroad's `browser()` and the app's own `refuseWrites`; the Bun.WebView
+  rules are in railroad's `webview.ts`.
 - paintbrush lives in blueshed/dzql (`packages/paintbrush`); `bun create blueshed my-app` makes one.
   Its ignores travel as `gitignore`, which setup dots.
 
