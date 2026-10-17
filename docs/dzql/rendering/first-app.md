@@ -73,7 +73,8 @@ registerDocs(delta.server, db, schema, [
   a room is the messages that name it); `include` is the rows under it.
 - `ledger: true` records every write with its opposite, which is what makes Undo work.
 - **An id is said as text** on the wire and in a document's name. A new row's id is a serial
-  number (delta names it), a session's may be a token, so never `Number()` an id.
+  number (delta names it), and so is a session's (its row's; the token is the cookie). Still,
+  never `Number()` an id.
 
 ## 3. Read a document
 

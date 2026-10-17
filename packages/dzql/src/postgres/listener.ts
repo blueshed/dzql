@@ -137,7 +137,7 @@ const appliedOf = (row: any): DeltaOp[] => (row.applied ?? row.ops) as DeltaOp[]
 /**
  * How the listener reads a document's log. `_delta_fetch_log` (001e) gives each
  * entry with the write as applied, for custom documents. Framework
- * SQL older than this listener -- vendored with `delta init` into an initdb
+ * SQL older than this listener -- vendored with `dzql init` into an initdb
  * directory and not re-applied -- has no such function, and every fetch would
  * fail, so no broadcast would reach anyone: there the listener reads
  * `delta_fetch_ops`, each entry heard as told, as before, and says so once.

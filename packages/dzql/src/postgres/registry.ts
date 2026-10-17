@@ -33,7 +33,7 @@ export type Writer = { who: string | null; cursor: string | null; undoable?: boo
 
 /**
  * A document the listener answers for. `docTypeFromDef` makes one from a
- * `defineDoc`, which the database knows (`_delta_docs`), so a write through
+ * `defineDoc`, which the database knows (compiled into its SQL by `generateSql`), so a write through
  * any document is told to it wherever it holds a row the write changed.
  * One written by hand is the app's own: the database cannot know what its
  * `open` reads, so it is told only its own writes -- those its `apply` logs

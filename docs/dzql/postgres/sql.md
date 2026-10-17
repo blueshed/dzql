@@ -41,7 +41,8 @@ functions you call stay these:
   table: only that path versions, logs and NOTIFYs, so subscribers stay live.
 - **`SECURITY DEFINER` bypasses RLS.** Delta is persistence and broadcast, not authorization:
   such a function checks its own preconditions (through `_`-prefixed guard helpers, never
-  callable from the wire), and its named adds are judged as the session's role (delta-doc's `paths.md`).
+  callable from the wire), and a named add (an id the writer chose) is judged by the session's role's privileges on the table
+  (`_delta_serial_new` / `_delta_serial_past`, `src/compile/lookups.ts`).
 - Never edit `001*`, nor `_delta_collections` / `_delta_docs` by hand: `generateSql` fills them.
 - Tables need `seq_<table>` sequences: `generateSql` makes them; do not hand-write tables.
 - Framework SQL older than the listener works, with a warning: re-apply it (`applyFramework`
