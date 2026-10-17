@@ -9,7 +9,7 @@ import type { Resource, Walk } from "./resources/resource";
 import type { Example } from "./example";
 import index from "./server.test.fixture.html";
 import { WIRE, type PatchOp, type WriteId } from "./json-patch";
-import { closeConnection, openConnection, wireName } from "./resources/audience";
+import { closeConnection, openConnection, wireName, wireOps } from "./resources/audience";
 import { read, serverWrite } from "./documents";
 import { part } from "./parts";
 import { CHANGED_SINCE, createServer } from "./server";
@@ -912,5 +912,19 @@ describe("one socket, any documents: a document is named whole, and seen because
     expect(wireName("note", "1")).toBe("note"); // note is `perSession`
     expect(wireName("month", "2026-09")).toBe("month:2026-09");
     expect(wireName("month", "1")).toBe("month:1"); // the same number as a session's: a row's, not a credential
+  });
+
+  // A value equal to the session's number was taken out too: session 3 writing "3" was echoed a `replace` with no value.
+  test("a session's own document is told without its id -- a row's `id`, number or text -- and with every other value whatever it says", () => {
+    const ops: PatchOp[] = [
+      { op: "replace", path: "/notes/text", value: "3" },
+      { op: "add", path: "/notes", value: { id: 3, text: "3", count: 3 } },
+      { op: "add", path: "/notes", value: { id: "3", text: "a" } },
+    ];
+    expect(wireOps(noteResource, "3", ops)).toEqual([
+      { op: "replace", path: "/text", value: "3" },
+      { op: "add", path: "", value: { text: "3", count: 3 } },
+      { op: "add", path: "", value: { text: "a" } },
+    ]);
   });
 });

@@ -84,11 +84,12 @@ export function readersOf(docType: string, docId: string): ServerWebSocket<Conne
 /**
  * A document's ops as the wire says them, for an echo and for `inspect` alike: at eta's paths (the
  * resource's `under` taken off), and -- for a session's own document, keyed by the session id -- with
- * that id taken out of whatever they carry: never on the wire, not even to its own tabs. A row's
- * number is its `id`, the same number whether the id is written as one or as text.
+ * that id taken out where it is the row's `id`: never on the wire, not even to its own tabs. The same
+ * number whether the id is written as one or as text; any other value is the session's to say, "3"
+ * included.
  */
 export function wireOps(owner: Resource, docId: string, ops: PatchOp[]): PatchOp[] {
   const at = owner.under ?? "";
   const moved = ops.map((op) => (at && (op.path === at || op.path.startsWith(`${at}/`)) ? { ...op, path: op.path.slice(at.length) } : op));
-  return owner.perSession ? (JSON.parse(JSON.stringify(moved, (k, v) => (v === docId || (k === "id" && typeof v === "number" && String(v) === docId) ? undefined : v))) as PatchOp[]) : moved;
+  return owner.perSession ? (JSON.parse(JSON.stringify(moved, (k, v) => (k === "id" && (typeof v === "number" || typeof v === "string") && String(v) === docId ? undefined : v))) as PatchOp[]) : moved;
 }
