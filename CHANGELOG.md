@@ -111,6 +111,14 @@ what is open across them. Newest first.
   them per push.
 - **The root README** says what each package is now (create-blueshed and paintbrush among them),
   the gate and the per-package scripts, and where the changelog, todo, docs and rules are.
+- **Stories as code** (docs/stories-as-code.md; Peter: option (b), and a story with no body is
+  unproven): `story(name)` from `dzql/modelling/stories` is a sentence alone, which an app's tests
+  tell, named from it; `untold(stories, sources)` names any no test tells. A `Stories` list keeps
+  such stories in `unproven`, and the harness says them unproven, never failed. paintbrush's
+  `stories.md` is `stories.ts`, each test that makes one true is named from it, and
+  `tests/stories.test.ts` fails a story no test tells. So paintbrush pulls none of Postgres,
+  **dzql's `pg`, `@electric-sql/pglite` and `jose` are optional peers**: an app at the Postgres step
+  adds them (`bun add dzql pg @electric-sql/pglite`).
 
 ### Fixed
 

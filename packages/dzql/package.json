@@ -68,27 +68,37 @@
   ],
   "author": "Peter Bunyan",
   "license": "MIT",
-  "dependencies": {
-    "@electric-sql/pglite": "^0.5.4",
-    "jose": "^6.2.4",
-    "pg": "^8.22.0"
-  },
   "devDependencies": {
     "@blueshed/railroad": "^0.16.2",
     "@types/bun": "^1.4.3",
     "@types/pg": "^8.20.0",
     "@blueshed/delta": "^1.2.0",
-    "lucide": "^1.46.0"
+    "lucide": "^1.46.0",
+    "@electric-sql/pglite": "^0.5.4",
+    "jose": "^6.2.4",
+    "pg": "^8.22.0"
   },
   "peerDependencies": {
     "@blueshed/delta": "^1.2.0",
-    "@blueshed/railroad": "^0.16.2"
+    "@blueshed/railroad": "^0.16.2",
+    "@electric-sql/pglite": "^0.5.4",
+    "jose": "^6.2.4",
+    "pg": "^8.22.0"
   },
   "engines": {
     "bun": ">=1.4.3"
   },
   "peerDependenciesMeta": {
     "@blueshed/railroad": {
+      "optional": true
+    },
+    "@electric-sql/pglite": {
+      "optional": true
+    },
+    "jose": {
+      "optional": true
+    },
+    "pg": {
       "optional": true
     }
   }

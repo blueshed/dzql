@@ -23,7 +23,8 @@
   "dependencies": {
     "@blueshed/delta": "^1.2.0",
     "@blueshed/railroad": "^0.16.0",
-    "lucide": "^1.51.0"
+    "lucide": "^1.51.0",
+    "dzql": "^0.13.0"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3",

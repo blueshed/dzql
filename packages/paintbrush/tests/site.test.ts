@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import { browser } from "./browser";
 import iconPage from "./icon-page.html";
+import { stories } from "../stories";
 
 // Routes are tested with fetch, the page in a real browser with Bun.WebView, entry points by
 // spawning them. Every route and everything a person sees or clicks has a test: the app's shell
@@ -64,7 +65,7 @@ async function spawnServer(cmd: string[], env: Record<string, string> = {}) {
 
 // --- The routes (each resource's are in its own test file) ---
 
-test("GET /api/status answers what the server knows, but not where its data is", async () => {
+test(`${stories.volume.name} -- GET /api/status answers what the server knows, but not where its data is`, async () => {
   const status = await (await api("/api/status")).json();
   expect(status).toEqual({ persistent: false, uptime: expect.any(Number), bun: Bun.version });
 
@@ -76,7 +77,7 @@ test("GET /api/status answers what the server knows, but not where its data is",
   }
 });
 
-test("healthcheck answers ok", async () => {
+test(`${stories.health.name} -- healthcheck answers ok`, async () => {
   expect(await (await api("/health")).text()).toBe("ok");
 });
 
@@ -123,7 +124,7 @@ test("the status line is shown", async () => {
   expect(await view.evaluate<string>(`document.querySelector("#status .help").textContent`)).toContain("ephemeral");
 });
 
-test("with DATA_PATH set, the status line says the data is on a mounted volume", async () => {
+test(`${stories.volume.name} -- with DATA_PATH set, the status line says the data is on a mounted volume`, async () => {
   process.env.DATA_PATH = dataDir; // what a Railway volume sets
   try {
     await open();
@@ -144,7 +145,7 @@ test("a status that cannot be loaded says so", async () => {
   await waitFor(`document.body.textContent.includes("The status could not be loaded.")`);
 });
 
-test("a page that is not found links home", async () => {
+test(`${stories.health.name} -- a page that is not found links home`, async () => {
   await open();
   await view.evaluate(`location.hash = "#/nowhere"`);
   await waitFor(`document.body.textContent.includes("Page not found!")`);

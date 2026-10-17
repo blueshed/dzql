@@ -14,7 +14,7 @@ A Bun website where people share documents. **Documents are how people communica
 
 **How it grows.** Anything people share is a document from the start: think in documents, not entities, and ask "what does someone need in front of them to do this?" rather than "what are the tables?" The tables follow from the documents. What grows is where they're kept: a shared JSON document does a lot on its own; SQLite earns its place when documents share the same rows, or for undo and history; Postgres when servers share the data, or people should see only their own. The page and its documents stay the same as the storage grows. HTTP routes serve what isn't communication: the health check, files, the server's status. The app is what is listed below; add what the user asks for, with its tests, and coverage stays at 100%. The `evolve` skill has each step, with code and tests.
 
-**What it is for.** `stories.md` holds the stories the app was asked to make true, each a sentence someone using it could call true or false. When the user asks for something, write it there as stories first (theirs, in their words), then make them true, with tests named for them. Earlier stories stay true; a story that changes is changed there, never dropped quietly.
+**What it is for.** `stories.ts` holds the stories the app was asked to make true (`story("...")`, from `dzql/modelling`), each a sentence someone using it could call true or false. When the user asks for something, write it there as stories first (theirs, in their words), then make them true, with tests named from them (`test(\`${stories.saves.name} -- ...\`)`): `tests/stories.test.ts` fails a story no test tells. Earlier stories stay true; a story that changes is changed there, never dropped quietly.
 
 **Where the project is.** `CHANGELOG.md` and `todo.jsonl` are the project's memory between sessions, and they work as a pair: the changelog is where the project has been, the ledger is what is open now. Read both before starting: the open items, and what `## [Unreleased]` holds that no release has yet. As you work they move together, as it happens and not at the end. What you find or leave open goes into `todo.jsonl`. What lands goes under `## [Unreleased]`, breaking changes first, and the item it settles becomes `fixed` with a dated `note` saying so. A change with no entry, or an item marked fixed with no entry behind it, means the record is wrong. `/release` closes the pair: `[Unreleased]` becomes a version, and the settled items leave `todo.jsonl`. Write both with the file tools, never inside a quoted shell argument.
 
@@ -23,7 +23,7 @@ A Bun website where people share documents. **Documents are how people communica
 ## What is here
 
 ```
-stories.md             what the app was asked to make true
+stories.ts             what the app was asked to make true, each story told by a test named from it
 src/
   routes.ts            the app: its routes and the documents on one WebSocket (startServer, for tests); run, it is the server
   index.html           the page; Bun bundles what it references, no build step in development

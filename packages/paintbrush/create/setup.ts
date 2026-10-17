@@ -147,7 +147,7 @@ bun test           # tests, held at 100% coverage
 bun run typecheck
 \`\`\`
 
-Ask for something, and it is written into \`stories.md\` as stories, then made true, with
+Ask for something, and it is written into \`stories.ts\` as stories, then made true, with
 tests named for them. \`CLAUDE.md\` says what is here and the rules. The \`evolve\` skill is
 how the app grows: a new document, two on one page, SQLite and then Postgres when they earn
 their place, migrations, sign-in by link, HTTP routes for what isn't communication, and a

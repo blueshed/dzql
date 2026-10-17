@@ -13,7 +13,7 @@ import type { Example } from "../rendering/example";
 import { size } from "./costs";
 import { anyOne, controlsOn, goesTo, hear, holding, holds, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, writesOn, type Outcome, type Report, type Trace, type Wire } from "./harness";
 import { comparable, diff, drawParts, part, splitTag } from "../rendering/parts";
-import { post, type Stories, type Story } from "./stories";
+import { post, story, untold, type Stories, type Story } from "./stories";
 import { serverWrite } from "../rendering/documents";
 import { refuse, tell, toldAt } from "../rendering/refusal";
 
@@ -132,6 +132,26 @@ describe("stories harness", () => {
       const byExample = await run(example, { cast: stories.cast, budget: 1.5, stories: [hello, { ...close, budget: 4096 }] });
       expect(byExample.outcomes.map((o) => o.failures)).toEqual([["the example's budget is a whole number of bytes: this one is 1.5"], []]); // a story's own stands in its place
     }, 30000);
+
+    test("a story with no body yet is unproven, never failed: the harness tells the others and names it, and the report counts it", async () => {
+      const report = await run(example, { ...stories, stories: stories.stories.slice(0, 1), unproven: [story("Ada pins a message, and everyone in the room sees it pinned")] });
+      expect(report).toMatchObject({ passed: 1, failed: 0, unproven: ["Ada pins a message, and everyone in the room sees it pinned"] });
+      const lines: string[] = [];
+      const log = spyOn(console, "log").mockImplementation((line: string) => void lines.push(line));
+      try {
+        print({ outcomes: [], passed: 0, failed: 0, unproven: ["Ada pins a message"] });
+      } finally {
+        log.mockRestore();
+      }
+      expect(lines).toEqual(["  ?   Ada pins a message\n        unproven: no body yet, so the harness cannot tell it (a test of the app does)", "\n0 passed, 0 failed, 1 unproven"]);
+    }, 30000);
+
+    test("untold names each story no test source names as .<key>: a story cannot be renamed or dropped away from its test unseen", () => {
+      const named = { saves: story("Saving says Saved"), follows: story("A change elsewhere shows here") };
+      expect(untold(named, ["test(stories.saves.name, () => {})"])).toEqual(["A change elsewhere shows here"]);
+      expect(untold(named, ["test(stories.saves.name, ...)", "test(stories.follows.name, ...)"])).toEqual([]);
+      expect(untold(named, ["stories.savesAll"])).toEqual(["Saving says Saved", "A change elsewhere shows here"]);
+    });
 
     test("printed with `wire`, under each story: the write's size once, then each member handed anything, the bytes, as they crossed the wire, and the biggest part, and what its undo and redo handed them; or that nobody was", () => {
       const lines: string[] = [];

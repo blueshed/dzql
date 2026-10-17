@@ -151,6 +151,13 @@ export type Told = {
 
 export type Story = { name: string } & Told;
 
+/**
+ * A story with no body yet: its sentence, which a test of the app tells (named from it) until the
+ * harness can. The harness reports it unproven, never failed (docs/stories-as-code.md).
+ */
+export type Unproven = { name: string; as?: undefined };
+
+
 export type Stories = {
   cast: Cast;
   /**
@@ -172,6 +179,8 @@ export type Stories = {
   /** The most bytes any story may hand any one member's page, as a story's own `budget` says it; a story with its own is held to that instead. */
   budget?: number;
   stories: Story[];
+  /** The stories with no body yet, which tests of the app tell until the harness can: said unproven, never failed. */
+  unproven?: Unproven[];
 };
 
 /**
@@ -191,8 +200,19 @@ export const goTo =
     return { doc, ops };
   };
 
-export function story(name: string, body: Told): Story {
-  return { name, ...body };
+export function story(name: string): Unproven;
+export function story(name: string, body: Told): Story;
+export function story(name: string, body?: Told): Story | Unproven {
+  return { name, ...body } as Story | Unproven;
+}
+
+/**
+ * The stories no test tells: each one's key in `named` that no source names as `.<key>` (a test
+ * takes its name from its story: `test(stories.saves.name, ...)`). For an app whose stories are
+ * told by its own tests, so a story cannot be dropped or renamed away from its test unseen.
+ */
+export function untold(named: Record<string, { name: string }>, sources: string[]): string[] {
+  return Object.entries(named).filter(([key]) => !sources.some((s) => new RegExp(`\\.${key}\\b`).test(s))).map(([, s]) => s.name);
 }
 
 /** A story's write on the wire: its `does` or its `cannot`; none for a post or a tab closing. */

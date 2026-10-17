@@ -79,7 +79,7 @@ const sibling = (dir: string, name: string): string | undefined => {
   const tarball = readdirSync(scratch).find((f) => f.endsWith(".tgz") && !before.has(f))!;
   return `${name}@${join(scratch, tarball)}`;
 };
-const candidates = [process.env.DELTA_SPEC ?? sibling("delta", "@blueshed/delta"), process.env.RAILROAD_SPEC ?? sibling("railroad", "@blueshed/railroad")].filter((s): s is string => s !== undefined);
+const candidates = [process.env.DELTA_SPEC ?? sibling("delta", "@blueshed/delta"), process.env.RAILROAD_SPEC ?? sibling("railroad", "@blueshed/railroad"), process.env.DZQL_SPEC ?? sibling("dzql", "dzql")].filter((s): s is string => s !== undefined);
 
 /** A new app, as bun create makes one: the template's files, installed, then its setup. */
 function newApp(name: string) {

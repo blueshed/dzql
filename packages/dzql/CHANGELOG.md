@@ -25,6 +25,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **`pg`, `@electric-sql/pglite` and `jose` are optional peers**, no longer dependencies: an app
+  that models or renders pulls none of them. At the Postgres step, add them: `bun add pg` for a
+  server, `@electric-sql/pglite` for `dzql/pglite`, `jose` for `dzql/auth-jwt`.
+- **A story may be a sentence alone**: `story(name)` (no body), kept in `Stories.unproven`, which
+  the harness reports unproven, never failed; `untold(stories, sources)` names the stories no test
+  source names as `.<key>`, for an app whose tests tell its stories.
 - **A compartment is a resource**: `Compartment` → `Resource` (`dzql/rendering/resources/resource`,
   `dzql/rendering/resources/index`), an example's `compartments` → `resources`; the model grammar's
   `resource` flag → `reach`. An app renames its imports and the word.

@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Stories as code**: `stories.md` is `stories.ts` (`story("...")` from `dzql/modelling/stories`),
+  each test that makes one true is named from it, and `tests/stories.test.ts` fails a story no test
+  tells. paintbrush depends on dzql for it (so the next dzql first); dzql's database packages are
+  optional peers, so it brings none of them.
 - **The server is delta's** (`@blueshed/delta/serve`, so the next delta first). `src/server.ts` and
   `src/main.ts` are one file, `src/routes.ts`: the routes and the documents, given to `serve`;
   run as the entry (`bun dev`, `bun start`), `run` keeps the pid file and the signals. `bun run stop`

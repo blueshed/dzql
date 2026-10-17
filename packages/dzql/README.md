@@ -19,7 +19,9 @@ is going: [philo.md](https://github.com/blueshed/dzql/blob/main/docs/dzql/philo.
 dzql is the Postgres step for apps built on [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta):
 a delta app grows from a JSON file to SQLite to Postgres, and on Postgres its documents are kept by
 dzql. Since 0.8.0 dzql carries delta's Postgres backend, with the same names, so moving is an
-import change:
+import change. Its database packages are optional peers, so an app that only models or renders
+pulls none of them: `bun add pg` for a Postgres server, `@electric-sql/pglite` for `dzql/pglite`,
+`jose` for `dzql/auth-jwt`.
 
 ```ts
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "dzql/postgres";

@@ -44,7 +44,7 @@ Think in documents, not entities: ask what someone needs in front of them to do 
 ## What's in the box
 
 ```
-stories.md           what the app was asked to make true, a sentence each
+stories.ts           what the app was asked to make true, a sentence each, each told by a test
 src/routes.ts        the routes, and the documents on one WebSocket; served by delta's one server
 src/app.tsx          the socket every document rides, and railroad's routes
 src/index.html       the page; Bun bundles the TypeScript and CSS it references

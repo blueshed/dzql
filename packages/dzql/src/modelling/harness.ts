@@ -47,7 +47,7 @@ export type Trace = {
 };
 /** What the stories found that does not fail them: what props cost (`propsCost`), each kind for each applet once, in the first story that sent it; a control the wire refuses, on the page it was first drawn on (`miswritten`); and a permit wider than its stories (`hiddenVerbs`), by the document it is on. */
 export type Warning = { story: string; says: string };
-export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand };
+export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand; /** The stories with no body yet (`Stories.unproven`): a test of the app tells each. */ unproven?: string[] };
 
 /** The stories done by hand in a browser (`byHand`, or a story's own `gesture`): how many, how many presses (a button pressed, a form typed into and sent, a drag), how many writes sent as an applet declares them, and how long it took. */
 export type ByHand = { stories: number; presses: number; applets: number; ms: number };
@@ -1582,7 +1582,8 @@ export async function run(
     tapped.close();
   }
   const failed = outcomes.filter((o) => o.failures.length > 0).length;
-  return { outcomes, passed: outcomes.length - failed, failed, ...(warned.size + miswired.size + hidden.length > 0 && { warnings: [...warned.values(), ...miswired.values(), ...hidden] }), ...(byHandTally && { byHand: byHandTally }) };
+  const unproven = (stories.unproven ?? []).map((s) => s.name);
+  return { outcomes, passed: outcomes.length - failed, failed, ...(unproven.length > 0 && { unproven }), ...(warned.size + miswired.size + hidden.length > 0 && { warnings: [...warned.values(), ...miswired.values(), ...hidden] }), ...(byHandTally && { byHand: byHandTally }) };
 }
 
 /** The report, story by story; with `wire`, under each story what it cost there (`cost`). */
@@ -1594,7 +1595,9 @@ export function print(report: Report, { wire = false }: { wire?: boolean } = {})
   }
   const warnings = report.warnings ?? [];
   for (const w of warnings) console.log(`warn  ${w.story}\n        ${w.says}`);
-  console.log(`\n${report.passed} passed, ${report.failed} failed${warnings.length ? `, ${warnings.length} ${warnings.length === 1 ? "warning" : "warnings"}` : ""}`);
+  const unproven = report.unproven ?? [];
+  for (const name of unproven) console.log(`  ?   ${name}\n        unproven: no body yet, so the harness cannot tell it (a test of the app does)`);
+  console.log(`\n${report.passed} passed, ${report.failed} failed${unproven.length ? `, ${unproven.length} unproven` : ""}${warnings.length ? `, ${warnings.length} ${warnings.length === 1 ? "warning" : "warnings"}` : ""}`);
   const h = report.byHand;
   if (h) console.log(`${h.stories} done by hand in a browser the size of a phone: ${h.presses} presses, ${h.applets} sent as an applet declares, in ${(h.ms / 1000).toFixed(1)}s`);
 }

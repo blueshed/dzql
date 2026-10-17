@@ -50,24 +50,28 @@
       "bin": {
         "dzql": "./src/cli/index.ts",
       },
-      "dependencies": {
-        "@electric-sql/pglite": "^0.5.4",
-        "jose": "^6.2.4",
-        "pg": "^8.22.0",
-      },
       "devDependencies": {
         "@blueshed/delta": "^1.2.0",
         "@blueshed/railroad": "^0.16.2",
+        "@electric-sql/pglite": "^0.5.4",
         "@types/bun": "^1.4.3",
         "@types/pg": "^8.20.0",
+        "jose": "^6.2.4",
         "lucide": "^1.46.0",
+        "pg": "^8.22.0",
       },
       "peerDependencies": {
         "@blueshed/delta": "^1.2.0",
         "@blueshed/railroad": "^0.16.2",
+        "@electric-sql/pglite": "^0.5.4",
+        "jose": "^6.2.4",
+        "pg": "^8.22.0",
       },
       "optionalPeers": [
         "@blueshed/railroad",
+        "@electric-sql/pglite",
+        "jose",
+        "pg",
       ],
     },
     "packages/paintbrush": {
@@ -76,6 +80,7 @@
       "dependencies": {
         "@blueshed/delta": "^1.2.0",
         "@blueshed/railroad": "^0.16.0",
+        "dzql": "^0.13.0",
         "lucide": "^1.51.0",
       },
       "devDependencies": {
