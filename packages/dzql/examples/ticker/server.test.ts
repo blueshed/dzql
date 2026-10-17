@@ -65,7 +65,7 @@ describe("the ticker", () => {
     const same = write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
     expect(await heard(a)).toEqual([{ type: "refused", id: same }]);
     await expectQuiet(b);
-    // a tick is a fact: Undo passes over it to the person's own last write, and the market stands
+    // a tick is never undone: Undo passes over it to the person's own last write, and the market stands
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "DLTA" }]);
     await expectMessage(a, "patch");
     await expectMessage(a, "render");
@@ -84,7 +84,7 @@ describe("the ticker", () => {
     b.close();
   });
 
-  test("a tick is a fact: its echo to its writer names no change to undo, where a watch's names one", async () => {
+  test("a tick is never undone: its echo to its writer names no change to undo, where a watch's names one", async () => {
     const a = await open();
     const before = (await quotes()).ALPH!.price;
     a.send(JSON.stringify({ id: 1, doc: "ticker", ops: [{ op: "replace", path: "/ALPH/price", value: before + 1 }] }));

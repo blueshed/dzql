@@ -71,4 +71,4 @@ export const wedding: Resource = { docType: "wedding", resolveDoc: () => undefin
 export const welcome: Resource = { docType: "welcome", resolveDoc: () => undefined };
 
 /** Who stands in the photo and how many have claimed each gift (`everyone:<id>`): live, kept by the server. */
-export const everyone: Resource = { docType: "everyone", kind: "live", resolveDoc: () => undefined };
+export const everyone: Resource = { docType: "everyone", kind: "memory", resolveDoc: () => undefined };

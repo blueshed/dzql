@@ -118,7 +118,7 @@ export const room: Resource = {
 /** Who is in a room: live, kept by the server (../presence.ts), written by nobody on the wire. */
 export const here: Resource = {
   docType: "here",
-  kind: "live",
+  kind: "memory",
   resolveDoc(ws) {
     return sessionDoc.read(ws.data.sessionId).room ?? undefined;
   },
@@ -127,6 +127,6 @@ export const here: Resource = {
 /** Which rooms there are: live, kept by the server, seen by the pages that show it (the rooms). */
 export const lobby: Resource = {
   docType: "lobby",
-  kind: "live",
+  kind: "memory",
   resolveDoc: () => undefined,
 };

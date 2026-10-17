@@ -39,7 +39,7 @@ registerDocs(
 );
 // a live document the server writes from outside any event, as a feed's tick is, and slow to follow
 registerMemory(delta.server, { prefix: "tick:", empty: () => ({ n: 0 }) });
-const tickResource: Resource = { docType: "tick", kind: "live", resolveDoc: () => undefined, afterChange: () => Bun.sleep(60) };
+const tickResource: Resource = { docType: "tick", kind: "memory", resolveDoc: () => undefined, afterChange: () => Bun.sleep(60) };
 
 function readNote(id: string): string {
   return read<{ notes: { text: string } }>(`note:${id}`).notes.text;

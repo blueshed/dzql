@@ -96,13 +96,13 @@ export function documentsIn(src: string, session: string | null): { name: string
       : lists.get(raw) ?? [];
   const documents: ReturnType<typeof documentsIn> = [];
   src.split(/registerDocs\(/).forEach((call, i) => {
-    const kind = i === 0 ? "defined" : /ledger: true/.test(call.split("registerMemory(")[0]!) ? "written" : "written, no ledger";
+    const kind = i === 0 ? "defined" : /ledger: true/.test(call.split("registerMemory(")[0]!) ? "stored" : "stored, no ledger";
     // a document scoped by a column (`scope: { room: ":room" }`) is listed like any other; the one
     // scoped by `cookie` is how a cookie finds its session (dzql/rendering/sessions), the kernel's, not the app's
     for (const m of call.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)",(?: scope: \{ (\w+): [^}]*\},)? include: (\[[^\]]*\]|\w+)/g))
       if (m[3] !== "cookie") documents.push({ name: m[1]!, root: m[2]!, include: names(m[4]!), kind, note: m[1] === session ? "the session: who you are and where" : "" });
   });
-  for (const m of src.matchAll(/registerMemory\([^,]*,\s*\{\s*prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "live", note: "kept by the server, in memory" });
+  for (const m of src.matchAll(/registerMemory\([^,]*,\s*\{\s*prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "memory", note: "kept by the server, in memory" });
   for (const m of src.matchAll(/defineCustomDoc(?:<[^>]*>)?\("(\w+):", \{\s*watch: (\[[^\]]*\]|\w+)/g))
     documents.push({ name: m[1]!, root: null, include: [], kind: "custom", note: "worked out by the server from the tables it watches", watch: names(m[2]!) });
   return documents;
@@ -218,7 +218,7 @@ export function privateEntry(example: Example): (entry: Trace["ledger"][number])
  */
 export function read(stories: Stories, example?: Example, watched?: Watched, defined: string[] = []): Reading {
   const write = writeOf;
-  const types: Reading["docs"] = example ? example.resources.map((c) => ({ name: c.docType, kind: c.kind ?? "written" })) : [];
+  const types: Reading["docs"] = example ? example.resources.map((c) => ({ name: c.docType, kind: c.kind ?? "stored" })) : [];
   for (const name of defined) if (!types.some((t) => t.name === name)) types.push({ name, kind: "no resource" });
   for (const s of stories.stories) {
     const w = write(s);

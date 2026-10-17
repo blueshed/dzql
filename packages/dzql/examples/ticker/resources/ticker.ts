@@ -61,7 +61,7 @@ const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
  */
 export const quote: Resource = {
   docType: "quote",
-  kind: "fact",
+  undoable: false,
   under: "/quotes", // the document is the row: eta's paths start at it
   resolveDoc: () => undefined,
 };
@@ -72,7 +72,7 @@ export const render = (sessionId: string): string =>
 
 export const ticker: Resource = {
   docType: "ticker",
-  kind: "fact", // on the ledger, never undone
+  undoable: false, // on the ledger, never undone
   under: "/quotes", // eta's `/ALPH/price` is the document's `/quotes/ALPH/price`
   resolveDoc() {
     return market.MARKET; // everyone sees the one market
@@ -82,7 +82,7 @@ export const ticker: Resource = {
     return op.op === "replace" && TICK_PATH.test(op.path);
   },
   shape: (_ws, _docId, ops) => market.ticks(ops),
-  // A tick is a fact, so the ledger's cursor never lands here. What each page
+  // A tick is never undone, so the ledger's cursor never lands here. What each page
   // is sent after one is worked out from its parts: the board applet takes the ops, so on the box
   // nothing; the market's rows, the board as a list, a symbol's drawer -- whatever shows a price.
   onOpen() {

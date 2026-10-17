@@ -4,7 +4,7 @@ import { db } from "dzql/rendering/db";
 import { sessionRows } from "dzql/rendering/sessions";
 import { DEFAULT_TZ } from "./documents/clock";
 
-// The ticker's documents, in delta (`@blueshed/delta`). The market is a fact: ticked
+// The ticker's documents, in delta (`@blueshed/delta`). The market is never undone: ticked
 // by the feed, or typed by anyone, recorded and never undone. A quote is one symbol of it, as its
 // own document, so a board is told only the symbols it watches. A watchlist and a clock are a
 // session's own, written by the person, and undoable. The desk -- where the session is on the

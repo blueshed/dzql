@@ -73,5 +73,5 @@ const registered = new WeakSet<Local>();
 export function createToldResource(delta: Local): Resource {
   if (!registered.has(delta)) registerMemory(delta.server, { prefix: "told:", empty: none });
   registered.add(delta);
-  return { docType: "told", perSession: true, kind: "live", resolveDoc: (ws) => ws.data.sessionId };
+  return { docType: "told", perSession: true, kind: "memory", resolveDoc: (ws) => ws.data.sessionId };
 }

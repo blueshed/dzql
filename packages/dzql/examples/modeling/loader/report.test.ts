@@ -232,17 +232,17 @@ registerDocs(delta.server, db, schema, [
 registerDocs(delta.server, db, schema, [defineDoc("session:", { root: "visits", include: [], implied: true })]);
 registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
     expect(documentsIn(src, "session")).toEqual([
-      { name: "board", root: "weddings", include: ["households", "gifts", "places"], kind: "written", note: "" },
-      { name: "wedding", root: "weddings", include: ["gifts", "places"], kind: "written", note: "" },
-      { name: "session", root: "visits", include: [], kind: "written, no ledger", note: "the session: who you are and where" },
-      { name: "everyone", root: null, include: [], kind: "live", note: "kept by the server, in memory" },
+      { name: "board", root: "weddings", include: ["households", "gifts", "places"], kind: "stored", note: "" },
+      { name: "wedding", root: "weddings", include: ["gifts", "places"], kind: "stored", note: "" },
+      { name: "session", root: "visits", include: [], kind: "stored, no ledger", note: "the session: who you are and where" },
+      { name: "everyone", root: null, include: [], kind: "memory", note: "kept by the server, in memory" },
     ]);
   });
 
   test("chat: every story placed on its tables and run, a tab closing among them; its permits are code", async () => {
     const facts = await extract("chat");
     expect(facts.harness!.passed + facts.harness!.failed).toBe(chat.stories.length);
-    expect(facts.documents.map((d) => `${d.name}: ${d.kind}`)).toEqual(["session: written", "room: written", "here: live", "lobby: live"]);
+    expect(facts.documents.map((d) => `${d.name}: ${d.kind}`)).toEqual(["session: stored", "room: stored", "here: memory", "lobby: memory"]);
     expect(facts.permits).toEqual([]);
     const say = facts.stories.find((s) => s.name.startsWith("Ada says hello"))!;
     expect(say.ops).toEqual([{ op: "add", path: "/messages/-", table: "messages", field: null, permitted: null }]);
@@ -269,7 +269,7 @@ registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
   test("the wedding: its rules, dated or not, its session, and the seed that makes a table's rows", async () => {
     const facts = await extract("wedding");
     expect(facts.session).toBe("session");
-    expect(facts.documents.find((d) => d.name === "session")).toMatchObject({ kind: "written, no ledger", note: "the session: who you are and where" });
+    expect(facts.documents.find((d) => d.name === "session")).toMatchObject({ kind: "stored, no ledger", note: "the session: who you are and where" });
     expect(facts.permits.some((p) => p.doc === "household" && p.dated)).toBe(true);
     expect(facts.tables.find((t) => t.name === "couples")!.code.some((c) => c.seed)).toBe(true);
     const note = facts.stories.find((s) => s.name.startsWith("The Okafors leave the caterer a note"))!;

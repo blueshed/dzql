@@ -242,14 +242,14 @@ export function createServer(example: Example, port: number | string = process.e
 
   /** A permitted write from the wire: shaped, written through delta as the person. */
   async function writeDelta(ws: Socket, owner: (typeof resources)[number], docId: string, ops: PatchOp[], id?: WriteId): Promise<boolean> {
-    const kind = owner.kind ?? "written";
+    const undoable = owner.undoable !== false;
     const shaped = owner.shape ? await settled(documents, () => owner.shape!(ws, docId, ops)) : ops;
     if (shaped.length === 0) return false;
     const at = owner.under ?? "";
     const doc = `${owner.docType}:${docId}`;
-    const writing = documents.write(doc, shaped.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable: kind !== "fact" });
-    // a fact is never undone: its echo names no change
-    const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : { version: w.version, entry: kind === "fact" ? undefined : w.entry }));
+    const writing = documents.write(doc, shaped.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable });
+    // a write never undone: its echo names no change
+    const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : { version: w.version, entry: undoable ? w.entry : undefined }));
     if ("error" in written || written.ops.length === 0) return false;
     const named = owner.perSession ? owner.docType : doc; // a session's own named by type: its id is a credential
     if ((written.entry === undefined) !== (owner.ledger === false)) {
@@ -309,8 +309,7 @@ export function createServer(example: Example, port: number | string = process.e
     const target = await settled(documents, () => resolveName(byDocType, doc, ws));
     if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return false;
     const { owner, docId } = target;
-    const kind = owner.kind ?? "written";
-    if (kind !== "written" && kind !== "fact") return false;
+    if (owner.kind !== undefined) return false; // stored documents alone are written from the wire
     if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return false;
     // A field typed in says what it was drawn with as the typing began: drawn otherwise on
     // this page now, someone changed it since, unseen, and the typing would write over it.

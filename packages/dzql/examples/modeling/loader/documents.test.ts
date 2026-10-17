@@ -89,10 +89,10 @@ describe("from a run", () => {
     const r = await documentsOf("chat");
     expect(r.ran).toBe(true);
     expect(r.docs).toEqual([
-      { name: "session", kind: "written" },
-      { name: "room", kind: "written" },
-      { name: "here", kind: "live" },
-      { name: "lobby", kind: "live" },
+      { name: "session", kind: "stored" },
+      { name: "room", kind: "stored" },
+      { name: "here", kind: "memory" },
+      { name: "lobby", kind: "memory" },
     ]);
     expect(cell(r, "ada", "room")).toMatchObject({ written: 1, refused: 1 });
     expect(cell(r, "ada", "room").held).toBeGreaterThan(0);

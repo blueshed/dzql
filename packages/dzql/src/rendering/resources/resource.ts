@@ -3,16 +3,13 @@ import type { ConnectionData } from "../connection";
 import type { PatchOp } from "../json-patch";
 
 /**
- * Where a document's truth lives (`@blueshed/delta`). Default `written`.
+ * Where a document's truth lives, by delta's names for its kinds (`@blueshed/delta/kinds`). Omitted:
+ * stored, in the example's database (a room's messages), and the only kind written from the wire.
  *
- * - `written`: written by people, stored, and undoable (a room's messages).
- * - `fact`: written and stored, but never undone (a payment taken).
- * - `live`: kept by the server in memory (who is in a room).
- * - `sourced`: read from outside. `static`: fixed for the release.
- *
- * Only `written` and `fact` are written from the wire.
+ * - `memory`: kept by the server in memory (who is in a room).
+ * - `source`: read from outside. `static`: fixed for the release.
  */
-export type Kind = "written" | "fact" | "live" | "sourced" | "static";
+export type Kind = "memory" | "source" | "static";
 
 /**
  * An undo or a redo, as it landed: which way it went, what it wrote, and what that wrote over (its
@@ -44,8 +41,10 @@ export type Resource = {
    * credential and never crosses the wire.
    */
   perSession?: true;
-  /** What kind of document it is. Default `written`. */
+  /** What kind of document it is. Omitted: stored, in the example's database. */
   kind?: Kind;
+  /** Stored, on the ledger, and never undone (a price tick, a payment taken): Undo passes it by. */
+  undoable?: false;
   /**
    * Its writes are not history, so Undo skips them: where a tab is, a visit. Delta keeps its
    * documents off the ledger; saying so here too lets the kernel catch one left off by mistake.
@@ -58,7 +57,7 @@ export type Resource = {
    *
    * - Return false to refuse without a word: right for a write no page offers.
    * - Throw `refuse(reason)` (src/refusal.ts) to refuse and say why, beside the control.
-   * - Omitted: nobody may (a live, sourced or static document).
+   * - Omitted: nobody may (a memory, source or static document).
    * - Asked only for a document the page can see, so a room you are in need not be checked again.
    */
   permit?(ws: ServerWebSocket<ConnectionData>, op: PatchOp, docId: string): boolean;

@@ -6,7 +6,7 @@ import { splitPath } from "@blueshed/delta/core";
 // each quote as its own document too (`quote:<id>`), for a board that watches it. A quote is a
 // numbered row that says its symbol; people and the page name it by the symbol. A tick is
 // `replace /<SYMBOL>/price`, from the feed or from anyone the resource permits, which the market
-// keeps as `/<id>/price`. It is a fact, not the person's doing: on the ledger with its inverse, so
+// keeps as `/<id>/price`. It is not the person's doing: on the ledger with its inverse, so
 // the last minute can be read back, and never undone -- nobody's Undo can move the market.
 
 export type Quote = { symbol: string; name: string; price: number; prev: number; id: number; markets_id?: number };

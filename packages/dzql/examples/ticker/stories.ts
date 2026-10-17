@@ -2,7 +2,7 @@
 // sees; a watchlist and a clock are each session's own. Two things here that chat and the wedding
 // did not have: a tick is seen through an applet (the board takes the ops itself; no render
 // follows), so "seen" means a fresh render from the tables differs, not that HTML crossed the
-// wire; and a tick is a fact -- recorded with undoable = false -- so the undo the harness runs
+// wire; and a tick is never undone -- recorded with undoable = false -- so the undo the harness runs
 // after every `does` must find the ledger says so and leave the price where it is. Whoever a story
 // does not say sees it must not: Bo, on his board, watches only Bravo, and his board is told only
 // the quotes it shows (a row per symbol, each on `quote:<id>`).
@@ -36,7 +36,7 @@ export const stories: Stories = {
     // ── The market is everyone's, through the applet ──
     story("Bravo ticks, and every board watching it moves; nobody's page is rendered", { as: "feed", offPage: true, does: tick("BRVO", 65.01), seen: ["ann", "bo"] }),
     story("Alpha ticks, and Bo, not watching it, notices nothing", { as: "feed", offPage: true, does: tick("ALPH", 190.0), seen: ["ann"] }),
-    story("A tick is a fact: it stays on the ledger and Undo passes over it", { as: "feed", offPage: true, does: tick("BRVO", 63.5), seen: ["ann", "bo"] }),
+    story("A tick is never undone: it stays on the ledger and Undo passes over it", { as: "feed", offPage: true, does: tick("BRVO", 63.5), seen: ["ann", "bo"] }),
     story("Nobody can invent a symbol from the wire", { as: "feed", cannot: tick("ZZZZ", 1) }),
     story("A price cannot be taken away, only moved", { as: "feed", cannot: { doc: "ticker", ops: [{ op: "remove", path: "/BRVO/price" }] } }),
 

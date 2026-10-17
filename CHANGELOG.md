@@ -8,6 +8,10 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **One namespace for document kinds** (17 October, Peter's word, todo #10): eta's resources use
+  delta's kind names (`memory`, `source`, `static`; stored when omitted), and eta's `fact` is a
+  stored document with `undoable: false`. Breaking for an app; how to move across is in
+  `packages/dzql/CHANGELOG.md`. The skills and docs follow from the concept review.
 - **eta's screens are URLs the server routes** (17 October, Peter's choice: server-drawn, with
   URLs). A tab opened at a screen's URL is drawn on that screen first time (`Example.address`;
   detail in `packages/dzql/CHANGELOG.md`). Browser tests ran here on a staged Chromium; run them

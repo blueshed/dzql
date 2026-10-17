@@ -72,8 +72,8 @@ function ledgerOf(): { max(): number; since(id: number): LedgerRow[] } {
   return { max: () => max?.get()?.id ?? 0, since: (id) => since?.all(id) ?? [] };
 }
 
-/** The kinds of document delta keeps in its tables, which `open_at` reads. */
-const STORED = new Set<Kind>(["written", "fact"]);
+/** Is a document stored, in delta's tables (no `kind`), which `open_at` reads and the wire writes? */
+const isStored = (owner: { kind?: Kind } | undefined): boolean => owner?.kind === undefined;
 /** A time after every write: a document opened as it stood then (`open_at`) is its rows as they stand. */
 const AFTER_EVERY_WRITE = "9999-12-31T23:59:59.999Z";
 
@@ -682,7 +682,7 @@ export async function run(
    * Canon 2's fresh render: the page drawn from storage. Each document it reads is opened again
    * from delta's tables (`open_at`). One the tables do not hold is nothing, as the kernel holds a
    * document delta cannot open, so a row they lost fails; only one with no tables at all -- a
-   * resource's `live`, `sourced` or `static` kind, kept where delta keeps it -- is the server's copy. The page reads the
+   * resource's `memory`, `source` or `static` kind, kept where delta keeps it -- is the server's copy. The page reads the
    * active copy, so this one is made active while it draws, and only then: a drawing is synchronous.
    */
   async function fresh(sessionId: string): Promise<string> {
@@ -696,7 +696,7 @@ export async function run(
       // the version a watching mount holds is not compared (`comparable`): the page read from storage says none
       version: (doc: string): undefined => void copy.read(doc),
       load: async (doc: string) => {
-        if (!STORED.has(byDocType.get(splitDoc(doc).docType)?.kind ?? "written")) return void stored.set(doc, await settled(documents, () => documents.read(doc)));
+        if (!isStored(byDocType.get(splitDoc(doc).docType))) return void stored.set(doc, await settled(documents, () => documents.read(doc)));
         const { result, error } = await example.delta.call("open_at", { doc, at: AFTER_EVERY_WRITE });
         if (error && error.code !== 404) throw new Error(`${doc} could not be read from storage: ${error.message}`);
         else stored.set(doc, result);
@@ -1195,17 +1195,17 @@ export async function run(
         return outcome;
       }
 
-      const facts = entries.every((e) => e.undoable === 0);
+      const neverUndone = entries.every((e) => e.undoable === 0);
       ({ from } = await sent("undo", UNDO, cast));
       const undid = await checkTold(who, "after undo", story.undone, failures, { line: wrote, what: "the write" }); // where the undo left them, before they are put back
       if (moved) await send(cast, who, stories.goTo!(stood!));
       const afterUndo = await snapshot(cast, who);
       await stale(cast, "after undo", failures);
       checkUntold(cast, story.untold, from, "after undo", failures);
-      if (facts) compare(quietAfter, afterUndo, cast, "a fact, yet undo changed it", failures);
+      if (neverUndone) compare(quietAfter, afterUndo, cast, "never undone, yet undo changed it", failures);
       else compare(before, afterUndo, cast, "undo did not restore", failures);
-      // a fact has nothing to redo; and the undo may have been their going (a name taken back): no redo is theirs to press
-      if (facts || !(await active(who.sessionId))) {
+      // a write never undone has nothing to redo; and the undo may have been their going (a name taken back): no redo is theirs to press
+      if (neverUndone || !(await active(who.sessionId))) {
         if (story.redone !== undefined) failures.push(`no redo follows to tell ${who.name} "${story.redone}"`);
       } else {
         ({ from } = await sent("redo", REDO, cast));
@@ -1495,7 +1495,7 @@ export async function run(
     const target = await settled(documents, () => resolveName(byDocType, write.doc, ws));
     if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return `, as ${m.name}'s page did not read ${write.doc}: it read ${readBy(m)}`;
     const { owner, docId } = target;
-    if (!STORED.has(owner.kind ?? "written")) return `, as ${write.doc} is ${owner.kind}, which the wire does not write`;
+    if (!isStored(owner)) return `, as ${write.doc} is a ${owner.kind} document, which the wire does not write`;
     const by = await refuser(owner, ws, write.ops.filter((op): op is PatchOp => !isTest(op)), docId);
     return by ? ` by ${owner.docType}'s ${by}` : ` past ${owner.docType}'s permit and shape: delta applied nothing`;
   }
@@ -1530,7 +1530,7 @@ export async function run(
         for (const doc of met.get(m.name)!.reads) {
           const { docType, docId } = doc.includes(":") ? splitDoc(doc) : { docType: doc, docId: m.sessionId };
           const owner = byDocType.get(docType)!;
-          if (!owner.permit || docType === "ledger" || !STORED.has(owner.kind ?? "written")) continue;
+          if (!owner.permit || docType === "ledger" || !isStored(owner)) continue;
           const value = valueAt(await settled(documents, () => documents.read(prefixDoc(docType, docId))), owner.under ?? "");
           const saying = (op: string, path: string): string => `${op} ${anyOne(path, value) || "the document"}`; // a verb, as the warning says it
           const known = new Set(toldTo(doc, m.name).map((w) => saying(w.op, w.path)));

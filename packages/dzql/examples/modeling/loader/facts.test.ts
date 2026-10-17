@@ -156,7 +156,7 @@ registerDocs(server, db, schema, [team], [mine], { ledger: true });`;
     const src = `registerMemory(server, { prefix: "here:", empty: () => ({}) });
 registerMemory(local.server,
   { prefix: "lobby:", empty: () => ({}) });`;
-    expect(documentsIn(src, null).map((d) => [d.name, d.kind])).toEqual([["here", "live"], ["lobby", "live"]]);
+    expect(documentsIn(src, null).map((d) => [d.name, d.kind])).toEqual([["here", "memory"], ["lobby", "memory"]]);
   });
 
   test("a project with no app: born into its own document, touching its own write's tables (not its premise's), and nothing said of who was told", async () => {
