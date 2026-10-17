@@ -15,3 +15,7 @@ packages/dzql/*.sqlite-wal
 packages/dzql/.eta-session*
 packages/dzql/server.pid
 packages/dzql/server.log
+
+# Tools outside the repos made these, empty, on 16 October: never commit them
+.agents/
+.gemini/
