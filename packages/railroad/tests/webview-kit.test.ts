@@ -1,5 +1,5 @@
 // @blueshed/railroad/webview: the kit page tests share, in a real browser.
-import { afterAll, expect, setDefaultTimeout, test } from "bun:test";
+import { afterAll, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
 import { browser, waitIn } from "../webview";
 import kit from "./fixtures/kit.html";
 
@@ -45,3 +45,13 @@ test("withOtherWindow is a second view at the page, closed after", async () => {
 test("waitIn throws, naming the expression, once its time is up", async () => {
   await expect(waitIn(view, "false", 100)).rejects.toThrow("Timed out waiting for: false");
 });
+
+// waitIn timed itself by Date.now, so under setSystemTime it never timed out
+test("waitIn times out by a clock that runs, though a test has fixed the date", async () => {
+  setSystemTime(new Date("2026-01-01T00:00:00Z"));
+  try {
+    await expect(waitIn(view, "false", 100)).rejects.toThrow("Timed out waiting for: false");
+  } finally {
+    setSystemTime();
+  }
+}, 5_000);

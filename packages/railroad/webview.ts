@@ -25,8 +25,8 @@ import { beforeAll } from "bun:test";
 
 /** Polls a page-side expression until it is truthy; throws after `timeout` ms. */
 export async function waitIn(view: Bun.WebView, expr: string, timeout = 5_000): Promise<void> {
-  const end = Date.now() + timeout;
-  while (Date.now() < end) {
+  const end = performance.now() + timeout; // not Date.now: a test may fix that clock with setSystemTime
+  while (performance.now() < end) {
     if (await view.evaluate(`Boolean(${expr})`)) return;
     await Bun.sleep(50);
   }
