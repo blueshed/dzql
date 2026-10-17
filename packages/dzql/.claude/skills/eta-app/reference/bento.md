@@ -48,9 +48,10 @@ open over it (`guests?guest=2`, `gifts?new`, leave's `2026-10?request=1`).
 - `address(path, what?, which?)` builds one; `parseAddress(page)` reads one.
 - Opening a drawer or a modal is going to the same page with it named; closing it is going to the
   page alone. Going anywhere puts away what was open.
-- Put the address in `data-page`, and the write that sets it in `data-page-write` (`site()` does):
-  the client mirrors it into the URL and sends it on back and forward; on first load the session
-  catches up to the URL.
+- The address is the screen's URL, and the server routes it: name the write that sets it as the
+  app's `address` ([example.md](example.md)), and a tab opened at a URL is put there before its
+  page is drawn. Put the address in `data-page`, and that write in `data-page-write` (`site()`
+  does): the client puts each new address in the URL, and sends the one back and forward reach.
 - The stories put people there with `Stories.goTo(address)`. A story's `from`, and each place its
   `seen` names, must be one a control leads to: a button whose `data-value` is the address, or a tap
   an applet names. The URL, `data-page-write` and the back button are not controls: a place reached

@@ -85,7 +85,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
   });
 
-  test("the page follows into the URL; the browser's back button sends the session there; reopening a link catches the session up to it", async () => {
+  test("the page follows into the URL; the browser's back button sends the session there; a link opens on its screen, routed by the server", async () => {
     await using view = webview();
     await enter(view, code);
     expect(await view.evaluate<string>(`location.pathname`)).toBe("/");
@@ -112,8 +112,8 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('#family-photo') !== null && document.querySelector('.cell.open .rows') === null`, (v) => v === true);
 
     // reopening a link to a page while already signed in (the session cookie survives, same as a
-    // reload): the URL is what was actually asked for, so the session catches up to it, rather
-    // than a fresh render of the session's still-current page snapping the URL back to "/"
+    // reload): the URL is what was asked for, and the server routes it, putting the session there
+    // before the page is drawn, rather than drawing the session's still-current page
     await view.navigate(urlFor(view, server.url, "everyone"));
     await waitFor(view, `location.pathname`, (v) => v === "/everyone");
     await waitFor(view, `document.querySelector('#everyone-photo') !== null`, (v) => v === true);

@@ -48,6 +48,14 @@ export type Example = {
    * (./sessions.ts). Omitted: the cookie is the session, for an example that keeps no row by it.
    */
   session?(cookie: string): Promise<string>;
+  /**
+   * Where a session's address is written: the document and path a page's `data-page-write` names
+   * (src/bento.ts's `site`), as `{ doc: "session", path: "/page" }`. A screen's address is its URL
+   * (`/list?request=3`): the server routes it, putting the session there through this write --
+   * permitted and shaped as any write -- before a tab's first page is drawn, so a link, a bookmark
+   * or a reload opens on that screen. Omitted: a page with no address, and its URL is only "/".
+   */
+  address?: { doc: string; path: string };
   /** Who a session is, as delta sees them -- for the ledger's `who` and for row-level security. Default: the session. */
   who?(sessionId: string): unknown;
   /**

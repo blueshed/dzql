@@ -105,13 +105,14 @@ describe("the stories by hand", () => {
 
   test("a tab that does not close is said, not waited on in silence: the server still holding its socket", async () => {
     const server = createServer(chat, 0);
-    const sessionId = crypto.randomUUID();
+    const cookie = crypto.randomUUID();
+    const sessionId = await chat.session!(cookie); // the session the cookie names: a numbered row
     const url = new URL("/ws", server.url);
     url.protocol = "ws:";
     const tab = () =>
       new Promise<WebSocket>((resolve) => {
         // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-        const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
+        const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${cookie}` } });
         ws.addEventListener("open", () => resolve(ws), { once: true });
       });
     const [kept, closing] = [await tab(), await tab()];

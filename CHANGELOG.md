@@ -8,6 +8,10 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **eta's screens are URLs the server routes** (17 October, Peter's choice: server-drawn, with
+  URLs). A tab opened at a screen's URL is drawn on that screen first time (`Example.address`;
+  detail in `packages/dzql/CHANGELOG.md`). Browser tests ran here on a staged Chromium; run them
+  on Peter's Mac too (`bun run affected --slow`).
 - **eta's examples are on numbered ids** (17 October, todo #11), so they can move onto dzql's
   Postgres. Every row is named by its table's serial; no example names a row with text. Breaking
   for a dev database made before this: delete it (`data/` or `DB_PATH`), and the seed makes it

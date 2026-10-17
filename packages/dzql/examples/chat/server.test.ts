@@ -68,7 +68,7 @@ describe("routes", () => {
     expect(await res.json()).toEqual({ ok: true });
   });
 
-  test("an unknown path serves the same page, not a 404 -- a page in the URL is the client's to read (item 3)", async () => {
+  test("an unknown path serves the same page, not a 404: a path is a screen, routed when its socket opens", async () => {
     const res = await fetch(new URL("/nope", server.url));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");

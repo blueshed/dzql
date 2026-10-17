@@ -126,6 +126,8 @@ function makeExample(name: string): Example {
     active: () => true,
     index,
     delta,
+    // the note is this example's address: a tab opened at one puts the session's note there
+    address: { doc: "note", path: "/text" },
     // who a request is, by a header of this test's own: a session, a refusal, or a visit
     identify: (req) => {
       const who = req.headers.get("x-test-who");
@@ -152,7 +154,7 @@ describe("createServer, generically (no example from the examples directory invo
     server.stop(true);
   });
 
-  test("/ serves the example's page, /api/health answers, and any other path serves the same page (item 3: a page in the URL is the client's to read, not a route the server resolves)", async () => {
+  test("/ serves the example's page, /api/health answers, and any other path serves the same page: a screen, whose socket names it", async () => {
     const page = await fetch(new URL("/", server.url));
     expect(page.status).toBe(200);
     expect(page.headers.get("content-type")).toContain("text/html");
@@ -194,6 +196,27 @@ describe("createServer, generically (no example from the examples directory invo
     expect(await answer("X-Test-Who: ada-session\r\nCookie: session_id=ada-session\r\n")).not.toMatch(/^set-cookie:/im);
     expect(await answer("X-Test-Who: refused\r\n")).toStartWith("HTTP/1.1 401");
     expect(await answer("Cookie: session_id=a-visit\r\n")).not.toMatch(/^set-cookie:/im); // nobody said: the visit's own
+  });
+
+  test("a tab opened at an address is routed there before its page is drawn, by the example's own write of it; a refused route leaves the session where it was", async () => {
+    const at = async (sessionId: string, address?: string): Promise<string> => {
+      const ws = connect(server, sessionId, address);
+      await opened(ws);
+      const page = htmlOf(await expectMessage(ws, "render"));
+      ws.close();
+      return page;
+    };
+    expect(await at("routed", "guests?guest=2")).toContain('<p class="note">guests?guest=2</p>'); // the first page drawn is the route's
+    expect(await at("routed")).toContain('<p class="note">guests?guest=2</p>'); // a socket that names none (the CLI's) stays where the session is
+    expect(await at("routed", "")).toContain('<p class="note">guests?guest=2</p>'); // refused ("A note needs words."): where it was
+    const failures: string[] = [];
+    const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
+    try {
+      expect(await at("routed", "boom")).toContain('<p class="note">guests?guest=2</p>'); // a route whose write fails is the server's failure, and the page is drawn all the same
+      expect(failures).toEqual(["handling an event: boom"]);
+    } finally {
+      stop();
+    }
   });
 
   test("a non-upgrade request to /ws is rejected", async () => {

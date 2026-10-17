@@ -82,10 +82,10 @@ After a change, each page that shows it gets only the parts that changed, compre
 costs` measures every number on this page from a fresh run, and `bun test` fails when they drift.
 
 <!-- measured:writes -->
-- **Chat**, one message in a room of 100 messages and 5 members: 517 B, compressed from 1.2 KB, to
-  each other member (a 206 B patch and 311 B of HTML).
-- **The ticker**, one price tick with 5 viewers watching its symbol: 194 B, compressed from 214 B,
-  to each other viewer (patches of 100 B and 94 B, and no HTML). The same tick as a bare JSON feed
+- **Chat**, one message in a room of 100 messages and 5 members: 423 B, compressed from 881 B, to
+  each other member (a 182 B patch and 241 B of HTML).
+- **The ticker**, one price tick with 5 viewers watching its symbol: 178 B, compressed from 203 B,
+  to each other viewer (patches of 90 B and 88 B, and no HTML). The same tick as a bare JSON feed
   would be 41 B.
 - **The wedding**, one guest's top changed to green: 823 B, compressed from 2.1 KB, to the same
   household's second tab, on its photo (patches of 147 B and 227 B, and 449 B of HTML); 751 B,

@@ -199,13 +199,14 @@ const hooks: MorphHooks = {
   pressed: (el) => el === boxPressed,
 };
 
-// Where a tab is (docs/dzql/rendering/change-request.md item 3): an example may mark some element within #app with
-// `data-page` (the session's own idea of the page) and `data-page-write` (the write that sets
-// it) -- the kernel knows nothing about what a "page" means, only that this pair, when present,
-// should be mirrored into the URL so the back button and a shared link work. `knownPage` is
-// undefined until the first full render, which is also the only time the URL might already
-// disagree with the session (a shared link, a reload): then the session is caught up to the URL
-// instead of the other way round, since the URL is what the person actually asked for.
+// Where a tab is: its URL is the screen's address (`Example.address`). The server routes it -- the
+// socket names it (`connect`, below), and the session is put there before the page is drawn -- so
+// a link, a bookmark or a reload opens on its screen. An example marks some element within #app
+// with `data-page` (where the session is) and `data-page-write` (the write that moves it); the
+// kernel knows nothing about what a "page" means, only that this pair is mirrored into the URL, so
+// the back button works: a new address is pushed, and going back writes the one gone back to.
+// The first page drawn replaces the URL, which says where the route landed (a refused route
+// leaves the session where it was, and the URL says so).
 let knownPage: string | undefined;
 let pageWrite: string | undefined;
 
@@ -217,22 +218,10 @@ function syncPage() {
   if (!el) return;
   const page = el.dataset.page!;
   if (el.dataset.pageWrite) pageWrite = el.dataset.pageWrite;
-
-  if (knownPage === undefined) {
-    const urlPage = pageInUrl();
-    if (urlPage !== page && pageWrite) {
-      knownPage = urlPage; // the URL already says this; nothing to push once the session catches up
-      write(pageWrite, urlPage);
-    } else {
-      knownPage = page;
-      history.replaceState({ page }, "", "/" + encodeURI(page));
-    }
-    return;
-  }
-  if (page !== knownPage) {
-    knownPage = page;
-    history.pushState({ page }, "", "/" + encodeURI(page));
-  }
+  if (page === knownPage) return;
+  if (knownPage === undefined) history.replaceState({ page }, "", "/" + encodeURI(page));
+  else history.pushState({ page }, "", "/" + encodeURI(page));
+  knownPage = page;
 }
 
 window.addEventListener("popstate", () => {
@@ -800,7 +789,8 @@ app.insertAdjacentHTML("afterend", `<p role="status" class="connection"></p>`);
 const connection = app.nextElementSibling!;
 
 function connect() {
-  socket = new WebSocket(`${location.origin.replace("http", "ws")}/ws`); // http: goes ws:, https: wss:
+  // http: goes ws:, https: wss:; the URL's screen goes with it, for the server to route
+  socket = new WebSocket(`${location.origin.replace("http", "ws")}/ws?at=${encodeURIComponent(pageInUrl())}`);
 
   // A successful connection means prior turbulence is over: the next drop,
   // whenever it happens, should retry promptly rather than inherit an old backoff.

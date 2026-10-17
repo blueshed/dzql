@@ -32,8 +32,9 @@ const raws = new WeakMap<WireMessage, string>();
 export const rawOf = (m: WireMessage): string => raws.get(m)!;
 
 /** A socket to `server` -- or to anything with its address, a proxy that measures the wire -- as the session `sessionId` (a fresh visit without one). */
-export function connect(server: { url: URL | string }, sessionId?: string): WebSocket {
+export function connect(server: { url: URL | string }, sessionId?: string, at?: string): WebSocket {
   const url = new URL("/ws", server.url);
+  if (at !== undefined) url.searchParams.set("at", at); // the screen a tab's URL names, as the client sends it
   url.protocol = "ws:";
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
   const ws: WebSocket = sessionId ? new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } }) : new WebSocket(url);

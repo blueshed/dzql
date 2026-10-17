@@ -12,9 +12,11 @@ export const example: Example = {
   active: (sessionId) => sessionOf(sessionId).person !== null, // a signed-out tab writes nothing, Undo included
   who: (sessionId) => sessionOf(sessionId).person?.id ?? sessionId, // the ledger's who is the person
   index,
+  address: { doc: "session", path: "/page" }, // a screen's URL is where the session goes
   identify, // a trusted proxy's header, or the CLI's token
   routes: { "/login": signIn },
   delta,
+  session: sessions.of, // a session is a numbered row, named by its cookie
 };
 ```
 
@@ -25,7 +27,13 @@ The fields are `Example` in `src/rendering/example.ts`.
   left open after signing out may not write, nor undo a write made before.
 - `who` is who a session is to delta (the ledger's who, row-level security); default the session.
 - `routes` are extra HTTP routes; a kernel route of the same path wins. `index` is served at `/` and
-  at any path the kernel does not own.
+  at any path the kernel does not own: that path is a screen.
+- `address` routes a screen: a tab opened at `/2026-10?request=1` puts its session there, through
+  that write (permitted and shaped as any), before its first page is drawn. So a link, a bookmark or
+  a reload opens on its screen, drawn by the server. Without it, the URL is only `/`.
+- `session` finds a cookie's session: `sessionRows(delta, "sessions").of` (`dzql/rendering/sessions`)
+  keeps each as a numbered row holding the cookie's hash, made on a visit's first socket and found
+  through a `visit:` document scoped by that hash. Without it, the cookie is the session.
 - `src/rendering/start.ts` runs the app `ETA_EXAMPLE` names (`./src`, or an example's name). One process
   serves one app.
 

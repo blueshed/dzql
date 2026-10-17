@@ -156,10 +156,11 @@ function tellChanges(documents: Documents): void {
     if (!owner) return;
     const wire = wireOps(owner, docId, ops as PatchOp[]);
     const yours = await claimOf(doc, v);
-    const echoTo = await settled(documents, () => audienceFor(docType, docId));
+    // a tab not yet drawn is told nothing: its first page, drawn after (a route's write before it), holds it
+    const echoTo = (await settled(documents, () => audienceFor(docType, docId))).filter((ws) => sent.has(ws));
     const change = yours?.entry === undefined ? undefined : handleFor(yours.ws.data.sessionId, yours.entry);
     for (const ws of echoTo) send(ws, ws === yours?.ws ? patchMessage(wireName(docType, docId), v ?? 0, wire, yours.id, change) : patchMessage(wireName(docType, docId), v ?? 0, wire));
-    for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws);
+    for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws); // a reader has been drawn
     await owner.afterChange?.(docId, wire);
   });
 }
@@ -318,6 +319,21 @@ export function createServer(example: Example, port: number | string = process.e
     return owner.docType === "ledger" ? walk(ws, ops, id) : writeDelta(ws, owner, docId, ops, id);
   }
 
+  /**
+   * The route: a tab opened at an address puts its session there before its page is drawn, through
+   * the example's own write of it (`Example.address`), permitted and shaped as any. Refused, the
+   * session stays where it is, and the page drawn says where that is (the client puts it in the URL).
+   */
+  async function route(ws: Socket): Promise<void> {
+    if (ws.data.at === undefined || !example.address) return;
+    const { doc, path } = example.address;
+    try {
+      await write(ws, { doc, ops: [{ op: "replace", path, value: ws.data.at }] }, undefined);
+    } catch (err) {
+      if (!(err instanceof Refusal)) throw err;
+    }
+  }
+
   async function handle(ws: Socket, message: unknown): Promise<void> {
     if (isInspect(message)) {
       send(ws, JSON.stringify({ type: "inspect", ...(await inspectFor(ws, inspected(message.limit))) }));
@@ -358,9 +374,8 @@ export function createServer(example: Example, port: number | string = process.e
     routes: {
       ...example.routes,
       "/": example.index,
-      // A page an example puts in the URL (docs/dzql/rendering/change-request.md item 3) is a path the server has
-      // never heard of -- it doesn't resolve one, it just hands back the same shell for any path
-      // that isn't an exact route above, and the client reads the URL itself once it connects.
+      // A screen's address is its URL (`Example.address`): any path that is no route above is a
+      // screen, served the same shell, whose socket names the address (`/ws?at=`), routed on open.
       "/*": example.index,
       "/api/health": () => Response.json({ ok: true }),
       "/ws": async (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
@@ -377,7 +392,8 @@ export function createServer(example: Example, port: number | string = process.e
         const headers = new Headers();
         if (token !== cookie) headers.append("Set-Cookie", sessionCookie(token));
 
-        if (server.upgrade(req, { data: { sessionId }, headers })) return;
+        const at = new URL(req.url).searchParams.get("at") ?? undefined; // the screen the tab's URL names
+        if (server.upgrade(req, { data: { sessionId, ...(at !== undefined && { at }) }, headers })) return;
         return new Response("Upgrade failed", { status: 400 });
       },
     },
@@ -391,6 +407,7 @@ export function createServer(example: Example, port: number | string = process.e
         enqueue(async () => {
           try {
             for (const resource of resources) await resource.onOpen?.(ws);
+            await route(ws);
           } finally {
             await redraw(ws, true); // the page is drawn, whatever failed opening it
           }

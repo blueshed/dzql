@@ -104,6 +104,13 @@ Wired into the wedding only (`views/shared.ts`'s `frame()` takes an optional `pa
 `views/household.ts` and `views/board.ts`; the pre-login welcome has none). Chat's `room` was left
 alone, per the "grates less there" in the Why below.
 
+*Then, 17 October 2026 (Peter's choice: server-drawn, with URLs):* the server routes the URL. The
+client's socket names the screen its URL is at (`/ws?at=`), and the server puts the session there
+through the example's declared write (`Example.address`) before the first page is drawn, so the
+first page is the link's screen and the client no longer catches the session up. The page still
+lives on the session, so two tabs of one session still share a page; the larger version below
+(each tab's own page) is still not done.
+
 **What.** The page a tab is on lives in the URL, not only on the session document.
 
 **Why.** The wedding keeps the page (`household/asks`, `households/3`) on the session, so going

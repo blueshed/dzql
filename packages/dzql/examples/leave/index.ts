@@ -18,6 +18,7 @@ export const example: Example = {
   // The ledger's who is the person, not the visit.
   who: (sessionId) => sessionOf(sessionId).person?.id ?? sessionId,
   index,
+  address: { doc: "session", path: "/page" }, // a screen's URL is where the session goes (the server routes it)
   identify, // a trusted proxy's header, or the CLI's token (./signin.ts)
   routes: { "/login": signIn },
   delta, // the documents are delta's (./delta.ts)

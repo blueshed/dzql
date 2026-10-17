@@ -23,6 +23,7 @@ export const example: Example = {
   // exists) shouldn't be able to write, undo included, as if it were still in.
   active: (sessionId) => sessionDoc.read(sessionId).code !== null,
   index,
+  address: { doc: "session", path: "/page" }, // a screen's URL is where the session goes (the server routes it)
   routes,
   delta, // the documents are delta's (./delta.ts)
   session: sessions.of, // a visit is a numbered row, named by its cookie
