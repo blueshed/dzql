@@ -83,6 +83,16 @@ what is open across them. Newest first.
 - **delta's `registerDoc` takes `accept`** (validation, and an empty write writes nothing), so
   paintbrush's `message-api.ts` is a type and one call.
 
+### Fixed
+
+- **CI was red after eta came in, 17 October** (the workflows are paused on Peter's word, and stay so
+  until he says): eta's by-hand stories had never run on Linux, where the phone-sized tab is Chrome,
+  and a page left for `about:blank` waited in Chrome's back/forward cache with its socket open, so
+  the server never heard the tab close: that tab's Chrome now keeps no such cache. paintbrush's
+  evolve test installed npm's railroad, which has no `@blueshed/railroad/webview` yet: it installs
+  the railroad and delta beside it, packed. Every workflow's steps were run on Linux in Docker
+  (Chrome, a Postgres server) and on the Mac before the push.
+
 ### Removed
 
 - `feedback.md`, on Peter's word: its findings are fixed and its tensions are in `todo.jsonl`.
