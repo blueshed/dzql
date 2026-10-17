@@ -3,7 +3,7 @@
 // client/main.ts, and measured from the pages that run it (src/client-coverage.ts); the drawing
 // is dress.ts (change-request.md item 4).
 
-import { registerApplet } from "../../../src/applets";
+import { registerApplet } from "dzql/rendering/applets";
 import { dressHtml, type DressProps, type Part } from "./dress";
 
 const state = new WeakMap<HTMLElement, { props: DressProps; open: Part | null }>();

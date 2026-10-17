@@ -7,3 +7,11 @@ packages/dzql/dist/
 
 # Test coverage output
 coverage/
+
+# eta: the dev databases, the session secret
+packages/dzql/*.sqlite
+packages/dzql/*.sqlite-shm
+packages/dzql/*.sqlite-wal
+packages/dzql/.eta-session*
+packages/dzql/server.pid
+packages/dzql/server.log

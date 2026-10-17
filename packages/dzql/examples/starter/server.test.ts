@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { createServer } from "../../src/server";
-import { run } from "../../src/harness";
+import { createServer } from "dzql/rendering/server";
+import { run } from "dzql/modelling/harness";
 import { stories } from "./stories";
 import { example } from "./index";
 

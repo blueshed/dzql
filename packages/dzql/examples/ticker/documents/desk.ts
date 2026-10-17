@@ -1,6 +1,6 @@
-import { read as readDoc } from "../../../src/documents";
-import { address, collectionsWrite, parseAddress, type Collections } from "../../../src/bento";
-import type { PatchOp } from "../../../src/json-patch";
+import { read as readDoc } from "dzql/rendering/documents";
+import { address, collectionsWrite, parseAddress, type Collections } from "dzql/rendering/bento";
+import type { PatchOp } from "dzql/rendering/json-patch";
 
 // The desk, kept in delta (`desk:<id>`, ../delta.ts): where this session is on the page -- one
 // address (src/bento.ts): the cell grown into the window, and the one thing open over it,

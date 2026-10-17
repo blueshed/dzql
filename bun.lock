@@ -46,13 +46,18 @@
       },
       "devDependencies": {
         "@blueshed/delta": "^1.2.0",
-        "@blueshed/railroad": "^0.16.0",
+        "@blueshed/railroad": "^0.16.2",
         "@types/bun": "latest",
         "@types/pg": "^8.20.0",
+        "lucide": "^1.46.0",
       },
       "peerDependencies": {
         "@blueshed/delta": "^1.2.0",
+        "@blueshed/railroad": "^0.16.2",
       },
+      "optionalPeers": [
+        "@blueshed/railroad",
+      ],
     },
     "packages/railroad": {
       "name": "@blueshed/railroad",
@@ -99,6 +104,8 @@
     "happy-dom": ["happy-dom@20.14.6", "", { "dependencies": { "@types/node": ">=20.0.0", "@types/whatwg-mimetype": "^3.0.2", "@types/ws": "^8.18.1", "buffer-image-size": "^0.6.4", "entities": "^7.0.1", "whatwg-mimetype": "^3.0.0", "ws": "^8.21.0" } }, "sha512-5DDsf4QmEIlRL6NkCv/fxSjYHHkZceL/IaYQdJc2h3G7DRTEai++VTjbfL0LB9geW2VrA3+vrjF3Efx+OTtX0Q=="],
 
     "jose": ["jose@6.2.12", "", {}, "sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw=="],
+
+    "lucide": ["lucide@1.59.0", "", {}, "sha512-0KTOAFYlTuLHdJOqnRCuPhscU29xtx/QnlHyrOfK0FynDhuPm50O3BH/e4wRnOS67ph0z7uovveCVcXUPLTPBw=="],
 
     "pg": ["pg@8.23.1", "", { "dependencies": { "pg-connection-string": "^2.14.1", "pg-pool": "^3.14.0", "pg-protocol": "^1.16.1", "pg-types": "2.2.0", "pgpass": "1.0.5" }, "optionalDependencies": { "pg-cloudflare": "^1.4.1" }, "peerDependencies": { "pg-native": ">=3.0.1" }, "optionalPeers": ["pg-native"] }, "sha512-aL96AHANtWjPLDOLqnhx+ngp9+UK7ETEU8VJrDCGvsSSi/mGLcWYsS6Herg7lmaBJe4uwrfqsa7gTEFaSizDoQ=="],
 

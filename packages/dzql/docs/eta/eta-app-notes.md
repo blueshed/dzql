@@ -12,7 +12,7 @@ and the sketches that would weigh the skill down. Nothing here is a rule the ski
   the cost to watch.
 - **Why no secret beside others' words.** As with BREACH: someone who can put text on a page and
   watch the encrypted sizes of what it is sent can guess a secret drawn in the same message.
-- **Wire versions.** A page sent whole carries `wire` (`WIRE`, `src/json-patch.ts`, where each
+- **Wire versions.** A page sent whole carries `wire` (`WIRE`, `src/rendering/json-patch.ts`, where each
   version is listed). A page from before ids sends none and is answered as it always was (its writes
   echoed without one, a refusal by the page whole, `refused` ignored), so a tab left open over a
   deploy keeps working. A page sent a page whole by a server of another wire (after a rollback)
@@ -44,7 +44,7 @@ and the sketches that would weigh the skill down. Nothing here is a rule the ski
   edit that page does not show.
 - Escape and the back button send the editing form someone is in first, because WebKit fires no
   `focusout` for a field a render takes out: a drawer's words would be lost with it.
-- The assistants' tools (`src/client/tools.ts`) cost 2.1 KB gzipped, for the app that imports them.
+- The assistants' tools (`src/rendering/client/tools.ts`) cost 2.1 KB gzipped, for the app that imports them.
 
 ## Signing in, not built
 

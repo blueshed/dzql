@@ -2,4 +2,4 @@
 // list, drawn as it scrolls -- then the kernel's generic client.
 import "../applets/calendar-applet";
 import "../applets/list-applet";
-import "../../../src/client/app";
+import "dzql/rendering/client/app";

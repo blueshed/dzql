@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createDocuments, setActiveDocuments } from "../../../src/documents";
-import type { PatchOp } from "../../../src/json-patch";
+import { createDocuments, setActiveDocuments } from "dzql/rendering/documents";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { delta } from "../delta";
 import { householdFrom, read, shape, whatItDid, type HouseholdDocument } from "./household";
 import * as weddingDoc from "./wedding";

@@ -18,7 +18,7 @@ proofs, as they were for the stories.
 
 Two things are already right and are not in this request. The tray is computed (0.37.0) and the
 wedding's boxes are cut into it, so items about the box start from there. Lucide is the icon set
-and the kernel draws it (`src/icons.ts`, 0.36.0).
+and the kernel draws it (`src/rendering/icons.ts`, 0.36.0).
 
 ## How to work
 

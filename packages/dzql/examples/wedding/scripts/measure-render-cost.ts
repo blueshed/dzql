@@ -3,11 +3,11 @@
 // their photo of families, another household on its photo, and a third reading everyone's. Not a
 // test -- a report. Run with `DB_PATH=:memory: bun examples/wedding/scripts/measure-render-cost.ts`;
 // with `--json`, what the README says (src/costs.ts, `bun run costs`).
-import { tap, type Measured } from "../../../src/costs";
-import { createServer } from "../../../src/server";
+import { tap, type Measured } from "dzql/modelling/costs";
+import { createServer } from "dzql/rendering/server";
 import { asCouple, asHousehold, board, household } from "../setup";
 import { example } from "../index";
-import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "../../../src/test-socket";
+import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "dzql/rendering/test-socket";
 
 const server = createServer(example, 0);
 const wire = await tap(server.port!); // what crosses it, as sent: every socket goes through it

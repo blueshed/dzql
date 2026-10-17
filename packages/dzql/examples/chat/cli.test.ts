@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { connectCli, parseCommand, runCommand, watch } from "../../src/cli/commands";
-import { createServer } from "../../src/server";
+import { connectCli, parseCommand, runCommand, watch } from "dzql/rendering/cli/commands";
+import { createServer } from "dzql/rendering/server";
 import { aliases } from "./cli";
 import { example } from "./index";
 

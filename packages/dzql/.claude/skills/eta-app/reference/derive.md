@@ -1,4 +1,4 @@
-# A page drawn from a document's shape (`src/derive.ts`)
+# A page drawn from a document's shape (`src/rendering/derive.ts`)
 
 For a collection nobody would write a page for (reference data: the wedding's venues), draw it from
 what it declares, at render time, never generated, from [bento.md](bento.md)'s parts.

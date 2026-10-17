@@ -1,4 +1,4 @@
-import { story, type Stories, type Write } from "../../src/stories";
+import { story, type Stories, type Write } from "dzql/modelling/stories";
 
 const name = (value: string): Write => ({ doc: "session", ops: [{ op: "replace", path: "/name", value }] });
 const room = (value: string): Write => ({ doc: "session", ops: [{ op: "replace", path: "/room", value }] });

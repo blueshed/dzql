@@ -1,5 +1,5 @@
 import * as clockDoc from "../documents/clock";
-import type { Compartment } from "../../../src/compartments/compartment";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
 
 // A session's clock: its own to write, seen by nobody else. The clock applet names this document
 // and takes the `replace /tz` itself, so the face and the hands follow at once; the page says the

@@ -5,7 +5,7 @@
 // be. A tap on a bar that did not move is left to the kernel's client: it opens the drawer.
 // Imported only by client/main.ts, and driven by the browser test.
 
-import { registerApplet } from "../../../src/applets";
+import { registerApplet } from "dzql/rendering/applets";
 import { addDays, calendarHtml, type CalendarProps, type Preview } from "../calendar";
 
 type Drag =

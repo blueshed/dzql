@@ -1,4 +1,4 @@
-import type { Compartment } from "../../src/compartments/compartment";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
 import { may, model, MODEL, session as sessionOf, shape } from "./model";
 
 // modeling's two compartments. The session: who you are, written only by the sign-in page

@@ -31,7 +31,7 @@ and `toldAt(sessionId, "session", "/login")` inside it ([refusal.md](refusal.md)
 - Refuse a post from another site (delta's `refuseOrigin`). Check a password against a hash in a
   table no document includes.
 - A good one starts a fresh session (never the visit's id), writes who it is with `serverWrite`, and
-  answers `303 /` with `sessionCookie(id)` (`src/server.ts`). A wrong one is told on the page it came
+  answers `303 /` with `sessionCookie(id)` (`src/rendering/server.ts`). A wrong one is told on the page it came
   from (`tell` with a `reason`); a route that did what a form asked says so (`said`).
 - Who you are is the session's: its `permit` refuses changing it over the wire, but allows removing
   it (signing out, which every tab of the session hears).

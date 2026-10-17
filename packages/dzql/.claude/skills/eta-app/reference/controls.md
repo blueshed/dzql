@@ -8,10 +8,10 @@ A control says what it writes, and the kernel's client sends it. The messages ar
 field({ doc: "household", path: "/message", value: h.message, label: "Our words", kind: "textarea", placeholder: "Say something to the couple", said: v.wordsTold })
 ```
 
-## A field: one call (`field()`, `src/bento.ts`)
+## A field: one call (`field()`, `src/rendering/bento.ts`)
 
 Use `field()` for a field that edits a document: it cannot be wired wrong. Its options are
-`FieldOptions` in `src/bento.ts`.
+`FieldOptions` in `src/rendering/bento.ts`.
 
 - It is its own form, writing `path` (`replace`) as it is left (text, number, email, textarea) or as
   it is made (date, select, checkbox). `on: "input"` is for a reading drawn as it is typed (find's
@@ -30,7 +30,7 @@ Use `field()` for a field that edits a document: it cannot be wired wrong. Its o
 `<button type="button" class="tool"${write("session", "replace", "/before", "earlier")}>Earlier</button>`
 ```
 
-`write(doc, op, path, value?)` (`src/html.ts`) gives `data-write='{"doc","op","path"}'`.
+`write(doc, op, path, value?)` (`src/rendering/html.ts`) gives `data-write='{"doc","op","path"}'`.
 
 - A **form** writes on submit: its one field's value, or a record of every named field. A box is
   `true` or `false`; a number field a number, or `null` when empty; a group of radios one field, the

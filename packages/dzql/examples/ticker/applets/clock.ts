@@ -4,7 +4,7 @@
 // frame and takes the clock document's own patches is clock-applet.ts, imported only by
 // client/main.ts (change-request.md item 4).
 
-import type { PatchOp } from "../../../src/json-patch";
+import type { PatchOp } from "dzql/rendering/json-patch";
 
 export interface ClockProps {
   tz: string;

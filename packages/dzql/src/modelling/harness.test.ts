@@ -1,26 +1,26 @@
 import { describe, expect, setSystemTime, spyOn, test } from "bun:test";
-import type { PatchOp } from "./json-patch";
+import type { PatchOp } from "../rendering/json-patch";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { defineDoc, registerDocs } from "@blueshed/delta/sqlite";
-import { example } from "../examples/chat";
-import { db, schema } from "../examples/chat/delta";
-import { stories } from "../examples/chat/stories";
-import type { Compartment } from "./compartments/compartment";
-import { read } from "./documents";
-import { appletProps, appletWrites, write } from "./html";
-import type { Example } from "./example";
+import { example } from "../../examples/chat";
+import { db, schema } from "../../examples/chat/delta";
+import { stories } from "../../examples/chat/stories";
+import type { Compartment } from "../rendering/compartments/compartment";
+import { read } from "../rendering/documents";
+import { appletProps, appletWrites, write } from "../rendering/html";
+import type { Example } from "../rendering/example";
 import { size } from "./costs";
 import { anyOne, controlsOn, goesTo, hear, holding, holds, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, writesOn, type Outcome, type Report, type Trace, type Wire } from "./harness";
-import { comparable, diff, drawParts, part, splitTag } from "./parts";
+import { comparable, diff, drawParts, part, splitTag } from "../rendering/parts";
 import { post, type Stories, type Story } from "./stories";
-import { serverWrite } from "./documents";
-import { refuse, tell, toldAt } from "./refusal";
+import { serverWrite } from "../rendering/documents";
+import { refuse, tell, toldAt } from "../rendering/refusal";
 
 /** An example and its stories, by its folder under examples/. */
 async function load(name: string): Promise<{ example: Example; stories: Stories }> {
-  const { example } = await import(`../examples/${name}/index`);
-  const { stories } = await import(`../examples/${name}/stories`);
+  const { example } = await import(`../../examples/${name}/index`);
+  const { stories } = await import(`../../examples/${name}/stories`);
   return { example, stories };
 }
 /** `stories` told among only the members `names`: each member walks every place it can get to, so a test casts no more than its stories need. */
@@ -707,7 +707,7 @@ describe("stories harness", () => {
   // should see, or say what it should not.
   describe("what an author is told stands in for nothing, says its own words, and is of its own moment", async () => {
     const { example: wedding, stories: vows } = await load("wedding");
-    const visit = await import("../examples/wedding/documents/session");
+    const visit = await import("../../examples/wedding/documents/session");
     const named = (start: string): Story => vows.stories.find((s) => s.name.startsWith(start))!;
     const withHousehold = (f: (household: Compartment) => Partial<Compartment>, from: Example = wedding): Example => ({ ...from, compartments: from.compartments.map((c) => (c.docType === "household" ? { ...c, ...f(c) } : c)) });
     const maybe = named("The Okafors say maybe");

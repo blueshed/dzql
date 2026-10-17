@@ -12,8 +12,8 @@ function everyonePhoto(props: CrowdProps): string {
 // gives data-doc="everyone:1" data-under="/everyone" data-v="7" data-props="{…}"
 ```
 
-`watch(doc, under)` (`src/documents.ts`) reads the document for the page and says the version held;
-`appletProps(props, watch?)` (`src/html.ts`) is the one helper that quotes props into an attribute.
+`watch(doc, under)` (`src/rendering/documents.ts`) reads the document for the page and says the version held;
+`appletProps(props, watch?)` (`src/rendering/html.ts`) is the one helper that quotes props into an attribute.
 
 - The props hold the document whole at `under` (the root when not given), rows by id as delta holds
   them. The rest is small: who is looking, what is open.
@@ -39,11 +39,11 @@ function everyonePhoto(props: CrowdProps): string {
   with a compartment of its own that permits nothing. A `defineCustomDoc` recompute holds only what
   it selects but is told whole (`replace ""`) on every write to what it watches: keep it small. A
   plain `defineDoc` over just the collections is told field by field; `columns` narrows it.
-  `src/documents.test.ts` holds both.
+  `src/rendering/documents.test.ts` holds both.
 
 ## When props cost
 
-`bun run stories` warns (`propsCost`, `src/harness.ts`), once each:
+`bun run stories` warns (`propsCost`, `src/modelling/harness.ts`), once each:
 
 - a mount whose props, its document left out, pass 4 KB (`MOST_PROPS`): watch the document they
   come from;

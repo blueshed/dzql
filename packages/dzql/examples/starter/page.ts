@@ -1,4 +1,4 @@
-import { layers } from "../../src/bento";
+import { layers } from "dzql/rendering/bento";
 
 // Starter's page: nothing yet but where to begin. The server draws every page (src/server.ts);
 // the bento's surfaces (src/bento.ts) are how a page looks once there is something on it.

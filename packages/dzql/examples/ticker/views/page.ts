@@ -4,9 +4,9 @@
 // at the bottom right. A row is a symbol: its drawer holds what it is and what it can carry, watch
 // or drop. Watching is the plus and a modal; dropping asks in one too.
 
-import { address, bento, layers, matches, parseAddress, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
-import { appletWrites, esc, write } from "../../../src/html";
-import { part } from "../../../src/parts";
+import { address, bento, layers, matches, parseAddress, prop, rows, type Crumb, type OpenOptions } from "dzql/rendering/bento";
+import { appletWrites, esc, write } from "dzql/rendering/html";
+import { part } from "dzql/rendering/parts";
 import type { ClockDocument } from "../documents/clock";
 import { ZONES, cityOf, offsetOf } from "../documents/clock";
 import type { Ui } from "../documents/desk";

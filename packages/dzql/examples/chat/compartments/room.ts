@@ -1,12 +1,12 @@
 import * as roomDoc from "../documents/room";
 import type { ChatMessage } from "../documents/room";
 import * as sessionDoc from "../documents/session";
-import type { PatchOp } from "../../../src/json-patch";
-import type { Compartment } from "../../../src/compartments/compartment";
-import { part } from "../../../src/parts";
-import { bento, layers, rows } from "../../../src/bento";
-import { esc, join, write } from "../../../src/html";
-import { slug } from "../../../src/grid";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
+import { part } from "dzql/rendering/parts";
+import { bento, layers, rows } from "dzql/rendering/bento";
+import { esc, join, write } from "dzql/rendering/html";
+import { slug } from "dzql/rendering/grid";
 import { icon } from "../icons";
 import { renderNameForm } from "./session";
 import { keepLobby } from "../presence";

@@ -24,7 +24,7 @@ async afterWalk(ws, id, { way, ops, inverse }) {
 },
 ```
 
-`refuse`, `tell` and `toldAt` are `src/refusal.ts`.
+`refuse`, `tell` and `toldAt` are `src/rendering/refusal.ts`.
 
 - Throw `refuse(reason)` from `permit` or `shape`. A plain `false` refuses without a word: right for
   a write no control offers, where there is nowhere to say why.

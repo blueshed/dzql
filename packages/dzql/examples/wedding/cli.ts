@@ -1,5 +1,5 @@
-import type { Aliases } from "../../src/cli/commands";
-import type { PatchOp } from "../../src/json-patch";
+import type { Aliases } from "dzql/rendering/cli/commands";
+import type { PatchOp } from "dzql/rendering/json-patch";
 
 // This example's own short verbs, loaded by src/cli.ts (via ETA_EXAMPLE=wedding) and tried after
 // the kernel's own doc-agnostic commands (inspect/watch/undo/write). No database import here on

@@ -1,8 +1,8 @@
 import * as sessionDoc from "../documents/session";
 import * as roomDoc from "../documents/room";
-import type { PatchOp } from "../../../src/json-patch";
-import type { Compartment } from "../../../src/compartments/compartment";
-import { join, write } from "../../../src/html";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
+import { join, write } from "dzql/rendering/html";
 import { keepPresence } from "../presence";
 
 // The session: the ground the room sits on -- your name, your room and how far back in it you

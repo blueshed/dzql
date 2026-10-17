@@ -17,11 +17,11 @@ export function render(sessionId: string): string {
 }
 ```
 
-`docs/bento/README.md` says what a page is for: where am I, what can I do. `bento()` (`src/bento.ts`)
+`docs/bento/README.md` says what a page is for: where am I, what can I do. `bento()` (`src/rendering/bento.ts`)
 binds the app's icons, its session's docType and the last tool, once. These are defaults, not rules.
 
 - A page is a **box** (`boxPage`: cells in a tray, one may grow into the window; laid out by
-  `grid()`, `src/grid.ts`) or a **collection** (`collectionPage`: the window alone).
+  `grid()`, `src/rendering/grid.ts`) or a **collection** (`collectionPage`: the window alone).
 - Every gesture is a `data-write` string you hand in.
 - A modal is new (`addModal`) or delete (`confirmModal`); there is no bare one.
 - Escalate only as the data forces: in place, then the cell, a drawer, a window, a modal. A list of
@@ -29,7 +29,7 @@ binds the app's icons, its session's docType and the last tool, once. These are 
 - Find and the reading switch write to the session (`/filter/<key>`, `/hide/<key>`,
   `/reading/<key>`): its `permit` says yes when `collectionsWrite(op)` is not undefined, and its
   `shape` takes `collectionsWrite(op, ui)`, each field it moves replaced whole (the ticker's desk).
-- The stylesheet imports `src/bento.css` first, then says its own tokens. `bento.css` styles only
+- The stylesheet imports `src/rendering/bento.css` first, then says its own tokens. `bento.css` styles only
   inside `layers()`: draw every bento page in it (`layers(page, "", "")` when nothing is open).
   Outside it (`body`, `#app`) is the app's to style.
 - What opens is a `<button>`, never a `div` with `role="button"` (an applet's SVG figure says

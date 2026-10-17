@@ -1,5 +1,5 @@
-import { activeDocuments, settled } from "../../src/documents";
-import type { PatchOp } from "../../src/json-patch";
+import { activeDocuments, settled } from "dzql/rendering/documents";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import * as boardDoc from "./documents/board";
 import * as householdDoc from "./documents/household";
 import * as weddingDoc from "./documents/wedding";

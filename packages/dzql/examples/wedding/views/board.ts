@@ -12,15 +12,15 @@ import type { HouseholdDocument } from "../documents/household";
 import { over, type SessionDocument } from "../documents/session";
 import { addModal, addTool, choice, collectionPage, confirmModal, field, findControl, prop, readingSwitch, row, rows, drawer, surfaces, tool, type FieldOptions } from "./bento";
 import { appletWrites, esc, join, nav, open as openAt, write } from "./html";
-import { address } from "../../../src/bento";
-import { part } from "../../../src/parts";
+import { address } from "dzql/rendering/bento";
+import { part } from "dzql/rendering/parts";
 import { icon, type IconName } from "./icons";
 import { familiesPhoto, photoMount, type Family, type PhotoEntry } from "./photo";
 import { answerOf, answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, guestMark, layers, isComing, matches, picture, placeRows, plural, runNames, specOf, timetableRows, type AnswerMark } from "./shared";
 import { inPhoto } from "../documents/wedding";
 import { derived, schema } from "../delta";
-import { derivedPage } from "../../../src/derive";
-import type { Op } from "../../../src/html";
+import { derivedPage } from "dzql/rendering/derive";
+import type { Op } from "dzql/rendering/html";
 
 /** Opening something over the page the couple are on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
 const open_ = (v: BoardView, what: string, which: string | number = ""): string => openAt(over(v.session.ui).path, what, which);

@@ -2,4 +2,4 @@
 import "../applets/board-applet";
 import "../applets/clock-applet";
 import "../applets/city-picker-applet";
-import "../../../src/client/app";
+import "dzql/rendering/client/app";

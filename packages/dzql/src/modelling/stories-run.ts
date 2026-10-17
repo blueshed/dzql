@@ -5,7 +5,7 @@
 // thing to do, not as a missing module.
 import { print, run } from "./harness";
 import type { Stories } from "./stories";
-import { appDir } from "./names";
+import { appDir } from "../rendering/names";
 
 const dir = appDir(process.env.ETA_EXAMPLE);
 const at = dir.slice(process.cwd().length + 1) || dir;

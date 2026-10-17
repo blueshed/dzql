@@ -1,5 +1,5 @@
-import { connectCli } from "../../../src/cli/commands";
-import { decoded } from "../../../src/parts";
+import { connectCli } from "dzql/rendering/cli/commands";
+import { decoded } from "dzql/rendering/parts";
 import { list as and, type Raw } from "../heart";
 import { MODEL } from "../model";
 import type { Load } from "./writes";

@@ -14,7 +14,7 @@ import "../../../src/client/tools"; // one line, for this app alone
 `<form class="say" aria-label="Say something"${write("room", "add", "/messages/-")}>…</form>`
 ```
 
-After each drawing the client reads the page into tools (`src/client/tools.ts`).
+After each drawing the client reads the page into tools (`src/rendering/client/tools.ts`).
 
 - A tool is each labelled control a person could press now (not `inert`, `hidden` or disabled), so
   an open modal's controls are the tools and the ground behind it offers none: a form that creates;

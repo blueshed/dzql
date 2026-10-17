@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { webview } from "../../../src/webview";
+import { webview } from "dzql/rendering/webview";
 import fixture from "./applets.test.html";
 
 // A 1x1 transparent PNG, small enough that downsized() takes its "already small" shortcut

@@ -1,9 +1,9 @@
 // leave's client, its calendar made wrong where the page says how (`data-wrong` on its mount), for
 // src/by-hand.test.ts: calendars a story done by hand must fail with. Without it, leave's own.
-import { applets, registerApplet } from "./applets";
-import type { PatchOp } from "./json-patch";
-import "../examples/leave/applets/calendar-applet";
-import "../examples/leave/applets/list-applet";
+import { applets, registerApplet } from "../rendering/applets";
+import type { PatchOp } from "../rendering/json-patch";
+import "../../examples/leave/applets/calendar-applet";
+import "../../examples/leave/applets/list-applet";
 
 const calendar = applets.calendar!;
 const draft: PatchOp = { op: "replace", path: "/draft", value: { starts: "2026-10-06", ends: "2026-10-07" } };
@@ -31,4 +31,4 @@ registerApplet("calendar", {
   },
 });
 
-await import("./client/app");
+await import("../rendering/client/app");

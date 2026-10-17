@@ -27,8 +27,8 @@ export type Measured = {
 /** A run's findings: each mark's words; and of a mark whose sizes move a little from run to run (`near`), each to the byte, in the order its words say them. */
 export type Run = { found: Map<string, string>; near: Map<string, number[]> };
 
-const root = `${import.meta.dir}/..`;
-const README = `${root}/README.md`;
+const root = `${import.meta.dir}/../..`;
+const README = `${root}/docs/eta/eta.md`;
 const MARK = /<!-- measured:([\w-]+) -->([\s\S]*?)<!-- \/measured -->/g;
 const WIDTH = 100;
 /** How far a size that moves a little from run to run may be from what the README says of it, as a share of the run's. */
@@ -161,10 +161,10 @@ export async function measured(): Promise<Run> {
   found.set("writes", `\n${lines.join("\n")}\n`);
   near.set("writes", sizes);
 
-  const client = await gzipped(`${root}/src/client/app.ts`);
+  const client = await gzipped(`${root}/src/rendering/client/app.ts`);
   found.set("client", size(client));
   near.set("client", [client]);
-  const railroad = (names: string) => gzipped(`${root}/src/railroad-measured.ts`, `import { ${names} } from "@blueshed/railroad/jsx"; import { signal } from "@blueshed/railroad/signals"; Object.assign(globalThis, { signal, ${names} });`);
+  const railroad = (names: string) => gzipped(`${root}/src/rendering/railroad-measured.ts`, `import { ${names} } from "@blueshed/railroad/jsx"; import { signal } from "@blueshed/railroad/signals"; Object.assign(globalThis, { signal, ${names} });`);
   const [mount, list] = [await railroad("mount"), await railroad("mount, list")];
   found.set("railroad", `${size(mount)} gzipped for \`signal\` and \`mount\`, ${size(list)} with \`list\``);
   near.set("railroad", [mount, list]);

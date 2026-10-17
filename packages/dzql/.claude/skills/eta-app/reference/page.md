@@ -18,7 +18,7 @@ return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' :
 ```
 
 A message said goes as its one `<li>`, put in after the last; were the messages not parts, every
-message would send the whole conversation again. `part(key, html)` is `src/parts.ts`.
+message would send the whole conversation again. `part(key, html)` is `src/rendering/parts.ts`.
 
 - `render` is the only renderer: it decides which screen, and reads whichever documents it must. It
   must `read()` what it shows, or its page is not told of a change ([compartment.md](compartment.md#who-sees-what)).
@@ -33,7 +33,7 @@ message would send the whole conversation again. `part(key, html)` is `src/parts
   when its own outline changed.
 - A key is unique on its page: two different things under one key are no part, and what holds them
   is sent instead.
-- Drawers and modals go through `layers(page, drawer, modal)` (`src/bento.ts`): two layers, always
+- Drawers and modals go through `layers(page, drawer, modal)` (`src/rendering/bento.ts`): two layers, always
   there, empty when nothing is open. A modal puts the ground `inert` by its tag; while a modal is
   open, and below 820px a drawer, the page behind holds still.
 - Make the page's outermost element a part (the wedding's `.site`), so its class and `data-page` go

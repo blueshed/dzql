@@ -1,5 +1,5 @@
-import { read as readDoc } from "../../../src/documents";
-import type { PatchOp } from "../../../src/json-patch";
+import { read as readDoc } from "dzql/rendering/documents";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { db, derived, schema } from "../delta";
 import { householdFrom, newId, type HouseholdDocument } from "./household";

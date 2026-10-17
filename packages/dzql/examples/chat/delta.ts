@@ -1,7 +1,7 @@
 import { createTables, defineDoc, migrateSchema, defineSchema, registerDocs, migrate, fromFolder } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
-import { db } from "../../src/db";
+import { db } from "dzql/rendering/db";
 
 // Chat's documents, in delta (`@blueshed/delta`). A session -- your name, your room, how far back you read --
 // and a room's messages are written by people, stored, and on the ledger. Who is in a room, and

@@ -1,5 +1,5 @@
-import { activeDocuments, read, serverWrite, settled } from "../../src/documents";
-import type { PatchOp } from "../../src/json-patch";
+import { activeDocuments, read, serverWrite, settled } from "dzql/rendering/documents";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { db } from "./delta";
 import { LOOK_FIELDS, type Look } from "./looks";
 import { inPhoto, namesRevealed, WEDDING, type Everyone, type Figure } from "./documents/wedding";

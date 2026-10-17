@@ -9,8 +9,8 @@ export { familiesPhoto, type Family } from "../applets/photo";
 import type { HouseholdDocument } from "../documents/household";
 import type { Spec } from "../applets/figure";
 import { appletProps, appletWrites, esc } from "./html";
-import { address } from "../../../src/bento";
-import { part } from "../../../src/parts";
+import { address } from "dzql/rendering/bento";
+import { part } from "dzql/rendering/parts";
 import { guestMark, isGuestOut, matches } from "./shared";
 import { specOf } from "../applets/figure";
 

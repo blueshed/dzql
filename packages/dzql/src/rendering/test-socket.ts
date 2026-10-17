@@ -1,5 +1,5 @@
 import { expect } from "bun:test";
-import { hear, type Heard } from "./harness";
+import { hear, type Heard } from "../modelling/harness";
 import type { PatchOp, Test, WriteId } from "./json-patch";
 
 // A socket to a running app, as a test holds it: everything the app sends it, in order, and the page

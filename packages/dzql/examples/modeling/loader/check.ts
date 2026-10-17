@@ -8,8 +8,8 @@
 // model page read as the CLI signed in to it (.eta-session, or `--session <file>`; ETA_URL, by
 // default ws://localhost:3005), or the page's document saved to a file.
 
-import { extractSessionFile } from "../../../src/cli/commands";
-import type { Stories } from "../../../src/stories";
+import { extractSessionFile } from "dzql/rendering/cli/commands";
+import type { Stories } from "dzql/modelling/stories";
 import { toEngineModel } from "./model/document-first";
 import { runAll } from "./model/predicates";
 import { compare, format, judge } from "./report";

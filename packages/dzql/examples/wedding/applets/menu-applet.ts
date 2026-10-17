@@ -3,7 +3,7 @@
 // and measured from the pages that run it (client/app.test.ts, src/client-coverage.ts); the
 // drawing above it is menu.ts (change-request.md item 4).
 
-import { registerApplet } from "../../../src/applets";
+import { registerApplet } from "dzql/rendering/applets";
 import { menuHtml, type MenuProps } from "./menu";
 
 const state = new WeakMap<HTMLElement, { props: MenuProps; open: number | null }>();

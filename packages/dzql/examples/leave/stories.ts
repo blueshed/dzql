@@ -1,5 +1,5 @@
-import type { PatchOp } from "../../src/json-patch";
-import { post, story, type Stories, type Write } from "../../src/stories";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import { post, story, type Stories, type Write } from "dzql/modelling/stories";
 import { mondayOf } from "./calendar";
 
 // A small team asks for days off, told as stories. See docs/stories.md. It is the example

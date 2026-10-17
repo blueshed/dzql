@@ -4,7 +4,7 @@
 // `downsized` a photograph bigger than a screen; and the keyboard on a figure or a part of the
 // dress. Registers them directly, the same way morph-applet.test.ts does for chat's room-picker,
 // without the kernel needing to know any exists.
-import { applets } from "../../../src/applets";
+import { applets } from "dzql/rendering/applets";
 import "../applets/dress-applet";
 import "../applets/photo-applet";
 import { downsized } from "../applets/picture-field";

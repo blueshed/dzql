@@ -5,8 +5,8 @@
 // other two; an entity's ⓘ says why it is marked. Imported only by client/main.ts -- not measured by
 // the coverage table, since only a real browser drives it; the drawing is heart.ts.
 
-import { registerApplet } from "../../../src/applets";
-import { esc } from "../../../src/html";
+import { registerApplet } from "dzql/rendering/applets";
+import { esc } from "dzql/rendering/html";
 import { CLOSE, drawHeart, heartOf, keyOf, reason, type Raw, type Sel, type Ui } from "../heart";
 
 type State = { raw: Raw; ui: Ui };

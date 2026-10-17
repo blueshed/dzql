@@ -5,8 +5,8 @@
 // that run it (client/app.test.ts, src/client-coverage.ts); the ranking logic is city-picker.ts.
 import { list } from "@blueshed/railroad/jsx";
 import { computed, signal } from "@blueshed/railroad/signals";
-import { registerApplet } from "../../../src/applets";
-import { island } from "../../../src/island";
+import { registerApplet } from "dzql/rendering/applets";
+import { island } from "dzql/rendering/island";
 import { cityIn, matches, step, type Zone } from "./city-picker";
 import { cityOf, tzAfter, type ClockProps } from "./clock";
 

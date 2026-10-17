@@ -21,14 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking (for projects)
 
 - **A control's value goes on the wire with its type; the wire is 4.** `write(doc, op, path, true)` sends `true`, not `"true"`; a number field sends a number, or `null` when empty; a box `true` or `false`. The stories compare a story's value with what the page sends, typed, so a story can no longer pass where a browser would be refused (five of the wedding's could never be done by hand). What to change: a permit or shape that compares a button's value as text (`value === "true"`, `"1"`) takes the type the page draws (`true`, `1`); a story that says `"0"` where the page sends `0` says `0`; hand-written markup with a non-JSON `data-value` uses `write()`.
-- **`write(ws, doc, ops)` from `src/test-socket.ts` gives each write an id and returns it**, so a refused write is answered (`{type: "refused", id}`) and a test no longer hangs. What to change: a test that expected silence after a refusal now gets that message first; to send without an id, `ws.send(JSON.stringify({ doc, ops }))`.
+- **`write(ws, doc, ops)` from `src/rendering/test-socket.ts` gives each write an id and returns it**, so a refused write is answered (`{type: "refused", id}`) and a test no longer hangs. What to change: a test that expected silence after a refusal now gets that message first; to send without an id, `ws.send(JSON.stringify({ doc, ops }))`.
 - **`afterWrite(ws, docId, ops, landed)`**: `landed` is the ops as delta applied them, so a new row comes by its id whether `shape` or the store named it. What to change: only code that calls a compartment's `afterWrite` itself passes the fourth argument.
 - **A project's root is its app; eta is one folder, `eta/`, never edited.** `bun create blueshed/eta my-app` makes `src/` (the app, begun as the starter), `migrations/`, and `eta/`: the kernel (`eta/src/`), the model's page (`eta/model/`), the docs a project keeps, eta's changelog and `eta/VERSION`. `eta/` is a Bun workspace named `eta`: the app imports `eta/stories`, `eta/client/app`, `@import "eta/bento.css"`, never a path into `eta/`. `bun run eta:update [version | path]` brings a later eta (the latest by default): `eta/` replaced whole, the root's eta scripts and the kernel's dependencies set, `bun install`, the skills refreshed, eta's changelog since `eta/VERSION` printed with what to change first, the gate run, nothing committed. What to change: a project of `app/`, `model/` and `src/` runs `bun ../eta/create/update.ts ../eta` once from its root, with a checkout of eta beside it. It moves `app/` to `src/` (its `../src/...` imports become `eta/...`), puts eta's `src/`, `model/` and docs in `eta/`, makes `migrations/`, and rewrites `tsconfig.json`, `bunfig.toml`, `package.json`'s scripts and `CLAUDE.md` (`git diff CLAUDE.md` for lines of your own).
 - **A project's model page keeps its own database, `model.sqlite`** (`MODEL_DB` names another), never the app's. What to change: nothing, unless a model was kept in the app's database; move it with `bun run model:load`.
 
 ### Added
 
-- `collectionsWrite(op, ui?)` (`src/bento.ts`): a session's permit and shape for `/reading`, `/filter` and `/hide` in one call. The ticker's desk and the wedding's session use it.
+- `collectionsWrite(op, ui?)` (`src/rendering/bento.ts`): a session's permit and shape for `/reading`, `/filter` and `/hide` in one call. The ticker's desk and the wedding's session use it.
 - The model: a story is one line (words that run onto a second are refused, so an open shell quote can no longer save the next commands as a story); `story <actor> <does|cannot> -` and `reword <n> -` read the words from stdin; `bun run cli:model show` prints the model as its page shows it.
 - A story may name the model story it tells (`model: 10`); `model:check --against-page` matches on it, else by words, and says which matched how.
 - The eta-app skill's `reference/scope.md`: three ways to keep a document from holding every row ever (the day as its root, a list scoped by a column, a keyset window).
@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `createTables` and `migrateSchema`; each has an empty `migrations/`. `migrating` is `{ app,
   schema }`, the example's own name and schema: the examples may share a database, and each runs
   only its own migrations, and one new to it runs none though another's tables are there
-  (`src/migrating.test.ts`). `examples/leave/upgrade.test.ts` is the story:
+  (`src/rendering/migrating.test.ts`). `examples/leave/upgrade.test.ts` is the story:
   Ann's requests are still there after leave is upgraded to a version that adds a reason, renames a
   field and drops one; Mo still sees them, and undo never reaches back across the upgrade. The
   eta-app skill's `reference/migrations.md` says how to write one.
@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **A failure that says why.** A story whose `seen` member was not told names the documents their page read and the one the write changed (`cy did not see it: cy's page read session, room:kitchen; the write was to room:general`); a `does` refused names the check that refused it and quotes its words; and while the stories run, every control on every page drawn is held to the wire (its document read by that page, a JSON Pointer path, add/replace/remove/test, a replace's path held), a warning for each that fails. About 0.4 s on `stories:all`.
-- **`field()`** (`src/bento.ts`): one call for a field that edits one value of a document in place: its own form with the right trigger for its kind, its label tied to it, the value drawn (so a typed write tests it), a status beside it, read-only where the permit says no. `derivedPage` and the wedding's drawers use it.
+- **`field()`** (`src/rendering/bento.ts`): one call for a field that edits one value of a document in place: its own form with the right trigger for its kind, its label tied to it, the value drawn (so a typed write tests it), a status beside it, read-only where the permit says no. `derivedPage` and the wedding's drawers use it.
 - `docs/concise-skills.md`, the standard the skills are cut to; `docs/eta-app-notes.md`, the reasons and numbers that left the skill, which a `bun create` project keeps.
 
 ### Changed
@@ -101,25 +101,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`Example.identify(req)`**: before a socket opens, an app names the session to open (its cookie is set when it differs from the one sent), refuses with a `Response`, or leaves it a visit. Leave uses it for a trusted proxy's `X-Forwarded-Email` (with `LEAVE_PROXY_SECRET`) and a CLI bearer token (`ETA_TOKEN`); a person found gets a fresh session unless the cookie's is already theirs. Leave also slows password guessing to once a minute after five wrong tries at one email (n8).
-- **A page drawn from a document's shape** (`src/derive.ts`, `derivedPage`): a list, a drawer to change a row, and modals to add or take one off, worked out at render time from delta's schema and a small declaration (a noun, a field's label or applet), never generated. The permit is asked for each control; a field that names an applet is overridden by registering another. The wedding's venues are drawn this way, with three stories (n2, started).
+- **A page drawn from a document's shape** (`src/rendering/derive.ts`, `derivedPage`): a list, a drawer to change a row, and modals to add or take one off, worked out at render time from delta's schema and a small declaration (a noun, a field's label or applet), never generated. The permit is asked for each control; a field that names an applet is overridden by registering another. The wedding's venues are drawn this way, with three stories (n2, started).
 - **Chat reads back past the first fifty messages**: "Earlier" shows the fifty before them and "Latest" comes back. The window is a keyset in the session (`/before`), so a message said meanwhile never moves it and a page reading back is sent nothing (n3).
 - **`bun run stories` warns of a hidden verb**: a write a compartment takes that no story tells and no page offers, named by its document and who may make it. It asks only the permit and the shape, never writes, and adds about 1.8 s to `stories:all` (n32).
-- **The client is in the coverage gate** (`src/client-coverage.ts`): what each test page ran, read from Chrome, so `src/client/`, `src/applets.ts`, `src/island.ts` and the applets are held to 100% (n15).
+- **The client is in the coverage gate** (`src/rendering/client-coverage.ts`): what each test page ran, read from Chrome, so `src/rendering/client/`, `src/rendering/applets.ts`, `src/rendering/island.ts` and the applets are held to 100% (n15).
 - **`bun run model:check <app> --against-page`** compares the model as told on the model page with the app as built, as questions for the teller: each story told and not built, each built and never told, and each document whose root, holders, holdings or own-ness differ. It reads the page over the socket as the CLI is signed in, or a saved copy.
 - **A Bun-only SessionStart hook** (`.claude/hooks/session-start.sh`) makes a Claude Code web session green: Bun up to `engines.bun`, `bun install`, and Chromium with `BUN_CHROME_PATH` when a test uses `Bun.WebView`. It does nothing on a Mac or outside the web sandbox; `--dry-run` says what it would do. A `bun create` project gets it too (n23, eta's half).
 - `docs/bento/paintbrush/`, a second set of sample pages in Paintbrush's look; `docs/least-resistance.md`; `docs/plan-2026-10-14.md`; a picture of the wedding at the top of the README.
 - **`bun run model:load <example | path>`** (`examples/modeling/loader/load.ts`, `writes.ts`): loads an app that exists into the model on the page -- every story, and every document the stories need, with its root, what it holds and who holds it -- as the person the CLI signed in as, so whoever watches sees it arrive, and each write undoes. Loading leave writes exactly the model the example seeds by hand. A `bun create` project has it as `bun run model:load ./app`.
 - **`bento()` returns `go(page)` and `site(page, html, className?)`**: the write that goes to a page, and the whole page as the part `site` carrying its address for the URL (`data-page`, `data-page-write`). Leave, the ticker and the wedding each wrote both out. The wedding also stops binding five surfaces it never used.
-- **`goTo(doc)` in `src/stories.ts`**: the write that puts a person at an address (`page @ key.path=value`), for `Stories.goTo`. The ticker's, the wedding's and the Londons' stories each wrote it out; now each is one line.
-- **`src/test-socket.ts`: a socket to a running app, as a test holds it** -- `connect`, `open`, `nextMessage`, `expectMessage`, `expectQuiet`, `heard`, `pageOf`, `forget`, `write`, `htmlOf` -- keeping each socket's page as the browser keeps it. It replaces four pasted copies (the kernel's server tests, chat's, the ticker's and the wedding's: 381 lines out, 87 in), and an app's own server tests may use it. The three cost scripts (chat's, the ticker's, the wedding's) use it too, through the tap: `connect` takes any address, and `rawOf(message)` gives a message as it came, for counting its bytes.
+- **`goTo(doc)` in `src/modelling/stories.ts`**: the write that puts a person at an address (`page @ key.path=value`), for `Stories.goTo`. The ticker's, the wedding's and the Londons' stories each wrote it out; now each is one line.
+- **`src/rendering/test-socket.ts`: a socket to a running app, as a test holds it** -- `connect`, `open`, `nextMessage`, `expectMessage`, `expectQuiet`, `heard`, `pageOf`, `forget`, `write`, `htmlOf` -- keeping each socket's page as the browser keeps it. It replaces four pasted copies (the kernel's server tests, chat's, the ticker's and the wedding's: 381 lines out, 87 in), and an app's own server tests may use it. The three cost scripts (chat's, the ticker's, the wedding's) use it too, through the tap: `connect` takes any address, and `rawOf(message)` gives a message as it came, for counting its bytes.
 - **`bun create blueshed/eta my-app`** (`create/setup.ts`, as paintbrush's): a project of three folders -- `app/`, the app, begun as `examples/starter` (a page and no stories yet); `model/`, the modeling page, its own model empty (`.env`'s `MODEL_NAME`, `MODEL_PEOPLE`, `MODEL_PASSWORD`, made at create); `src/`, eta's kernel, imported and never edited. eta's other examples, the modeller, its history, ledger, changelog and release command, and the kernel's tests are left out; a fresh ledger, and a changelog naming the eta it started from, so a later eta is `src/` and `model/` replaced and its "What to change" carried across (the eta-app skill says how). `create/setup.test.ts` makes one from a scratch copy of eta and runs its gate and its model's page.
 - **The modelling skill** (`.claude/skills/modelling/`): how Claude keeps the model while the stories are told -- the CLI's verbs, what to ask of each story, the gaps read back as questions -- and how the model becomes the app.
-- **`ETA_EXAMPLE` may name an app's folder** (`./app`, src/names.ts `appDir`) as well as one of eta's examples, for `start`, `stories` and `cli`.
-- **`bun run cli login <email> <password>`** signs the CLI in by the app's own sign-in form and keeps the session it is given (`signIn`, src/cli/commands.ts).
-- **The stories run on an app with no documents yet** (src/harness.ts): before anything is on the ledger there is no ledger to read, and nothing moves it.
+- **`ETA_EXAMPLE` may name an app's folder** (`./app`, src/rendering/names.ts `appDir`) as well as one of eta's examples, for `start`, `stories` and `cli`.
+- **`bun run cli login <email> <password>`** signs the CLI in by the app's own sign-in form and keeps the session it is given (`signIn`, src/rendering/cli/commands.ts).
+- **The stories run on an app with no documents yet** (src/modelling/harness.ts): before anything is on the ledger there is no ledger to read, and nothing moves it.
 - **The modeling page's starting model comes from the environment** (`MODEL_NAME`, `MODEL_PEOPLE`, `MODEL_PASSWORD`); without them it is leave's, as before.
 - **A fifth example, modeling** (`bun run dev:modeling`, port 3005; todo n122): a description of an application kept by two people as they talk. Peter tells the stories; Claude writes them down from the CLI (`examples/modeling/cli.ts`: `story`, `reword`, `touches`, `unsay`, `document`, `own`, `holds`, `unhold`, `heldby`, `serves`, `rename`, `drop`) -- who tells each, whether they do it or are refused, what it touches -- and describes the documents they need: each one's root, what it holds and what that hangs under, who holds it, which stories it serves. The entities are worked out from those, never written, so they cannot disagree. The page is the modeller's page, live: stories, documents (each its tree) and the entities' tree, one applet watching the model document, so each change is drawn as delta tells it; click one and the other two light up; an entity needed by no story, or looked up and never held, says why. It starts as leave's model, 23 stories. 12 stories of its own. Building the app from the model, and running its stories beside it, is the next step.
-- **The CLI says when a write is refused, and why** (`runCommand`, src/cli/commands.ts): its write goes with an id, the refusal is told by it, and `bun run cli` prints `refused: <reason>` and exits 1. Before, a refused write printed the inspection as though nothing were wrong.
+- **The CLI says when a write is refused, and why** (`runCommand`, src/rendering/cli/commands.ts): its write goes with an id, the refusal is told by it, and `bun run cli` prints `refused: <reason>` and exits 1. Before, a refused write printed the inspection as though nothing were wrong.
 - **A story may post a form to a route: `does: post(path, form)`, and `cannot: post(...)`.** What
   a person does before they hold a document (signing in, coming in by a link) can now be told as
   a story, not only through the cast's `signIn`. The harness posts it as the browser does, follows
@@ -141,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   run, so nothing is marked told-not-asked or holders². delta.ts's documents are read where they
   are defined, before `registerDocs` too, and a `defineCustomDoc` reaches the tables it `watch`es.
 
-- **A run's observer is told what was in front of each member** (`Trace.holds`, src/harness.ts):
+- **A run's observer is told what was in front of each member** (`Trace.holds`, src/modelling/harness.ts):
   at each step, each member's documents as their page last read them (`shownTo`), so the modeller
   can say who held what when a story was told.
 - **The modeller reads documents** (`modeller/documents.ts`, tooling, not shipped): `bun run modeller
@@ -152,7 +152,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   allows that no story does and no page a member can get to offers, by path with its verbs
   ("permit allows", eta #32: it over-reports). Every such page is walked after the stories, so a
   write is offered whether or not a story opened its drawer (`run(..., { everywhere })`,
-  src/harness.ts: every place each of the cast can get to from where it starts, and what each page
+  src/modelling/harness.ts: every place each of the cast can get to from where it starts, and what each page
   there offers). A permit rule no story uses is advice on its page: add a permit test, or remove
   the permit. A session's id never reaches the page: its documents go by their type alone,
   and its ledger entries without their values. Its page (`bun run modeller:page <example>`) opens on the picture: a grid of
@@ -163,13 +163,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A field you are typing in is not written over unseen** (n4): its write carries RFC 6902's `test`, the value it was drawn with, and the server refuses it when the field is drawn otherwise now, saying so beside it ("This was changed elsewhere as you typed: here it is now."); the field then shows the new value. The wire is version 3, so a page from before reloads itself.
 - **"Reconnecting…" is said in a `role="status"` region** beside `#app`, in place of CSS content that screen readers did not read. A change from someone else stays silent, by decision (n45).
-- **The browser tests run on Chrome on every platform** (`webview()`, src/webview.ts); `BUN_CHROME_PATH` names it where it is not found. The stories by hand stay on WebKit on a Mac.
+- **The browser tests run on Chrome on every platform** (`webview()`, src/rendering/webview.ts); `BUN_CHROME_PATH` names it where it is not found. The stories by hand stay on WebKit on a Mac.
 - **The README is for people** and `CLAUDE.md` is the rules plus which skill to load; the setup detail moved to the eta-app reference, which also takes paging and trying a delta checkout.
 - The wedding's couple are Nick and Nora, from The Thin Man; their code is `NICK`, not `DASH`.
 - `connectCli(url, cookie, token?)`: the CLI sends `ETA_TOKEN` as `Authorization: Bearer`.
 - **The bento is a guide, not rules.** `docs/bento/README.md` is rewritten from Peter's own words
-  (apples' "The page", Can You's tap rules): directions, no numbers. `src/bento.ts` and
-  `src/bento.css` are the kernel's defaults for drawing it, and code cites the intent, never a
+  (apples' "The page", Can You's tap rules): directions, no numbers. `src/rendering/bento.ts` and
+  `src/rendering/bento.css` are the kernel's defaults for drawing it, and code cites the intent, never a
   rule number. `CLAUDE.md` says a page's shape comes from its stories. `docs/bento/` holds two
   sample sets, `design/` and `paintbrush/`, in two looks, and a `bun create` project keeps it.
 - **The kernel and its tests say each thing once** (the review, docs/review-2026-10-13.md; no behaviour changed, every story and test means what it did):
@@ -180,7 +180,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **the page kit:** find's class is a tool option, not string surgery, and two CSS rules that did nothing are gone; the examples import `esc` and `write` rather than re-declaring them, use the kernel's `Aliases`, and lose a few copies of their own (leave's `WORD`, the ticker's `cityOf`, the wedding's `putAway` and `Row`);
   - **the tests:** one quiet-socket module for the client's browser tests, an example loaded once, each story run once, needless waits gone, duplicate tests merged: 686 tests in 87s became 666 in 95s on the same claims (the suite's time is mostly browsers).
 - **The modeller is the modeling example's loader** (`examples/modeling/loader/`, from `modeller/`, which goes): the code that reads an app that exists -- its documents from a run of its stories, its facts, hjeli's predicates over them -- lives with the model it feeds. `bun run modeller` is `bun run model:check`. A `bun create` project gets it in `model/loader/`, without eta's tests of it. The ledger's task list, which only the retired page showed, is no longer read.
-- **`.cap`, `.note` and `.door` are the kernel's** (`src/bento.css`): the kernel's own markup uses the first two, and four examples drew the door. Six stylesheets restated them; each now says only where it differs (the wedding's lighter capitals, starter's wider door, modeling's flat one).
+- **`.cap`, `.note` and `.door` are the kernel's** (`src/rendering/bento.css`): the kernel's own markup uses the first two, and four examples drew the door. Six stylesheets restated them; each now says only where it differs (the wedding's lighter capitals, starter's wider door, modeling's flat one).
 - **The Londons stories are the modeller's, not an example** (`modeller/londons/stories.ts`, from `examples/londons/`): 149 stories with no app, read only by the modeller's tests as a project of stories alone.
 - **The modeller lays out its entities, and says a word's one, with the modeling page's code** (`layout`, `singular` from `examples/modeling/heart.ts`): `modeller/layout.ts` goes. The copies had drifted: the modeller's left out an entity that is its own parent, and now draws it; and "people" is now "person".
 - **The docs are in `docs/`**: `history/` is `docs/`, and `stories.md` and `first-app.md` moved into it, beside the record of finished work; `docs/README.md` says which is which. The root keeps README, CLAUDE.md and CHANGELOG. A project made with `bun create` keeps `docs/stories.md` and none of eta's record.
@@ -221,7 +221,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`@blueshed/railroad` 0.16.2**, whose production build drops its development warnings: an
   island's railroad is 2.9 KB gzipped for `signal` and `mount` (was 3.5 KB), 3.7 KB with `list`
   (was 4.4 KB).
-- The stories' read from storage (`fresh`, src/harness.ts) asks `open_at` only of a document kept
+- The stories' read from storage (`fresh`, src/modelling/harness.ts) asks `open_at` only of a document kept
   in tables (its compartment's kind `written` or `fact`); a `live`, `sourced` or `static` one is
   the server's copy, known by its kind rather than by delta's "No handler matched", which
   delta 0.13's `createLocal` answers as "Unknown action" where no handler is registered.
@@ -246,7 +246,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **`bun run modeller:page`**, the modeller's static page (`modeller/page.ts`, `heart.html`, `heart.client.ts`): the modeling example is its live successor. Its two layout tests, which the modeling example's own test already covers, go with it.
-- **The bento mock-up** (`examples/bento`, `bun run dev:bento`): a static page that predates the kernel's `src/bento.ts`, with its design-canvas generator. Its rules, which the kernel and every example follow, are `docs/bento.md`.
+- **The bento mock-up** (`examples/bento`, `bun run dev:bento`): a static page that predates the kernel's `src/rendering/bento.ts`, with its design-canvas generator. Its rules, which the kernel and every example follow, are `docs/bento.md`.
 - **The UML session is retired** (`uml/`, `bun run uml`, `bun run uml:check`): its diagrams were drawn by hand and checked against a vocabulary written by hand (`uml/types.ts`), a second account of an app that drifted from the first. What it was for -- seeing a model change as it is talked through -- is the modeling example, drawn from the model itself. Its Londons diagrams go with it.
 
 ### Fixed
@@ -277,7 +277,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   role="alert">` or `<p class="said" role="status">`. Before, a success could only be told as a
   reason, and was drawn as a refusal. What to change:
   - **Every `reasonFor(` is `toldAt(`**, with the same arguments.
-  - **`tell()`'s argument is a `Line`** (exported from `src/refusal.ts`): `{ doc, path }`, strings,
+  - **`tell()`'s argument is a `Line`** (exported from `src/rendering/refusal.ts`): `{ doc, path }`, strings,
     and one of `reason` or `said`. Its type was `{ doc, path, reason }`, each `string | null`; a
     call that passed nulls to clear passes nothing instead: `tell(sessionId)`.
   - **`createRefusalCompartment` is `createToldCompartment`**, for whatever assembles the kernel's
@@ -286,7 +286,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     restyled) is `said`, and may share its form's path: the kind says which it is.
   - **The kernel's document for it is `told:<session>`, not `refusal:<session>`**, and holds
     `{ doc, path, reason, said }`: a test that looks for its patches looks for `doc: "told"`.
-  - **`said(reason)` is gone from `src/refusal.ts`**: the story harness no longer looks for the
+  - **`said(reason)` is gone from `src/rendering/refusal.ts`**: the story harness no longer looks for the
     line's markup, and draws the page without what its author was told to compare the rest.
 - **eta needs `@blueshed/delta` with named undo** (delta's `change: <entry>`, after 0.10.0; on
   Postgres, its 001g applied again). On
@@ -298,7 +298,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A story's cost on the wire** (todo n93). japan-eta ran for a day at 8 KB a vote, for a
   146-byte patch, and nothing said so. The harness now keeps what each story's step (the write,
   the refusal, the tab closing) handed each member's page: the bytes as the page takes them, as
-  they crossed the wire (the cast's sockets go through the costs' `tap`, src/costs.ts), and the
+  they crossed the wire (the cast's sockets go through the costs' `tap`, src/modelling/costs.ts), and the
   biggest part -- a part by its key, the whole page, a document's patch -- beside the write's own
   size; and what a write's undo and redo handed each (`Outcome.wire`). `STORY_WIRE=1 bun run
   stories` says it under each story (`print(report, { wire: true })`): the wedding's couple are
@@ -309,7 +309,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   name, with the step and its biggest part; a story's own stands in place of the example's, and
   one that is not a whole number of bytes is said, and its story not run. Chat's stories hold
   4.5 KB (the most is Dee's attic taken back, 4,401 bytes), and a message 1 KB.
-- **`press(view, selector)`, a press as a mouse makes one, for browser tests** (`src/webview.ts`,
+- **`press(view, selector)`, a press as a mouse makes one, for browser tests** (`src/rendering/webview.ts`,
   todo n98): scrolled to, pressed and let go at its middle, each pointer and mouse event to what
   is there as it is sent, then the click where a browser sends it, to what the press and the
   release share, if that is still on the page. It throws for a control a person could not press:
@@ -322,14 +322,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the board's window through the scrim of the drawer open over it, which no person can
   press; it puts the drawer away first now.
 - **An applet's data comes from a document it watches; its props say only what to show and for
-  whom** (todo n94). `appletProps(props, { doc, under })` (`src/html.ts`) puts the document in the
+  whom** (todo n94). `appletProps(props, { doc, under })` (`src/rendering/html.ts`) puts the document in the
   props at `under`, beside the small ones (who is looking, what is open), and names it on the mount
   (`data-doc`, `data-under`). The kernel's client keeps each mount's props, lays every patch to its
   document on them there, and gives the applet them again (`update`), so it draws from its props
   with a pure function the server runs too, for what the mount declares and a first paint. A page
   is compared without the watched document and without what is inside the mount, so a change to the
   document sends the mount nothing but the patch; the mount goes again only with its own tag (its
-  small props, a class, what it declares). `watch(doc, under)` (`src/documents.ts`) names the
+  small props, a class, what it declares). `watch(doc, under)` (`src/rendering/documents.ts`) names the
   document with the version it is held at (`data-v`): a patch at or below it is passed over, since
   a render drawn after a change can come before its patch, and one that then does not land asks for
   the page afresh. A render is compared with the props the client holds, not the first render's, so
@@ -426,7 +426,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   0.10 has: a recompute document (`defineCustomDoc`) holding only what the applet shows, read
   again and told whole on every write to what it watches; or a plain document over just the
   collections it shows, told row by row, every column. A trip's strip is the example, and
-  `src/documents.test.ts` holds both. delta's n70 (a document over some columns) would give both.
+  `src/rendering/documents.test.ts` holds both. delta's n70 (a document over some columns) would give both.
 - **CLAUDE.md says a todo item for a kernel bug that forced a workaround names its cost** (todo
   n97): bytes, time, or what the app gave up. n82's said the bug, not japan-eta's 7 KB per vote
   to every page watching, and so read as a nicety.
@@ -513,8 +513,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reason?, unanswered?}`) is marked only by its own echo or refusal, never anyone's echo of its
   document or an earlier write's refusal. A page sent whole says `wire: 2`. What to change:
   - **An app test that snapshots the writes a page sent must allow or strip the new `id`**:
-    `const { id, ...write } = JSON.parse(data)`, as `src/client/app.test.ts` and
-    `src/bento.test.ts` do (they keep the ids in `window.__ids`).
+    `const { id, ...write } = JSON.parse(data)`, as `src/rendering/client/app.test.ts` and
+    `src/rendering/bento.test.ts` do (they keep the ids in `window.__ids`).
   - **An app's own `send()`, or a console check, that marks a write echoed by any patch of its
     document should use ids**: its own echo carries its write's `id`, and nobody else's does (see
     `lastSent`).
@@ -589,14 +589,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   taken back, and its picture field the key at its own path, which it declared nowhere before
   (a story now puts a picture on the welcome). The photo's taps only go somewhere, as the page's
   address does.
-- **A choice and the reading switch are radios, checked, not pressed** (`src/bento.ts`). `choice()`
+- **A choice and the reading switch are radios, checked, not pressed** (`src/rendering/bento.ts`). `choice()`
   and `readingSwitch()` drew each option `role="radio"` with both `aria-checked` and
   `aria-pressed`, which ARIA does not allow on a radio. They carry `aria-checked` alone now, and
-  `src/bento.css` fills a checked radio tool as it does a pressed one. A stylesheet that coloured
+  `src/rendering/bento.css` fills a checked radio tool as it does a pressed one. A stylesheet that coloured
   them by `[aria-pressed="true"]` colours them by `[aria-checked="true"]` (the wedding's yes and no
   do). Leave's own reading switch, drawn by hand, carries `aria-checked` alone too, and the
   wedding's stylesheet no longer lights a checked radio itself: the kernel's rule does.
-- **`src/bento.css` draws the frame and nothing else** (todo n80). Its element rules (every box
+- **`src/rendering/bento.css` draws the frame and nothing else** (todo n80). Its element rules (every box
   `border-box`, the button and field resets, the focus rings, `[hidden]`) restyled every page of
   an app that imported it, bento or not. They hold only inside what `layers()` draws, the ground
   and the layers over it; the bento's classes (`.tool`, `.row`, …) still work wherever they are
@@ -611,7 +611,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     behind holds still while a `dialog.modal` is open, at every width, and while a `.drawer` is
     open below 820px, where its sheet covers the page; from 820px a docked drawer leaves the page
     scrolling beside it (rule 18), where an example that drew `locked` held it still.
-- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
+- **A form's value keeps one shape** (`src/rendering/client/form-value.ts`). A form that creates sent the
   browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
   when not, as was a group of radios none of which was chosen. So a title and an unticked box
   sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
@@ -633,14 +633,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | `unseen: [...]` | `untold: [...]` | a story |
   | `outside: true` | `offPage: true` | a story |
   | `at: (where) => Write` | `goTo: (address) => Write` | `Stories` |
-  | `bento({ icon, tray })` | `bento({ icon, session })` | src/bento.ts |
+  | `bento({ icon, tray })` | `bento({ icon, session })` | src/rendering/bento.ts |
   | `sheet(...)` | `drawer(...)` | what `bento()` returns |
-  | `refused(sessionId, doc, path)` | `reasonFor(sessionId, doc, path)` | src/refusal.ts |
-  | `writes(doc, path)` | `appletWrites([doc, op, path], …)`: one for each write the mount sends, exactly (above) | src/html.ts |
+  | `refused(sessionId, doc, path)` | `reasonFor(sessionId, doc, path)` | src/rendering/refusal.ts |
+  | `writes(doc, path)` | `appletWrites([doc, op, path], …)`: one for each write the mount sends, exactly (above) | src/rendering/html.ts |
   | `data-at="/quote"` | `data-under="/quote"` | an applet's mount |
-  | `src/tray.ts`: `tray()`, `Compartment`, `Tray` | `src/grid.ts`: `grid()`, `Cell`, `Grid` | the box's layout |
-  | `at(view, url)` | `urlFor(view, url)` | src/webview.ts |
-  | `.sheet`, `.sheet-head`/`-body`/`-foot`/`-close`, `sheet-rise` | `.drawer`, `.drawer-head`/`-body`/`-foot`/`-close`, `drawer-rise` | src/bento.css, and a page's own `*-sheet` classes |
+  | `src/tray.ts`: `tray()`, `Compartment`, `Tray` | `src/rendering/grid.ts`: `grid()`, `Cell`, `Grid` | the box's layout |
+  | `at(view, url)` | `urlFor(view, url)` | src/rendering/webview.ts |
+  | `.sheet`, `.sheet-head`/`-body`/`-foot`/`-close`, `sheet-rise` | `.drawer`, `.drawer-head`/`-body`/`-foot`/`-close`, `drawer-rise` | src/rendering/bento.css, and a page's own `*-sheet` classes |
   | `.walk-said` | `.undo-said` | why an undo was refused, over the page |
 
   In the docs, the session is "the session" (no longer "the tray"); *tray* is only the bento's
@@ -649,7 +649,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **The socket is compressed** (`src/server.ts`, todo n79). The server takes permessage-deflate,
+- **The socket is compressed** (`src/rendering/server.ts`, todo n79). The server takes permessage-deflate,
   which every browser offers, and compresses each message on its own (Bun's shared compressor, so
   no memory is kept per connection); the client needed nothing. A first page crosses at a sixth to
   a quarter of its size (chat's room 12.9 KB to 2.0 KB, the couple's photo 12.7 KB to 2.1 KB, the
@@ -660,7 +660,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where raw is 30 µs). A message in is at most 1 MiB once inflated, and past it the socket is
   closed: Bun's own 16 MB would let a 15 KB compressed frame be a 15 MB write. The README's costs
   are now what crosses the wire, with what it was before compression: a measure goes through a
-  `tap` (`src/costs.ts`) that counts each frame as sent. A compressed size moves a byte or two
+  `tap` (`src/modelling/costs.ts`) that counts each frame as sent. A compressed size moves a byte or two
   with the random ids it carries, so the README's is held within 3% of a run's, as a bundle's is
   (`Run.built` is `Run.near`).
 - **The client is 5.6 KB minified and gzipped, where this round's fixes had taken it to 5.9**
@@ -760,7 +760,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`run(example, stories, observe?)`: an observer told each step of a story as the wire carried
-  it** (`Trace`, src/harness.ts): the write (or the tab that closed), what every member was sent,
+  it** (`Trace`, src/modelling/harness.ts): the write (or the tab that closed), what every member was sent,
   and what the ledger took, its ops and their inverse. The run is the same with it or without it.
 - **The modeller and the UML session, as tooling** (`modeller/`, `uml/`: not in `files`, so not
   shipped).
@@ -778,7 +778,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   applet draws its own controls in the browser, where the harness cannot find them, so a story
   says how a person works one: `gesture: { drag: [from, to] }` or `{ press: selector }`, CSS
   selectors on the page. Such a story is done again whenever it is told, in a browser the size of
-  a phone (`Bun.WebView`, `src/by-hand.ts`), as its author: from where it starts, the controls on
+  a phone (`Bun.WebView`, `src/modelling/by-hand.ts`), as its author: from where it starts, the controls on
   the way to its `from` are pressed, each landing where it leads (a step covered on a phone is
   left for another way), then the gesture is made -- a press a native click once the control
   holds still and nothing covers it, a drag a mouse's pointer events, each sent to what is under
@@ -822,7 +822,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of it; nobody's control is looked for and there is nothing to undo. Chat tells it: Bob closes
   his tab, and Ada sees him leave general. A write made meanwhile, between a story and its undo,
   still has no key (todo n9-n11). A story is one of
-  `does`, `cannot` or `closesTab`, with only that kind's keys (`STORY_KEYS`, src/stories.ts): the
+  `does`, `cannot` or `closesTab`, with only that kind's keys (`STORY_KEYS`, src/modelling/stories.ts): the
   types say so, and the harness refuses, by name and before running it, a story that mixes them
   or has a key it does not read (an old `unseen`), since a story file is not type-checked when it
   runs and the key would be dropped without a word.
@@ -856,7 +856,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     only begins once it moves;
   - a draft rides in the team's document beside the requests, so asking for it is one change and
     one Undo gives the draft back; a page is sent only its own person's draft.
-- **`sessionCookie(id)`** (src/server.ts): the kernel's session cookie, for a route that starts a
+- **`sessionCookie(id)`** (src/rendering/server.ts): the kernel's session cookie, for a route that starts a
   session; **`signIn`** on `Stories`: the cast signs in through the example's own route;
   **`date`** fields in `addModal`, and its **`said`**: why the last try was refused.
 - **`/ws` refuses a socket opened from another site** unless `ETA_ORIGINS` lists it (delta's
@@ -864,18 +864,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A story's place must exist.** Putting a member where a story says, the harness now checks
   their page stands there (`data-page`): a place the example does not have used to leave them
   where they were, silently, and a story could claim they saw something on it.
-- **The add modal asks with a select, or for a link** (`src/bento.ts`). `addModal`'s fields could
+- **The add modal asks with a select, or for a link** (`src/rendering/bento.ts`). `addModal`'s fields could
   only be typed text, email, number or date, so an example that asked where on a line, or what kind
   of stop, copied the modal by hand, and the copy lost `said`. A `Field` given `options` is a select
   of them (`value` names the one drawn chosen, else the first is), and `type` may be `url`. There
   is still no bare modal: a modal is new or delete (rule 14). A refused add hands back the option
   chosen, as it does what was typed.
 - **The README's numbers are measured, and `bun test` fails when they are stale** (todo n7).
-  `bun run costs` (`src/costs.ts`) runs each example's `measure-render-cost.ts --json` in a process
+  `bun run costs` (`src/modelling/costs.ts`) runs each example's `measure-render-cost.ts --json` in a process
   of its own (no .env, none of the caller's settings, so not `REVEAL`, and a clock stopped on a day
   before the wedding: a run says the same on any day), builds and gzips the client and railroad,
   counts every example's stories, and writes them where the README marks them
-  (`<!-- measured:<name> -->`); `src/costs.test.ts` fails when the README says otherwise: word for
+  (`<!-- measured:<name> -->`); `src/modelling/costs.test.ts` fails when the README says otherwise: word for
   word, but for a bundle's size, which stands while it is within 3% of a run's, so a minifier's few
   bytes do not flip its rounding (railroad's 2,620 B is 9 B from showing as 2.5 KB rather than 2.6).
   The measure scripts wait by asking the server (`inspect`), not by a clock. What the README said
@@ -888,7 +888,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **The page behind an open drawer or modal holds still whatever the app calls its root** (todo
-  n81). `src/bento.css` held it by `body:has(.site.locked)`, a class two examples put on their
+  n81). `src/rendering/bento.css` held it by `body:has(.site.locked)`, a class two examples put on their
   root, so an app with another root scrolled behind its modal. It holds while a modal is open,
   and below 820px while a drawer is, whatever the root; the ticker, leave and the wedding no
   longer draw `locked`.
@@ -896,7 +896,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   curve at its outer corners, where its own smaller one poked past it; a `.field` in a property's
   value keeps a field's height, where the value's column shrank it to its text (the wedding said
   so itself, and no longer does); a select that has the keyboard shows the bento's ring, not the
-  browser's own. `src/bento.css` lost what drew nothing: an open window's hover and its second
+  browser's own. `src/rendering/bento.css` lost what drew nothing: an open window's hover and its second
   card background, the docked drawer's repeated z-index; its three reduced-motion rules are one.
 - **A change that does not land on eta's copy of a document loads it again.** delta 0.10's
   `applyOps` refuses a remove or replace of what the copy does not hold, where it did nothing, so
@@ -914,7 +914,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   button is a part of its own, so opening a drawer sends its tag alone and no longer the mount's
   props; and the mount stands where it stood, so the line keeps the ticks it has seen as the
   board opens and closes.
-- **The README's measurer is under the coverage gate.** `src/costs.ts` and the clock it preloads
+- **The README's measurer is under the coverage gate.** `src/modelling/costs.ts` and the clock it preloads
   ran only in a process of their own, spawned by their test, so the table never saw them, and
   writing the README, and every way a run goes wrong, had no test. Imported, `costs.ts` now runs
   nothing; its test takes each piece in hand (the words, the 3% a bundle may drift, the writing,
@@ -922,12 +922,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   README in its own process, keeping one run as the script, spawned. A bundle that does not
   build says why. `bunfig.toml` says which files are outside the table, and why each may be.
 - **The docs say what the kernel does.** An applet on a document (`data-doc`) was "never sent its
-  props again" (reference.md, first-app.md, src/parts.ts), but its props go with its mount
+  props again" (reference.md, first-app.md, src/rendering/parts.ts), but its props go with its mount
   whenever the mount itself is sent: its tag changed, or a part that holds it replaced. They say
   so now, and that what follows where a person is belongs beside the mount, as the ticker's
-  board row's button now is; a test in src/parts.test.ts pins it. Canon 1 renders each member
+  board row's button now is; a test in src/rendering/parts.test.ts pins it. Canon 1 renders each member
   from the server's copy, not from the tables; only Canon 2's render reads them (stories.md,
-  src/harness.ts). CLAUDE.md says `src/harness.test.ts` runs a few of leave's, the wedding's and
+  src/modelling/harness.ts). CLAUDE.md says `src/modelling/harness.test.ts` runs a few of leave's, the wedding's and
   the ticker's stories as well as chat's, and the entry on applets' declarations names the
   clock's face beside the city picker as an applet on the clock's document.
 - **Chat says a run once, and you are not named to yourself** (todo n71). A run of messages shows
@@ -1001,7 +1001,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lunged again. The field is the window's last child now. And the photo applet, told only that
   find's fade changed (`onlyFadeChanged`), fades and lights each figure where it stands rather than
   drawing the photo again.
-- **A `<select>` is a field** (`src/client/app.ts`). An editing form (`data-write-on`) compared
+- **A `<select>` is a field** (`src/rendering/client/app.ts`). An editing form (`data-write-on`) compared
   each field with its `value` attribute, which a select does not have, so every commit sent each
   select in the form too, at what it showed: a `change` form whenever another field changed, a
   `blur` form on merely tabbing through one. And a refused write handed back what was typed, not
@@ -1012,7 +1012,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refusal does not hand it back, and a render leaves what is chosen in it to the browser. A form
   that creates still sends only its last choice (`formValue`: quiet and late go as `late`).
 - **A select keeps a choice not yet drawn, by its value, and otherwise shows what is drawn**
-  (`src/client/morph.ts`). Chrome no longer moves an option by its `selected` once someone has
+  (`src/rendering/client/morph.ts`). Chrome no longer moves an option by its `selected` once someone has
   chosen it, and leaves the caret in a select after a pick, so an undo (or another member's change)
   back to an option chosen earlier left it showing the old one, and the next commit reverted it. A
   newly drawn option took away a choice not yet sent, in both browsers. And the morph reuses
@@ -1054,13 +1054,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/bento.md`: what a finger opens, the keyboard opens; the keyboard goes into a
   window and back to its cell; the box behind a window is inert; Escape puts away what was opened
   last. The skill's reference says an example's own opener is a `<button>`.
-- **The keyboard is never left nowhere** (`src/client/app.ts`). Escape in a drawer, or from a modal,
+- **The keyboard is never left nowhere** (`src/rendering/client/app.ts`). Escape in a drawer, or from a modal,
   left the keyboard on the page itself; in Chrome the + that opens a modal kept the keyboard as it
   went inert, so the modal's first field never took it; and a window opened by back or forward put
   the cell with the keyboard behind it. After each drawing, a keyboard on nothing or on something
   inert goes back to what opened a drawer or modal that has just gone, else to a field waiting for
   it, else into the cell that has just moved.
-- **A box or a radio is a field** (`src/client/app.ts`, todo n76). An editing form compared a
+- **A box or a radio is a field** (`src/rendering/client/app.ts`, todo n76). An editing form compared a
   field's `value` with what was rendered, and a box's value is its `value` attribute or "on",
   ticked or not: without a value attribute it went as "on" on every commit, with one it never
   went, and nor did a radio. A refused write handed back no tick. What a box or a radio rendered
@@ -1072,20 +1072,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and sent that, undoing whoever had ticked it. A group of radios may span parts: a render in
   parts keeps its choice across all its ops, a radio put in drawn ticked or a part swapped for
   another tag included.
-- **The morph leaves be what follows a child put in or taken out** (`src/client/morph.ts`). It
+- **The morph leaves be what follows a child put in or taken out** (`src/rendering/client/morph.ts`). It
   matched children without an id by place alone, so an element put in or taken out ahead of its
   siblings shifted every one after it: each was rebuilt, and a button among them lost the caret
   to the body (japan-eta's reveal mark, drawn first, did this until it was drawn last). A child
   without an id is now matched by the ids inside it first (the one holding a row or an applet
   goes on holding it), then in order by tag (the same head and tail by place, the middle by their
   longest common run), and what is not reused goes first, so what stays is not moved.
-- **A part inside an `<svg>` comes back as SVG** (`src/client/morph.ts`, todo n77). A render in
+- **A part inside an `<svg>` comes back as SVG** (`src/rendering/client/morph.ts`, todo n77). A render in
   parts parsed a part's HTML in a `<template>`, as HTML, so a part rooted inside an `<svg>` (a
   `<g>`, a `<path>`) was replaced by an HTML element of that name, and drew nothing; a `tag` op
   on a camelCase attribute added a lowercase one beside it (`gradientunits` beside
   `gradientUnits`) and left the real one stale. The stories could not see it: the harness applies
   a part as text. A part is now parsed where it stands: in an `<svg>`, as SVG.
-- **A part that moves from one parent part to another goes where it went** (`src/parts.ts`, todo
+- **A part that moves from one parent part to another goes where it went** (`src/rendering/parts.ts`, todo
   n82, n106). The diff put it in the part it went to, then took it out of the part it left by its
   key alone, which names the first on the page: when the part it went to came first, the client
   and the harness took out the copy just put in and left the old one (japan-eta met it trading a
@@ -1095,11 +1095,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows), and so it is no part. A row simply gone is named by its key alone, as before. A seeded
   walk of 1800 renders, rows moving between lists, into rows and out, and into a split, checks
   every page the harness hears against a fresh render.
-- **`waitFor` runs out with the clock fixed** (`src/webview.ts`, todo n83). It measured the wait
+- **`waitFor` runs out with the clock fixed** (`src/rendering/webview.ts`, todo n83). It measured the wait
   with `Date.now()`, which bun:test's `setSystemTime` stops, so a browser test that fixed the
   date to open a page on a given day, then waited for something that never came, hung past its
   own timeout instead of failing with what it waited for. It measures with `performance.now()`.
-- **A revealed element too tall for the view lands by its top** (`src/client/app.ts`, todo n84).
+- **A revealed element too tall for the view lands by its top** (`src/rendering/client/app.ts`, todo n84).
   `data-reveal` scrolled with `block: "nearest"`, which, when the element and its scroll margins
   cannot fit in the view, brings it by the edge it is reached by: from below, its foot, so its
   top landed above the view, under a sticky header (a whole day on a phone). Such an element now
@@ -1107,19 +1107,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nearest scroller's, or the window's, less its `scroll-padding` (a sticky header it declares;
   a percentage is of that scroller). Only that scroller moves: a list's tall row no longer
   scrolls the page around the list too.
-- **Escape and Back say what is typed before the drawer goes** (`src/client/app.ts`). An editing
+- **Escape and Back say what is typed before the drawer goes** (`src/rendering/client/app.ts`). An editing
   form says a field on leaving it, but a field a render takes out has not been left: Chrome fires
   `focusout` as it goes, WebKit (every iPhone browser) does not. So words typed in a drawer's
   editing form were lost on Escape or Back in WebKit, and went after the drawer's own write in
   Chrome. Both now say the editing form someone is in first.
-- **A write made while the socket is down is not taken for sent** (`src/client/app.ts`). When
+- **A write made while the socket is down is not taken for sent** (`src/rendering/client/app.ts`). When
   the connection dropped, the page went inert and the field someone was in lost the caret, so an
   editing form committed into the closed socket, and the client recorded it as sent: once back,
   leaving the field again said nothing (the same message, not sent twice), and the words, still
   in the field, looked kept. And a form submitted as the socket closed was cleared. A write is now
   sent only on an open socket, and recorded only then: a form keeps what is typed, and an editing
   form says what was dropped once the page is drawn afresh (the unanswered write's account, above).
-- **A render keeps the reader's place, under a sticky header too** (`src/client/app.ts`, todo
+- **A render keeps the reader's place, under a sticky header too** (`src/rendering/client/app.ts`, todo
   n85). The client left a reader's place to the browser's scroll anchoring, which can anchor on
   the row hidden under an app's sticky header: a stop moved from Wednesday to Thursday, from
   under the header, slid Thursday 59px up under it (japan-eta). Now, before a render, whole or in
@@ -1138,7 +1138,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **A refused write can say why.** A compartment's `permit` or `shape` throws
-  `refuse(reason)` (`src/refusal.ts`); the kernel keeps the reason in the session's own
+  `refuse(reason)` (`src/rendering/refusal.ts`); the kernel keeps the reason in the session's own
   `refusal` document -- in memory, off the ledger -- until the session's next write, and a page
   draws it beside the control that sent it with `refused(sessionId, doc, path)`. A plain `false`
   stays silent. The kernel appends a `refusal` compartment beside its ledger, so an example may
@@ -1173,14 +1173,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them: eta serves its own socket (delta's new Origin check is `createWs`'s), keeps its documents
   on SQLite in process, and names no global `JSX`.
 
-- **The kernel's CSS, for everyone who reads it** (src/bento.css): one focus ring for every
+- **The kernel's CSS, for everyone who reads it** (src/rendering/bento.css): one focus ring for every
   control, drawn outside it (inside a stack, which clips); the find bar shows focus while its
   field has it; what is chosen or pressed is outlined in forced colours, where shadows and
   backgrounds are taken away; the window opening and the rails stepping aside are still under
   reduced motion; `.sr-only` uses `clip-path`. Each example's `--edge` -- a control's border -- is
   now at least 3:1 against its card (WCAG 1.4.11), so fields and stacks read more firmly.
 
-- **An applet that takes its document's patches is never sent its props again** (src/parts.ts):
+- **An applet that takes its document's patches is never sent its props again** (src/rendering/parts.ts):
   they are that document, whose every change reaches the page as a patch. Before, a write to any
   other document sent them again; now nothing does, so an applet's props must be its document
   alone -- which the stories already checked.
@@ -1219,14 +1219,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Islands: an applet written as a railroad component** (`island(render, reduce?)`,
-  `src/island.ts`). eta depends on `@blueshed/railroad` `^0.12.0`, and the tsconfig says
+  `src/rendering/island.ts`). eta depends on `@blueshed/railroad` `^0.12.0`, and the tsconfig says
   `jsx: "react-jsx"`, `jsxImportSource: "@blueshed/railroad"`. `render(props, ctx, el)` gets its
   props as a signal and reads what the server drew inside `el` before it is replaced; `update` sets
   the props, and `reduce(props, ops)`, when given, is the applet's `patch`. Built on railroad's
   `signal` and `mount` alone; it draws only inside its element and never binds that element's
   attributes, which stay the morph's. The kernel's client does not import it: a page with an
   island carries railroad (about 2 KB gzipped for `signal` and `mount`, 4 KB with `list`).
-- **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches
+- **`failed(what, err)` and `onFailure(fn)`** (`src/rendering/failed.ts`): every failure the kernel catches
   -- a message, a drawing, a change being told -- is logged in one place and heard by whoever
   listens. The stories harness listens.
 
@@ -1245,13 +1245,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as the write found it, over what anyone wrote to it since; no compartment is asked again, so a
   deadline does not hold against it; and an undo whose inverse no longer applies sticks. The
   wedding's server tests pin all three as `test.failing`, so bun says when delta fixes one.
-- **One set of open sockets.** The server kept its own beside `src/compartments/audience.ts`'s;
+- **One set of open sockets.** The server kept its own beside `src/rendering/compartments/audience.ts`'s;
   it reads that one (`allOpenSockets()`). `Assembled.renderFor` and `Documents.held`, which only a
   test read, are gone.
 
 ### Fixed
 
-- **The 100% gate holds on macOS too.** `src/webview.ts` took its Chrome path only on Linux, so on
+- **The 100% gate holds on macOS too.** `src/rendering/webview.ts` took its Chrome path only on Linux, so on
   a Mac two lines were never run and `bun test` failed; the platform is now a parameter and a
   unit test takes both paths.
 
@@ -1265,20 +1265,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   op, a path without its slash -- is refused like any refusal: the writer's page handed back.
   Before, each of those threw inside the server, was logged, and the writer heard nothing. A write
   whose `permit`, `shape` or `wrote` throws is reported (`failed`) and handed back too.
-- **After an undo, a field shows the value undone to** (`src/client/morph.ts`). Once typed in, a
+- **After an undo, a field shows the value undone to** (`src/rendering/client/morph.ts`). Once typed in, a
   field's value no longer follows its `value` attribute (nor a textarea's its text), so it went on
   showing the undone value, and an editing form (`data-write-on`), comparing it with what was
   rendered, sent it again on the next blur -- reverting the undo. A render that changes a field
   nobody is in now sets what it shows; a field someone is in keeps what they type.
-- **A render in parts never reaches inside an applet** (`src/client/app.ts`). Its targets were
+- **A render in parts never reaches inside an applet** (`src/rendering/client/app.ts`). Its targets were
   found anywhere in the page, so a part inside an applet's element was replaced, or had rows put
   beside it, over what the applet drew. The applet's own element may still be a part.
-- **A dropped connection leaves the page as it was** (`src/client/app.ts`, `src/bento.css`).
+- **A dropped connection leaves the page as it was** (`src/rendering/client/app.ts`, `src/rendering/bento.css`).
   It was replaced by "Disconnected. Reconnecting…", which threw away what was half typed and
   unmounted every applet (the ticker's sparkline histories, a half-dressed figure). Now `#app` is
   made `inert` and marked `data-offline` -- the bento dims it and says "Reconnecting…" -- until
   the socket is open again and the server draws the page.
-- **A form clears as it sends, and a refused write hands back what was sent** (`src/client/app.ts`).
+- **A form clears as it sends, and a refused write hands back what was sent** (`src/rendering/client/app.ts`).
   A form waited for the echo of a write to its document to reset. So a refused write left it
   waiting, and the next echo of anyone's write there cleared what had been typed since; and what
   a quick typist typed before their own echo came was appended to the sent text, then wiped by
@@ -1290,7 +1290,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
   delta for a document's whole history, and every event waited on the answer. A limit that is not
   a whole number is the default (the latest).
-- **`write()` escapes its spec** (`src/html.ts`): the JSON sits in single quotes, and a `'` or `&`
+- **`write()` escapes its spec** (`src/rendering/html.ts`): the JSON sits in single quotes, and a `'` or `&`
   in it -- a path built from what someone typed, `/rooms/lobby' onclick='…/topic` -- ended the
   attribute and began another. Both are escaped now; nothing else in the output changes.
 - **Two compartments owning one document type throw** when the example is assembled, naming the
@@ -1299,7 +1299,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a process shares one Chrome profile there, and a cookie ignores the port, so each view after a
   test's first opened already signed in, and waited for ever for the name form: 19 failed. Each
   view now goes to a host of its own (`view3.localhost`: Chrome takes every `*.localhost` to this
-  machine) through `at(view, server.url, path?)` in `src/webview.ts`; WebKit's views are apart
+  machine) through `at(view, server.url, path?)` in `src/rendering/webview.ts`; WebKit's views are apart
   already. The four copies of `waitFor` are that file's one.
 - **`bun run stories` says what to do next for an example with stories and no app.**
   `ETA_EXAMPLE=londons` failed with `Cannot find module examples/londons/index.ts`; it now
@@ -1314,15 +1314,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **eta keeps every document in delta.** `@blueshed/delta` is a dependency, and `Example.delta`
   (the example's backends registered on a `createLocal()`) is required. The kernel keeps a copy of
   each document a page reads, kept current from delta's one stream of changes, and draws
-  synchronously from it: `read("<docType>:<id>")` (`src/documents.ts`) gives a document as held,
+  synchronously from it: `read("<docType>:<id>")` (`src/rendering/documents.ts`) gives a document as held,
   and a read of one not held yet throws `Pending` -- the kernel loads it and draws again
   (`settled()`). A write goes to delta as the person (`Example.who`, optional, default the
   session), with the session as the cursor undo walks; the ledger is delta's. eta needs
   `@blueshed/delta` 0.6.0 (from npm): `createLocal`, documents that are `implied`, and the
   ledger's undo, redo and history are all new there.
 - **Gone from the kernel:** `migrate()` and the kernel's migrations, `src/ledger.ts` (its naming
-  helpers `prefixDoc` and `splitDoc` are in `src/names.ts`), `Compartment.write`, `notify`,
-  `renderRequested` and the event bus (`src/compartments/bus.ts`), and `MIGRATIONS_DIR` (from
+  helpers `prefixDoc` and `splitDoc` are in `src/rendering/names.ts`), `Compartment.write`, `notify`,
+  `renderRequested` and the event bus (`src/rendering/compartments/bus.ts`), and `MIGRATIONS_DIR` (from
   `.env.example` too). Every change is told from delta's stream, never by hand.
 - **The `Compartment` contract.** `write` is gone; a compartment permits and shapes, and delta
   writes. New: `own` (its documents are keyed by the session id: seen by that session alone and
@@ -1341,7 +1341,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page it keeps every document the drawing read, and those, with the one of each type it is on,
   are what the connection is told about and may write. Cut documents by who reads them.
 - **A page is sent in parts.** `Compartment.fragments` is gone. A render names its regions with
-  `part(key, html)` (`src/parts.ts`); the bento's cells, rows, keyed lists and drawers are parts
+  `part(key, html)` (`src/rendering/parts.ts`); the bento's cells, rows, keyed lists and drawers are parts
   already. After a change the kernel draws each page that read the document again and sends what
   differs: a part replaced, its tag alone (`tag`), a row put in (`after`, `before`) or taken out,
   nothing when nothing changed, the page whole only when it is a different page. The render ops'
@@ -1360,7 +1360,7 @@ left in the database as they were, and nothing migrates them. Compare the ticker
 (`git diff 63cad94 HEAD -- examples/ticker`) with these steps.
 
 1. Replace `migrations/` and `db.ts` with a `delta.ts`: the schema (`defineSchema`, tables named
-   `<example>_...`), `createTables` against `src/db`'s `db`, a seed run into empty tables, and the
+   `<example>_...`), `createTables` against `src/rendering/db`'s `db`, a seed run into empty tables, and the
    documents on a `createLocal()` -- `registerDocs(..., { ledger: true })` for what is written and
    undone, `registerMemory` for what is live, and a registry with no ledger for a tray whose visits
    are not history. Export it and set `delta` on the example. Chat's, the ticker's and the
@@ -1444,7 +1444,7 @@ left in the database as they were, and nothing migrates them. Compare the ticker
   Opening a drawer is going to the same page with it named; closing it is going to the page
   alone. The address is what goes in the URL, so the back button closes a drawer and a link opens
   one -- the ticker has that now too. `address()` and `parseAddress()` are the kernel's
-  (`src/bento.ts`); the bento's `addTool`, `addModal` and `confirmModal` are handed their open and
+  (`src/rendering/bento.ts`); the bento's `addTool`, `addModal` and `confirmModal` are handed their open and
   close writes instead of assuming `/new` and `/confirm` on the tray. Cancelling a removal goes
   back to the drawer it was asked from.
 - **The stories that only moved the tray are gone**: 17 of the wedding's (63 to 46) and 8 of the
@@ -1520,9 +1520,9 @@ left in the database as they were, and nothing migrates them. Compare the ticker
 
 - **The bento's surfaces are the kernel's.** The trail, the tray and its compartments, the
   window, the stacks of tools, find, the rows, the drawer and the modal were written three times,
-  with their CSS and the reading/find/eye tray state beside them. They are `src/bento.ts` (bound
-  once per example: `bento({icon, tray, leave?})`), `src/bento.css` (imported first, then the
-  example's own tokens), `src/html.ts` (`esc`, `write`, `join`) and `patchCollections`. A page is
+  with their CSS and the reading/find/eye tray state beside them. They are `src/rendering/bento.ts` (bound
+  once per example: `bento({icon, tray, leave?})`), `src/rendering/bento.css` (imported first, then the
+  example's own tokens), `src/rendering/html.ts` (`esc`, `write`, `join`) and `patchCollections`. A page is
   a box (`boxPage`) or a collection (`collectionPage`). The wedding and the ticker are rebound to
   them; the wedding's tests pass unchanged.
 - **Chat is three steps again: your name, a room, say something.** 0.42.0's box of three
@@ -1631,7 +1631,7 @@ left in the database as they were, and nothing migrates them. Compare the ticker
 
 ### Fixed
 
-- **The kernel's View Transition no longer throws when interrupted.** `src/client/app.ts` marks
+- **The kernel's View Transition no longer throws when interrupted.** `src/rendering/client/app.ts` marks
   the transition's `ready` and `finished` promises handled: a second render arriving before the
   first has settled skips the animation, which is routine, and was surfacing as an unhandled
   `InvalidStateError` on every quick pair of renders.
@@ -1706,13 +1706,13 @@ left in the database as they were, and nothing migrates them. Compare the ticker
   story's `does` did either.
 
   Opening this up to more than one candidate compartment at once broke K1's own assumption that
-  at most one element on the page ever carries `data-moving` -- `src/client/app.ts`'s
+  at most one element on the page ever carries `data-moving` -- `src/rendering/client/app.ts`'s
   `movingElement()` grabbed the *first* `[data-moving]` match unconditionally, which silently
   named the wrong element (typically one about to go `display: none`) and threw
   `InvalidStateError: Transition was aborted because of invalid state`. Fixed in the kernel:
   `movingElement()` now checks every current candidate and picks the one whose matching element in
   the render actually differs, since a still-closed sibling's markup renders byte-for-byte
-  unchanged whether or not another compartment opened. `src/client/app.test.ts` gained a story for
+  unchanged whether or not another compartment opened. `src/rendering/client/app.test.ts` gained a story for
   it: three siblings all carrying `data-moving`, only the one that changed gets named.
 - **W4: the filter, rule 17.** Find is a tool on the rail of guests, gifts and households
   (`views/bento.ts`'s `findControl` -- closed, the plus on the rail; open, its own bordered field,
@@ -1734,7 +1734,7 @@ left in the database as they were, and nothing migrates them. Compare the ticker
 
 ### Added
 
-- **K1: the moving element.** `src/client/app.ts`'s `render()` finds an element with `data-moving`
+- **K1: the moving element.** `src/rendering/client/app.ts`'s `render()` finds an element with `data-moving`
   in the page as it is and, by parsing the incoming HTML, one with the same value in the render;
   when both exist it names only that element for a view transition (`view-transition-name:
   moving`), runs the morph inside `document.startViewTransition` where the browser has it, and
@@ -1753,7 +1753,7 @@ left in the database as they were, and nothing migrates them. Compare the ticker
   by a `focusout` inside it, and never repeating a message identical to the last one that form
   actually sent.
 
-`src/client/app.test.ts` (new, with its own `app.test.html`/`app.test.entry.ts`) drives all three
+`src/rendering/client/app.test.ts` (new, with its own `app.test.html`/`app.test.entry.ts`) drives all three
 in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ## [0.37.0] - 2026-09-16
@@ -1778,7 +1778,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 ### Changed
 
 - **Lucide is the examples' icon set, as a package; the kernel draws.** `lucide` (ISC, no
-  dependencies of its own) is in `package.json`. `src/icons.ts` is new and knows only the shape of
+  dependencies of its own) is in `package.json`. `src/rendering/icons.ts` is new and knows only the shape of
   an icon -- a list of nodes, each a tag and its attributes -- and renders one as SVG at a size
   with a label (`svg(node, {size, name, label})`); it imports no icon set. The wedding's
   `views/icons.ts` keeps its names and its `icon(name, size, label)`, now as a map from name to
@@ -1793,7 +1793,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
   as a Leaflet-style control and the reading scrolling underneath; a figure opens its drawer and
   what it carries waits there; the plus is a modal; the filter dims and counts and never hides; the
   rails step aside for the drawer and the reading scrolls the chosen figure into the clear. Its
-  marks are lucide's, drawn by `createIcons` from `<i data-lucide>`; `src/icons.ts` is the
+  marks are lucide's, drawn by `createIcons` from `<i data-lucide>`; `src/rendering/icons.ts` is the
   server's way.
 
 ## [0.35.0] - 2026-09-15
@@ -1834,9 +1834,9 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 - **Stories, and the harness that runs them.** `stories.md` says what eta is for: an app is a set
   of stories -- who does what, and who then sees it where -- held to two canons (everything can be
   seen by someone; every change is whole and true), with Claude as the compiler from stories to
-  compartments and a harness as the compiler's test. `src/stories.ts` is the shape: `as`, `does`,
+  compartments and a harness as the compiler's test. `src/modelling/stories.ts` is the shape: `as`, `does`,
   `seen`, `unseen`, `cannot`, and a sentence as the name. Each example has a `stories.ts` (chat 6,
-  ticker 13, the wedding 51, every permit rule used by at least one). `src/harness.ts` runs them
+  ticker 13, the wedding 51, every permit rule used by at least one). `src/modelling/harness.ts` runs them
   over real sockets: each story connects the cast afresh inside one database transaction, compares
   a fresh render from the tables for every member before and after (so a change that reaches a
   page through an applet's patch counts), undoes and redoes the write as its author (a fact on the
@@ -1863,7 +1863,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
   with `data-page` (the session's own page) and `data-page-write` (the write that sets it); the
   kernel client mirrors that into `history.pushState` on every full render and, on `popstate`,
   sends the declared write with the URL's own page -- so the back/forward buttons and a shared
-  link now work, without the kernel knowing what a "page" is. `src/server.ts` gained a
+  link now work, without the kernel knowing what a "page" is. `src/rendering/server.ts` gained a
   `"/*": example.index` fallback so a reopened or shared link actually reaches the client to read
   (the server still doesn't resolve anything about the path). The wedding's welcome, household,
   and board pages (`views/shared.ts`'s `frame()`) declare it; chat's `room` was left alone. On a
@@ -1909,7 +1909,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
   document's writer is also its only reader: chat's room, the wedding's board, the ticker's clock
   and watchlist, all unchanged), overridden when someone else genuinely sees it without writing
   it (the wedding's `household.sees` also says yes to the couple, who read every household
-  through the board). `src/compartments/audience.ts` is the kernel's one registry of open
+  through the board). `src/rendering/compartments/audience.ts` is the kernel's one registry of open
   connections (`audienceFor`/`notify`/`allOpenSockets`), so a compartment no longer keeps a
   socket registry of its own: chat's `roomSocketSets` and the wedding's whole
   `concepts/presence.ts` (`join`/`leave`/`everyone`/`seeingHousehold`/`seeingBoard`) are gone,
@@ -1938,7 +1938,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
   reached through the wedding board's helpers) become savepoints in `bun:sqlite`, so this
   composes for free. Proof: `examples/chat/documents/room.test.ts` mocks `record()` to throw
   once and asserts the message insert that came before it rolls back too (verified by reverting
-  the wrapper and watching that test fail). `src/db.ts` also sets `PRAGMA journal_mode = WAL`
+  the wrapper and watching that test fail). `src/rendering/db.ts` also sets `PRAGMA journal_mode = WAL`
   once, before migrations: one sync per commit instead of one per statement, and readers no
   longer wait on a writer; an in-memory database (the test suite's) answers the pragma with
   `"memory"` and is otherwise unchanged, so nothing on the wire or in the measured costs moves.
@@ -1951,7 +1951,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 - **The words: tray, compartment, tools** (change-request.md item 10), in the two commits it
   asked for. First, a pure rename: `Concept` becomes `Compartment` (`src/concepts/` becomes
-  `src/compartments/`, `createLedgerConcept` becomes `createLedgerCompartment`), `Example.concepts`
+  `src/rendering/compartments/`, `createLedgerConcept` becomes `createLedgerCompartment`), `Example.concepts`
   becomes `compartments`, and the eta-app skill/CLAUDE.md/README follow, now also describing the
   session as **the tray** and undo/redo/leaving as **tools** -- vocabulary only, nothing else
   changed, full suite green. Second, the contract: a compartment's `render()` returns its own
@@ -1975,7 +1975,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 - **Redo.** The ledger's cursor walked forward again: `nextRedo(sessionId)` (`src/ledger.ts`) finds the newest undo this session made that nothing has walked back since, unless a fresh write has come after it; replaying its inverse is the original write over, recorded as undoing the undo. Chains of `undoes` alternate direction by depth (even: a write or a redo; odd: an undo), and the tip of a chain is what counts -- one recursive query, no new state. On the wire it is `{"doc":"ledger","op":"add","path":"/latest"}` beside undo's `remove`; the CLI gains `redo`; chat and the wedding gain a Redo button.
 - **A write may be a fact.** `record(..., undoable = true)` (`src/ledger.ts`, migration `0002_ledger_undoable.sql`): a write recorded with `undoable: false` is on the ledger -- history, `inspect`, a replay of the last minute -- but the undo/redo cursor passes over it as if it were not there, and it does not end what a person could redo. A price tick is the case: nobody's Undo may move the market. That is the second word beside the wedding's unrecorded session (change-request.md item 5): unrecorded, and recorded but not undoable.
-- **An applet may take a document's patches.** `Applet.patch?(el, ops)` (`src/applets.ts`): an applet whose element names a document in `data-doc` is handed that document's ops as the client receives the echo, with no HTML sent -- the delta is the update. The concept answers `fragments` with `[]` for such a page, so nothing follows the patch. This is the third tier of render (the page; a fragment; the patch itself), and the one that makes a data feed cost what a data feed costs.
+- **An applet may take a document's patches.** `Applet.patch?(el, ops)` (`src/rendering/applets.ts`): an applet whose element names a document in `data-doc` is handed that document's ops as the client receives the echo, with no HTML sent -- the delta is the update. The concept answers `fragments` with `[]` for such a page, so nothing follows the patch. This is the third tier of render (the page; a fragment; the patch itself), and the one that makes a data feed cost what a data feed costs.
 - **`examples/ticker/`**, the third example: a price board. One shared document, the market (a quote per symbol; a tick is `replace /<SYMBOL>/price`, from a feed that runs while anyone is connected, or typed through the wire or the CLI, every tick on the ledger for history and none of them under anyone's Undo); a watchlist per session (`add /symbols/-`, `remove /symbols/<index>`, the writes Undo and Redo walk here); a board applet that draws the watched symbols as an SVG table with a sparkline each and takes ticks straight from the patch; and a Swiss railway clock applet showing a city's time, drawn and driven in the browser (the seconds hand sweeps the minute in 58.5 s and waits at twelve). The city is a document per session (`clock`, `replace /tz` with one of the runtime's own zones, on the ledger so Undo takes you back), chosen through a city picker applet (`applets/city-picker.ts`): the zones are `<option>`s the server writes inside the applet's mount as "Tokyo (UTC+09:00)" or "Buenos Aires, Argentina (UTC-03:00)" (the zone's continent is not shown: "Vancouver, America" is wrong), read once at mount, so no JSON crosses the wire; cities that start with what was typed rank first and shortest first, the arrow keys move the highlight, Enter takes it. The clock applet takes the `replace /tz` itself and puts the new name on its face, so a change of city renders nothing. Measured (`DB_PATH=:memory: TICK_MS=0 bun examples/ticker/scripts/measure-render-cost.ts`): one tick is 104 B to each viewer, the patch alone, against 41 B for the same tick as a bare JSON feed. `bun run dev:ticker` serves it on port 3002; `TICK_MS` and `CLOCK_TZ` in `.env.example`.
 - The README leads with what eta is made of and why to choose it, with the numbers.
 
@@ -1990,7 +1990,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Changed
 
-- Fragment renders: a write can go out as the delta in HTML's terms instead of the whole page. `Concept.fragments?(ws, docId, result)` answers, per connection, with HTML ops -- `replace` (morph one element), `add` (append inside one), `remove` -- or `[]` (nothing on that page changed: nothing is sent), or `undefined` (the whole page, as before). A `renderRequested` emit may now name the write (`{ sockets, write: { docType, docId, result } }`); a bare iterable still asks for full renders. The client (`src/client/app.ts`) morphs each target in place (`morphElement` in `morph.ts`), mounts what appeared and pins what grew, exactly as after a full render. This is the granular vocabulary 0.12.0 removed when undo needed a word for *removing* an element and there was only `append`; it comes back with that word, and with the full render as the fallback wherever a concept declines. Measured (`DB_PATH=:memory: bun examples/<name>/scripts/measure-render-cost.ts`):
+- Fragment renders: a write can go out as the delta in HTML's terms instead of the whole page. `Concept.fragments?(ws, docId, result)` answers, per connection, with HTML ops -- `replace` (morph one element), `add` (append inside one), `remove` -- or `[]` (nothing on that page changed: nothing is sent), or `undefined` (the whole page, as before). A `renderRequested` emit may now name the write (`{ sockets, write: { docType, docId, result } }`); a bare iterable still asks for full renders. The client (`src/rendering/client/app.ts`) morphs each target in place (`morphElement` in `morph.ts`), mounts what appeared and pins what grew, exactly as after a full render. This is the granular vocabulary 0.12.0 removed when undo needed a word for *removing* an element and there was only `append`; it comes back with that word, and with the full render as the fallback wherever a concept declines. Measured (`DB_PATH=:memory: bun examples/<name>/scripts/measure-render-cost.ts`):
   - **Chat**, 100 messages, 5 members, bytes to each other member per message: 7,532 before (patch + page) to 427 after (patch + one `<li>`). The `<li>` is 268 B now against 120 B for 0.4.0's append, because a message is a bubble with an avatar and a name line since 0.22.0.
   - **The wedding**, one guest's top changed to green: the sender with the drawer open 14,146 to 1,918 (the family photo and the dressing sheet); a second tab on the box 11,387 to 1,441; the couple on their home 8,912 to 123 (the patch echo alone: nothing on their page shows a look); another household on its box 10,879 to 0; another on the everyone page 3,781 to 1,612 (the photo's new props). Chat answers every room write (a message appended; an undone message removed, and the one after it redrawn since it may now start a run). The wedding answers a look or a choice, per viewer's page and reading, and declines the rest; the board declines everything, for now.
   - The applets' props go whole (the photo re-sends every figure for one changed top), so an applet-heavy page sits an order under the page rather than two; and fan-out is unchanged: every connection is still asked, only the answer is now often nothing. Both are the change request's items 7 and 1.
@@ -2012,14 +2012,14 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Fixed
 
-- `src/client/morph.ts` reused an applet's element for whatever plain element landed in the same position -- and since a morph never descends into an applet, the applet's own children (a whole SVG) survived under the new element's attributes. Found switching the wedding's guests from the photo to the list. `sameType()` now also requires the same `data-applet`; test added and verified by reverting the fix.
+- `src/rendering/client/morph.ts` reused an applet's element for whatever plain element landed in the same position -- and since a morph never descends into an applet, the applet's own children (a whole SVG) survived under the new element's attributes. Found switching the wedding's guests from the photo to the list. `sameType()` now also requires the same `data-applet`; test added and verified by reverting the fix.
 
 ## [0.22.0] - 2026-09-14
 
 ### Changed
 
 - The chat view is less sparse: messages are bubbles (yours on the right in the button tint, everyone else's on the left with a monogram, the name shown only on the first message of a run), the transcript anchors to the bottom, people are chips in the header beside the room label, and the composer is a pill. Picked from three options drawn up on a design canvas. Buttons and inputs share one radius and focus ring (they each showed a browser default before). `examples/chat/concepts/room.ts::renderChat` and `styles.css` only; the wire, the writes and the morph are untouched. The server tests that asserted the exact people markup now compare the chip names.
-- The chat fills the viewport: `#app` is a `100dvh` flex column and the transcript takes the spare height and is the only thing that scrolls (the old `max-height: 50vh` cap is gone). Two scrolling bugs found on the way: `justify-content: flex-end` on a scrolling flex column pushes overflow above the scroll origin so older messages were unreachable (now an auto top margin on the first message anchors a short transcript instead), and the kernel client only pinned an autoscroll list to the bottom when it grew, never when it first appeared -- a reload of a room with history opened at the oldest message. `src/client/app.ts` now pins a `[data-autoscroll]` element that is new in this render too; browser test added and verified by reverting the fix.
+- The chat fills the viewport: `#app` is a `100dvh` flex column and the transcript takes the spare height and is the only thing that scrolls (the old `max-height: 50vh` cap is gone). Two scrolling bugs found on the way: `justify-content: flex-end` on a scrolling flex column pushes overflow above the scroll origin so older messages were unreachable (now an auto top margin on the first message anchors a short transcript instead), and the kernel client only pinned an autoscroll list to the bottom when it grew, never when it first appeared -- a reload of a room with history opened at the oldest message. `src/rendering/client/app.ts` now pins a `[data-autoscroll]` element that is new in this render too; browser test added and verified by reverting the fix.
 
 ## [0.21.0] - 2026-09-14
 
@@ -2027,13 +2027,13 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 - Split eta into a generic kernel (`src/`) and a first example (`examples/chat/`), so a second example (a wedding site, next) can be added under `examples/wedding/` without editing anything in `src/`. Moved to `examples/chat/`: `migrations/0002_sessions.sql`/`0003_rooms.sql` (renumbered `0001`/`0002`, under their own namespace -- see below), `documents/session.ts`, `documents/room.ts`, `concepts/session.ts`, `concepts/room.ts`, `applets/room-picker.ts`, `client/index.html`/`styles.css`, `scripts/measure-render-cost.ts`, and the tests that exercised chat-specific behavior (`server.test.ts`, `client/app.test.ts`, and the chat-verb half of `cli/commands.test.ts`, now `examples/chat/cli.test.ts`). Four couplings made this a kernel/example split instead of a rename:
   1. **The concept list was hard-coded** (`concepts/index.ts`'s `[session, room]`). Replaced with `assemble(example: Example)`, returning `{ concepts, byDocType, renderFor, inspectFor }` for whichever example is passed in; the kernel appends its own ledger concept (reached only by docType, still excluded from render/inspect). `renderFor`'s fallback-throw test now passes a fake `Example` with no concepts, instead of an empty list override.
-  2. **Undo needed the session concept for echoing, and the "is this session active" guard read `.name`.** New `src/example.ts`: `Example = { name, concepts, active(sessionId), index, routes? }`. `active` is the one thing the kernel can't derive generically (a stale, logged-out tab shouldn't be able to undo a write made before it went stale) -- chat's is `sessionDoc.read(id).name !== null`. The ledger concept is now a factory, `createLedgerConcept(lookup, active)`, so it can find the concept owning whatever document an undo lands on without importing it.
+  2. **Undo needed the session concept for echoing, and the "is this session active" guard read `.name`.** New `src/rendering/example.ts`: `Example = { name, concepts, active(sessionId), index, routes? }`. `active` is the one thing the kernel can't derive generically (a stale, logged-out tab shouldn't be able to undo a write made before it went stale) -- chat's is `sessionDoc.read(id).name !== null`. The ledger concept is now a factory, `createLedgerConcept(lookup, active)`, so it can find the concept owning whatever document an undo lands on without importing it.
   3. **`documents/undo.ts` imported both example documents to dispatch on docType, and `concepts/ledger.ts` special-cased session vs. room for echoing.** Replaced both with one `Concept.replay?(ws, docId, ops, undoes)` method: applies already-shaped ops (a ledger inverse) and echoes exactly as a direct write would, skipping `permit` (not a fresh request against the normal writable surface). Undo in the ledger concept is now `lookup(docType)!.replay(ws, docId, entry.inverse, entry.id)` after splitting `nextUndo(sessionId)`'s `doc`. `documents/undo.ts` and its test are deleted (coverage moved into `concepts/session.ts`/`concepts/room.ts`'s new `replay` methods and their example-level tests); the `undoApplied` event is gone along with it, and `echoSessionPatch` no longer needs exporting for the ledger's sake.
-  4. **The client entry imported the applet by name** (`import "../applets/room-picker"` in `client/app.ts`). Removed. `examples/chat/client/index.html` now loads `examples/chat/client/main.ts`, which registers chat's own applets before importing the kernel's `src/client/app` -- the kernel stays free of any specific applet.
-- `migrate(db, dir, namespace)` now takes a required namespace, recording applied files as `${namespace}/${file}` in `_migrations` -- the kernel (`"eta"`) and an example (its own `name`) can't collide on filename. `examples/chat/db.ts` imports the kernel's `db`, runs chat's own migrations under `"chat"`, and re-exports it; every document module in chat imports `db` from there, never from `src/db` directly, so its migrations are guaranteed to run before its module-load-time prepared statements touch the database. **Existing dev `db.sqlite` files will not upgrade** — their `_migrations` rows were recorded unnamespaced, so every migration looks unapplied on next boot and re-running `CREATE TABLE` will error. Delete the local file (gitignored, dev-only) and it's recreated correctly; migrations have been renumbered freely before in this project (see 0.15.0) and there's no deployed database whose upgrade path needs preserving.
+  4. **The client entry imported the applet by name** (`import "../applets/room-picker"` in `client/app.ts`). Removed. `examples/chat/client/index.html` now loads `examples/chat/client/main.ts`, which registers chat's own applets before importing the kernel's `src/rendering/client/app` -- the kernel stays free of any specific applet.
+- `migrate(db, dir, namespace)` now takes a required namespace, recording applied files as `${namespace}/${file}` in `_migrations` -- the kernel (`"eta"`) and an example (its own `name`) can't collide on filename. `examples/chat/db.ts` imports the kernel's `db`, runs chat's own migrations under `"chat"`, and re-exports it; every document module in chat imports `db` from there, never from `src/rendering/db` directly, so its migrations are guaranteed to run before its module-load-time prepared statements touch the database. **Existing dev `db.sqlite` files will not upgrade** — their `_migrations` rows were recorded unnamespaced, so every migration looks unapplied on next boot and re-running `CREATE TABLE` will error. Delete the local file (gitignored, dev-only) and it's recreated correctly; migrations have been renumbered freely before in this project (see 0.15.0) and there's no deployed database whose upgrade path needs preserving.
 - `createServer(example: Example, port?)`: assembles the given example's concepts, serves `example.index` at `/`, spreads `example.routes` into the route table (a kernel route of the same path wins), keeps `/api/health` and `/ws` as before. The `renderRequested` listener registers once per process, not once per call, rendering through whichever example's `createServer` call was most recent. One example per process is an invariant: calling `createServer` with a *different* example object while the previous one's server(s) are still running throws; stopping a server clears the guard, so a test suite that creates one example's server, stops it, then creates a different example's server (as the kernel's own generic tests and an example's own tests do, in the same process) doesn't trip it.
-- `src/start.ts` resolves `examples/${ETA_EXAMPLE}/index.ts` (default `chat`) and passes its `example` export to `createServer`; documented in `.env.example`. `src/cli.ts` keeps `inspect`/`watch`/`undo`/a new generic `write <doc> <op> <path> [value]` in the kernel, and loads an example's own short verbs (chat's `name`/`room`/`leave`/`logout`/`send`) from `examples/${ETA_EXAMPLE}/cli.ts` if that file exists -- that file only builds wire ops, no database import. `formatInspection`'s CLI output (and the `inspect` wire response itself) is now generic over whatever docs an example's concepts report, rather than special-casing a top-level "session" field with `name`/`room` -- the same information is still visible per-doc (`session  v2  last: replace /room "lobby"`).
-- Added one kernel-only test (`src/server.test.ts`) that boots `createServer` with a tiny inline example (a single in-memory concept, a one-line HTML fixture) and drives a write and an undo over the websocket, proving the kernel needs nothing from `examples/chat`. `src/cli/commands.test.ts` gained an equivalent inline example for its own "against a real server" tests.
+- `src/rendering/start.ts` resolves `examples/${ETA_EXAMPLE}/index.ts` (default `chat`) and passes its `example` export to `createServer`; documented in `.env.example`. `src/rendering/cli.ts` keeps `inspect`/`watch`/`undo`/a new generic `write <doc> <op> <path> [value]` in the kernel, and loads an example's own short verbs (chat's `name`/`room`/`leave`/`logout`/`send`) from `examples/${ETA_EXAMPLE}/cli.ts` if that file exists -- that file only builds wire ops, no database import. `formatInspection`'s CLI output (and the `inspect` wire response itself) is now generic over whatever docs an example's concepts report, rather than special-casing a top-level "session" field with `name`/`room` -- the same information is still visible per-doc (`session  v2  last: replace /room "lobby"`).
+- Added one kernel-only test (`src/rendering/server.test.ts`) that boots `createServer` with a tiny inline example (a single in-memory concept, a one-line HTML fixture) and drives a write and an undo over the websocket, proving the kernel needs nothing from `examples/chat`. `src/rendering/cli/commands.test.ts` gained an equivalent inline example for its own "against a real server" tests.
 - `tsconfig.json`'s `include` now covers `examples` as well as `src`. Bumped to 0.21.0.
 
 ## [0.20.1] - 2026-09-14
@@ -2046,7 +2046,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Changed
 
-- A form's value on submit is no longer scalar-or-nothing: a single named field still sends its raw value, but a form with more than one named field now sends a record of all of them (`src/client/form-value.ts`). Every form up to now has had exactly one field, so nothing currently rendered changes behavior -- this is for the next thing built on eta, which won't get to day two before needing it.
+- A form's value on submit is no longer scalar-or-nothing: a single named field still sends its raw value, but a form with more than one named field now sends a record of all of them (`src/rendering/client/form-value.ts`). Every form up to now has had exactly one field, so nothing currently rendered changes behavior -- this is for the next thing built on eta, which won't get to day two before needing it.
 
 ## [0.19.0] - 2026-09-14
 
@@ -2084,7 +2084,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Added
 
-- A CLI (`bun run cli`): `name`, `room`, `leave`, `logout`, `send`, `undo`, `inspect`, and `watch`, talking the same `{doc, ops}`/`{type:"inspect"}` protocol the browser does. It never touches rendered HTML — only ops and `inspect`, proving the document/ledger layer stands on its own without a browser. Identity persists across invocations via a local `.eta-session` file, the same role a browser cookie plays. `src/cli.ts` is a thin, untested entry point (argv, process I/O) in the same spirit as `start.ts`; the actual command logic lives in `src/cli/commands.ts` and is tested against a real server, same discipline as everywhere else.
+- A CLI (`bun run cli`): `name`, `room`, `leave`, `logout`, `send`, `undo`, `inspect`, and `watch`, talking the same `{doc, ops}`/`{type:"inspect"}` protocol the browser does. It never touches rendered HTML — only ops and `inspect`, proving the document/ledger layer stands on its own without a browser. Identity persists across invocations via a local `.eta-session` file, the same role a browser cookie plays. `src/rendering/cli.ts` is a thin, untested entry point (argv, process I/O) in the same spirit as `start.ts`; the actual command logic lives in `src/rendering/cli/commands.ts` and is tested against a real server, same discipline as everywhere else.
 
 ## [0.15.0] - 2026-09-14
 
@@ -2115,7 +2115,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Changed
 
-- Morph, don't replace (request 5): the client reconciles the existing DOM against a render's HTML instead of overwriting it with `innerHTML`. Same tag in the same place is reused, a different tag is replaced, and children are matched by `id` first, then by position (`src/client/morph.ts`, hand-rolled, no dependency). An element a person is focused on, typing into, or has scrolled survives a render that doesn't concern it, because it's the same element afterward.
+- Morph, don't replace (request 5): the client reconciles the existing DOM against a render's HTML instead of overwriting it with `innerHTML`. Same tag in the same place is reused, a different tag is replaced, and children are matched by `id` first, then by position (`src/rendering/client/morph.ts`, hand-rolled, no dependency). An element a person is focused on, typing into, or has scrolled survives a render that doesn't concern it, because it's the same element afterward.
 - `[data-applet]` is a boundary the morph never descends into: it reconciles the element's own attributes, and calls the applet's new optional `update(el, props)` if `data-props` changed, but leaves the applet's hand-managed children alone. A mounted applet whose element disappears gets its cleanup run before removal; a newly-appeared one mounts after the morph, as before. `room-picker`'s `update()` refreshes its suggestions against new props without resetting the typed filter.
 - Full renders are cheap now that they morph instead of replace, so the granular wire vocabulary for "someone joined," "a message arrived," or undo's transcript change is gone: everyone affected by a room change just gets asked to re-render (`renderRequested`, in `concepts/render.ts`). The `append` message type and the `selector` field on `render` are removed; a render is always the whole `#app`.
 - A form resets on the **echo** of its own write, not on submit, so a refused or lost write hands the person's text back instead of silently discarding it.
@@ -2142,7 +2142,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Changed
 
-- Moved `index.html`, `styles.css`, and `app.ts` (with its test) into `src/client/`, separating the browser-delivered client from the server-side documents/concepts/ledger code that shares the `src/` root with it.
+- Moved `index.html`, `styles.css`, and `app.ts` (with its test) into `src/rendering/client/`, separating the browser-delivered client from the server-side documents/concepts/ledger code that shares the `src/` root with it.
 
 ## [0.10.5] - 2026-09-14
 
@@ -2221,7 +2221,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Changed
 
-- Renamed `src/session.ts`'s `SessionData` to `ConnectionData` (file renamed to `src/connection.ts`). It's the shape of `Bun.serve`'s per-connection data (`{ sessionId: string }`, an opaque connection identifier) — foundational plumbing used by `server.ts` and the generic `Concept` contract, not something owned by the session concept. The old name made it read as if it belonged there, which is what raised the question of folding it into `concepts/session.ts` in the first place (it can't be: `server.ts` and `concepts/concept.ts` both depend on it and must stay agnostic of any specific concept).
+- Renamed `src/session.ts`'s `SessionData` to `ConnectionData` (file renamed to `src/rendering/connection.ts`). It's the shape of `Bun.serve`'s per-connection data (`{ sessionId: string }`, an opaque connection identifier) — foundational plumbing used by `server.ts` and the generic `Concept` contract, not something owned by the session concept. The old name made it read as if it belonged there, which is what raised the question of folding it into `concepts/session.ts` in the first place (it can't be: `server.ts` and `concepts/concept.ts` both depend on it and must stay agnostic of any specific concept).
 
 ## [0.7.3] - 2026-09-14
 
@@ -2261,7 +2261,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 ### Added
 
 - Versioned SQL migrations (`migrations/0001_sessions.sql`, `migrations/0002_rooms.sql`), applied in order and tracked in a `_migrations` table (`src/migrate.ts`), replacing the `CREATE TABLE IF NOT EXISTS` calls that used to live in `db.ts`.
-- Documents: `src/documents/session.ts` and `src/documents/room.ts` replace `db.ts`'s per-entity CRUD functions. A document's `read()` is a single query — SQLite's `json_object`/`json_group_array` build the JSON directly in SQL, so the query result *is* the document, not a row `read()` has to assemble. Writes go through `patch(id, ops)`, RFC 6902 JSON Patch operations resolved via RFC 6901 JSON Pointer paths (`src/json-pointer.ts`, `src/json-patch.ts`); each document type owns what a patch to its fields means, including side effects (e.g. patching a session's `/room` leaves the old room's live socket set and joins the new one).
+- Documents: `src/rendering/documents/session.ts` and `src/rendering/documents/room.ts` replace `db.ts`'s per-entity CRUD functions. A document's `read()` is a single query — SQLite's `json_object`/`json_group_array` build the JSON directly in SQL, so the query result *is* the document, not a row `read()` has to assemble. Writes go through `patch(id, ops)`, RFC 6902 JSON Patch operations resolved via RFC 6901 JSON Pointer paths (`src/json-pointer.ts`, `src/rendering/json-patch.ts`); each document type owns what a patch to its fields means, including side effects (e.g. patching a session's `/room` leaves the old room's live socket set and joins the new one).
 - `db.ts` is now just the SQLite connection plus migration bootstrap — no business-logic-shaped exports.
 - Room presence: the room document now includes `people` (names of currently-connected sessions in that room), derived from the live socket registry (`rooms.ts`) plus a session-document lookup per socket. Surfaced in the chat view as a simple list. Note: presence isn't broadcast live to other members on join/leave (unlike chat messages) — a room member only sees an updated people list on their own next render, not the instant someone else joins.
 
@@ -2274,7 +2274,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 ### Added
 
 - Applets: a minimal plugin mechanism for client-side components with their own lifecycle, layered on top of the existing render/append transport. A server-rendered `<div data-applet="name" data-props="...">` gets mounted by a registered `{ mount(el, ctx) }` handler (`ctx` gives `props` and the same `send()` the rest of the client uses); `app.ts` stays domain-agnostic — it only knows the generic mount contract, not what any applet does.
-- First applet: `room-picker` (`src/applets/room-picker.ts`) replaces the room selector's static button-list-plus-form with a single input that filters the room list client-side as you type — no round trip per keystroke. It reuses the existing generic `data-event` delegation for both paths (a `<form data-event="join-room">` for creating/submitting by Enter, `<li data-event="join-room" data-room="...">` suggestions for clicking an existing room), so it needed no new wire protocol and no changes to `server.ts`'s event handling.
+- First applet: `room-picker` (`src/rendering/applets/room-picker.ts`) replaces the room selector's static button-list-plus-form with a single input that filters the room list client-side as you type — no round trip per keystroke. It reuses the existing generic `data-event` delegation for both paths (a `<form data-event="join-room">` for creating/submitting by Enter, `<li data-event="join-room" data-room="...">` suggestions for clicking an existing room), so it needed no new wire protocol and no changes to `server.ts`'s event handling.
 - `render` now accepts an optional target selector (defaulting to `#app`), so a future applet's own subtree can be replaced without a full-page re-render.
 
 ### Fixed
@@ -2318,7 +2318,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Changed
 
-- Split `src/server.ts` down to just `Bun.serve` wiring: pid file handling moved to `src/pid.ts`, HTML rendering to `src/views.ts`.
+- Split `src/rendering/server.ts` down to just `Bun.serve` wiring: pid file handling moved to `src/pid.ts`, HTML rendering to `src/views.ts`.
 - `sessions` table gained `created_at`/`revoked_at` timestamps; logout now soft-deletes (`revoked_at` set) instead of `DELETE`-ing the row, so a session id can be reactivated later and history isn't lost. `getSessionName` only considers rows where `revoked_at IS NULL`.
 - Session cookie handling now uses Bun's built-in `request.cookies` (`CookieMap`) instead of a hand-rolled parser, which also fixes a crash on malformed `Cookie` headers and adds the `Secure` attribute in production.
 
@@ -2334,7 +2334,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Added
 
-- `src/db.ts` — session storage via `bun:sqlite`, path configurable with the `DB_PATH` env var (added to `.env.example`).
+- `src/rendering/db.ts` — session storage via `bun:sqlite`, path configurable with the `DB_PATH` env var (added to `.env.example`).
 - Cookie-based session id (`session_id`, set on `/ws` upgrade) ties a browser session to its SQLite row.
 - Name-entry form → user label + logout button flow; logout clears the session row and re-renders the form.
 - Browser-driven tests via `Bun.WebView` covering the full flow, including session persistence across a reload.
@@ -2343,7 +2343,7 @@ in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
 
 ### Added
 
-- Bun HTTP server (`src/server.ts`) serving `src/index.html` via `Bun.serve` routes.
+- Bun HTTP server (`src/rendering/server.ts`) serving `src/rendering/index.html` via `Bun.serve` routes.
 - `src/styles.css` and `src/app.ts` linked from `index.html`.
 - `tsconfig.json` with `@types/bun`.
 - `PORT` environment variable support with `.env.example`.

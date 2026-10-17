@@ -93,7 +93,7 @@ describe("Ann's requests are still there after leave is upgraded to a version th
   });
 
   test("leave's stories pass against the upgraded database, and Ann's requests from before are still hers", async () => {
-    const run = Bun.spawn(["bun", "src/stories-run.ts"], { cwd: join(import.meta.dir, "../.."), env: { ...process.env, ETA_EXAMPLE: "leave", DB_PATH: path, LOG_LEVEL: "warn" }, stdout: "pipe", stderr: "pipe" });
+    const run = Bun.spawn(["bun", "src/modelling/stories-run.ts"], { cwd: join(import.meta.dir, "../.."), env: { ...process.env, ETA_EXAMPLE: "leave", DB_PATH: path, LOG_LEVEL: "warn" }, stdout: "pipe", stderr: "pipe" });
     const [out, err, code] = await Promise.all([new Response(run.stdout).text(), new Response(run.stderr).text(), run.exited]);
     expect(code === 0 ? "passed" : out + err).toBe("passed");
     const db = new Database(path);

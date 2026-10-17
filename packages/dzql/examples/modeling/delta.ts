@@ -1,6 +1,6 @@
 import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
-import { db } from "../../src/db";
+import { db } from "dzql/rendering/db";
 
 // modeling's documents, in delta (`@blueshed/delta`). A model is one document, written by the two
 // who keep it and on the ledger: its stories -- each with who tells it, whether they do it or are

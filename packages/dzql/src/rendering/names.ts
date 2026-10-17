@@ -16,5 +16,5 @@ export function splitDoc(doc: string): { docType: string; docId: string } {
  * create blueshed/eta`), from where the command runs.
  */
 export function appDir(named = "chat"): string {
-  return named.includes("/") ? `${process.cwd()}/${named}`.replace(/\/\.\//g, "/").replace(/\/$/, "") : `${import.meta.dir}/../examples/${named}`;
+  return named.includes("/") ? `${process.cwd()}/${named}`.replace(/\/\.\//g, "/").replace(/\/$/, "") : `${import.meta.dir}/../../examples/${named}`;
 }

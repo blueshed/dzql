@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createDocuments, setActiveDocuments } from "../../../src/documents";
+import { createDocuments, setActiveDocuments } from "dzql/rendering/documents";
 import { delta } from "../delta";
 import { has, read, ticks } from "./market";
 

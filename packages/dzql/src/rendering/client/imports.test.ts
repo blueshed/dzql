@@ -8,12 +8,12 @@ import { dirname, relative, resolve } from "node:path";
 // own browser-safe check walks it (an app's own browser-safe test), so the kernel breaks
 // no app's rule.
 
-const ROOT = resolve(import.meta.dir, "../..");
-const ENTRIES = ["src/client/app.ts", "src/island.ts"];
+const ROOT = resolve(import.meta.dir, "../../..");
+const ENTRIES = ["src/rendering/client/app.ts", "src/rendering/island.ts"];
 
 /** A module only a server has. */
 const serverOnly = (spec: string, file: string): boolean =>
-  /^(bun|node):/.test(spec) || /\/src\/(documents|db|server|refusal|harness|reading|compartments\/)/.test(file) || /@blueshed\/delta\/(sqlite|server|local|postgres|kinds)/.test(spec);
+  /^(bun|node):/.test(spec) || /\/src\/(rendering\/(documents|db|server|refusal|reading|compartments\/)|modelling\/harness)/.test(file) || /@blueshed\/delta\/(sqlite|server|local|postgres|kinds)/.test(spec);
 
 const transpiler = new Bun.Transpiler({ loader: "ts" });
 
@@ -38,6 +38,6 @@ describe("what a page's bundle imports of the kernel", () => {
   for (const entry of ENTRIES) test(`${entry} reaches nothing of the server's`, async () => expect(await reach(entry)).toEqual([]));
 
   test("the walk would say so if one did", async () => {
-    expect((await reach("src/stories-run.ts")).some((chain) => chain.endsWith("./harness"))).toBe(true);
+    expect((await reach("src/modelling/stories-run.ts")).some((chain) => chain.endsWith("./harness"))).toBe(true);
   });
 });

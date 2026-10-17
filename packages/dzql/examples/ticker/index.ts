@@ -1,4 +1,4 @@
-import type { Example } from "../../src/example";
+import type { Example } from "dzql/rendering/example";
 import { clock } from "./compartments/clock";
 import { desk } from "./compartments/desk";
 import { quote, render, ticker } from "./compartments/ticker";

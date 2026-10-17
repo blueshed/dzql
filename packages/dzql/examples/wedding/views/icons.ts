@@ -33,7 +33,7 @@ import {
   Utensils,
   X,
 } from "lucide";
-import { svg, type IconNode } from "../../../src/icons";
+import { svg, type IconNode } from "dzql/rendering/icons";
 
 const ICONS = {
   "chevron-right": ChevronRight,

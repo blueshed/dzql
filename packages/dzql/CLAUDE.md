@@ -1,9 +1,16 @@
 # CLAUDE.md - Rules for Working on DZQL
 
+dzql is the path an app takes from its stories to its documents to its pages, and its last storage
+step: **modelling** (`dzql/modelling`: the stories, told against the app), **rendering**
+(`dzql/rendering`: pages the server draws, eta's kernel) and **the compiled Postgres step**
+(`dzql/postgres`, `dzql/pglite`). One package; each part is its own entry, and nobody pays for a
+part they do not import: `@blueshed/railroad` is an optional peer that only an island needs.
+
 ## Read the Documentation First
 
 Before working on this codebase, read:
-- `philo.md` - **what dzql is for now**: delta's compiled Postgres step, and why
+- `philo.md` - **what dzql is for now**: stories to documents to pages, and the compiled Postgres step
+- `docs/eta/` - eta's docs: `stories.md` (what it is for), `eta.md` (what it is, its measured costs), the bento
 - Workshop's `docs/postgres-split-plan.md` - the plan that made dzql delta's Postgres step
 - `packages/dzql/docs/delta/` - delta on Postgres: setting up, the stored functions, row-level security
 - `packages/create-dzql/README.md` - `bun create dzql`: a paintbrush app on dzql
@@ -27,10 +34,15 @@ an item is worked on. Same shape as duckdown's.
 ```
 packages/
 ├── dzql/                # The dzql package on npm
+│   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told), by-hand.ts (in a browser), costs.ts
+│   ├── src/rendering/   # dzql/rendering: eta's kernel: server.ts, compartments/, client/ (the browser's), bento, island.ts (railroad)
+│   ├── examples/<app>/  # eta's examples: chat, leave, modeling (the model's page), starter, ticker, wedding
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
 │   ├── src/compile/     # the compiler from delta's definitions, a module per kind of function (generateSql runs them all)
 │   ├── docs/delta/      # delta on Postgres: postgres.md, sql.md, rls.md
+│   ├── docs/eta/        # eta's docs, its CHANGELOG.md and todo.jsonl until folded into dzql's
+│   ├── .claude/skills/  # modelling (someone telling the stories), eta-app (building an app on dzql/rendering)
 │   ├── src/postgres/cli.ts  # dzql sql | init | migrate | link (src/cli/index.ts, the bin, runs it)
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
 │   ├── bench/           # delta's bench (bun run bench), todo #25
@@ -55,14 +67,47 @@ packages/
   only with the change that explains it. One `generateSql` per database: one app's definitions.
 - **Permissions are a document's** (`owns` as a path), **migrations are delta's**: no table rules,
   no upgrade scheme of dzql's own (philo.md).
-- **dzql is this step and nothing else**: no client, runtime or app framework of its own. What it
-  was before delta is in CHANGELOG.md; nothing of it comes back unless a story asks for it.
+- **The Postgres step imports nothing of modelling or rendering**, and they nothing of it: an app on
+  SQLite uses `dzql/rendering` with no Postgres, and one on Postgres uses `dzql/postgres` with no page.
+  What dzql was before delta (its own client and runtime) is in CHANGELOG.md; nothing of it comes back.
+
+## Modelling and rendering (eta)
+
+What a change to them must not break. How the pieces work is in the skills; the types in
+`src/modelling/` and `src/rendering/` are the contract.
+
+- Someone telling you the stories, there to answer: the **modelling** skill. Building or extending an
+  app or an example, or touching the `Compartment` contract, an app's `delta.ts`, the applet
+  registry or the wire: the **eta-app** skill. Documents: delta's **delta-doc** skill.
+- **Stories first.** `docs/eta/stories.md` is what it is for. An app's `stories.ts` says who does
+  what and who then sees it; everything else follows. Start a feature with its story, watch it fail,
+  build the least that makes it pass. Build nothing no story needs.
+- **The shape.** `src/rendering` and `src/modelling` never import from `examples/` (their tests
+  may). `examples/<name>/` is a whole app with an `index.ts` exporting `example: Example`, importing
+  dzql as an app does (`dzql/rendering/...`); examples never import from each other.
+  `examples/modeling/` is the model's page; its `loader/` reads an app that exists.
+- railroad only in `src/rendering/island.ts`; the examples add `lucide`; the kernel imports no icon set.
+- Documents are delta's: rendering owns people and pages, delta owns documents, their ledger and
+  their one stream of changes. A **compartment** owns one `docType` and has no place on the page; a
+  place on the page is a **cell**, in the bento's **tray**; the visitor's own document is the **session**.
+- **The wire.** HTML is the only vocabulary: no node or JSON tree on the wire or in the client. A
+  write names a document (`<docType>:<docId>`) and a JSON Pointer path, never a function. A
+  connection is told about, and may write, only what its page read. The server is the only renderer;
+  the client morphs, never replaces `innerHTML`, never descends into a `[data-applet]`. After a
+  write each page that read the document gets only its changed parts. Every change is told from
+  delta's one stream. A change to what the wire carries bumps `WIRE`.
+- **Pages.** A page's shape comes from its stories; the bento (`docs/eta/bento/README.md`) is how to
+  check it. Say a thing once.
+- Verify every bug fix by reverting it, watching its test fail, then restoring it.
 
 ## Testing
 
-- Run tests: `cd packages/dzql && bun run test`
+- **Modelling and rendering** (no Docker): `bun check`, `bun run test:eta` (the default
+  `bunfig.toml`: 100% coverage, the client's too, read from Chrome), `bun run stories:all`,
+  `bun run costs --check`. The browser tests need Chrome (the eta-app skill's *Tests*).
+- **The Postgres step**: `cd packages/dzql && bun run test` (`tests/bunfig.toml`)
 - Tests run against Docker PostgreSQL (see `packages/dzql/compose.yml`)
-- `tests/delta/` and `tests/compile/` run on PGlite with no Docker (`bun test tests/delta tests/compile`)
+- `tests/delta/` and `tests/compile/` run on PGlite with no Docker (`bun --config=tests/bunfig.toml test tests/delta tests/compile`)
 - The test script handles Docker lifecycle: starts fresh, runs tests, tears down. It removes the
   database as it starts and ends, so **never run it while another run is going** (a person's, a
   session's): each wipes the other's database, and both fail

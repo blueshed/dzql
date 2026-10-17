@@ -4,10 +4,10 @@
 // here is proposed; everything is read. A project with no app yet (no index.ts) is read from its
 // stories alone: no run, so nothing of who was told.
 
-import { isPost, writeOf, type Stories, type Story } from "../../../src/stories";
-import type { Example } from "../../../src/example";
+import { isPost, writeOf, type Stories, type Story } from "dzql/modelling/stories";
+import type { Example } from "dzql/rendering/example";
 import { splitPath } from "@blueshed/delta/core";
-import { run } from "../../../src/harness";
+import { run } from "dzql/modelling/harness";
 import { documentsIn, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
 import { heartOf, inSql } from "./facts";
 

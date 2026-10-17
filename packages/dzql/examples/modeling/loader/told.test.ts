@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { signIn } from "../../../src/cli/commands";
-import { assemble } from "../../../src/compartments";
-import { db } from "../../../src/db";
-import { createServer } from "../../../src/server";
-import { connect, opened } from "../../../src/test-socket";
+import { signIn } from "dzql/rendering/cli/commands";
+import { assemble } from "dzql/rendering/compartments/index";
+import { db } from "dzql/rendering/db";
+import { createServer } from "dzql/rendering/server";
+import { connect, opened } from "dzql/rendering/test-socket";
 import type { Raw } from "../heart";
 import { example } from "../index";
 import { extract } from "./extract";

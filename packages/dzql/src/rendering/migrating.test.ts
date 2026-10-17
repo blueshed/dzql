@@ -4,7 +4,7 @@ import { createTables, migrate, migrationStatus, type Migration, type Schema } f
 // one after another: each delta.ts migrates the one database as it loads, and imported side by side their top-level awaits would meet in one transaction
 type Migrating = { app: string; schema: Schema };
 const all: Migrating[] = [];
-for (const name of ["chat", "leave", "modeling", "ticker", "wedding"]) all.push((await import(`../examples/${name}/delta`)).migrating);
+for (const name of ["chat", "leave", "modeling", "ticker", "wedding"]) all.push((await import(`../../examples/${name}/delta`)).migrating);
 const [chat, leave] = all as [Migrating, Migrating];
 
 // The examples may share a database (DB_PATH is one file whichever runs), so each delta.ts says

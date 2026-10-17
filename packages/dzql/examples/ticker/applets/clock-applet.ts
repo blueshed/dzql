@@ -5,7 +5,7 @@
 // from the pages that run it (src/client-coverage.ts); the drawing and time math are clock.ts
 // (change-request.md item 4).
 
-import { registerApplet } from "../../../src/applets";
+import { registerApplet } from "dzql/rendering/applets";
 import { clockSvg, handsAt, partsIn, timeSaid, tzAfter, type ClockProps } from "./clock";
 
 /** What stops a clock's next turn: a frame, or a second's wait. */

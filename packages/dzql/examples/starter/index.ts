@@ -1,4 +1,4 @@
-import type { Example } from "../../src/example";
+import type { Example } from "dzql/rendering/example";
 import { render } from "./page";
 import index from "./client/index.html";
 import { delta } from "./delta";

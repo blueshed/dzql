@@ -2,7 +2,7 @@
 // `svg` (src/icons.ts) does the drawing, and the kernel's bento (src/bento.ts) asks for its own
 // marks by these names: the chevron in the trail, undo and redo.
 import { ChevronRight, LogOut, Redo2, Undo2 } from "lucide";
-import { svg, type IconNode } from "../../src/icons";
+import { svg, type IconNode } from "dzql/rendering/icons";
 
 const ICONS = { "chevron-right": ChevronRight, undo: Undo2, redo: Redo2, "log-out": LogOut } satisfies Record<string, IconNode>;
 

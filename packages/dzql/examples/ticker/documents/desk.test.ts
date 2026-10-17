@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { shape, type Ui } from "./desk";
 import { desk } from "../compartments/desk";
-import type { PatchOp } from "../../../src/json-patch";
+import type { PatchOp } from "dzql/rendering/json-patch";
 
 describe("the desk (the ticker's session)", () => {
   test("the desk keeps one address: a window it has, and over it a symbol, the clock, the ask or the asking-first; anywhere else is nowhere", () => {

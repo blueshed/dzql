@@ -1,19 +1,19 @@
-import { db } from "./db";
-import type { Example } from "./example";
-import { assemble } from "./compartments";
-import { createServer } from "./server";
+import { db } from "../rendering/db";
+import type { Example } from "../rendering/example";
+import { assemble } from "../rendering/compartments";
+import { createServer } from "../rendering/server";
 import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
-import { isTest, isVerb, applyPatch, type PatchOp, type Test, type WriteId } from "./json-patch";
-import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
-import { onFailure } from "./failed";
-import { comparable, decoded, ownProps, splitTag } from "./parts";
-import { toldNothing, toldTo, type Line } from "./refusal";
-import { esc } from "./html";
+import { isTest, isVerb, applyPatch, type PatchOp, type Test, type WriteId } from "../rendering/json-patch";
+import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "../rendering/documents";
+import { onFailure } from "../rendering/failed";
+import { comparable, decoded, ownProps, splitTag } from "../rendering/parts";
+import { toldNothing, toldTo, type Line } from "../rendering/refusal";
+import { esc } from "../rendering/html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
-import { allOpenSockets, resolveName, sees } from "./compartments/audience";
-import { shownTo } from "./reading";
-import type { Compartment, Kind } from "./compartments/compartment";
-import { prefixDoc, splitDoc } from "./names";
+import { allOpenSockets, resolveName, sees } from "../rendering/compartments/audience";
+import { shownTo } from "../rendering/reading";
+import type { Compartment, Kind } from "../rendering/compartments/compartment";
+import { prefixDoc, splitDoc } from "../rendering/names";
 import { size, sum, tap } from "./costs";
 
 // Runs an example's stories against it, over real sockets, and reports by story name: what each

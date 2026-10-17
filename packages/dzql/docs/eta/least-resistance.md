@@ -19,7 +19,7 @@ rollback.
 
 **In eta, live is not a feature; it is how the page works.**
 
-- The kernel keeps what each page read (`read("<docType>:<id>")`, src/reading.ts).
+- The kernel keeps what each page read (`read("<docType>:<id>")`, src/rendering/reading.ts).
 - A change is written through `@blueshed/delta`, and delta tells every change in one stream.
 - eta draws each page that read the document again and sends only the parts that changed: to
   Ben's phone, his laptop and Wen's tab alike.
@@ -51,7 +51,7 @@ Stories, then documents, then pages drawn on the server.
   seconds, and names the story that failed.
 - **Undo per person.** Undo walks back your own last write through delta's inverse, while others
   keep writing; walking back over someone's later change is refused.
-- **A page in plain HTML.** The bento's parts (`src/bento.ts`, `src/bento.css`) keep views short.
+- **A page in plain HTML.** The bento's parts (`src/rendering/bento.ts`, `src/rendering/bento.css`) keep views short.
   They are defaults, not rules: the stories decide a page's shape.
 
 ## 4. What still slows an AI down
@@ -64,7 +64,7 @@ Stories, then documents, then pages drawn on the server.
    -- but it can be checked: `bun run stories` warns of a write the server takes that no story
    tells and no page offers.
 3. **Views by hand.** A view is written as a template, but for a collection nobody writes stories for
-   (the wedding's venues), drawn from its document's shape (`src/derive.ts`).
+   (the wedding's venues), drawn from its document's shape (`src/rendering/derive.ts`).
 4. **Form wiring.** `name="/path"`, `data-write-on`, a status beside the field: conventions to
    remember.
 5. **A page that stays still.** When a page never `read()` the document it shows, a change to it

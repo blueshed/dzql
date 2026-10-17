@@ -1,13 +1,13 @@
 import * as householdDoc from "../documents/household";
 import * as sessionDoc from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
-import type { PatchOp } from "../../../src/json-patch";
-import type { Compartment } from "../../../src/compartments/compartment";
-import { activeDocuments, settled } from "../../../src/documents";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
+import { activeDocuments, settled } from "dzql/rendering/documents";
 import { putAway } from "./session";
 import { householdPage, type HouseholdView } from "../views/household";
 import { keepEveryone } from "../everyone";
-import { refuse, tell, toldAt } from "../../../src/refusal";
+import { refuse, tell, toldAt } from "dzql/rendering/refusal";
 
 // A household's document (`household:<id>`), written by the household that arrived by its code.
 // Nearly everything it writes changes what others see -- an answer puts figures in the photo every

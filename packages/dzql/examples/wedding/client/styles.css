@@ -7,7 +7,7 @@
    820px, a sheet from the foot below. One family of corners, one control height, three sizes of
    type, every shadow toward the ink. */
 
-@import "../../../src/bento.css";
+@import "../../../src/rendering/bento.css";
 
 /* ── tokens ── (each pair that must be read or seen is checked in contrast.test.ts: text 4.5:1, a mark
    or an edge 3:1; one palette, light, whatever the reader prefers) */

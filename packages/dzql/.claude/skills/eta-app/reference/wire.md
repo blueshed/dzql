@@ -13,7 +13,7 @@ that send writes are [controls.md](controls.md).
 { "type": "refused", "id": 7, "reason": "…" }
 ```
 
-The shapes are `src/json-patch.ts` (`WIRE`, `LONGEST_ID`) and `src/server.ts`.
+The shapes are `src/rendering/json-patch.ts` (`WIRE`, `LONGEST_ID`) and `src/rendering/server.ts`.
 
 - A document is named whole, `<docType>:<docId>` (`room:general`), so one socket holds any documents.
   A bare type in a write is the one of that type the page is on (`resolveDoc`).
@@ -28,7 +28,7 @@ The shapes are `src/json-patch.ts` (`WIRE`, `LONGEST_ID`) and `src/server.ts`.
 - Only the writer's echo carries `id` and `change`, the handle that undoes it (a fact's names none).
 - A page is sent whole as `{type: "render", html, wire}`, or in parts as `{type: "render", ops}`.
 - A write that applies nothing (refused, nothing to undo, a throw) is answered `refused` when it has
-  an id, then with the page whole. A throw goes through `failed()` (`src/failed.ts`), which fails the
+  an id, then with the page whole. A throw goes through `failed()` (`src/rendering/failed.ts`), which fails the
   story it happened in.
 - A message in is at most 1 MiB, inflated: send a picture or a file by HTTP, never the socket.
 - The socket is compressed, a message at a time: a big page sent whole to many at once is the cost to

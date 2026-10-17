@@ -4,12 +4,12 @@
 // of the server sees it). Not a test -- a report. Run with
 // `DB_PATH=:memory: bun examples/chat/scripts/measure-render-cost.ts`; with `--json`, what the
 // README says (src/costs.ts, `bun run costs`).
-import { tap, type Measured } from "../../../src/costs";
-import { patchMessage } from "../../../src/json-patch";
-import { createServer } from "../../../src/server";
-import { esc } from "../../../src/html";
+import { tap, type Measured } from "dzql/modelling/costs";
+import { patchMessage } from "dzql/rendering/json-patch";
+import { createServer } from "dzql/rendering/server";
+import { esc } from "dzql/rendering/html";
 import { example } from "../index";
-import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "../../../src/test-socket";
+import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "dzql/rendering/test-socket";
 
 const MEMBERS = 5;
 const HISTORY = 100;

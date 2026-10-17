@@ -1,6 +1,6 @@
 import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
-import { db } from "../../src/db";
+import { db } from "dzql/rendering/db";
 import { DEFAULT_TZ } from "./documents/clock";
 
 // The ticker's documents, in delta (`@blueshed/delta`). The market is a fact: ticked

@@ -4,9 +4,9 @@
 import type { Answer, Guest, HouseholdDocument } from "../documents/household";
 import type { Course, Event, Place, Wedding } from "../documents/wedding";
 import { row, site } from "./bento";
-import { rows } from "../../../src/bento";
+import { rows } from "dzql/rendering/bento";
 
-export { layers, matches } from "../../../src/bento";
+export { layers, matches } from "dzql/rendering/bento";
 import { esc } from "./html";
 import { icon } from "./icons";
 

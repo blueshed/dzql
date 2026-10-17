@@ -69,8 +69,8 @@ the box, the whole thing when it is opened.
 
 ## In eta
 
-The kernel offers one way to draw these (`src/bento.ts`, `src/bento.css`, laid out by
-`src/grid.ts`): a box and its tray, a collection, the trail, readings, rows, a drawer, a modal,
+The kernel offers one way to draw these (`src/rendering/bento.ts`, `src/rendering/bento.css`, laid out by
+`src/rendering/grid.ts`): a box and its tray, a collection, the trail, readings, rows, a drawer, a modal,
 find, and the page's undo and redo. How they look -- sizes, corners, icons, the tray -- is that
 way's, not the bento's. An app may use the parts, change them or draw its own; a direction never
 requires a part, and a choice is justified by a story, never by this page.

@@ -1,7 +1,7 @@
 import { refuseOrigin } from "@blueshed/delta/server";
-import { serverWrite } from "../../src/documents";
-import { tell } from "../../src/refusal";
-import { sessionCookie } from "../../src/server";
+import { serverWrite } from "dzql/rendering/documents";
+import { tell } from "dzql/rendering/refusal";
+import { sessionCookie } from "dzql/rendering/server";
 import { db } from "./delta";
 
 // Signing in: an email and a password, posted from the sign-in page as a plain form -- so the

@@ -1,6 +1,6 @@
-import type { Compartment } from "../../src/compartments/compartment";
-import { serverWrite } from "../../src/documents";
-import { address, parseAddress } from "../../src/bento";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
+import { serverWrite } from "dzql/rendering/documents";
+import { address, parseAddress } from "dzql/rendering/bento";
 import { splitPath } from "@blueshed/delta/core";
 import { may, session as sessionOf, shape, shapeSession, team as teamOf, TEAM, type Request } from "./documents";
 

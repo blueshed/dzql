@@ -106,7 +106,7 @@ every change to it.** You never subscribe by hand. So cut your documents by who 
 
 ## 5. Say who may write what
 
-A **Compartment** (`src/compartments/compartment.ts`) looks after one type of document. (Chat's
+A **Compartment** (`src/rendering/compartments/compartment.ts`) looks after one type of document. (Chat's
 is written here on one line per hook; the real file spells them out.)
 
 ```ts
@@ -244,7 +244,7 @@ is in `examples/leave/signin.ts`.
 
 Draw everything on the server until something must keep state that a redraw would destroy: a
 drag halfway through, a scroll position, a chart's history. That piece is an **applet**
-(`src/applets.ts`): client code that draws inside one element.
+(`src/rendering/applets.ts`): client code that draws inside one element.
 
 - It sends its own writes with `ctx.send(doc, ops)`.
 - Its mount says exactly what it writes, `appletWrites(["team", "replace", "/requests/*/starts"], …)`
@@ -257,7 +257,7 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
   which the server runs too, for what the mount declares and a first paint (the wedding's photo of
   everyone, `crowd`). Props with no document go again whenever they change: keep those small.
 - Test the drawing as a pure function, and the gestures in a real browser (`Bun.WebView`),
-  pressed as a mouse presses (`press`, src/webview.ts), never with `element.click()`.
+  pressed as a mouse presses (`press`, src/rendering/webview.ts), never with `element.click()`.
 
 ## Things that bite
 

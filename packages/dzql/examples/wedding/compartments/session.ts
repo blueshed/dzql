@@ -1,9 +1,9 @@
 import * as sessionDoc from "../documents/session";
-import type { PatchOp } from "../../../src/json-patch";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
-import type { Compartment } from "../../../src/compartments/compartment";
-import { serverWrite } from "../../../src/documents";
-import { collectionsWrite } from "../../../src/bento";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
+import { serverWrite } from "dzql/rendering/documents";
+import { collectionsWrite } from "dzql/rendering/bento";
 import { keepEveryone } from "../everyone";
 
 // A visit (`session:<id>`): who this session is (a code) and where it is on the site. This is the

@@ -1,6 +1,6 @@
 import * as deskDoc from "../documents/desk";
-import { collectionsWrite } from "../../../src/bento";
-import type { Compartment } from "../../../src/compartments/compartment";
+import { collectionsWrite } from "dzql/rendering/bento";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
 
 // The desk is the ticker's session (change-request.md item 10): the ground the ticker's cells sit on,
 // not a place of its own on the page -- no `render`. It takes the writes that open a cell,

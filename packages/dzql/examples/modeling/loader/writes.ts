@@ -1,5 +1,5 @@
-import type { PatchOp } from "../../../src/json-patch";
-import { nextMessage, write, type WireMessage } from "../../../src/test-socket";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import { nextMessage, write, type WireMessage } from "dzql/rendering/test-socket";
 import type { Heart } from "./facts";
 
 // What loading an app into a model writes (`bun run model:load`, ./load.ts): the app's facts, as

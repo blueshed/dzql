@@ -20,8 +20,8 @@
 // No example knowledge: the one document left out is the session's, found by asking the example's
 // own `goTo()` where it writes.
 
-import { writeOf, type Stories, type Story, type Write } from "../../../src/stories";
-import { isTest, type PatchOp } from "../../../src/json-patch";
+import { writeOf, type Stories, type Story, type Write } from "dzql/modelling/stories";
+import { isTest, type PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { typeOf as docType } from "./documents";
 import type { Entity, Field, Model, Story as ModelStory, StoryWrite } from "./model/grammar";

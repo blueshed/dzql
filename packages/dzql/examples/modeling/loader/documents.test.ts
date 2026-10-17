@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { post, story, type Stories } from "../../../src/stories";
-import { run } from "../../../src/harness";
-import { serverWrite } from "../../../src/documents";
-import type { Example } from "../../../src/example";
+import { post, story, type Stories } from "dzql/modelling/stories";
+import { run } from "dzql/modelling/harness";
+import { serverWrite } from "dzql/rendering/documents";
+import type { Example } from "dzql/rendering/example";
 import { bornInto, toldNotAsked, touches } from "./facts";
-import { controlsOn, type Heard, type Trace } from "../../../src/harness";
+import { controlsOn, type Heard, type Trace } from "dzql/modelling/harness";
 import { attempt, documentsIn, documentsOf, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
 import { example as chat } from "../../chat/index";
 import { stories as chatStories } from "../../chat/stories";

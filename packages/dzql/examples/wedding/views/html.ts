@@ -1,8 +1,8 @@
 // The kernel's HTML vocabulary (src/html.ts), and the one gesture that is the wedding's own.
-import { address } from "../../../src/bento";
+import { address } from "dzql/rendering/bento";
 import { go } from "./bento";
 
-export { esc, join, write, appletProps, appletWrites } from "../../../src/html";
+export { esc, join, write, appletProps, appletWrites } from "dzql/rendering/html";
 
 /** Going to a page is a write to the session: the trail below the root ("" is the box at the root). */
 export const nav = go;

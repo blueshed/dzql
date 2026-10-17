@@ -1,5 +1,5 @@
-import { read as readDoc } from "../../../src/documents";
-import type { PatchOp } from "../../../src/json-patch";
+import { read as readDoc } from "dzql/rendering/documents";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 
 // The market: one document, a quote per symbol, kept in delta (`ticker:market`, ../delta.ts), and

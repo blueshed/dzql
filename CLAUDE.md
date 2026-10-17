@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-The bluetools monorepo: railroad, delta, dzql and create-dzql as Bun workspaces under
+The bluetools monorepo: railroad, delta, dzql (with eta's modelling and rendering) and create-dzql as Bun workspaces under
 `packages/`. Each package has its own CLAUDE.md, read when working in it; it is the authority for
 that package's contracts, gate and docs (dzql's paths are written from this root). This file is
 only what is shared.
@@ -11,7 +11,7 @@ only what is shared.
 |---|---|---|
 | `packages/railroad` | nothing | `bun check && bun run check:consumer && bun test --coverage` |
 | `packages/delta` | railroad | `bun run ci` |
-| `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun check && bun test tests/delta tests/compile` (no Docker); `bun run test` with Docker |
+| `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun check && bun run test:eta && bun run stories:all && bun run costs --check` (no Docker); `bun run test` with Docker |
 
 - `bun install` runs at the root: one `bun.lock`, committed; CI installs with `--frozen-lockfile`.
   A sibling's version range resolves to its folder, so a change in railroad is what delta and dzql

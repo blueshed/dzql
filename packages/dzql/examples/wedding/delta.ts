@@ -1,8 +1,8 @@
 import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
-import { db } from "../../src/db";
-import type { Declared } from "../../src/derive";
+import { db } from "dzql/rendering/db";
+import type { Declared } from "dzql/rendering/derive";
 
 // The wedding's documents, in delta (`@blueshed/delta`). One set of tables, seen as
 // several documents, each cut for who reads it:

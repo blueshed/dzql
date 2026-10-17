@@ -1,11 +1,18 @@
 # DZQL
 
-**delta's compiled Postgres step.**
+**Stories to documents to pages, and delta's compiled Postgres step.**
+
+- **`dzql/modelling`**: the stories an app is for, each saying who does what and who then sees it,
+  told against the app by a harness, and by hand in a phone-sized browser.
+- **`dzql/rendering`**: pages the server draws as HTML from the documents they read, each sent only
+  the parts a write changed. An island (`dzql/rendering/island`) is a railroad component, the one
+  thing that needs the optional `@blueshed/railroad`. Six apps show it in [examples/](examples).
+- **`dzql/postgres`**, **`dzql/pglite`**: the compiled Postgres step, below.
 
 An app built on [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps its definitions
 (`defineSchema`, `defineDoc`), its client and its wire. On Postgres, dzql keeps its documents and
 compiles those definitions to SQL, each piece held equal to delta's own cases. Why, and where it
-is going: [philo.md](https://github.com/blueshed/dzql/blob/main/philo.md).
+is going: [philo.md](https://github.com/blueshed/dzql/blob/main/packages/dzql/philo.md).
 
 ## delta's Postgres step
 

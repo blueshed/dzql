@@ -1,8 +1,8 @@
-import { layers } from "../../src/bento";
-import { watch } from "../../src/documents";
-import { appletProps, esc, join, write } from "../../src/html";
-import { part } from "../../src/parts";
-import { toldAt, toldTo } from "../../src/refusal";
+import { layers } from "dzql/rendering/bento";
+import { watch } from "dzql/rendering/documents";
+import { appletProps, esc, join, write } from "dzql/rendering/html";
+import { part } from "dzql/rendering/parts";
+import { toldAt, toldTo } from "dzql/rendering/refusal";
 import { drawHeart, heartOf } from "./heart";
 import { MODEL, raw, session as sessionOf } from "./model";
 

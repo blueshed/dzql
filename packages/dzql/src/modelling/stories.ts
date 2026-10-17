@@ -1,4 +1,4 @@
-import type { PatchOp, Test } from "./json-patch";
+import type { PatchOp, Test } from "../rendering/json-patch";
 
 // A story is told in the wire's own words: a session, a `{doc, ops}` message, and who then sees
 // it, where. See docs/stories.md. `src/harness.ts` runs stories against a live example;

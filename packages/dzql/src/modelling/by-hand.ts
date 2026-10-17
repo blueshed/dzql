@@ -9,9 +9,9 @@
 // a browser sends; never a script's `element.click()`. The keyboard is not pressed: the WebView's
 // Enter is an editing command, not a key, so it presses no button.
 
-import { isTest } from "./json-patch";
+import { isTest } from "../rendering/json-patch";
 import type { Gesture, Post, Write } from "./stories";
-import { CENTRED, MOUSE, NAMED, urlFor, waitFor } from "./webview";
+import { CENTRED, MOUSE, NAMED, urlFor, waitFor } from "../rendering/webview";
 
 /** A phone, held upright: the stories are pressed at the size most people hold them. */
 const PHONE = { width: 390, height: 844 };

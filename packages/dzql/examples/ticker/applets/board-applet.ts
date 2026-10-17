@@ -4,8 +4,8 @@
 // measured from the pages that run it (src/client-coverage.ts); the drawing and patch logic are
 // board.ts.
 
-import { registerApplet } from "../../../src/applets";
-import type { Applet } from "../../../src/applets";
+import { registerApplet } from "dzql/rendering/applets";
+import type { Applet } from "dzql/rendering/applets";
 import { applyOps, drawRow, drawSpark, type RowProps, type RowState } from "./board";
 
 const state = new WeakMap<HTMLElement, RowState>();

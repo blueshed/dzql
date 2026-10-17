@@ -1,6 +1,6 @@
 import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
-import { db } from "../../src/db";
+import { db } from "dzql/rendering/db";
 
 // leave's documents, in delta (`@blueshed/delta`). A team -- its people and their requests for days
 // off -- is one document, written by people and on the ledger. A session is who you are, where you

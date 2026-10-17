@@ -2,7 +2,7 @@
 // person's colour, and the calendar and the list as HTML. No server and no DOM, so the page (the
 // server) and the applets (the browser) draw from the same code, and it is tested on its own.
 
-import { esc, write } from "../../src/html";
+import { esc, write } from "dzql/rendering/html";
 
 export type Role = "member" | "manager";
 export type Person = { id: string; name: string; role: Role };

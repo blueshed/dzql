@@ -1,7 +1,7 @@
 import * as boardDoc from "../documents/board";
 import * as sessionDoc from "../documents/session";
-import type { PatchOp } from "../../../src/json-patch";
-import type { Compartment } from "../../../src/compartments/compartment";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
 import { putAway } from "./session";
 import { boardPage } from "../views/board";
 import { keepEveryone } from "../everyone";

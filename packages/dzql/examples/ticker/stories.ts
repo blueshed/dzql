@@ -6,7 +6,7 @@
 // after every `does` must find the ledger says so and leave the price where it is. Whoever a story
 // does not say sees it must not: Bo, on his board, watches only Bravo, and his board is told only
 // the quotes it shows (a row per symbol, each on `quote:<SYMBOL>`).
-import { goTo as goToOn, story, type Stories, type Write } from "../../src/stories";
+import { goTo as goToOn, story, type Stories, type Write } from "dzql/modelling/stories";
 
 const watch = (symbol: string): Write => ({ doc: "watchlist", ops: [{ op: "add", path: "/symbols/-", value: symbol }] });
 const drop = (index: number): Write => ({ doc: "watchlist", ops: [{ op: "remove", path: `/symbols/${index}` }] });

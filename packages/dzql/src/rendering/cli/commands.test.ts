@@ -255,8 +255,8 @@ describe("cli against a real server", () => {
   });
 
   test("an app is found by its name among eta's examples, or by its own folder", () => {
-    expect(appDir()).toEndWith("/src/../examples/chat");
-    expect(appDir("leave")).toEndWith("/src/../examples/leave");
+    expect(appDir()).toEndWith("/src/rendering/../../examples/chat");
+    expect(appDir("leave")).toEndWith("/src/rendering/../../examples/leave");
     expect(appDir("./app")).toBe(`${process.cwd()}/app`);
     expect(appDir("model/")).toBe(`${process.cwd()}/model`);
   });

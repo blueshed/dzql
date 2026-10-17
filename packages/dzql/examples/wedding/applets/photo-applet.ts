@@ -4,7 +4,7 @@
 // takes over. Imported only by client/main.ts, and measured from the pages that run it
 // (src/client-coverage.ts); the drawing is photo.ts (change-request.md item 4).
 
-import { registerApplet, type Applet } from "../../../src/applets";
+import { registerApplet, type Applet } from "dzql/rendering/applets";
 import { crowd, onlyFadeChanged, photoSvg, type CrowdProps, type PhotoProps } from "./photo";
 
 const state = new WeakMap<HTMLElement, { props: PhotoProps; revealed: boolean }>();

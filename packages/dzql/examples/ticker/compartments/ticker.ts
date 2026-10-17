@@ -1,11 +1,11 @@
 import * as clockDoc from "../documents/clock";
 import * as market from "../documents/market";
 import * as watchlistDoc from "../documents/watchlist";
-import type { PatchOp } from "../../../src/json-patch";
-import type { Compartment } from "../../../src/compartments/compartment";
-import { audienceFor } from "../../../src/compartments/audience";
-import { activeDocuments, serverWrite, settled } from "../../../src/documents";
-import { toldAt } from "../../../src/refusal";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
+import { audienceFor } from "dzql/rendering/compartments/audience";
+import { activeDocuments, serverWrite, settled } from "dzql/rendering/documents";
+import { toldAt } from "dzql/rendering/refusal";
 import * as deskDoc from "../documents/desk";
 import { page } from "../views/page";
 

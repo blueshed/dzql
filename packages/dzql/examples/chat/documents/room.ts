@@ -1,4 +1,4 @@
-import { read as readDoc } from "../../../src/documents";
+import { read as readDoc } from "dzql/rendering/documents";
 
 // A room's conversation, the people in it, and the list of rooms -- as a page reads them, from
 // delta (../delta.ts).

@@ -82,7 +82,7 @@ Load the **eta-app** skill; the model says what to build, story by story:
 
 | In the model | In the app |
 |---|---|
-| A story | A story in `src/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into, `model` the model story's number |
+| A story | A story in `src/modelling/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into, `model` the model story's number |
 | A document | A `defineDoc` in `src/delta.ts`: its root, and what it holds as its includes |
 | An entity, its fields, its parent | A table in `defineSchema`, its columns, its `parent` |
 | `own` | A `perSession` compartment |

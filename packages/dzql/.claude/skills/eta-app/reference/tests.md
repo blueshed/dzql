@@ -19,17 +19,17 @@ test("a drag across days is a draft, its drawer saying what it would mean; asked
 });
 ```
 
-`webview`, `urlFor`, `waitFor` and `press` are `src/webview.ts`.
+`webview`, `urlFor`, `waitFor` and `press` are `src/rendering/webview.ts`.
 
 - The fast loop: `ETA_EXAMPLE=<name> bun run stories` and the app's own test files
   (`bun test examples/<name>`); the full gate before a commit.
 - A test for each document's rules and shapes, called directly, without a server.
 - A `server.test.ts` that drives writes and undo over a real websocket (two writes racing), and checks
-  that a value is drawn, which no story's `seen` does. `write(ws, doc, ops)` (`src/test-socket.ts`)
+  that a value is drawn, which no story's `seen` does. `write(ws, doc, ops)` (`src/rendering/test-socket.ts`)
   gives each write an id and returns it, so a refused one is answered: `expectMessage(ws, "refused")`.
 - A `client/app.test.ts` for what only a browser can show (`Bun.WebView`, on Chrome).
 - Open a view with `webview()`, never `new Bun.WebView()`: only `webview()` is measured for the
-  client's coverage (`src/client-coverage.ts`).
+  client's coverage (`src/rendering/client-coverage.ts`).
 - Press as a mouse does, with `press(view, selector)`, never `element.click()`: that sends no pointer
   events and reaches a control whatever covers it, so a tap that goes nowhere passes. `press` throws
   for a control that is disabled or covered, naming what covers it.

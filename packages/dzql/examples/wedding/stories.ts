@@ -18,7 +18,7 @@
 // venues they are choosing between are a page of their own, drawn from the venues' shape with no
 // view written for it (src/derive.ts): "venues", a venue's drawer (`venues?row=1`), and the modals
 // that add one (`venues?new`) and cross one off (`venues?confirm=1`).
-import { goTo as goToOn, story, type Stories, type Write } from "../../src/stories";
+import { goTo as goToOn, story, type Stories, type Write } from "dzql/modelling/stories";
 
 const session = (path: string, value?: unknown): Write => ({
   doc: "session",

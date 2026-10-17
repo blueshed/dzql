@@ -1,7 +1,7 @@
-import { read as readDoc } from "../../src/documents";
-import type { PatchOp } from "../../src/json-patch";
+import { read as readDoc } from "dzql/rendering/documents";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
-import { refuse } from "../../src/refusal";
+import { refuse } from "dzql/rendering/refusal";
 import type { Field, Held, Raw } from "./heart";
 
 // modeling's documents as its page reads them, and the rules a write to the model follows. The

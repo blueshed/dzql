@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { extractSessionFile, type Aliases } from "../../src/cli/commands";
-import type { PatchOp } from "../../src/json-patch";
+import { extractSessionFile, type Aliases } from "dzql/rendering/cli/commands";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { plain } from "./heart";
 
 // modeling's own short verbs, loaded by src/cli.ts (ETA_EXAMPLE=modeling) after the kernel's own

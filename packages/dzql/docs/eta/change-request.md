@@ -18,7 +18,7 @@ scale is what showed these.
 *Done, 0.29.0.* Landed almost exactly as specified: `Compartment.sees?(ws, docId)`, defaulting to
 `resolveDoc(ws) === docId` (a compartment only needs to implement it when someone else sees the
 document without writing it -- only the wedding's `household` does, for the couple), and
-`src/compartments/audience.ts`'s kernel-kept open-socket registry (`audienceFor`/`notify`). Chat's
+`src/rendering/compartments/audience.ts`'s kernel-kept open-socket registry (`audienceFor`/`notify`). Chat's
 `roomSocketSets` and the wedding's whole `concepts/presence.ts` are gone. One thing the "How"
 didn't anticipate: the wedding's *render* audience for a household/board write stayed "everyone"
 on purpose, not "everyone" as a workaround -- an aggregate view (the couple's totals, the
@@ -52,7 +52,7 @@ the server knows from the session.
 ## 2. Forms that edit
 
 *Done, 0.30.0.* Landed as specified: `data-write-on="blur"|"change"` on a `<form>`, `data-write`
-on its fields. `src/client/app.ts` listens for `focusout` (which bubbles; `blur` doesn't) and
+on its fields. `src/rendering/client/app.ts` listens for `focusout` (which bubbles; `blur` doesn't) and
 `change` at the document level, walks every `[data-write]` field in the triggering form, and
 compares each one's live `.value` against what the last render put there -- an input's `value`
 attribute, or (since a `<textarea>` has no such attribute) its `defaultValue`, which mirrors the
@@ -90,10 +90,10 @@ attribute, which the last render wrote.
 ## 3. Where a tab is
 
 *Done, 0.32.0.* Landed as the smallest version described below, plus one thing it didn't quite
-spell out: a reopened link needs the *server* to answer with the page at all, so `src/server.ts`
+spell out: a reopened link needs the *server* to answer with the page at all, so `src/rendering/server.ts`
 gained a `"/*": example.index` fallback alongside its exact routes -- the server still resolves
 nothing about the path (it hands back the identical shell for any path, same as `"/"`), only the
-client reads it. `src/client/app.ts`'s `syncPage()` reads `[data-page]`/`data-page-write` from
+client reads it. `src/rendering/client/app.ts`'s `syncPage()` reads `[data-page]`/`data-page-write` from
 anywhere in `#app` after every full render (not strictly the first child, for robustness) and
 mirrors it into `history.pushState`/`popstate` exactly as specified, with one refinement the "How"
 didn't need to spell out: on the very first render after a fresh connect, the URL might already
@@ -258,7 +258,7 @@ the applet, keeps its own name, so the line stays sharp: a compartment is where 
 shown; an applet is behaviour inside one.
 
 **How.** A rename, and two things that follow from taking the name seriously. `Concept` becomes
-`Compartment` (`src/concepts/` becomes `src/compartments/`, `concepts: [...]` on `Example`
+`Compartment` (`src/concepts/` becomes `src/rendering/compartments/`, `concepts: [...]` on `Example`
 becomes `compartments`); the skill and CLAUDE.md follow. Then: a compartment renders into a keyed
 element, so a write to its document re-renders that element by default -- which is most of item 1
 falling out of a name, and the natural unit for item 7's fragments. And the odd ones out become
@@ -293,7 +293,7 @@ nothing; the box does the composing and the render does the filling.
 
 *Done, 0.28.0.* Every document's `patch()` (chat's room and session; the ticker's clock, market
 and watchlist; the wedding's household, board and session) is now `db.transaction(function
-patch(...) {...})`, signature and every call site unchanged. `src/db.ts` sets `PRAGMA
+patch(...) {...})`, signature and every call site unchanged. `src/rendering/db.ts` sets `PRAGMA
 journal_mode = WAL` once, before migrations. The proof: `examples/chat/documents/room.test.ts`
 mocks `record()` to throw once (`bun:test`'s `mock.module`, careful to snapshot the real exports
 *before* mocking -- the module's own binding is live, so restoring from it after the mock is
@@ -334,7 +334,7 @@ unchanged and the version where it was; revert the wrapper and it must fail. CLA
 is the only write path" gains "and one transaction"; the skill's reference says the same under
 the `patch()` pattern.
 
-And `PRAGMA journal_mode = WAL` in `src/db.ts`, once, after the database opens: a transaction then
+And `PRAGMA journal_mode = WAL` in `src/rendering/db.ts`, once, after the database opens: a transaction then
 appends to the log and syncs once on commit instead of rewriting pages through a rollback journal,
 and readers never wait on a writer. Two files appear beside `db.sqlite`, already in `.gitignore`;
 an in-memory database answers the pragma with `memory` and is unchanged, so the test suite sees

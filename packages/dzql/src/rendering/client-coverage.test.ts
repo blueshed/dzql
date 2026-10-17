@@ -8,7 +8,7 @@ import { waitFor, webview } from "./webview";
 
 // The client in bun test's coverage gate: what a page ran, read from Chrome, by file and line.
 
-const root = Bun.pathToFileURL(dirname(import.meta.dir)).href;
+const root = Bun.pathToFileURL(dirname(dirname(import.meta.dir))).href;
 
 describe("the client's coverage", () => {
   test("a builder breaks the client's morph -- a line of it no page runs -- and bun test's gate names it, by file and line", async () => {
@@ -20,11 +20,11 @@ describe("the client's coverage", () => {
       const at = (await Bun.file(`${import.meta.dir}/client/morph.ts`).text()).split("\n").findIndex((line) => line.startsWith("export function morph(")) + 1;
       const ran: Ran = new Map();
       await read(view, ran); // morph.ts loaded, and morph never called
-      expect(ran.get(`${root}/src/client/morph.ts`)?.get(at)).toBe(false);
-      expect(gaps(ran).find((gap) => gap.startsWith("src/client/morph.ts: "))).toContain(`${at}`);
+      expect(ran.get(`${root}/src/rendering/client/morph.ts`)?.get(at)).toBe(false);
+      expect(gaps(ran).find((gap) => gap.startsWith("src/rendering/client/morph.ts: "))).toContain(`${at}`);
       await view.evaluate(`(window.morph(document.querySelector('#root'), '<p>called</p>'), 1)`);
       await read(view, ran);
-      expect(ran.get(`${root}/src/client/morph.ts`)?.get(at)).toBe(true);
+      expect(ran.get(`${root}/src/rendering/client/morph.ts`)?.get(at)).toBe(true);
     } finally {
       server.stop(true);
     }
@@ -60,10 +60,10 @@ describe("the client's coverage", () => {
   });
 
   test("it holds the app's own code that bun's table does not: not a package's, a test's, a page's HTML, or a file a test loads", () => {
-    const own = `${root}/src/client/morph.ts`;
+    const own = `${root}/src/rendering/client/morph.ts`;
     expect(judged(own, [])).toBe(true);
     expect(judged(own, [Bun.fileURLToPath(own)])).toBe(false);
-    for (const file of [`${root}/node_modules/@blueshed/railroad/jsx.ts`, `${root}/src/client/app.test.entry.ts`, `${root}/src/client/app.test.html`, "bun://Bun/Bun HMR Runtime"]) expect(judged(file, [])).toBe(false);
+    for (const file of [`${root}/node_modules/@blueshed/railroad/jsx.ts`, `${root}/src/rendering/client/app.test.entry.ts`, `${root}/src/rendering/client/app.test.html`, "bun://Bun/Bun HMR Runtime"]) expect(judged(file, [])).toBe(false);
   });
 
   test("the lines no page ran are said as bun's table says them, a file a line", () => {
@@ -80,11 +80,11 @@ describe("the client's coverage", () => {
     const tests = testFiles();
     expect(tests).toContain(Bun.fileURLToPath(import.meta.url));
     expect(tests.some((f) => f.includes("/node_modules/") || f.endsWith(".test.entry.ts"))).toBe(false);
-    const [one, other] = [`${dirname(import.meta.dir)}/src/a.test.ts`, `${dirname(import.meta.dir)}/src/b.test.ts`];
-    const morph = `${root}/src/client/morph.ts`;
+    const [one, other] = [`${dirname(dirname(import.meta.dir))}/src/a.test.ts`, `${dirname(dirname(import.meta.dir))}/src/b.test.ts`];
+    const morph = `${root}/src/rendering/client/morph.ts`;
     const ran = (r: boolean): Ran => new Map([[morph, new Map([[1, true], [2, r]])]]);
     // a file of its own: some of the tests, not judged; what a package or another place loaded is not kept
-    const first = kept(ran(false), [one, "/elsewhere/x.ts", `${dirname(import.meta.dir)}/node_modules/y.ts`]);
+    const first = kept(ran(false), [one, "/elsewhere/x.ts", `${dirname(dirname(import.meta.dir))}/node_modules/y.ts`]);
     expect(first.loaded).toEqual([one]);
     expect(judge([first], [one, other])).toBeUndefined();
     // a parallel run's files, each left beside the others': the last finds them all, and a line any page ran, ran
@@ -93,7 +93,7 @@ describe("the client's coverage", () => {
       expect(shared(dir, "one", first)).toEqual([first]);
       const all = shared(dir, "other", kept(ran(true), [other]));
       expect(judge(all, [one, other])).toEqual({ held: 1, missed: [] });
-      expect(judge([first, kept(ran(false), [other])], [one, other])).toEqual({ held: 1, missed: ["src/client/morph.ts: 2"] });
+      expect(judge([first, kept(ran(false), [other])], [one, other])).toEqual({ held: 1, missed: ["src/rendering/client/morph.ts: 2"] });
       // a file a test loads is bun's to judge, whichever file loaded it
       expect(judge([first, kept(ran(false), [other, Bun.fileURLToPath(morph)])], [one, other])).toEqual({ held: 0, missed: [] });
     } finally {

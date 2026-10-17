@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import type { PatchOp } from "../../src/json-patch";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { db } from "./delta";
-import { createServer } from "../../src/server";
-import { connect as socketTo, open, expectMessage, expectQuiet, heard as heardBy, htmlOf, nextMessage, opened, pageOf, write, type WireMessage } from "../../src/test-socket";
-import { assemble } from "../../src/compartments";
+import { createServer } from "dzql/rendering/server";
+import { connect as socketTo, open, expectMessage, expectQuiet, heard as heardBy, htmlOf, nextMessage, opened, pageOf, write, type WireMessage } from "dzql/rendering/test-socket";
+import { assemble } from "dzql/rendering/compartments/index";
 import { example } from "./index";
 import { keepPresence } from "./presence";
-import { serverWrite } from "../../src/documents";
+import { serverWrite } from "dzql/rendering/documents";
 
 /** delta, as a reader of its own -- not eta's copy, whose subscriptions a test must not disturb. */
 const inDelta = example.delta!.as("test");

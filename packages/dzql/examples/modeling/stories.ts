@@ -1,4 +1,4 @@
-import { story, type Stories, type Write } from "../../src/stories";
+import { story, type Stories, type Write } from "dzql/modelling/stories";
 
 // Modeling is a description of an application that two people keep while they talk: Peter tells
 // the stories, and Claude writes them down -- who tells each, whether they do it or are refused,

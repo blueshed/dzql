@@ -13,7 +13,7 @@
 //   gaps        a story no document serves; a document that serves no story still told; an entity
 //               only such documents hold: needed by no story.
 
-import { esc } from "../../src/html";
+import { esc } from "dzql/rendering/html";
 
 export type Field = { name: string; type: string };
 export type Held = { parent: string | null; fields: Field[] };

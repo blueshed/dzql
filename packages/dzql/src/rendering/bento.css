@@ -5,7 +5,7 @@
    a panel at the right from 820px, a sheet from the foot below. One family of corners, one control
    height, every shadow toward the ink.
 
-   An example's own stylesheet imports this first (`@import "../../../src/bento.css";`), then says
+   An example's own stylesheet imports this first (`@import "../../../src/rendering/bento.css";`), then says
    its tokens on :root and whatever is its own, the page outside the frame (body, #app) among it.
    The tokens this reads:
      --paper --tray --card --card-hover --well --ink --muted --line --edge --ink-rgb

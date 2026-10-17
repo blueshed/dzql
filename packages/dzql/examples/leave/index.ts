@@ -1,4 +1,4 @@
-import type { Example } from "../../src/example";
+import type { Example } from "dzql/rendering/example";
 import { session, team } from "./compartments";
 import { session as sessionOf } from "./documents";
 import { render } from "./page";

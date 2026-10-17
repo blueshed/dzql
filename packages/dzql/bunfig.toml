@@ -1,10 +1,24 @@
+# eta's tests (bun run test:eta), its modelling, rendering and examples, each held to 100%: this is the
+# default, so a plain `bun test` and its parallel workers read it. dzql's own tests, which need
+# Postgres, run with tests/bunfig.toml (bun run test).
 [test]
-# Collect coverage on every `bun test` run.
+# coverage is always on, and 100% is a gate, not an aim: the run fails below it. The table holds
+# only what a test loads in its own process, so three kinds of file are outside it, by design.
+# A script that only runs as one: src/rendering/start.ts, src/rendering/cli.ts and src/modelling/stories-run.ts, thin over tested
+# code; each example's scripts/measure-render-cost.ts, which src/modelling/costs.ts runs whole, each in a
+# process of its own, whenever `bun test` checks the README; and the loader's commands, run by hand too (examples/modeling/loader/check.ts and
+# load.ts), whose logic is in the files their tests load.
+# Code that only runs in a browser: src/rendering/client/, src/rendering/applets.ts, src/rendering/island.ts, each example's
+# client/main.ts and its applets' mountings (`*-applet.ts*`, the wedding's picture-field.ts). The
+# preload holds it to the same bar: what the WebView tests' pages ran, read from Chrome
+# (src/rendering/client-coverage.ts), and the run fails at its end on a line no page ran. And a file of types alone (src/rendering/example.ts, src/rendering/connection.ts,
+# src/rendering/compartments/compartment.ts), with nothing to run. Anything else is loaded by a test: even
+# src/modelling/costs.ts, a script, is taken in hand by its own
 coverage = true
-# Report to the terminal and emit lcov for CI/editor tooling.
-coverageReporter = ["text", "lcov"]
-coverageDir = "coverage"
-# Don't count the test files themselves toward coverage.
-coverageSkipTestFiles = true
-# No hard threshold yet — measure first, then ratchet up in CI once a
-# realistic baseline is known (e.g. coverageThreshold = 0.8).
+preload = ["./src/rendering/client-coverage.ts"]
+coverageThreshold = 1.0
+# delta's source, in node_modules, is delta's to cover, not eta's. The loader's model/ is a copy of
+# hjeli's model and predicates (hjeli: the modeller before eta's), covered by its own tests (its README.md).
+# An example's stories.ts is a declaration `bun run stories:all` runs whole; a test that imports
+# one to run a story or two would otherwise count the rest as uncovered
+coveragePathIgnorePatterns = ["**/node_modules/**", "src/compile/**", "src/postgres/**", "src/cli/**", "tests/**", "../delta/**/*", "../railroad/**/*", "**/delta/src/**", "**/railroad/*.ts", "examples/modeling/loader/model/**", "examples/*/stories.ts", "examples/modeling/loader/londons/stories.ts"]

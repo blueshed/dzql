@@ -1,9 +1,9 @@
-import type { Example } from "../../src/example";
+import type { Example } from "dzql/rendering/example";
 import * as sessionDoc from "./documents/session";
 import * as weddingDoc from "./documents/wedding";
 import { delta } from "./delta";
 import { welcome } from "./views/welcome";
-import { toldAt } from "../../src/refusal";
+import { toldAt } from "dzql/rendering/refusal";
 import { board, everyone, renderBoard, wedding, welcome as welcomeDoc } from "./compartments/board";
 import { household, renderHousehold } from "./compartments/household";
 import { session } from "./compartments/session";

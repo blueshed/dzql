@@ -4,7 +4,7 @@
 // family). The drawing is a string, so it's tested here without a browser; the mounting that
 // touches the DOM is photo-applet.ts, imported only by client/main.ts (change-request.md item 4).
 
-import type { PatchOp } from "../../../src/json-patch";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import type { Figure } from "../documents/wedding";
 import { esc } from "../views/html";
 import { arrange, figure, print, specOf, type Spec } from "./figure";

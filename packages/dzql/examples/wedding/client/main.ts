@@ -6,4 +6,4 @@ import "../applets/photo-applet";
 import "../applets/dress-applet";
 import "../applets/menu-applet";
 import "../applets/picture-field";
-import "../../../src/client/app";
+import "dzql/rendering/client/app";

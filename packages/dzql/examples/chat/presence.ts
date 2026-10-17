@@ -1,6 +1,6 @@
-import { allOpenSockets } from "../../src/compartments/audience";
-import { activeDocuments, read, serverWrite, settled } from "../../src/documents";
-import type { PatchOp } from "../../src/json-patch";
+import { allOpenSockets } from "dzql/rendering/compartments/audience";
+import { activeDocuments, read, serverWrite, settled } from "dzql/rendering/documents";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { db } from "./delta";
 import * as sessionDoc from "./documents/session";
 

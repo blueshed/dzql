@@ -7,8 +7,8 @@
 // ./writes.ts's; what the app is, ./extract.ts's reading of its code and a run of its stories.
 // ETA_URL is the model's server (ws://localhost:3005 in eta).
 
-import { extractSessionFile } from "../../../src/cli/commands";
-import { connect, opened } from "../../../src/test-socket";
+import { extractSessionFile } from "dzql/rendering/cli/commands";
+import { connect, opened } from "dzql/rendering/test-socket";
 import { extract } from "./extract";
 import { send, writesOf } from "./writes";
 

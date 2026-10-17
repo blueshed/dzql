@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
-import type { PatchOp } from "../../src/json-patch";
-import { createServer } from "../../src/server";
-import { run } from "../../src/harness";
-import { Refusal } from "../../src/refusal";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import { createServer } from "dzql/rendering/server";
+import { run } from "dzql/modelling/harness";
+import { Refusal } from "dzql/rendering/refusal";
 import { BOX, boxHeight, drawHeart, heartOf, layout, picked, plain, reason, related, shape as shapeOf, singular, type Raw, type Ui } from "./heart";
 import { may, model, shape, type Model } from "./model";
 import { aliases, show, stdin } from "./cli";
@@ -375,7 +375,7 @@ describe("modeling, served", () => {
     }
 
     // and as the CLI runs it: the kernel's, loading modeling's verbs
-    const cli = Bun.spawn(["bun", `${import.meta.dir}/../../src/cli.ts`, "show", "--session", file], { env: { ...process.env, ETA_EXAMPLE: "modeling", ETA_URL: ws }, stdout: "pipe" });
+    const cli = Bun.spawn(["bun", `${import.meta.dir}/../../src/rendering/cli.ts`, "show", "--session", file], { env: { ...process.env, ETA_EXAMPLE: "modeling", ETA_URL: ws }, stdout: "pipe" });
     expect(await new Response(cli.stdout).text()).toBe(`${page}\n`);
     expect(await cli.exited).toBe(0);
     await Bun.file(file).delete();

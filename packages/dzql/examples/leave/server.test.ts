@@ -1,13 +1,13 @@
 import { afterAll, afterEach, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
-import type { PatchOp } from "../../src/json-patch";
-import { createServer } from "../../src/server";
-import { hear, type Heard } from "../../src/harness";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import { createServer } from "dzql/rendering/server";
+import { hear, type Heard } from "dzql/modelling/harness";
 import { may, placed, shape, shapeSession, type Person, type Team } from "./documents";
 import { alsoOff, calendarHtml, clashes, colourOf, days, daysOf, isWorkingDay, listRows, mondayOf, nextDay, nextMonth, offOn, prevMonth, rowHtml, workingDaysOf, type CalendarProps } from "./calendar";
 import { example } from "./index";
 import { session } from "./compartments";
 import { db } from "./delta";
-import { connectCli, runCommand } from "../../src/cli/commands";
+import { connectCli, runCommand } from "dzql/rendering/cli/commands";
 
 let server: ReturnType<typeof createServer>;
 

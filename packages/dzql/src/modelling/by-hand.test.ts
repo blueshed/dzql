@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { example as chat } from "../examples/chat";
-import { stories as chatStories } from "../examples/chat/stories";
-import type { Example } from "./example";
+import { example as chat } from "../../examples/chat";
+import { stories as chatStories } from "../../examples/chat/stories";
+import type { Example } from "../rendering/example";
 import { sameWrite } from "./by-hand";
 import { run, stillOpen } from "./harness";
-import { createServer } from "./server";
-import { write } from "./html";
+import { createServer } from "../rendering/server";
+import { write } from "../rendering/html";
 import type { Stories, Story } from "./stories";
 import wrongPage from "./by-hand.test.html";
 
@@ -15,8 +15,8 @@ import wrongPage from "./by-hand.test.html";
 
 /** An example and its stories, by its folder under examples/. */
 async function load(name: string): Promise<{ example: Example; stories: Stories }> {
-  const { example } = await import(`../examples/${name}/index`);
-  const { stories } = await import(`../examples/${name}/stories`);
+  const { example } = await import(`../../examples/${name}/index`);
+  const { stories } = await import(`../../examples/${name}/stories`);
   return { example, stories };
 }
 /** The stories called `names`, whole names, so a story added that starts alike is never picked up; a name not there throws, naming it. */

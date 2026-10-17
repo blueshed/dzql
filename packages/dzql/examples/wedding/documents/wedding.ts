@@ -1,5 +1,5 @@
 import { db } from "../delta";
-import { read as readDoc } from "../../../src/documents";
+import { read as readDoc } from "dzql/rendering/documents";
 import type { Look } from "../looks";
 
 // The wedding itself and the lists that stand on it, as a household reads them (`wedding:<id>`,

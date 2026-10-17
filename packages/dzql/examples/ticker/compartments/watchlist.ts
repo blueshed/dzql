@@ -1,10 +1,10 @@
 import * as market from "../documents/market";
 import * as watchlistDoc from "../documents/watchlist";
 import * as deskDoc from "../documents/desk";
-import type { Compartment } from "../../../src/compartments/compartment";
-import { parseAddress } from "../../../src/bento";
-import { activeDocuments, serverWrite, settled } from "../../../src/documents";
-import type { PatchOp } from "../../../src/json-patch";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
+import { parseAddress } from "dzql/rendering/bento";
+import { activeDocuments, serverWrite, settled } from "dzql/rendering/documents";
+import type { PatchOp } from "dzql/rendering/json-patch";
 
 // A session's watchlist: its own to write, seen by nobody else. A change is answered with what
 // changed on the page: the count, the summary, the board's mount with its new props (the applet keeps

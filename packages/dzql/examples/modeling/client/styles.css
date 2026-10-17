@@ -2,7 +2,7 @@
    with what in green, what no story needs in red -- and the kernel's surfaces (src/bento.css) for
    the door and a refusal's line. */
 
-@import "../../../src/bento.css";
+@import "../../../src/rendering/bento.css";
 
 :root {
   --paper: #FBFBF9; --card: #FFFFFF; --ink: #1C1F23; --muted: #5C6166; --faint: #8A8F94; --fainter: #B4B2A9;

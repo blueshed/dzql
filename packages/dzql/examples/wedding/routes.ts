@@ -1,7 +1,7 @@
-import type { Example } from "../../src/example";
+import type { Example } from "dzql/rendering/example";
 import * as sessionDoc from "./documents/session";
 import { picture, putPicture } from "./documents/wedding";
-import { activeDocuments, settled } from "../../src/documents";
+import { activeDocuments, settled } from "dzql/rendering/documents";
 
 // The two plain HTTP routes the site needs beside the kernel's: a picture by its key, and the
 // couple putting one in. Neither is a document write: the key that lands on a row is written by

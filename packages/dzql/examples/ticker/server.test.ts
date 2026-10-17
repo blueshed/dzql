@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import type { PatchOp } from "../../src/json-patch";
-import { createServer } from "../../src/server";
-import { connect as socketTo, forget, expectMessage, expectQuiet, heard, nextMessage, open as openAs, opened, pageOf, write } from "../../src/test-socket";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import { createServer } from "dzql/rendering/server";
+import { connect as socketTo, forget, expectMessage, expectQuiet, heard, nextMessage, open as openAs, opened, pageOf, write } from "dzql/rendering/test-socket";
 import { randomTick, startFeed, stopFeed } from "./compartments/ticker";
 import type { MarketDocument } from "./documents/market";
 import { example } from "./index";

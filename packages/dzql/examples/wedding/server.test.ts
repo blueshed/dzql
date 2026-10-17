@@ -1,15 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import type { PatchOp } from "../../src/json-patch";
-import { createServer } from "../../src/server";
-import { connect as socketTo, heard as heardBy, nextMessage, opened, pageOf, type WireMessage } from "../../src/test-socket";
-import { decoded } from "../../src/parts";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import { createServer } from "dzql/rendering/server";
+import { connect as socketTo, heard as heardBy, nextMessage, opened, pageOf, type WireMessage } from "dzql/rendering/test-socket";
+import { decoded } from "dzql/rendering/parts";
 import { crowd } from "./applets/photo";
 import { asCouple, asHousehold, board, household } from "./setup";
 import { example } from "./index";
-import type { Compartment } from "../../src/compartments/compartment";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
 import { keepEveryone } from "./everyone";
-import { serverWrite } from "../../src/documents";
-import { esc } from "../../src/html";
+import { serverWrite } from "dzql/rendering/documents";
+import { esc } from "dzql/rendering/html";
 
 let server: ReturnType<typeof createServer>;
 /** A household of this file's own, so nothing here disturbs the seed another file reads. */

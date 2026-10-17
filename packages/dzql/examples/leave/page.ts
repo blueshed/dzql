@@ -1,7 +1,7 @@
-import { address, bento, choice, layers, parseAddress, prop } from "../../src/bento";
-import { esc, join, write, appletWrites } from "../../src/html";
-import { part } from "../../src/parts";
-import { toldAt } from "../../src/refusal";
+import { address, bento, choice, layers, parseAddress, prop } from "dzql/rendering/bento";
+import { esc, join, write, appletWrites } from "dzql/rendering/html";
+import { part } from "dzql/rendering/parts";
+import { toldAt } from "dzql/rendering/refusal";
 import { alsoOff, calendarHtml, clashes, days, listRows, nextMonth, offOn, prevMonth, rowHtml, stillMine, worked, workingDaysOf, WORD, type CalendarProps, type ListProps } from "./calendar";
 import { session as sessionOf, team as teamOf, type Person, type Request, type Span, type Team } from "./documents";
 import { icon } from "./icons";

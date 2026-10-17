@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseCommand } from "../../src/cli/commands";
+import { parseCommand } from "dzql/rendering/cli/commands";
 import { aliases } from "./cli";
 
 describe("ticker's cli aliases", () => {

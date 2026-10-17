@@ -26,7 +26,7 @@ type Bundle = { text: string; points: [offset: number, file: string, line: numbe
 /** Of each file a page ran: each line a bundle maps to it, and whether it ran. */
 export type Ran = Map<string, Map<number, boolean>>;
 
-const root = dirname(import.meta.dir);
+const root = dirname(dirname(import.meta.dir));
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /** A source map's points, in the order of the bundle: [generated line, generated column, source, source line], each from 0. */
@@ -110,7 +110,7 @@ export function gaps(ran: Ran, judge: (file: string) => boolean = judged): strin
 export type Kept = { loaded: string[]; ran: [file: string, lines: [number, boolean][]][] };
 
 /** The project's test files, as bun test finds them: a whole run loads each one. */
-export const testFiles = (): string[] => [...new Bun.Glob("**/*.{test,spec}.{ts,tsx,js,jsx}").scanSync({ cwd: root, absolute: true })].filter((f) => !f.includes("/node_modules/"));
+export const testFiles = (): string[] => [...new Bun.Glob("**/*.{test,spec}.{ts,tsx,js,jsx}").scanSync({ cwd: root, absolute: true })].filter((f) => !f.includes("/node_modules/") && !f.startsWith(`${root}/tests/`) && !f.startsWith(`${root}/examples/delta/`));
 
 /** What `ran` and the project's files `loaded` leave to be judged. */
 export const kept = (ran: Ran, loaded: string[] = Object.keys(require.cache)): Kept => ({ loaded: loaded.filter((f) => f.startsWith(`${root}/`) && !f.includes("/node_modules/")), ran: [...ran].map(([file, lines]) => [file, [...lines]]) });
@@ -206,8 +206,8 @@ afterAll(async () => {
   const worker = process.env.BUN_TEST_WORKER_ID !== undefined; // a parallel run's, whose coordinator is its parent
   const dir = join(tmpdir(), `eta-client-coverage-${process.ppid}`);
   const verdict = judge(worker ? shared(dir, me, kept(ran)) : [kept(ran)], testFiles());
-  if (verdict === undefined) return void (worker || console.log("src/client-coverage.ts: a run of some test files, so the client's coverage is not judged: a whole run judges it"));
+  if (verdict === undefined) return void (worker || console.log("src/rendering/client-coverage.ts: a run of some test files, so the client's coverage is not judged: a whole run judges it"));
   if (worker) rmSync(dir, { recursive: true, force: true });
-  console.log(`src/client-coverage.ts: ${verdict.held} files a page ran, beside bun's table, held to it`);
-  expect(verdict.missed, "a line of the client no page ran (src/client-coverage.ts)").toEqual([]);
+  console.log(`src/rendering/client-coverage.ts: ${verdict.held} files a page ran, beside bun's table, held to it`);
+  expect(verdict.missed, "a line of the client no page ran (src/rendering/client-coverage.ts)").toEqual([]);
 });

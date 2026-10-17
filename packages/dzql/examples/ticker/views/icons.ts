@@ -1,7 +1,7 @@
 // The marks beside words: our names for them, and lucide's outlines behind each; the kernel's
 // `svg` (src/icons.ts) does the drawing.
 import { Activity, ChevronRight, Clock, Eye, EyeOff, List, Pencil, Plus, Redo2, Search, Trash2, TrendingUp, Undo2, X } from "lucide";
-import { svg, type IconNode } from "../../../src/icons";
+import { svg, type IconNode } from "dzql/rendering/icons";
 
 const ICONS = {
   "chevron-right": ChevronRight,

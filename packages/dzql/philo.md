@@ -3,8 +3,16 @@
 ## The Problem: The "Boilerplate Trap"
 Building real-time apps at scale using just CRUD and subscriptions allows for too much variance. Manually writing event handlers for every interaction leads to unmaintainable N² complexity. Asking AI to generate this code results in subtle bugs and non-repeatable outcomes because the abstraction level is too low (it's "assembly language").
 
-## Where dzql Stands: delta's Compiled Step
-The design path is **stories → documents → entities**. A story is something a person wants to do; a document is what they need in front of them to do it; the tables follow from the documents. [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents and their storage grows along one path: a JSON file, SQLite, Postgres in the process, a Postgres server. **dzql is the last step: compiled Postgres.**
+## Where dzql Stands: Stories, Pages, and the Compiled Step
+The design path is **stories → documents → entities**. A story is something a person wants to do; a document is what they need in front of them to do it; the tables follow from the documents. [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents and their storage grows along one path: a JSON file, SQLite, Postgres in the process, a Postgres server. dzql carries an app along the whole path, in three parts, each its own entry:
+
+- **Modelling** (`dzql/modelling`). The stories are the specification, and they run: each says who does what and who then sees it, and the harness tells it against the app, by hand in a phone-sized browser too. The model's page (`examples/modeling`) is where the stories are told and the documents they need are found, before an app exists.
+- **Rendering** (`dzql/rendering`). The server draws each page as HTML from the documents it reads, and sends each page only the parts a write changed; the browser morphs, and holds no state of its own. Where a render would destroy what the browser holds (a drag, a calendar), the piece is an island: a railroad component, the one thing that needs `@blueshed/railroad`.
+- **The compiled step** (`dzql/postgres`). The last storage step: compiled Postgres.
+
+The Postgres step and the pages know nothing of each other: an app draws its pages from SQLite in one process, and moves to Postgres by changing where its documents live.
+
+The rest of this file is about the compiled step.
 
 - **The input is the app's own definitions.** dzql reads delta's `defineSchema` and `defineDoc`, the same ones the app had on SQLite, so moving to dzql changes where the truth lives, never the app.
 - **The wire is delta's.** A client talks to a dzql server exactly as to a SQLite one, so dzql may be as large and as opinionated as it likes behind it.

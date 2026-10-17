@@ -4,8 +4,8 @@
 // Both are pure functions over a RowState, tested here without a browser; the mounting that owns
 // that state per element is board-applet.ts, imported only by client/main.ts.
 
-import { esc } from "../../../src/html";
-import type { PatchOp } from "../../../src/json-patch";
+import { esc } from "dzql/rendering/html";
+import type { PatchOp } from "dzql/rendering/json-patch";
 
 export type Quote = { name: string; price: number; prev: number };
 

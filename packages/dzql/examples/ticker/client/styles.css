@@ -2,7 +2,7 @@
    monospace, amber for the one accent, the numbers doing the talking -- then what is the desk's
    own: the board, the clock, the city picker. */
 
-@import "../../../src/bento.css";
+@import "../../../src/rendering/bento.css";
 
 /* ── tokens ── */
 :root {

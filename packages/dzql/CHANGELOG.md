@@ -23,6 +23,22 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **eta comes in: `dzql/modelling` and `dzql/rendering`**, with eta's history. Modelling is the
+  stories, the harness that tells them against an app, by hand in a browser, and what a page costs
+  on the wire (`src/modelling/`); rendering is eta's kernel, pages the server draws and morphs into
+  the browser (`src/rendering/`). Each module is also its own entry (`dzql/rendering/server`,
+  `dzql/modelling/harness`). `@blueshed/railroad` is an optional peer: only an island
+  (`dzql/rendering/island`) needs it. eta's examples (chat, leave, modeling, starter, ticker,
+  wedding) are in `examples/` and import dzql as an app does; its skills (modelling, eta-app) in
+  `.claude/skills/`; its docs, changelog and ledger in `docs/eta/`. eta's own `bun create` and
+  `eta:update`, which copied the kernel into an app, retire: an app installs dzql.
+- Two test configurations: `bunfig.toml` is eta's (`bun run test:eta`, 100% coverage, the client's
+  read from Chrome), and dzql's Postgres tests run with `tests/bunfig.toml` (`bun run test`). CI's
+  `dzql.yml` has an eta job (the tests, `stories:all`, `costs --check`), which replaces railroad's
+  job that ran eta's island test against a checkout of eta.
+
 ### Changed
 
 - **The repository holds railroad and delta too** (`packages/railroad`, `packages/delta`, each

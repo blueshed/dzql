@@ -1,7 +1,7 @@
 /* Chat's look: the kernel's bento surfaces (src/bento.css) in green ink on paper, the monospace
    the room has always had, light and dark -- then the door, the rooms, and a room's faces and conversation. */
 
-@import "../../../src/bento.css";
+@import "../../../src/rendering/bento.css";
 
 /* ── tokens ── */
 :root {

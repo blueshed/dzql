@@ -1,8 +1,8 @@
-import { read as readDoc } from "../../src/documents";
-import { address, parseAddress } from "../../src/bento";
-import type { PatchOp } from "../../src/json-patch";
+import { read as readDoc } from "dzql/rendering/documents";
+import { address, parseAddress } from "dzql/rendering/bento";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
-import { refuse } from "../../src/refusal";
+import { refuse } from "dzql/rendering/refusal";
 import { stillMine, workingDaysOf, type Person, type Request, type Span, type Team } from "./calendar";
 
 export type { Person, Request, Role, Span, Status, Team } from "./calendar";

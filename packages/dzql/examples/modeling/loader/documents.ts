@@ -13,13 +13,13 @@
 // The checks are advice: they flag, they never fail a run.
 
 import { basename, resolve } from "node:path";
-import type { Example } from "../../../src/example";
-import type { Compartment } from "../../../src/compartments/compartment";
-import { writeOf, type Stories, type Story } from "../../../src/stories";
-import type { PatchOp } from "../../../src/json-patch";
-import { controlsOn, run, type Control, type Heard, type Trace } from "../../../src/harness";
-import { allOpenSockets } from "../../../src/compartments/audience";
-import { activeDocuments } from "../../../src/documents";
+import type { Example } from "dzql/rendering/example";
+import type { Compartment } from "dzql/rendering/compartments/compartment";
+import { writeOf, type Stories, type Story } from "dzql/modelling/stories";
+import type { PatchOp } from "dzql/rendering/json-patch";
+import { controlsOn, run, type Control, type Heard, type Trace } from "dzql/modelling/harness";
+import { allOpenSockets } from "dzql/rendering/compartments/audience";
+import { activeDocuments } from "dzql/rendering/documents";
 
 /** One actor's dealings with one document, counted in stories: held (in front of them), written, refused, told of a change. */
 export type Cell = { held: number; written: number; refused: number; told: number };

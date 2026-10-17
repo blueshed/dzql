@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { urlFor, waitFor, webview } from "../../../src/webview";
-import { createServer } from "../../../src/server";
+import { urlFor, waitFor, webview } from "dzql/rendering/webview";
+import { createServer } from "dzql/rendering/server";
 import { example } from "../index";
 
 // Chat with an assistant in the page: the tools the kernel registers from chat's own

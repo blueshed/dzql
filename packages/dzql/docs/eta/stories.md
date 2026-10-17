@@ -208,8 +208,8 @@ legible enough to read aloud. Neither the code nor a model is the product. The s
 
 ## The harness
 
-One kernel function, `run(example, stories)` in `src/harness.ts`, and one script, `bun run stories`
-(`src/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
+One kernel function, `run(example, stories)` in `src/modelling/harness.ts`, and one script, `bun run stories`
+(`src/modelling/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
 
 1. Connect the cast over real sockets to a real server, apply each member's setup writes, then
    the story's own `premise` (each write must change something), and render every member from
@@ -297,7 +297,7 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    purpose (the ticker lets anyone type a tick, a demo of the wire); the warning says so once a
    run, and the builder narrows it or leaves it. Undo and Redo are the kernel's, offered on every
    page, and not asked.
-7. By hand, in a browser the size of a phone (`Bun.WebView`, `src/by-hand.ts`), as its author, in
+7. By hand, in a browser the size of a phone (`Bun.WebView`, `src/modelling/by-hand.ts`), as its author, in
    a tab of their session: each story that says its `gesture`, and with `STORY_BY_HAND=1`
    (`run(example, stories, undefined, { byHand: true })`, which `bun run stories:all` sets) these:
    - a write from a page (`does`, not `offPage`): the controls on the way to where it is done are
@@ -369,7 +369,7 @@ checks:
 A page can be handed far more than its change -- 8 KB a vote, for a 146-byte patch -- with nothing
 to say so. So the harness keeps what each story's step -- the write, the refusal, the tab closing --
 handed each member's page: the bytes as the page takes them, as they crossed the wire
-(compressed: the cast's sockets go through the tap `bun run costs` uses, src/costs.ts), and the
+(compressed: the cast's sockets go through the tap `bun run costs` uses, src/modelling/costs.ts), and the
 biggest part, beside the write's own size; and the bytes a write's undo and redo handed each,
 since a person's undo is a write too. `STORY_WIRE=1 bun run stories` says it under each story.
 The wedding's:

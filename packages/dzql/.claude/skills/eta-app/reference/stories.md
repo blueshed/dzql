@@ -19,7 +19,7 @@ export const stories: Stories = {
 };
 ```
 
-The shape is `Story` and `Stories` in `src/stories.ts`; `docs/stories.md` says why.
+The shape is `Story` and `Stories` in `src/modelling/stories.ts`; `docs/stories.md` says why.
 
 - Build nothing no story needs, and never write a story to justify what is built. One that
   describes the session's state ("opens the drawer") cannot fail: tell what the person wants.

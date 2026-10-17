@@ -26,7 +26,7 @@ export const room: Compartment = {
 };
 ```
 
-The hooks, in the order they run: see `Compartment` in `src/compartments/compartment.ts`.
+The hooks, in the order they run: see `Compartment` in `src/rendering/compartments/compartment.ts`.
 
 ## Who sees what
 

@@ -4,10 +4,10 @@
 // `DB_PATH=:memory: TICK_MS=0 bun examples/ticker/scripts/measure-render-cost.ts`
 // (TICK_MS=0 keeps the feed quiet so only the measured tick is counted); with `--json`, what the
 // README says (src/costs.ts, `bun run costs`).
-import { tap, type Measured } from "../../../src/costs";
-import { createServer } from "../../../src/server";
+import { tap, type Measured } from "dzql/modelling/costs";
+import { createServer } from "dzql/rendering/server";
 import { example } from "../index";
-import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "../../../src/test-socket";
+import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "dzql/rendering/test-socket";
 
 const VIEWERS = 5;
 const server = createServer(example, 0);

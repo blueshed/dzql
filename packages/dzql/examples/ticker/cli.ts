@@ -1,4 +1,4 @@
-import type { Aliases } from "../../src/cli/commands";
+import type { Aliases } from "dzql/rendering/cli/commands";
 
 // This example's own short verbs, loaded by src/cli.ts (via ETA_EXAMPLE=ticker). No database
 // import here on purpose -- this file only builds wire ops.

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { press, urlFor, waitFor, webview } from "../../../src/webview";
-import { createServer } from "../../../src/server";
+import { press, urlFor, waitFor, webview } from "dzql/rendering/webview";
+import { createServer } from "dzql/rendering/server";
 import { asCouple, asHousehold, board, household } from "../setup";
 import { example } from "../index";
 import { crowd } from "../applets/photo";

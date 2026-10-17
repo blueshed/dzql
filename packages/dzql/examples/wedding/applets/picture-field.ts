@@ -3,7 +3,7 @@
 // this example's /api/picture route, which keeps them and answers with a key; the key is then a
 // plain write on the document (`replace /gifts/3/picture_key`), recorded and undoable like any other.
 
-import { registerApplet } from "../../../src/applets";
+import { registerApplet } from "dzql/rendering/applets";
 import { esc } from "../views/html";
 
 export interface PictureProps {

@@ -1,10 +1,10 @@
 import { db } from "../delta";
-import { read as readDoc } from "../../../src/documents";
-import { address, collectionsWrite, parseAddress, type Collections } from "../../../src/bento";
-import type { PatchOp } from "../../../src/json-patch";
+import { read as readDoc } from "dzql/rendering/documents";
+import { address, collectionsWrite, parseAddress, type Collections } from "dzql/rendering/bento";
+import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { integer } from "./values";
-import { refuse } from "../../../src/refusal";
+import { refuse } from "dzql/rendering/refusal";
 
 // A visit, kept in delta (`session:<id>`, ../delta.ts): what one session is doing on the site.
 // `code` is who they are; the page and how its collections are read is where they are; `note` is

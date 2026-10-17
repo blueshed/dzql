@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { story, type Stories } from "../../../src/stories";
+import { story, type Stories } from "dzql/modelling/stories";
 import { entityOf, fromStories, locate, noticing, pascal, readOp, singular } from "./from-stories";
 import { compare, format, judge } from "./report";
 import { extract, rulesIn } from "./extract";

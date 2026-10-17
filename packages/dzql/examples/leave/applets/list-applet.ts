@@ -3,7 +3,7 @@
 // draws first; a row is a button the kernel's client forwards, opening its drawer. Imported only
 // by client/main.ts.
 
-import { registerApplet } from "../../../src/applets";
+import { registerApplet } from "dzql/rendering/applets";
 import { listRows, rowHtml, type ListProps } from "../calendar";
 
 /** A row's height, in pixels: the list is as tall as its rows, drawn a window at a time. */

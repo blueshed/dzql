@@ -89,7 +89,7 @@
 // window 1 (14 March, area 1) with assignment 1 (Sam, assigned, deployment 2) and assignment 2
 // (done, deployment 3); trip 1; tasks 1 (todo), 2 (done) and 3 (skipped) on deployment 2; supply
 // line 1 (open, requirement 1) with offer 1 (Northgate Signs, offered) and supply line 2 (accepted).
-import { goTo as goToOn, story, type Stories, type Write } from "../../../../src/stories";
+import { goTo as goToOn, story, type Stories, type Write } from "dzql/modelling/stories";
 
 type Op = "add" | "replace" | "remove";
 const w = (doc: string, op: Op, path: string, value?: unknown): Write => ({ doc, ops: [op === "remove" ? { op, path } : { op, path, value }] });

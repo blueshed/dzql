@@ -1,4 +1,4 @@
-# Applets (`src/applets.ts`)
+# Applets (`src/rendering/applets.ts`)
 
 An applet is client code that draws inside one element, only for a piece of the page whose browser
 state a redraw would destroy: a drag halfway through, a scroll position, a chart's history.
@@ -23,10 +23,10 @@ import "../applets/calendar-applet";
 import "../../../src/client/app";
 ```
 
-The contract is `Applet` in `src/applets.ts`; `appletWrites` and `appletProps` are `src/html.ts`.
+The contract is `Applet` in `src/rendering/applets.ts`; `appletWrites` and `appletProps` are `src/rendering/html.ts`.
 
 - An applet is not "the view for X": plain `data-write` HTML is the default.
-- Register it in `client/main.ts` before importing `src/client/app`. `client/index.html` has an
+- Register it in `client/main.ts` before importing `src/rendering/client/app`. `client/index.html` has an
   element with `id="app"`.
 - Neither the morph nor a render in parts goes inside `[data-applet]`: the mount itself may be a
   part (its tag, its props), nothing inside it.
@@ -52,7 +52,7 @@ The stories cannot see controls drawn in the browser, so the mount says what the
 
 ## Islands
 
-An island is an applet written as a railroad component: `island(render, reduce?)` (`src/island.ts`).
+An island is an applet written as a railroad component: `island(render, reduce?)` (`src/rendering/island.ts`).
 
 ```tsx
 // examples/ticker/applets/city-picker-applet.tsx

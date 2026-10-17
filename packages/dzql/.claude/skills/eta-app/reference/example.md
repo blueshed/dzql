@@ -18,7 +18,7 @@ export const example: Example = {
 };
 ```
 
-The fields are `Example` in `src/example.ts`.
+The fields are `Example` in `src/rendering/example.ts`.
 
 - One compartment per document type, the session's first; the kernel adds its ledger.
 - `active` is there because only the app knows what "signed in" means (chat: "has a name"). A tab
@@ -26,7 +26,7 @@ The fields are `Example` in `src/example.ts`.
 - `who` is who a session is to delta (the ledger's who, row-level security); default the session.
 - `routes` are extra HTTP routes; a kernel route of the same path wins. `index` is served at `/` and
   at any path the kernel does not own.
-- `src/start.ts` runs the app `ETA_EXAMPLE` names (`./src`, or an example's name). One process
+- `src/rendering/start.ts` runs the app `ETA_EXAMPLE` names (`./src`, or an example's name). One process
   serves one app.
 
 ## CLI
@@ -41,7 +41,7 @@ export const aliases: Aliases = {
 };
 ```
 
-- `src/cli.ts` knows `login <email> <password>` (by the app's own `/login` form; the session kept in
+- `src/rendering/cli.ts` knows `login <email> <password>` (by the app's own `/login` form; the session kept in
   `.eta-session`, or `--session <file>`), `inspect`, `watch`, `undo`, `redo` and
   `write <doc> <op> <path> [value]`. A refused write prints `refused: <why>` and exits 1.
 - With `ETA_TOKEN` set it sends `Authorization: Bearer <token>`, and the app's `identify` says who it
