@@ -18,7 +18,7 @@ registerDocs(delta.server, db, schema, [
   defineDoc("session:", { root: "sessions", include: [], implied: true }),
   defineDoc("room:", { root: "rooms", include: ["messages"], implied: true }),
 ], [], { ledger: true });
-registerMemory(delta.server, { prefix: "here:", empty: () => ({ people: {} as Record<string, true> }) }); // live
+registerMemory(delta.server, { prefix: "here:", empty: () => ({ people: {} as Record<string, true> }) }); // a memory document
 
 // examples/chat/documents/session.ts
 export function read(id: string): SessionDocument {
@@ -46,7 +46,7 @@ again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server
   document's own, `under` not added (`/sessions/person_id`, not `/person_id`).
 - Tests and scripts write as a person would, through the same `shape`.
 - A page reads through `read()`. Go to the tables only for what no page reads as a document: what a
-  live document is computed from, a credential, a blob, a rule `shape` checks across rows.
+  memory document is computed from, a credential, a blob, a rule `shape` checks across rows.
 - A session that is not history goes in a registry without `{ ledger: true }`, and its resource
   says `ledger: false`, so one left off the ledger by mistake is caught (leave's).
 - Read a long document in windows by a keyset, never an offset (chat's `/before`); the page still

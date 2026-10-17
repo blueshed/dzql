@@ -2,12 +2,23 @@
 
 Test what a person sees and clicks: a change in one window reaching another, and a change the server refuses. The notes of [document.md](document.md), in a test file of their own, as `tests/message.test.ts` has the message's.
 
+The stories come first, in `stories.ts`; each test is named from the one it tells:
+
+```ts
+// stories.ts: after export const stories = {
+  // Notes
+  notesFollow: story("A note added in one window shows in every other, and so does its removal."),
+  notesKept: story("A note is still there after a reload."),
+  notesRefused: story("A note the server refuses says Not saved, and stays in the box."),
+```
+
 ```ts
 // tests/notes.test.ts
 import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
+import { stories } from "../stories";
 import { browser } from "./browser";
 
 setDefaultTimeout(30_000); // first browser start can be slow
@@ -25,7 +36,7 @@ afterAll(async () => {
 const shown = `[...document.querySelectorAll(".notes li")].map((li) => li.textContent).join(", ")`;
 const onNotes = `document.querySelector("h1")?.textContent === "Notes"`;
 
-test("a note added in one window shows in another, and so does its removal", async () => {
+test(`${stories.notesFollow.name} -- added in one window, removed in the other`, async () => {
   await open();
   await view.evaluate(`location.hash = "#/notes"`);
   await waitFor(onNotes);
@@ -44,7 +55,7 @@ test("a note added in one window shows in another, and so does its removal", asy
   });
 });
 
-test("a note is kept: it is there after a reload", async () => {
+test(`${stories.notesKept.name} -- added, then the page reloaded`, async () => {
   await open();
   await view.evaluate(`location.hash = "#/notes"`);
   await waitFor(onNotes);
@@ -58,7 +69,7 @@ test("a note is kept: it is there after a reload", async () => {
   await waitFor(`${shown} === "kept"`);
 });
 
-test("a note the server refuses says Not saved, and stays in the box", async () => {
+test(`${stories.notesRefused.name} -- the server refuses every write`, async () => {
   await open();
   await view.evaluate(`location.hash = "#/notes"`);
   await waitFor(onNotes);
@@ -71,6 +82,7 @@ test("a note the server refuses says Not saved, and stays in the box", async () 
 });
 ```
 
+- `tests/stories.test.ts` fails a story no test names (`stories.<key>.name`), so a story cannot be dropped or renamed away from its test.
 - The page helpers are railroad's (`@blueshed/railroad/webview`): `open`, `waitFor`, `replaceText`, `failFetch`, `withOtherWindow`; `tests/browser.ts` adds `refuseWrites` (the server refuses what the page sends).
 - The Bun.WebView rules are at the top of railroad's `webview.ts` (`node_modules/@blueshed/railroad/webview.ts`): follow them exactly.
 - Every server in a test gets a scratch data folder (`mkdtempSync`), never the project's `data/`.

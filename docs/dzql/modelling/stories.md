@@ -7,7 +7,7 @@ this repo.*
 ## The claim
 
 An app is a set of stories. Each story says who does what, and who then sees it. Everything else
-in the app -- the documents, the resources on the page, the permit tables, who is told of a
+in the app -- the documents, the resources behind the page, the permit tables, who is told of a
 write -- is derived from the stories, and the running app is tested by running them.
 
 Two canons hold the whole thing up:
@@ -75,7 +75,7 @@ other half, told as a sentence, whichever layer refuses (the permit, a document 
 to change, a session with no document to resolve). A `cannot` with `told` also says what the
 refused person is shown, beside the control that sent it (`refuse`, in the eta-app skill). Undo is a story too, and a redo, and the
 harness runs them for free: every `does` is followed by its undo and its redo, and the seeing
-must hold in reverse -- unless the ledger says the write is a fact (a tick), which undo must
+must hold in reverse -- unless the write is to a stored document with no undo (a tick), which undo must
 leave alone, or the author has since gone (logged out), who has no undo to press.
 
 What the undo takes back may be said to its author, over the page where Undo is (`afterWalk` and
@@ -171,7 +171,7 @@ file is not type-checked when it runs, and a key nobody reads would be dropped w
 The sentence at the front is the story's name and its whole value to a customer. It is what you
 scroll through with the groom and ask "is this true?". The object after it is what runs.
 
-Why `seen` names a place, not a resource: a household's whole page is one resource and the
+Why `seen` names a place, not a resource: a household's page reads one document and the
 couple's another, so a resource says nothing; what decides whether someone notices is the page
 they are on, and for choices and coming, the reading of the list. And why `untold` is said, not
 read as everyone not in `seen`: home pages with counts and a photo notice nearly everything, so
@@ -188,7 +188,7 @@ Given a pile of stories, these are not written; they are read off:
 - **The audience.** Who sees a document is who the stories say sees it. The change request's
   item 1 asked for a method on the resource; it is better as a fact of the stories.
 - **The pages and their places.** Where a change shows is where stories say it shows. A page
-  nobody's story sees is not a page, and a resource nobody's story sees is not a resource.
+  nobody's story sees is not a page, and a resource no story's write reaches is not a resource.
 - **The documents and their shapes.** The paths written say what a document holds; the values
   say what the paths refer to. Entities come last.
 - **The two canons, run.** Canon 1 is every `seen` checked on that person's page. Canon 2 is
@@ -249,7 +249,7 @@ One kernel function, `run(example, stories)` in `src/modelling/harness.ts`, and 
    Where the author stands is theirs, not the write's: a write that put a modal away is looked
    at from where each was taken.
    Skipped when the write is off the ledger (its resource says `ledger: false`, and the kernel
-   reports a write that disagrees), when the ledger says it is a fact, or when its author
+   reports a write that disagrees), when its document has no undo, or when its author
    has gone -- before the undo, or because of it (undoing the write that gave you your name).
 
    What the write, the undo and the redo each tell their author (`tell`: "Undone: your answer.")

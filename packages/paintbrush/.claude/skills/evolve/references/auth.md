@@ -229,7 +229,14 @@ provide(WS, connectWs("/ws", { onConnect: whoAmI }));
 <PeopleView />
 ```
 
-Tests: through the socket, nobody until signed in, and a link made by one person signs in another; on the page, pick who you are, add someone new, and their link signs them in in another window.
+The stories, then their tests: through the socket, nobody until signed in, and a link made by one person signs in another; on the page, pick who you are, add someone new, and their link signs them in in another window.
+
+```ts
+// stories.ts: after export const stories = {
+  // People
+  signIn: story("Nobody sees who is here until signed in, and a link signs someone in, with no password."),
+  invite: story("Someone signed in adds someone new and makes their link, and the link signs them in."),
+```
 
 ```ts
 // tests/people.test.ts
@@ -237,6 +244,7 @@ import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
+import { stories } from "../stories";
 import { browser } from "./browser";
 
 setDefaultTimeout(60_000); // first browser start can be slow
@@ -267,7 +275,7 @@ async function socket(cookie = "") {
 }
 const cookieOf = (res: Response) => res.headers.get("set-cookie")!.split(";")[0]!;
 
-test("nobody until signed in; a pick signs in, and a link made by one person signs in another", async () => {
+test(`${stories.signIn.name} -- nobody until signed in; a pick signs in, and a link made by one person signs in another`, async () => {
   const nobody = await socket();
   expect((await nobody.ask({ action: "open", doc: "people:" })).error.code).toBe(401);
   nobody.close();
@@ -292,7 +300,7 @@ test("nobody until signed in; a pick signs in, and a link made by one person sig
   b.close();
 });
 
-test("on the page: pick who you are, add someone new, and their link signs them in in another window", async () => {
+test(`${stories.invite.name} -- on the page: pick who you are, add someone new, and their link signs them in in another window`, async () => {
   await open();
   await waitFor(`[...document.querySelectorAll(".pick button.be")].some((b) => b.textContent === "Ann")`);
   await view.evaluate(`[...document.querySelectorAll(".pick button.be")].find((b) => b.textContent === "Ann").click()`);

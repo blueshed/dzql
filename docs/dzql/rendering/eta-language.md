@@ -82,7 +82,8 @@ With these names you can tell from the name alone which hooks run before and aft
   still suggests a place on a page, though, which is the misreading the CLAUDE.md warns about.
   A rename (*Keeper*: "the keeper of room documents") would be the biggest break of all, since
   every example and every doc says it. So do A to D first, then see whether it still grates.
-- **`kind: "fact"`**. It means written, but never undone. Say so the first time it appears.
+- **`kind: "fact"`**. Settled (Peter, 17 October: one namespace): delta's names, `memory`,
+  `source`, `static`, stored when omitted; a fact is a stored document with `undoable: false`.
 - **`active(sessionId)`**. It means "may this session write at all?" It is not about signing in
   (chat has no sign-in). Keep the name, and let its doc comment say that.
 - **`ledger: false`**. Delta's word, but the builder only needs "Undo skips it". Keep.

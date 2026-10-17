@@ -66,7 +66,16 @@ export const catalogue = openDoc<Catalogue>("catalogue:");
 export const order = openDoc<Order>("order:1");
 ```
 
-The page's test passes as it was. The kitchen's holds the documents from a client in the test process:
+The page's test passes as it was. The kitchen and undo are stories of their own:
+
+```ts
+// stories.ts: after export const stories = {
+  // The kitchen
+  kitchen: story("The kitchen sees every open order: a line added to any order, or changed, reaches it."),
+  undo: story("Undo takes back your last change, wherever it shows."),
+```
+
+Their test holds the documents from a client in the test process:
 
 ```ts
 // tests/kitchen.test.ts
@@ -77,6 +86,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import type { Line, Order } from "../src/resources/order/order-api";
+import { stories } from "../stories";
 
 const dataDir = mkdtempSync(`${tmpdir()}/kitchen-`);
 const server = await startServer({ port: 0, dev: false, dataDir });
@@ -100,21 +110,21 @@ async function until(done: () => boolean) {
   expect(done()).toBe(true);
 }
 
-test("the kitchen holds every order: a line added to any order reaches it", async () => {
+test(`${stories.kitchen.name} -- a line added to either of two orders`, async () => {
   await first.send([{ op: "add", path: "/lines/-", value: { item: 1 } }]);
   await second.send([{ op: "add", path: "/lines/-", value: { item: 2 } }]);
   await until(() => kitchenLines().length === 2);
   expect(kitchenLines()).toEqual([[1, 1], [2, 2]]);
 });
 
-test("undo takes back this client's last change, and every document holding it is told", async () => {
+test(`${stories.undo.name} -- this client's last line goes from the kitchen and from its order`, async () => {
   await client.send({ action: "undo" });
   await until(() => kitchenLines().length === 1);
   expect(kitchenLines()).toEqual([[1, 1]]);
   expect(second.data.peek()!.lines).toEqual({});
 });
 
-test("a line changed reaches the kitchen as the field that changed, not the row", async () => {
+test(`${stories.kitchen.name} -- a line changed is told as the field that changed, not the row`, async () => {
   const told: DeltaOp[][] = [];
   const stop = kitchen.onOps((ops) => told.push(ops));
   const [line] = Object.values(first.data.peek()!.lines);

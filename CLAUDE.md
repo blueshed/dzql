@@ -11,8 +11,9 @@ only what is shared.
 |---|---|---|---|
 | `packages/railroad` | nothing | `bun run test:railroad` | `bun run test:railroad:slow`: the consumer type checks, the browser |
 | `packages/delta` | railroad | `bun run test:delta` | none: its whole suite is fast |
-| `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun run test:dzql` | `bun run test:dzql:slow`: Postgres in Docker, eta in a browser, the stories, the costs |
-| `packages/paintbrush` | delta, railroad | `bun run test:paintbrush` | `bun run test:paintbrush:slow`: the evolve skill applied |
+| `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun run test:dzql`, `bun run test:create-dzql` | `bun run test:dzql:slow`: Postgres in Docker, eta in a browser, the stories, the costs |
+| `packages/paintbrush` | delta, railroad, dzql (`dzql/modelling`'s `story`) | `bun run test:paintbrush` | `bun run test:paintbrush:slow`: the evolve skill applied |
+| `packages/create-blueshed` | paintbrush (it packs a copy) | `bun run test:create-blueshed` | none |
 
 - `bun install` runs at the root: one `bun.lock`, committed; CI installs with `--frozen-lockfile`.
   A sibling's version range resolves to its folder, so a change in railroad is what delta and dzql
@@ -22,7 +23,10 @@ only what is shared.
   browser and no Postgres server), well under a minute. Commit, push, go on: never wait for CI.
   The slow tier (`test:slow`: browsers, dzql's Postgres suite in Docker, eta's stories and costs)
   runs in CI, path-filtered the same way (`.github/workflows/<package>.yml`), and by
-  `bun run affected --slow` before a release. A red CI is fixed at the next push.
+  `bun run affected --slow` before a release. A red CI is fixed at the next push. (The workflows
+  are paused on Peter's word since 17 October; until he says, the slow tier runs on his Mac.)
+  A package that packs a sibling's folder (`prepack`: create-blueshed copies paintbrush) runs
+  when that sibling changes.
 - **What is going on** is `CHANGELOG.md` (what changed, across packages) and `todo.jsonl` (what is
   open across them) here; keep both current with every change, as each package keeps its own.
 - Bun only, pinned in CI to 1.4.3.

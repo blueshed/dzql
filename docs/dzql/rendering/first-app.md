@@ -142,7 +142,7 @@ any change from anyone. Chat's room uses `afterChange` to keep the list of rooms
 // examples/chat/index.ts
 export const example: Example = {
   name: "chat",
-  resources: [session, room, here, lobby], // the session's first; here and lobby are live, kept by the server
+  resources: [session, room, here, lobby], // the session's first; here and lobby are memory documents, kept by the server
   render,
   active: (sessionId) => sessionDoc.read(sessionId).name !== null, // may this person write at all?
   index,                                                           // client/index.html
@@ -186,7 +186,10 @@ Chat has one page. Most apps have several, plus drawers and modals, and that is 
   type alone, because the session id is a credential.
 - It says `ledger: false`: moving about is not history, so Undo skips it.
 - Where you are is one **address**: `path?what=which`, like `2026-10?request=1` in leave, the
-  October calendar with request 1's drawer open. It goes in the URL, so the back button works.
+  October calendar with request 1's drawer open. It is the screen's URL, and the server routes it:
+  name the write that sets it as the app's `address` (`{ doc: "session", path: "/page" }`), and a
+  tab opened at a URL is put there before its first page is drawn. So a link, a bookmark, a reload
+  and the back button all work, and only the server draws.
 
 Your stories say how to put someone at an address, once: leave's is
 `goTo: (address) => ({ doc: "session", ops: [{ op: "replace", path: "/page", value: address }] })`.

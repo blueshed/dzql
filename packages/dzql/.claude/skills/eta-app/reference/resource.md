@@ -48,13 +48,14 @@ The hooks, in the order they run: see `Resource` in `src/rendering/resources/res
 4. **delta:** is it valid data?
 
 Undo and redo are delta's inverses, never shaped. Never write another resource's document from
-`shape`. `kind`: `written` (default: ledger, undoable), `fact` (never undone), `live` (the server's,
-in memory, never from the wire), `sourced` and `static` (read only).
+`shape`. `kind` is which of delta's documents it is: omitted, a stored document, the only kind written from
+the wire (`undoable: false` for one with no undo, a payment taken); `"memory"`, the server's,
+never from the wire; `"source"` or `"static"`, read only.
 
 ## After a write
 
 - `afterChange(docId, ops)`: after every change, once told (a write, an undo, another process's).
-  Keep a live document true: compute it whole, `serverWrite` the difference, one run at a time
+  Keep a memory document true: compute it whole, `serverWrite` the difference, one run at a time
   (`examples/chat/presence.ts`): two at once diff the same copy, and delta refuses the second.
 - `afterWrite(ws, docId, ops, landed)`: after this person's fresh write: what follows for the
   writer alone. `ops` are as sent (`add /requests/-`); `landed`, as delta applied them, the echo's:

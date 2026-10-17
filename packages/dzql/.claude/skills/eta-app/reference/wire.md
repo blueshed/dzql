@@ -25,7 +25,7 @@ The shapes are `src/rendering/json-patch.ts` (`WIRE`, `LONGEST_ID`) and `src/ren
   say, or a string of at most 64 characters; anything else is no write, answered by the page alone.
 - A `test` op (RFC 6902) is a condition, not a change: the value a field was drawn with. It never
   reaches `permit` or `shape`, and a write of tests alone is none.
-- Only the writer's echo carries `id` and `change`, the handle that undoes it (a fact's names none).
+- Only the writer's echo carries `id` and `change`, the handle that undoes it (a write with no undo names none).
 - A page is sent whole as `{type: "render", html, wire}`, or in parts as `{type: "render", ops}`.
 - A write that applies nothing (refused, nothing to undo, a throw) is answered `refused` when it has
   an id, then with the page whole. A throw goes through `failed()` (`src/rendering/failed.ts`), which fails the

@@ -43,6 +43,14 @@ const files = filesApi(s3);
 "/api/files/:name": { GET: files.get, PUT: files.put },
 ```
 
+Its story:
+
+```ts
+// stories.ts: after export const stories = {
+  // Files
+  files: story("A file put on the site can be fetched again, and one that is not there says so."),
+```
+
 Tests need no real bucket: a stand-in of a few lines answers a write, `exists()` and a presigned read.
 
 ```ts
@@ -52,6 +60,7 @@ import { S3Client } from "bun";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
+import { stories } from "../stories";
 
 // A stand-in bucket: PUT keeps an object, HEAD and GET answer it
 const objects = new Map<string, Blob>();
@@ -79,14 +88,14 @@ afterAll(async () => {
 });
 const api = (path: string, init?: RequestInit) => fetch(new URL(path, server.url), init);
 
-test("a file is put in the bucket, and a GET redirects to it", async () => {
+test(`${stories.files.name} -- a file is put in the bucket, and a GET redirects to it`, async () => {
   expect((await api("/api/files/hello.txt", { method: "PUT", body: "hello, bucket" })).status).toBe(204);
   const res = await api("/api/files/hello.txt", { redirect: "manual" });
   expect(res.status).toBe(302);
   expect(await (await fetch(res.headers.get("location")!)).text()).toBe("hello, bucket");
 });
 
-test("a file that is not there is a 404", async () => {
+test(`${stories.files.name} -- a file that is not there is a 404`, async () => {
   const res = await api("/api/files/nope.txt");
   expect(res.status).toBe(404);
   expect(await res.json()).toEqual({ error: "no such file" });

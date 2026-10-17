@@ -1,6 +1,7 @@
 # Stories as code: one format that grows with the app
 
-*A proposal, 17 October 2026, for Peter to decide. Nothing here is built.*
+*A proposal, 17 October 2026. Decided (b), built 17 October: `story` and `untold` are
+`dzql/modelling/stories`'s, and paintbrush's `stories.ts` imports them.*
 
 ## The problem
 
@@ -48,6 +49,8 @@ I'd take (a) now: a light app stays light, the shapes match, and (b) is a one-li
 when the app takes the step. If `dzql/modelling` is ever split from dzql's Postgres dependencies,
 (b) costs nothing and becomes the answer.
 
+**Decided: (b).** One definition, in `dzql/modelling`.
+
 ## What changes
 
 - **paintbrush**: `stories.md` becomes `stories.ts`; the template's message tests take their names
@@ -56,7 +59,7 @@ when the app takes the step. If `dzql/modelling` is ever split from dzql's Postg
   `dzql/rendering` shows a story gaining its body.
 - **dzql/modelling**: `story(name, body?)`, a story with no body accepted by the format and passed
   over by the harness (it is a test's to tell), for apps that carry both kinds.
-- **create-dzql**: the same `stories.ts`, as a paintbrush app on dzql.
+- ~~**create-dzql**: the same `stories.ts`, as a paintbrush app on dzql.~~
 - **The Shed**: `stories.md` and `expected.md` say `stories.ts`. Run 3 is measured on it: does
   each stage write its stories as code its tests cannot drift from, and does stage 5 (dzql) take
   the step to bodies?

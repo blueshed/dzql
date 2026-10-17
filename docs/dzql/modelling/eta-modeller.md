@@ -65,7 +65,7 @@ stories: [
   story("Claude proposes a gap stands, with its reason, and it is Peter's move", { as: "claude", does: w("decision", "add", "/-", { gap: "the feed tells stories and notices nothing", because: "a feed is not a person" }), seen: { claude: "gaps", peter: "" } }),
   story("Peter agrees it stands", { as: "peter", does: w("decision", "replace", "/1/answer", "agreed"), seen: { peter: "gaps", claude: "gaps" } }),
 
-  // Proving: A is the harness's, a fact; U is Peter's.
+  // Proving: A is the harness's, with no undo; U is Peter's.
   story("The harness runs the agreed story on the app, and A is recorded", { as: "harness", does: w("run", "add", "/-", { story: 1, passed: true }), seen: { peter: "checklist", claude: "checklist" } }),
   story("Peter tries it with a hand on a mouse, and U is recorded", { as: "peter", does: w("story", "replace", "/1/tried", true), seen: { peter: "checklist", claude: "checklist", groom: "checklist" } }),
 ]
@@ -90,17 +90,17 @@ Nothing above is new:
 
 ## One step removed: the documents in delta
 
-Divided by where each document's truth lives, in eta-on-delta's kinds:
+Divided by where each document's truth lives, in delta's kinds:
 
 | Document | Holds | Kind | Persistent or transient | In delta today (facts) |
 |---|---|---|---|---|
-| `story` | `told`, `wire`, `answer`, `tried` | written | persistent: on the ledger, undoable | SQLite or Postgres backend, with the ledger |
-| `model` | proposed documents, permits and tables, each with its sentence and `answer` | written | persistent | same |
-| `decision` | the gaps that stand, with the reason and `answer` | written | persistent | same |
-| `run` | the harness's results | fact | persistent: recorded, never undone | the ledger records facts |
-| `gap` | what the check found missing (hjeli's six predicates, and where the code disagrees), each with its fix | live, written by the check | transient: the check writes it again from the agreements whenever it starts | memory backend (`registerMemory`, written by a caller in this process) |
-| the desk | who is on which page, which drawer is open | live | transient | memory backend (`registerMemory`) |
-| the code | `stories.ts`, `delta.ts`, the compartments, as they stand in the repo | sourced | outside: the repository | source backend (`registerSource`: read, and pushed on change) |
+| `story` | `told`, `wire`, `answer`, `tried` | stored, with the ledger | persistent: on the ledger, undoable | SQLite or Postgres backend, with the ledger |
+| `model` | proposed documents, permits and tables, each with its sentence and `answer` | stored, with the ledger | persistent | same |
+| `decision` | the gaps that stand, with the reason and `answer` | stored, with the ledger | persistent | same |
+| `run` | the harness's results | stored, with no undo | persistent: recorded, never undone | the ledger records them, with no undo |
+| `gap` | what the check found missing (hjeli's six predicates, and where the code disagrees), each with its fix | memory, written by the check | transient: the check writes it again from the agreements whenever it starts | memory backend (`registerMemory`, written by a caller in this process) |
+| the desk | who is on which page, which drawer is open | memory | transient | memory backend (`registerMemory`) |
+| the code | `stories.ts`, `delta.ts`, the resources, as they stand in the repo | source | outside: the repository | source backend (`registerSource`: read, and pushed on change) |
 
 *Reading:*
 
@@ -113,7 +113,7 @@ Divided by where each document's truth lives, in eta-on-delta's kinds:
   every eta page is drawn, and sends only the parts that changed.
 - **The gaps are written, as patches.** The check is a writer like the harness: it adds a gap it
   finds and removes one that closes, so a gap reaches a page the way every change does.
-- **The code is sourced, never generated.** Claude writes it. The gaps compare what was agreed
+- **The code is a source document, never generated.** Claude writes it. The gaps compare what was agreed
   with what the source says, and a disagreement is Claude's move.
 
 ## What was built (facts)
@@ -124,7 +124,7 @@ A demo page, drawn for the wedding from what the app already holds, with nothing
 |---|---|
 | 46 stories, who tells and who notices, where | `stories.ts` |
 | 13 tables and their columns; 6 documents, each with its root and includes, and its kind | `delta.ts` |
-| 21 permit rules, and which stories each allows or refuses | the compartments' `RULES` |
+| 21 permit rules, and which stories each allows or refuses | the resources' `RULES` |
 | Where code touches a table outside a document (the seed, raw SQL) | a scan of the example's files |
 | **A** for each story, what every member was sent and its size, and the ledger's before and after | a real harness run |
 | Tasks | eta's `todo.jsonl` |
@@ -305,7 +305,7 @@ found before it becomes a bug.
 1. **Make the agreements real.** The demo's Agree and **U** become the `story`, `model` and
    `decision` documents in the table above, kept in delta and committed with the project.
 2. **The page as an eta app**, not a static artifact, so it follows the code as it changes (the
-   code, sourced).
+   code, a source document).
 3. **Allertons' seed as data**, the first piece of its `delta.ts`. Then each story's
    before-state is the seeded row's value, and the agreements can be derived instead of drawn. The
    decisions no story states (the ends) become `cannot` stories on the ended states. Once Allertons

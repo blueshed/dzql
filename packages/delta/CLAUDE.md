@@ -128,6 +128,9 @@ the new Bun, run `bun run ci` on it, then set `bun-version` in the root's workfl
   version-gap resync, `send` after its echo), `dom-ops.ts` (`applyOpsToCollection`). It
   imports railroad's subpaths, never the root barrel.
 - `src/server/server.ts`: `createWs`, the free-form document (`registerDoc`), `WsServer`.
+- `src/server/serve.ts` (`./serve`): the one server. `serve` (an app's routes and resources, the
+  socket on its path, `/health`, a 404), `run` (the pid file, `bun --hot`, the signals), `stop`
+  (`delta stop`), and the `App` contract. An app never writes a `Bun.serve` of its own.
 - `src/server/sqlite.ts`: the SQLite backend (`registerDocs`, custom docs, fan-out, implied
   docs, `inverseOf`; with `{ ledger: true }`, `undo` / `redo` / `history`), and the package's
   `./sqlite` entry. Beside it, `src/server/sqlite/`: `ddl` (createTables, migrateSchema),
@@ -161,7 +164,7 @@ the new Bun, run `bun run ci` on it, then set `bun-version` in the root's workfl
   optional peer only the client imports); `tests/server.test.ts` fails when the two differ.
 - `src/server/auth.ts`: the `DeltaAuth` contract (`wireAuth`, `upgradeWithAuth`).
 - `cli.ts`: `bunx @blueshed/delta` (open, watch, delta, call, migrate, migrations make, link,
-  install-skills;
+  install-skills, stop;
   install-skills copies `@blueshed/*` skills and the packages `claudeSkills` names; migrate takes
   a SQLite file, and sends a `postgres://` URL or a folder to `dzql migrate`). The runtime
   commands take `--token` / `DELTA_TOKEN` and `--json` for an agent; `tests/cli.test.ts` runs them.

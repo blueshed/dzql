@@ -4,7 +4,7 @@
 
 A Bun website where people share documents. **Documents are how people communicate**: a document is what you need in front of you to take an action. It is a conversation, not a poster on the wall. Open one and you're subscribed, so every change anyone makes reaches you as it happens. Change it, and everyone holding it sees it at once.
 
-[Bun](https://bun.sh) is the runtime, the bundler, the test runner and the server. [delta](https://github.com/blueshed/delta) keeps the documents, [railroad](https://github.com/blueshed/railroad) draws the page, and [Railway](https://railway.com) deploys it. What grows is where the documents are kept. A shared JSON document does a lot on its own; SQLite earns its place when documents share the same rows, or when you want undo and history; Postgres comes in when servers share the data, or people should see only their own. The page and its documents stay the same as the storage grows.
+[Bun](https://bun.sh) is the runtime, the bundler, the test runner and the server. [delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents, [railroad](https://github.com/blueshed/dzql/tree/main/packages/railroad) draws the page, and [Railway](https://railway.com) deploys it. What grows is where the documents are kept. A shared JSON document does a lot on its own; SQLite earns its place when documents share the same rows, or when you want undo and history; Postgres comes in when servers share the data, or people should see only their own. The page and its documents stay the same as the storage grows.
 
 Requires Bun 1.4.3 or later.
 
@@ -25,9 +25,18 @@ Open `http://localhost:3000` in two windows. You get a message, a shared documen
 
 ## Routes, resources and documents
 
+An app is routes and resources, on both sides of the socket. A document joins a server resource to its client resource. Entities, the collections of delta's `defineSchema`, are behind the documents, on the server.
+
+| | Server | Client |
+|---|---|---|
+| Routes | Bun routes, given to delta's `serve` in `src/routes.ts` | railroad's `routes()`, in `src/app.tsx` |
+| Resources | `<name>-api.ts`: the document it registers, or HTTP | `<name>.ts`, the handle, and `<name>-view.tsx` |
+| Joined by | the document, on the socket | |
+| Behind it | entities (`defineSchema`) | |
+
 - **Server routes** are in `src/routes.ts`. HTTP routes serve what isn't communication: the health check, files, the server's status. Everything people share is a document on `/ws`.
 - **Client routes** are railroad's hash router, in `src/app.tsx`. A route draws a resource's view.
-- **A resource** is a folder with three files:
+- **A resource** is a folder, `src/resources/<name>/`, with three files:
 
 | File | Role |
 |------|------|
@@ -58,10 +67,10 @@ tests/               routes with fetch, documents with a client, the page in a r
 
 ## Made to be worked on with Claude
 
-Ask for something, and Claude writes it into `stories.md` as stories, then makes them true with tests named for them. `CLAUDE.md` says what is here and the rules; the `evolve` skill is how the app grows; `CHANGELOG.md` and `todo.jsonl` are the project's memory between sessions, and `/release` turns one into a version. On GitHub, CI runs the tests in the runner's Chrome on every push.
+Ask for something, and Claude writes it into `stories.ts` as `story(...)`, then a test named from it makes it true. `CLAUDE.md` says what is here and the rules; the `evolve` skill is how the app grows; `CHANGELOG.md` and `todo.jsonl` are the project's memory between sessions, and `/release` turns one into a version. On GitHub, CI runs the tests in the runner's Chrome on every push.
 
 ## Starting from it
 
-`bun create` runs `create/setup.ts` after installing. Your app gets its own name, a fresh ledger and changelog, railroad's and delta's skills, and a first commit. What is about the template stays behind: its logo, ledger and changelog, the setup script, its own tests and the skill's evaluations. The app's changelog starts by naming the paintbrush version it came from: to bring an app up to date, read this changelog from that version on, and carry across what applies.
+`bun create` runs `create/setup.ts` after installing. Your app gets its own name, a fresh ledger and changelog, the skills (`evolve`, railroad's `railroad` and delta's `delta-doc`), and a first commit. What is about the template stays behind: its logo, ledger and changelog, the setup script, its own tests and the skill's evaluations. The app's changelog starts by naming the paintbrush version it came from: to bring an app up to date, read this changelog from that version on, and carry across what applies.
 
 MIT

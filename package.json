@@ -17,7 +17,9 @@
     "test:dzql": "bun run --cwd packages/dzql test:fast",
     "test:dzql:slow": "bun run --cwd packages/dzql test:slow",
     "test:paintbrush": "bun run --cwd packages/paintbrush test:fast",
-    "test:paintbrush:slow": "bun run --cwd packages/paintbrush test:slow"
+    "test:paintbrush:slow": "bun run --cwd packages/paintbrush test:slow",
+    "test:create-blueshed": "bun run --cwd packages/create-blueshed test:fast",
+    "test:create-dzql": "bun run --cwd packages/create-dzql test:fast"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3"

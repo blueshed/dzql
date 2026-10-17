@@ -3,7 +3,7 @@
 **Guidance**: what eta is for and how to build on it. Where these and the code disagree, the code,
 `CLAUDE.md` and the eta-app skill are right; say so and fix the doc.
 
-- `stories.md` -- what eta is for, and how stories drive it.
+- `../modelling/stories.md` -- what eta is for, and how stories drive it.
 - `bento/` -- where am I and what can I do: the directions (`README.md`), built in `src/rendering/bento.ts`,
   and two sets of sample designs (`design/`, `paintbrush/`).
 - `first-app.md` -- a first app, step by step: chat, then leave, in the order you meet the words.

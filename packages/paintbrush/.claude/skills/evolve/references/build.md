@@ -8,17 +8,24 @@ Optional. `bun run start` serves `src/routes.ts` from source with `NODE_ENV=prod
 "serve:dist": "NODE_ENV=production bun --cwd dist routes.js",
 ```
 
-Test it by building, starting `routes.js` in `dist/`, and checking the page has no hot reload:
+Its story, then its test: build, start `routes.js` in `dist/`, and check the page has no hot reload:
+
+```ts
+// stories.ts: after export const stories = {
+  // The build
+  built: story("The built site serves the same page, with no hot reload."),
+```
 
 ```ts
 // tests/build.test.ts
 import { test, expect } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { stories } from "../stories";
 
 const root = `${import.meta.dir}/..`;
 
-test("the build serves the page, without hot reload", async () => {
+test(`${stories.built.name} -- built, started from dist/, the page has no hot reload`, async () => {
   expect(Bun.spawnSync([process.execPath, "run", "build"], { cwd: root }).exitCode).toBe(0);
 
   const dataDir = mkdtempSync(`${tmpdir()}/build-`);

@@ -1,10 +1,11 @@
 // What this app was asked to make true: each a sentence someone using it could call true or false.
 // A new story is written here first, then made true by a test named from it
-// (`test(`${stories.saves.name}: ...`)`): tests/stories.test.ts fails a story no test tells, so a
+// (`test(`${stories.saves.name} -- ...`)`): tests/stories.test.ts fails a story no test tells, so a
 // story cannot be dropped or renamed away from its test. Earlier stories stay true.
 //
 // A story here is a sentence alone. When the app takes the step to dzql/rendering, a story gains a
-// body (who does what, who then sees it) and the harness tells it (docs/stories-as-code.md).
+// body (who does what, who then sees it) and the harness tells it
+// (https://github.com/blueshed/dzql/blob/main/docs/stories-as-code.md).
 import { story } from "dzql/modelling/stories";
 
 export const stories = {

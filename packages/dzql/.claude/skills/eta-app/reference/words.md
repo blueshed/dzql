@@ -36,6 +36,6 @@ export const example: Example = {
 | Show a document and let people change it | A resource (`permit`, `shape`) and plain `data-write` controls ([controls.md](controls.md)). |
 | Make a new document | Ask who must be told it was made. Its maker alone (a plan of my own): a plain form posting to a route that writes its root with `serverWrite` and redirects there ([signin.md](signin.md)). Everyone holding a list of them (a room in a lobby): add its root row through that document and open the id the answer names. Named by its reader (a session, chat's room): `implied: true` in `defineDoc`, made by its first write. Never through a document that tells people nobody asked. |
 | Act before holding any document (sign in, join by a link) | A route answering a plain form, writing the session with `serverWrite` and redirecting ([signin.md](signin.md)). |
-| Keep a document the server works out (who is here) | `registerMemory`, computed whole in `afterChange`, written as the difference ([resource.md](resource.md#after-a-write)). Nobody writes it. |
+| Keep a document the server works out (who is here) | A memory document (`registerMemory`; its resource's `kind: "memory"`), computed whole in `afterChange`, written as the difference ([resource.md](resource.md#after-a-write)). Nobody writes it. |
 | Refuse a write, saying why | `throw refuse(...)` in `permit` or `shape` ([refusal.md](refusal.md)). |
 | Let a person undo | Register the documents with `{ ledger: true }` ([documents.md](documents.md#the-ledger)). |

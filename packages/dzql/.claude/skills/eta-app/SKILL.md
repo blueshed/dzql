@@ -10,35 +10,39 @@ metadata:
 An eta app is its documents. A document is what a person needs in front of them to act: open it
 and you are told every change; write to it and everyone holding it is told. The server draws each
 person's page from the documents they hold, and sends only what changed. Routes and resources
-are on the server: a resource looks after one document (who may write it, what a write becomes),
-and the page it is drawn on is the server's; an island is the only client resource.
+are on the server: a resource looks after one document (who may write it, what a write becomes);
+an island is the only client resource.
 
-Stories, then documents, then pages: a story says who does what and who then sees it; documents are
-cut so that whoever must see a change holds it; the page is drawn from what it reads. This file is
-the order to work in; `reference/` says how each piece works, one short file a piece. The types in
-dzql's `src/rendering/` (`node_modules/dzql/` in a project) are the contract: read them, not prose about them. Only while someone is telling you the stories,
-there to answer, does the **modelling** skill come first; asked to build or change, build.
+The types in dzql's `src/rendering/` (`node_modules/dzql/` in a project) are the contract: read
+them, not prose about them. Only while someone is telling you the stories, there to answer, does
+the **modelling** skill come first; asked to build or change, build.
 
 ## The order
 
-Each step is the least that makes the next story pass. Run `bun run stories` after each.
+Stories, then documents, then pages: each step the least that makes the next story pass. Run
+`bun run stories` after each. The words are [words](reference/words.md).
 
 1. **The story** (`stories.ts`): who does what, and who then sees it. Watch it fail. →
    [stories](reference/stories.md)
-2. **The documents** (`delta.ts`): the schema, a seed, each document registered -- cut by who reads
-   it. → [documents](reference/documents.md)
-3. **What a document is to its pages** (`documents/<thing>.ts`): `read(id)`, and the pure rules a
-   write follows, tested directly. → [documents](reference/documents.md)
-4. **Its resource**: `permit`, `shape`, what follows. → [resource](reference/resource.md),
-   [refusal](reference/refusal.md)
-5. **What is live**: a document the server works out, written as the difference. →
-   [resource](reference/resource.md#after-a-write)
-6. **The page** (`render(sessionId)`): a box or a collection, in parts. → [page](reference/page.md),
-   [controls](reference/controls.md), [bento](reference/bento.md)
-7. **An applet**, only for state a redraw would destroy. → [applets](reference/applets.md)
-8. **`index.ts`**: the `Example`; `cli.ts`, if someone writes from the terminal. →
-   [example](reference/example.md)
-9. **Tests**, for what a story cannot say. → [tests](reference/tests.md)
+2. **The documents** (`delta.ts`), cut so whoever must see a change holds it; then
+   `documents/<thing>.ts`: `read(id)` and the pure rules a write follows, tested directly; undo. →
+   [documents](reference/documents.md); one that would grow forever, [scope](reference/scope.md);
+   a field renamed or dropped, or data moved, [migrations](reference/migrations.md)
+3. **Its resource**: `permit`, `shape`, what follows; a memory document the server works out,
+   written as the difference. → [resource](reference/resource.md); why a write was refused or what
+   it did, [refusal](reference/refusal.md)
+4. **The page** (`render(sessionId)`): a box or a collection, in parts. → [page](reference/page.md);
+   a field, form or button, [controls](reference/controls.md); a drawer, a modal, the address,
+   [bento](reference/bento.md); reference data, [derive](reference/derive.md)
+5. **An applet or an island**, only for state a redraw would destroy. →
+   [applets](reference/applets.md); its data, [watching](reference/watching.md)
+6. **`index.ts`**: the `Example`; `cli.ts`, if someone writes from the terminal. →
+   [example](reference/example.md); sign-in and routes, [signin](reference/signin.md)
+7. **Tests**, for what a story cannot say; the gate. → [tests](reference/tests.md)
+
+Also: what crosses the socket, [wire](reference/wire.md); an assistant on the page,
+[assistants](reference/assistants.md); starting a project, a later dzql, or before touching the
+kernel, [where-an-app-lives](reference/where-an-app-lives.md).
 
 ## The rules that matter most
 
@@ -52,32 +56,8 @@ Each step is the least that makes the next story pass. Run `bun run stories` aft
   `shape`, then delta; every change is told from delta's stream, never by hand.
 - A page sees what it read: `read()` what you show, and cut documents by who reads them.
 - A change goes as the smallest part that holds it; a part far bigger than its write is a bug.
-- The loop is seconds: `bun run stories` (`STORY=<words>` for one) and `bun test <file>`, read for
-  its passes and fails, as coverage is a whole run's. The gate, before a commit: `bun check`,
+- The loop is seconds: `bun run stories` (`STORY=<words>` for one) and `bun test <file>`, read
+  for its passes and fails (coverage is a whole run's). The gate, before a commit: `bun check`,
   `bun test --parallel` (100% coverage), `bun run stories`.
 - Never edit dzql's kernel from an app (`node_modules/dzql`): a missing seam is rare. →
   [where-an-app-lives](reference/where-an-app-lives.md#when-it-looks-like-you-need-to-touch-the-kernel)
-
-## Which file for which step
-
-| To | Read |
-|---|---|
-| Know the words; make, refuse or keep a document | [words](reference/words.md) |
-| Write a story | [stories](reference/stories.md) |
-| Declare and read documents; undo | [documents](reference/documents.md) |
-| Keep a document from growing forever: today's, what is open, or a window | [scope](reference/scope.md) |
-| Rename or drop a field, or move data | [migrations](reference/migrations.md) |
-| Permit, shape, follow a write | [resource](reference/resource.md) |
-| Say why a write was refused, or what it did | [refusal](reference/refusal.md) |
-| Draw the page in parts | [page](reference/page.md) |
-| Build a field, a form or a button | [controls](reference/controls.md) |
-| A box or collection, a drawer, a modal; the address | [bento](reference/bento.md) |
-| A page for reference data | [derive](reference/derive.md) |
-| An applet or an island | [applets](reference/applets.md) |
-| An applet's data | [watching](reference/watching.md) |
-| `index.ts`; the CLI | [example](reference/example.md) |
-| Sign people in; a route | [signin](reference/signin.md) |
-| What crosses the socket | [wire](reference/wire.md) |
-| Let an assistant use the page | [assistants](reference/assistants.md) |
-| Browser tests; the gate | [tests](reference/tests.md) |
-| Start a project, or move it to a later dzql; before touching the kernel | [where-an-app-lives](reference/where-an-app-lives.md) |

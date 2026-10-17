@@ -85,10 +85,10 @@ needs, and [W9](#w-the-wire).
 ### Whose truth, and who may change it
 
 **10. Documents are sorted by where their truth lives.**
-*Written*: a person's, undoable. *Fact*: recorded and never undone, kept out of the tables a
-person's undo walks. *Live*: who is online, gone on restart. *Sourced*: from outside, carrying
-when it was read. *Static*: shipped with a release. *(eta on delta)*
-Checked by [W10](#w-the-wire), for sourced documents only.
+*Stored*, on the ledger: a person's, undoable. *Stored with no undo*: recorded and never undone,
+kept out of the tables a person's undo walks. *Memory*: who is online, gone on restart. *Source*:
+from outside, carrying when it was read. *Static*: shipped with a release. *(eta on delta)*
+Checked by [W10](#w-the-wire), for source documents only.
 
 **11. Undo takes back only your own change.**
 It refuses rather than overwrite someone else's. Who made a change and the cursor undo walks are
@@ -329,7 +329,7 @@ Every sentence that was unclear, missing or wrong is a finding.
 | **W4** show what was stored | Done |
 | **W5** every document that shows it | On SQLite, in one process; Postgres doesn't pass changes between documents |
 | **W6** nothing missed | For versioned documents only |
-| **W7** a refusal says why | Done: a compartment refuses with a reason, shown beside the control; a plain refusal stays silent |
+| **W7** a refusal says why | Done: a resource refuses with a reason, shown beside the control; a plain refusal stays silent |
 | **W8** undo never overwrites | Done: delta 0.7.0 walks nothing on a conflict, and eta says so |
 | **W9** no session id sent | Done |
 | **W10** old data says so | For outside readings only |
@@ -360,7 +360,7 @@ the eta modeller.
 - **W7**: zeta, decisions 8 and 18.
 - **W8**: epsilon's undo; see `docs/history/zeta-lost-out.md`.
 - **R1**: epsilon's `proveLaw` (`blueshed/epsilon/epsilon/law.ts`) and eta's story harness
-  (`eta/src/harness.ts`).
+  (`src/modelling/harness.ts`).
 - **R2**: the rights-market walkthroughs and grand tours.
 - **R3-R5**: gaps found in eta's harness this week.
 - **R6**: hjeli, and the Can You? builds in `apples_pears/examples`.

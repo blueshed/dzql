@@ -426,7 +426,7 @@ the next step starts:
   its stories as the test; it uses delta's `core`, `local`, `sqlite`, `kinds` and `server`, so
   steps 1 to 3 should ask little of it. After step 1 it can run delta's published cases against
   its own documents where that proves something; after step 3, a document's `owns` as a path is
-  open to its compartments. canyou-eta follows eta, as it links it.
+  open to its resources. canyou-eta follows eta, as it links it.
 - **Done for a round** when paintbrush and eta are on the release with their gates green (eta's
   stories, paintbrush's `test:evolve`), or eta has said in its ledger when it will take it.
 

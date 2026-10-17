@@ -62,6 +62,12 @@ closing.push(await orderDocs(ws, dataDir));
 A server stopped and started again carries on where it was:
 
 ```ts
+// stories.ts: after export const stories = {
+  // Postgres
+  carriesOn: story("After the server stops and starts again, an order carries on where it was."),
+```
+
+```ts
 // tests/order-pg.test.ts
 import { test, expect, afterAll } from "bun:test";
 import { connectWs, openDoc } from "@blueshed/delta/client";
@@ -69,6 +75,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import type { Order } from "../src/resources/order/order-api";
+import { stories } from "../stories";
 
 const scratch = mkdtempSync(`${tmpdir()}/order-pg-`);
 const dataDir = `${scratch}/data`; // not there yet, as on a new app's first start
@@ -89,7 +96,7 @@ async function addLine(item: number) {
   }
 }
 
-test("started on a data folder not there yet, stopped and started again, the order carries on where it was", async () => {
+test(`${stories.carriesOn.name} -- started on a data folder not there yet, stopped and started again`, async () => {
   expect(existsSync(dataDir)).toBe(false);
   expect(await addLine(1)).toEqual([1]);
   expect(await addLine(2)).toEqual([1, 2]);

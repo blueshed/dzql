@@ -16,7 +16,7 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 1. Set up: tsconfig, an HTML route, `mount()` or `routes()`. Pages, server entries and `Bun.WebView` tests: the `bun-route` skill.
 2. State as signals; derive with `.map()` or `computed()`.
 3. Components bind signals in JSX; `when()` and `list()` for what appears and repeats.
-4. Pages with `routes()`.
+4. Client routes with `routes()`: each draws a resource, a handle that opens a document and its view.
 5. Server data: `@blueshed/delta`, or your own patch stream.
 6. Prove it with tests.
 

@@ -9,6 +9,11 @@
   thing that needs the optional `@blueshed/railroad`. Six apps show it in [examples/](examples).
 - **`dzql/postgres`**, **`dzql/pglite`**: the compiled Postgres step, below.
 
+An app is routes and resources on both sides of the socket, joined by documents, with entities
+(delta's `defineSchema`) behind them. On `dzql/rendering` the server draws every page from its
+URL, so the routes and resources are the server's: a resource looks after one document, and an
+island is the only client one.
+
 An app built on [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps its definitions
 (`defineSchema`, `defineDoc`), its client and its wire. On Postgres, dzql keeps its documents and
 compiles those definitions to SQL, each piece held equal to delta's own cases. Why, and where it
@@ -34,7 +39,7 @@ SQL for each of your documents and collections, compiled from their definitions 
 document, reading its name, who holds a row, a write's scope and rows, what each document is told,
 the fan-out, the ledger's reads): nothing interprets a definition at run time. Apply it after the
 framework, every time, one app per database (`docs/dzql/postgres/postgres.md` in blueshed/dzql, "Compiled SQL"). The plan
-is in Workshop's `docs/postgres-split-plan.md`.
+is `docs/dzql/postgres-split-plan.md` in blueshed/dzql.
 
 ## Start
 

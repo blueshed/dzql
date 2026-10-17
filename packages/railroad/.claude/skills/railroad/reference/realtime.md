@@ -74,9 +74,9 @@ await run(() => serve({ ws, routes: { "/": home } }));
 ## eta: an island in a page the server draws
 
 ```tsx
-// eta's examples/<app>/applets/zone-picker-applet.tsx
-import { registerApplet } from "../../../src/applets";
-import { island } from "../../../src/island";
+// dzql's examples/ticker/applets/, as an app imports it
+import { registerApplet } from "dzql/rendering/applets";
+import { island } from "dzql/rendering/island";
 
 type ClockProps = { tz: string };
 
@@ -92,7 +92,7 @@ const picker = island<ClockProps>((props, ctx, el) => {
 registerApplet("zone-picker", picker);
 ```
 
-- [eta](https://github.com/blueshed/eta)'s server draws the page; its client morphs it, never inside a `[data-applet]`. An island draws that inside with `mount()`, disposed when eta removes the element.
+- eta's server (`dzql/rendering`) draws the page; its client morphs it, never inside a `[data-applet]`. An island draws that inside with `mount()`, disposed when eta removes the element.
 - Props are a signal, set by new `data-props` and by the document's patches through the optional `reduce(props, ops)`.
 - Read what the server drew inside `el` first: `render`'s result replaces it. Never bind `el`'s own attributes.
 - Write with `ctx.send(doc, ops)`, never by setting props. The rest is eta's `eta-app` skill.

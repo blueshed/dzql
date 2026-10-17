@@ -1,6 +1,6 @@
 # A new document
 
-A shared JSON document, made the way `message` is: three files, then wired in. Notes show the other two verbs, `add` and `remove`. Its tests are in [testing.md](testing.md).
+A shared JSON document, made the way `message` is: three files, then wired in. Notes show the other two verbs, `add` and `remove`. Its stories and tests are in [testing.md](testing.md).
 
 ```ts
 // src/resources/notes/notes-api.ts

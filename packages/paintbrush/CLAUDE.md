@@ -1,7 +1,7 @@
 # Paintbrush
 
 <!-- template -->
-> **This is the paintbrush template.** `bun create blueshed my-app` (create-blueshed, `packages/create-blueshed` in this repository) copies it, runs `bun install`, then runs `create/setup.ts`. Setup gives the app a fresh `todo.jsonl` and `CHANGELOG.md`, puts its name in place of "Paintbrush" in the files listed in `NAMED`, copies railroad's `railroad` and delta's `delta-doc` skills into `.claude/skills`, and deletes what is about the template: `create/`, `tests/setup.test.ts`, `tests/evolve.ts` (the evolve skill's test, with its `test:evolve` script and its CI step), `logo.png`, `evals/` (the evolve skill's evaluations). A test fails if the word "paintbrush" appears in a file `NAMED` does not list. This repo's own `todo.jsonl` and `CHANGELOG.md` are about the template.
+> **This is the paintbrush template.** `bun create blueshed my-app` (create-blueshed, `packages/create-blueshed` in this repository) copies it, runs `bun install`, then runs `create/setup.ts`. Setup gives the app a fresh `todo.jsonl` and `CHANGELOG.md`, puts its name in place of "Paintbrush" in the files listed in `NAMED`, and deletes what is about the template: `create/`, `tests/setup.test.ts`, `tests/evolve.ts` (the evolve skill's test, with its `test:evolve` script and its CI step), `logo.png`, `evals/` (the evolve skill's evaluations). It then runs `delta install-skills --skip bun-route`: the skills the app's packages ship, railroad's `railroad` and delta's `delta-doc` (railroad's `bun-route` is left out; the app grows through `evolve`). A new app's `.claude/skills` holds `evolve`, `railroad` and `delta-doc`. A test fails if the word "paintbrush" appears in a file `NAMED` does not list. This repo's own `todo.jsonl` and `CHANGELOG.md` are about the template.
 >
 > `bun create` runs each `bun-create` postinstall entry as `bun run <entry>`, so the entry in `package.json` is `create/setup.ts`; writing `bun run create/setup.ts` runs `bun run bun run ...`, which does nothing and says nothing. bun create's own git step also races the script (its `git add` can hit a file the script has just deleted and give up), so `setup()` ends by committing or amending, and a new app is always one commit with a clean tree. After changing `create/`, test the whole flow: `bun ../create-blueshed/cli.ts <a scratch folder>/my-app`, then `bun test` in the new folder. (The old way in, `bun create blueshed/paintbrush`, runs the same setup as a postinstall and races bun create's git step: test it more than once.)
 >
@@ -19,6 +19,19 @@ A Bun website where people share documents. **Documents are how people communica
 **Where the project is.** `CHANGELOG.md` and `todo.jsonl` are the project's memory between sessions, and they work as a pair: the changelog is where the project has been, the ledger is what is open now. Read both before starting: the open items, and what `## [Unreleased]` holds that no release has yet. As you work they move together, as it happens and not at the end. What you find or leave open goes into `todo.jsonl`. What lands goes under `## [Unreleased]`, breaking changes first, and the item it settles becomes `fixed` with a dated `note` saying so. A change with no entry, or an item marked fixed with no entry behind it, means the record is wrong. `/release` closes the pair: `[Unreleased]` becomes a version, and the settled items leave `todo.jsonl`. Write both with the file tools, never inside a quoted shell argument.
 
 `todo.jsonl` has one JSON object per line: `n`, `status` (open / fixed / not fixed), `severity`, `area`, `file`, `summary`, `detail`, plus a dated `note` once an item is worked on.
+
+## Routes, resources and documents
+
+An app is routes and resources, on both sides of the socket. A document joins a server resource to its client resource: what someone needs in front of them to act. Entities, the collections of delta's `defineSchema`, are behind the documents, on the server; the tables follow from the documents.
+
+| | Server | Client |
+|---|---|---|
+| Routes | Bun routes, given to delta's `serve` in `src/routes.ts` | railroad's `routes()`, in `src/app.tsx` |
+| Resources | `<name>-api.ts`: the document it registers, or HTTP | `<name>.ts`, the handle, and `<name>-view.tsx` |
+| Joined by | the document, on the socket | |
+| Behind it | entities (`defineSchema`) | |
+
+Documents are delta's kinds: stored (a JSON file, SQLite or Postgres), memory, source or static.
 
 ## What is here
 

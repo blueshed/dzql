@@ -21,14 +21,14 @@ work in.
 | A verb | `bun run cli:model <verb>` | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
 | Sign in | `login claude@modeling.example claude-password` (or `.env`'s `MODEL_PASSWORD`) | `login claude@modeling.example claude-password` |
 
-The CLI keeps the session it is given in `.eta-session`. A refused write prints `refused: <why>`
-and exits 1: read it, it is the model saying no. Everyone signs in as `<name, in lower
-case>@modeling.example`; `.env`'s `MODEL_PEOPLE` says who.
+The CLI keeps its session in `.eta-session`. A refused write prints `refused: <why>` and exits 1:
+it is the model saying no. Everyone signs in as `<name, lower case>@modeling.example`; `.env`'s
+`MODEL_PEOPLE` says who.
 
 ## The verbs
 
-`examples/modeling/cli.ts` (in a project, `node_modules/dzql/examples/modeling/cli.ts`). Stories and documents are numbered as they are
-made; the page shows each story's number.
+`examples/modeling/cli.ts` (in a project, under `node_modules/dzql/`). Stories and documents are
+numbered as made; the page shows each story's number.
 
 | Said | Verb |
 |---|---|
@@ -45,17 +45,17 @@ made; the page shows each story's number.
 | The model, read back | `show`: each story, numbered, who and does or cannot; each document, numbered, whose, what it serves, and what it holds under its root |
 
 Words with an apostrophe go in double quotes (`story ann does "Ann scans the table's QR code"`):
-single quotes break on it, and a quote left open runs the commands after it into one story. Or pipe
-them in: `-` for the words reads them from stdin (`echo "..." | bun run cli:model story ann does -`,
-`reword <n> -` too). A story is one line; the model refuses words that run onto a second.
+a single quote left open runs the commands after it into one story. Or `-` reads the words from
+stdin (`echo "..." | bun run cli:model story ann does -`; `reword <n> -` too). A story is one line;
+the model refuses a second.
 
 ## Documents
 
-A document is what a person needs in front of them to act, and whoever else must see a change to
-it holds it too: a team's calendar, a room, my week. Its root is the row it is about; it holds
-entities under that root (`under`), each with the fields a story needs -- a field no story reads
-is a field nobody needs yet. Each person's own document (who you are, where you are) is `own`.
-Every holder is told every write to it, so cut documents by who must be told, not by table.
+A document is what a person needs in front of them to act; whoever else must see a change to it
+holds it too: a team's calendar, a room, my week. Its root is the row it is about; it holds
+entities under that root (`under`), each with only the fields a story reads. Each person's own
+document (who you are, where you are) is `own`. Every holder is told every write, so cut
+documents by who must be told, not by table.
 
 ## The gaps
 
@@ -68,13 +68,12 @@ Every holder is told every write to it, so cut documents by who must be told, no
 
 ## Loading an app that exists
 
-An app already built can be read into the model rather than told: `bun run model:load <example |
-path>` (in a project, `bun run model:load`, which reads `./src`) reads its code and runs its stories
-(`loader/extract.ts`), then writes every story and every document the stories need into the model
-on the page, as the person the CLI signed in as -- each write lands in front of whoever watches,
-and each undoes. A document no story needs is left out, and said. `bun run model:check <example>`
-reads the same app and prints its documents -- who holds each, who is told, what permit lets
-through that no page offers -- and hjeli's predicates over its stories.
+An app already built can be read in rather than told: `bun run model:load <example | path>` (in a
+project, `bun run model:load`, which reads `./src`) reads its code, runs its stories
+(`loader/extract.ts`), and writes each story and each document they need into the model, as the
+CLI's person: each lands in front of whoever watches, and each undoes. A document no story needs
+is left out, and said. `bun run model:check <example>` prints the same app's documents (who holds
+each, who is told, what permit lets through that no page offers) and hjeli's predicates.
 
 ## From the model to the app
 
@@ -91,14 +90,13 @@ Load the **eta-app** skill; the model says what to build, story by story:
 
 Then `bun run stories`: the least that makes the next story pass, then the next.
 
-Last, read it back: is the app the model as told? `bun run model:check --against-page`
-(eta: `model:check <example> --against-page`) reads the model page as the CLI is signed in to it (`.eta-session`; `ETA_URL`), and
-the app as `model:load` would write it, and names each gap as a question for the teller: a story told
-that the app does not tell, one it tells that was never told, one whose teller or does/cannot
-differs, and a document whose root, holders, holdings (what each hangs under, its fields) or
-own-ness differ, or that serves other stories. Give each app story the number of the model story it
-tells: `story("Ann cannot order onto a paid bill", { model: 10, as: "ann", cannot: ... })`. A story
-that names one matches it whatever its words, and only does/cannot is compared (the model's teller
-is a role, "a customer"; the app's a cast member, "ann"). One that names none matches by its words,
-so a story reworded on one side shows as two gaps. The report says which matched which way.
-`--against-page <file.json>` reads the page's document saved instead.
+Last, read it back: is the app the model as told? `bun run model:check --against-page` (in dzql,
+`model:check <example> --against-page`) reads the model page as the CLI is signed in
+(`.eta-session`, `ETA_URL`) and the app as `model:load` would write it, and names each gap as a
+question for the teller: a story told and not in the app, or in the app and never told; a teller
+or does/cannot that differs; a document whose root, holders, holdings or own-ness differ, or that
+serves other stories. Give each app story its model story's number
+(`story("Ann cannot order onto a paid bill", { model: 10, as: "ann", cannot: ... })`): then it
+matches whatever its words, and only does/cannot is compared (the model's teller is a role, the
+app's a cast member). One with no number matches by its words, so a reword shows as two gaps.
+`--against-page <file.json>` reads a saved page instead.

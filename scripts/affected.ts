@@ -22,10 +22,12 @@ const slow = args.has("--slow");
 type Pkg = { dir: string; name: string; deps: string[]; scripts: Record<string, string> };
 const pkgs: Pkg[] = readdirSync(join(root, "packages")).filter((dir) => existsSync(join(root, "packages", dir, "package.json"))).map((dir) => {
   const json = require(join(root, "packages", dir, "package.json"));
-  const deps = Object.keys({ ...json.dependencies, ...json.devDependencies, ...json.peerDependencies });
+  // a package that packs a sibling's folder (`prepack`: create-blueshed copies ../paintbrush) depends on it too
+  const packs = [...String(json.scripts?.prepack ?? "").matchAll(/\.\.\/([\w-]+)/g)].map((m) => `packages/${m[1]}`);
+  const deps = [...Object.keys({ ...json.dependencies, ...json.devDependencies, ...json.peerDependencies }), ...packs];
   return { dir, name: json.name, deps, scripts: json.scripts ?? {} };
 });
-const byName = new Map(pkgs.map((p) => [p.name, p]));
+const byName = new Map(pkgs.flatMap((p) => [[p.name, p], [`packages/${p.dir}`, p]] as const));
 
 const changed = async (): Promise<string[]> => {
   const base = (await $`git merge-base HEAD origin/main`.cwd(root).nothrow().quiet().text()).trim() || "HEAD";

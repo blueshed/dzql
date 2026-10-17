@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The docs and the evolve skill say the shape, and every step adds its story**: CLAUDE.md and
+  the README have the routes-and-resources table (both sides, joined by documents, entities
+  behind), and each evolve reference adds its `story(...)` to `stories.ts` and names its tests
+  from it. Setup's skills are described as they are: evolve, railroad, delta-doc.
+
+### Changed
+
 - **The evolve skill says what the rows are** (the Shed's run 2): a line or a part is a row under
   its parent, never JSON of ids; a fact from other rows (a tool out) is worked out by a recompute
   document, never stored; "one at a time" is the schema's `unique`; a migration's new rows take

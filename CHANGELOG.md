@@ -12,6 +12,13 @@ what is open across them. Newest first.
   delta's kind names (`memory`, `source`, `static`; stored when omitted), and eta's `fact` is a
   stored document with `undoable: false`. Breaking for an app; how to move across is in
   `packages/dzql/CHANGELOG.md`. The skills and docs follow from the concept review.
+- **The gate covers what a change reaches** (17 October): `bun run affected` runs create-blueshed
+  when paintbrush changes (a package that packs a sibling depends on it), and paintbrush's CI runs
+  on a change to dzql's modelling and runs create-blueshed's tests. Root scripts
+  `test:create-blueshed`, `test:create-dzql`. The docs say the shape once: routes and resources on
+  both sides of the socket, joined by documents, entities behind them (root README, delta, railroad,
+  dzql, paintbrush; `/mnt/project-files/concepts-review/metaphor.md`), and document kinds in delta's
+  one namespace (stored, memory, source, static).
 - **eta's screens are URLs the server routes** (17 October, Peter's choice: server-drawn, with
   URLs). A tab opened at a screen's URL is drawn on that screen first time (`Example.address`;
   detail in `packages/dzql/CHANGELOG.md`). Browser tests ran here on a staged Chromium; run them
@@ -35,8 +42,8 @@ what is open across them. Newest first.
   and a test pinning that a replace is an UPDATE (the fix itself, dzql #43, is in its unreleased
   changes). The skills an app reads (delta-doc, paintbrush's evolve) say a line is a row, a fact
   from rows is worked out, "one at a time" is `unique`, and show an `owns` path through
-  memberships. Run on PGlite here; dzql's Postgres server suite and paintbrush's `test:evolve` want
-  Peter's Mac. (packages/delta, packages/dzql, packages/paintbrush CHANGELOG.md)
+  memberships. Run on PGlite here; dzql's Postgres server suite and paintbrush's `test:evolve` were green
+  on Peter's Mac after (#25). (packages/delta, packages/dzql, packages/paintbrush CHANGELOG.md)
 - **eta's compartment is now a resource** (Peter's word, the concept review): the server side of a
   resource, as paintbrush's resources are. `Compartment` is `Resource`, `src/rendering/compartments/`
   is `src/rendering/resources/` (`resource.ts`), each example's `compartments` is its `resources`,
@@ -94,7 +101,7 @@ what is open across them. Newest first.
   the app's routes and documents (`startServer` gives them to `serve`; run as the entry, `run` is the
   process). `bun run stop` is `delta stop`. The evolve skill's references and their test follow;
   in its home the evolve test installs the delta beside it, packed, since paintbrush needs what npm's
-  delta does not have yet: **delta is released before create-blueshed**.
+  delta does not have yet: **delta and dzql are released before create-blueshed** (dzql: `dzql/modelling`, todo #29).
 - **Bun 1.4.3 and `bun check`**: every package.json says `engines.bun >=1.4.3` (railroad keeps its
   1.3.14 floor, which its CI proves), `@types/bun ^1.4.3`, the root `packageManager: bun@1.4.3`; the
   root's override of `@types/node` and railroad's `typescript` dev dependency are gone, and no

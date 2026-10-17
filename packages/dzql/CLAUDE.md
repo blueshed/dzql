@@ -85,7 +85,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
   `examples/modeling/` is the model's page; its `loader/` reads an app that exists.
 - railroad only in `src/rendering/island.ts`; the examples add `lucide`; the kernel imports no icon set.
 - Documents are delta's: rendering owns people and pages, delta owns documents, their ledger and
-  their one stream of changes. A **resource** owns one `docType` and has no place on the page; a
+  their one stream of changes. A **resource** owns one `docType` (the server side; the server draws the page) and has no place on the page; a
   place on the page is a **cell**, in the bento's **tray**; the visitor's own document is the **session**.
 - **The wire.** HTML is the only vocabulary: no node or JSON tree on the wire or in the client. A
   write names a document (`<docType>:<docId>`) and a JSON Pointer path, never a function. A
@@ -138,7 +138,6 @@ ln -s <delta>/node_modules/@blueshed/railroad node_modules/@blueshed/railroad` i
 ### Cleanup
 
 ```bash
-docker compose down -v 2>/dev/null           # in the app, if db:up was run
 cd packages/dzql && bun unlink
 ```
 

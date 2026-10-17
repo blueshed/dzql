@@ -26,8 +26,9 @@ build the least that makes the next story pass, and nothing a story doesn't need
 ## Start a project
 
 ```bash
-bun create blueshed/eta my-app
+bun create dzql my-app
 cd my-app
+bun install
 bun run model
 ```
 
@@ -35,8 +36,8 @@ You tell Claude the stories. It writes them down on the model's page (http://loc
 while you watch, with the documents they need and who holds each. Then it builds the app from the
 model (`bun dev`, http://localhost:3000), story by story.
 
-The project's root is your app, in `src/`; eta is one folder, `eta/`, that you never edit.
-`bun run eta:update` brings a later eta, says what to change, and runs your gate.
+The project's app is in `src/`; dzql and delta come from `node_modules`, and you never edit
+them there. A later eta is a version bump of `dzql` in `package.json`, then your gate.
 
 ## Try the examples
 

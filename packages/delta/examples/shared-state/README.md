@@ -24,7 +24,7 @@ messages are still there.
 
 - `types.ts`: the tables (`defineSchema`: rooms, and messages under them) and the document
   (`defineDoc`: a room and its messages).
-- `server.ts`: one `registerDocs` on the JSON file, one `Bun.serve`.
+- `server.ts`: one `registerDocs` on the JSON file, served by delta's `serve`.
 - `client.ts`: connect, open, first paint, `onOps`, send.
 - `index.html`: markup and a little CSS.
 

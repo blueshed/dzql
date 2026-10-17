@@ -1,5 +1,7 @@
 # Where stories live
 
+*Superseded: see [stories-as-code.md](stories-as-code.md).*
+
 *15 October 2026. A plan, not code: nothing in eta, delta or paintbrush has been changed. Written
 from eta's `src/stories.ts`, `src/harness.ts`, `src/stories-run.ts`, `docs/stories.md`, the
 eta-app skill's `reference/stories.md` and the modeller's `examples/modeling/loader/from-stories.ts`;

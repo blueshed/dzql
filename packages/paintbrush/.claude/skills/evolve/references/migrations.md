@@ -41,6 +41,14 @@ export function up(db: Database) {
 
 A row an `up` adds takes its id from `nextId`, the collection's serial, never from `_delta_sequences`: `export async function up(db: Database, { nextId }: MigrationTools) { const id = await nextId("items"); db.run("INSERT INTO items (id, name, price, valid_from) VALUES (?, 'Scone', 2, datetime('now'))", [id]); }`. A row that names another (a kit's parts, the tool they belong to) finds it by its id, never its name.
 
+Its story:
+
+```ts
+// stories.ts: after export const stories = {
+  // The upgrade
+  upgrade: story("Orders made before an upgrade are there after it, a line per item with how many."),
+```
+
 The test makes the database as version one left it (its history, `001-order`, and the orders people made), and starts version two on it:
 
 ```ts
@@ -53,6 +61,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import { catalogue, schema, type Order } from "../src/resources/order/order-api";
+import { stories } from "../stories";
 
 const dataDir = mkdtempSync(`${tmpdir()}/order-migrate-`);
 afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
@@ -89,11 +98,11 @@ async function orderLines() {
   }
 }
 
-test("an order kept by version one comes through the upgrade: a line per item, with its quantity", async () => {
+test(`${stories.upgrade.name} -- an order kept by version one, started on version two`, async () => {
   expect(await orderLines()).toEqual([[1, 1, 2], [3, 2, 1]]);
 });
 
-test("a migration runs once: started again, the order is as it was and nothing is pending", async () => {
+test(`${stories.upgrade.name} -- a migration runs once: started again, the order is as it was and nothing is pending`, async () => {
   expect(await orderLines()).toEqual([[1, 1, 2], [3, 2, 1]]);
   const db = new Database(`${dataDir}/app.db`);
   const status = await migrationStatus(db, history, { app: "order", schema });

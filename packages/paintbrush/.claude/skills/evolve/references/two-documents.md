@@ -115,7 +115,13 @@ import { OrderView } from "./resources/order/order-view";
 "/order": () => <OrderView />,
 ```
 
-Tested as in [testing.md](testing.md); the page passes it on SQLite and Postgres too:
+Its story, and its test, as in [testing.md](testing.md); the page passes it on SQLite and Postgres too:
+
+```ts
+// stories.ts: after export const stories = {
+  // The order
+  ordering: story("Someone ordering has the catalogue and their order on one page, with its total, and what one window orders shows in another."),
+```
 
 ```ts
 // tests/order.test.ts
@@ -123,6 +129,7 @@ import { test, afterAll, setDefaultTimeout } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
+import { stories } from "../stories";
 import { browser } from "./browser";
 
 setDefaultTimeout(30_000);
@@ -140,7 +147,7 @@ afterAll(async () => {
 const shown = (list: string) => `[...document.querySelectorAll(".${list} li")].map((li) => li.textContent.trim()).join(", ")`;
 const total = (amount: string) => `document.querySelector(".total")?.textContent === "Total ${amount}"`;
 
-test("the page has the catalogue and the order, and what one window orders shows in another", async () => {
+test(`${stories.ordering.name} -- two windows order and remove`, async () => {
   await open();
   await view.evaluate(`location.hash = "#/order"`);
   await waitFor(`${shown("catalogue")} === "Tea 2.50, Cake 3.00"`); // the catalogue is drawn

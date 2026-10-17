@@ -27,7 +27,7 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 - **A `bun create dzql` app has its skills and the model's page.** `bun install` runs
   `delta install-skills` (`prepare`; `claudeSkills: ["dzql"]`): eta-app, modelling, delta-doc and
-  railroad. `bun run model` (port 3001, `MODEL_PORT`) and `bun run cli:model` run the model's page
+  railroad. `bun run model` (port 3001, `MODEL_PORT`), `cli:model`, `model:load` and `model:check` run the model's page
   from dzql's `examples/modeling`, now in the package. A `CLAUDE.md` says which skill for which
   step. The eta-app and modelling skills describe this project, not the retired
   `bun create blueshed/eta` one with its `eta/` folder; eta-app's stories say what a story with no

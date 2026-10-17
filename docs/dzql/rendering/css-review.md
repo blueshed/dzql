@@ -2,7 +2,7 @@
 
 *25 September 2026.*
 
-eta's look is two layers: the kernel's stylesheet (`eta/src/bento.css`), which draws the bento's
+eta's look is two layers: the kernel's stylesheet (`packages/dzql/src/rendering/bento.css`), which draws the bento's
 parts, and each example's own stylesheet, which imports it and sets the colours. This note asks
 whether that CSS uses what the language now offers, and whether it serves everyone who reads the
 page, by comparing it with the four projects before it: paintbrush, simple, zeta and duckdown.
@@ -159,6 +159,7 @@ Suggested order: #40-44 and #47 first (one short pass over `bento.css`, and the 
 - zeta: `blueshed/zeta/examples/{products,calendar,projects,location,todo}/index.css`
 - duckdown: `blueshed/duckdown/server/base/site.css`, `server/edit/styles.css`,
   `tests/example/static/theme.css`
-- eta: `eta/src/bento.css`, `eta/examples/{chat,ticker,wedding}/client/styles.css`,
-  `eta/examples/bento/styles.css`
+- eta: `packages/dzql/src/rendering/bento.css`,
+  `packages/dzql/examples/{chat,ticker,wedding}/client/styles.css`,
+  `packages/dzql/examples/bento/styles.css`
 - The todos: `eta/todo.jsonl`, #40-54.

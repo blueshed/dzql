@@ -1,6 +1,7 @@
 name: paintbrush
 
-# Runs when paintbrush, delta or railroad (what it runs on), or what every package shares changes.
+# Runs when paintbrush, what it runs on (delta, railroad, dzql's modelling), create-blueshed (which
+# packs it), or what every package shares changes.
 on:
   push:
     branches: [main]
@@ -8,6 +9,8 @@ on:
       - "packages/paintbrush/**"
       - "packages/delta/**"
       - "packages/railroad/**"
+      - "packages/dzql/src/modelling/**"
+      - "packages/create-blueshed/**"
       - "package.json"
       - "bun.lock"
       - ".github/workflows/paintbrush.yml"
@@ -49,3 +52,5 @@ jobs:
 
       - run: bun run test:fast
       - run: bun run test:slow
+      - run: bun run test:fast
+        working-directory: packages/create-blueshed
