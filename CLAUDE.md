@@ -1,17 +1,18 @@
 # CLAUDE.md
 
-The bluetools monorepo: railroad, delta, dzql (with eta's modelling and rendering) and create-dzql as Bun workspaces under
+The bluetools monorepo: railroad, delta, dzql (with eta's modelling and rendering), create-dzql, paintbrush (the starting website) and create-blueshed (`bun create blueshed`, which copies paintbrush) as Bun workspaces under
 `packages/`. Each package has its own CLAUDE.md, read when working in it; it is the authority for
 that package's contracts, gate and docs (dzql's paths are written from this root). This file is
 only what is shared.
 
 ## The layout
 
-| Package | Depends on (in the workspace) | Gate, run in its folder |
-|---|---|---|
-| `packages/railroad` | nothing | `bun check && bun run check:consumer && bun test --coverage` |
-| `packages/delta` | railroad | `bun run ci` |
-| `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun check && bun run test:eta && bun run stories:all && bun run costs --check` (no Docker); `bun run test` with Docker |
+| Package | Depends on (in the workspace) | Fast, from the root | Slow (CI, a release) |
+|---|---|---|---|
+| `packages/railroad` | nothing | `bun run test:railroad` | `bun run test:railroad:slow`: the consumer type checks, the browser |
+| `packages/delta` | railroad | `bun run test:delta` | none: its whole suite is fast |
+| `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun run test:dzql` | `bun run test:dzql:slow`: Postgres in Docker, eta in a browser, the stories, the costs |
+| `packages/paintbrush` | delta, railroad | `bun run test:paintbrush` | `bun run test:paintbrush:slow`: the evolve skill applied |
 
 - `bun install` runs at the root: one `bun.lock`, committed; CI installs with `--frozen-lockfile`.
   A sibling's version range resolves to its folder, so a change in railroad is what delta and dzql

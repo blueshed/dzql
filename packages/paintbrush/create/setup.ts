@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-// Post-create setup: `bun create blueshed/paintbrush my-app` runs this as the
+// Post-create setup: `bun create blueshed my-app` runs this as the
 // template's postinstall, after `bun install` and before the first commit.
 //
 // It turns the template into an app. What is about developing the template goes (its
@@ -10,7 +10,7 @@
 // .claude/skills, so a session starts knowing how railroad's JSX behaves and how a document
 // is kept and changed.
 
-import { cpSync, existsSync, rmSync } from "node:fs";
+import { cpSync, existsSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 // The files that carry the app's name, as "Paintbrush" (the page title, which the
@@ -21,7 +21,6 @@ export const NAMED = [
   "CLAUDE.md",
   ".claude/launch.json",
   ".railway/railway.ts",
-  "bun.lock", // the root package's name
 ];
 
 // What is about the template, not the app: deleted from a new app (a folder whole)
@@ -36,7 +35,7 @@ const SKILLS = [
 // The template's own clone is the one place this must never run: it deletes things
 function isTemplateClone(root: string) {
   const origin = Bun.spawnSync(["git", "remote", "get-url", "origin"], { cwd: root }).stdout.toString();
-  return /blueshed\/paintbrush(\.git)?\s*$/.test(origin);
+  return /blueshed\/(paintbrush|dzql)(\.git)?\s*$/.test(origin); // its old repository, or its home now
 }
 
 // bun create commits on a thread of its own while this script runs. Its `git add` can meet a
@@ -66,6 +65,8 @@ export async function setup(root: string) {
 
   const name = root.split("/").pop() || "my-app";
   console.log(`Setting up ${name}...`);
+  // npm leaves a package's .gitignore behind, so the template carries it without its dot
+  if (existsSync(join(root, "gitignore"))) renameSync(join(root, "gitignore"), join(root, ".gitignore"));
 
   for (const path of DELETED) {
     rmSync(join(root, path), { recursive: true, force: true });
@@ -128,14 +129,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-- Started from [paintbrush](https://github.com/blueshed/paintbrush)${from ? ` ${from}. To bring this app up to date, read [its changelog](https://github.com/blueshed/paintbrush/blob/main/CHANGELOG.md) from that version on` : ""}.
+- Started from [paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)${from ? ` ${from}. To bring this app up to date, read [its changelog](https://github.com/blueshed/dzql/blob/main/packages/paintbrush/CHANGELOG.md) from that version on` : ""}.
 `;
 
 const readme = (name: string) => `# ${name}
 
 A Bun website where people share documents: open one and every change anyone makes
 reaches you as it happens. railroad draws the page, delta keeps the documents, and
-Railway deploys it. Started from [paintbrush](https://github.com/blueshed/paintbrush).
+Railway deploys it. Started from [paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush).
 
 Open it in two windows: a save in one shows in the other.
 

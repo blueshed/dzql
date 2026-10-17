@@ -8,7 +8,7 @@ changes only their own.
 [delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents and signs people in by link,
 [dzql](https://github.com/blueshed/dzql) keeps them in Postgres, compiled from their definitions, and
 [railroad](https://github.com/blueshed/dzql/tree/main/packages/railroad) draws the page. It is a
-[paintbrush](https://github.com/blueshed/paintbrush) app at its Postgres step.
+[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush) app at its Postgres step.
 
 ```sh
 bun install

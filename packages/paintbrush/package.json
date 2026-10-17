@@ -16,7 +16,9 @@
     "typecheck": "bun check",
     "test": "bun test",
     "test:evolve": "bun test ./tests/evolve.ts",
-    "start": "NODE_ENV=production bun src/main.ts"
+    "start": "NODE_ENV=production bun src/main.ts",
+    "test:fast": "bun check && bun test",
+    "test:slow": "bun run test:evolve"
   },
   "dependencies": {
     "@blueshed/delta": "^1.2.0",

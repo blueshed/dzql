@@ -7,10 +7,17 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "cd packages/dzql && bun run test",
+    "test": "bun scripts/affected.ts --all",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
     "cache:clear": "bun pm cache rm",
-    "affected": "bun scripts/affected.ts"
+    "affected": "bun scripts/affected.ts",
+    "test:railroad": "bun run --cwd packages/railroad test:fast",
+    "test:railroad:slow": "bun run --cwd packages/railroad test:slow",
+    "test:delta": "bun run --cwd packages/delta test:fast",
+    "test:dzql": "bun run --cwd packages/dzql test:fast",
+    "test:dzql:slow": "bun run --cwd packages/dzql test:slow",
+    "test:paintbrush": "bun run --cwd packages/paintbrush test:fast",
+    "test:paintbrush:slow": "bun run --cwd packages/paintbrush test:slow"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2"

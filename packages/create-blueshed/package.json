@@ -1,0 +1,39 @@
+{
+  "name": "create-blueshed",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Start a Bun website from paintbrush: routes and resources, railroad for the page, delta for the documents, Railway for the deploy",
+  "bin": {
+    "create-blueshed": "./cli.ts"
+  },
+  "files": [
+    "cli.ts",
+    "template",
+    "!template/node_modules",
+    "!template/data",
+    "!template/tests/out",
+    "README.md"
+  ],
+  "scripts": {
+    "prepack": "rm -rf template && cp -R ../paintbrush template && rm -rf template/node_modules template/data template/tests/out",
+    "postpack": "rm -rf template"
+  },
+  "keywords": [
+    "create",
+    "starter",
+    "bun",
+    "railroad",
+    "delta",
+    "railway",
+    "paintbrush"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blueshed/dzql.git",
+    "directory": "packages/create-blueshed"
+  },
+  "license": "MIT",
+  "engines": {
+    "bun": ">=1.4.3"
+  }
+}

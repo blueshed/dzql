@@ -117,9 +117,9 @@ a worker with no DOM and no JSX.
   documents and syncs them over one WebSocket. `openDoc("name").data` is a
   railroad signal, so a document drops straight into JSX, `when()` and
   `list()`.
-- **[paintbrush](https://github.com/blueshed/paintbrush)** is a starting
+- **[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)** is a starting
   website: Bun routes and resources, railroad for the page, a delta document
-  when a resource needs one. `bun create blueshed/paintbrush my-app` makes one (Bun 1.4).
+  when a resource needs one. `bun create blueshed my-app` makes one (Bun 1.4).
 - **[eta](https://github.com/blueshed/eta)** makes live apps for a few people
   at once, told as stories and checked by them. The server draws each page and
   delta keeps its documents; railroad draws an island, the one piece of a page

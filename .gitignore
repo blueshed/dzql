@@ -19,3 +19,9 @@ packages/dzql/server.log
 # Tools outside the repos made these, empty, on 16 October: never commit them
 .agents/
 .gemini/
+
+# paintbrush, run here as an app (its own ignores travel as gitignore, as npm publishes it in create-blueshed)
+packages/paintbrush/.server.pid
+packages/paintbrush/data/
+packages/paintbrush/tests/out/
+packages/create-blueshed/template/

@@ -35,6 +35,17 @@ what is open across them. Newest first.
   socket, `/health` and a 404; `run()` is the process around it (the pid file, `bun --hot`, the
   signals, closing what the resources opened); `delta stop` stops it. The apps move onto it next.
 
+- **paintbrush is in, at `packages/paintbrush`**, with its history: the starting website, run and
+  tested where it lives (`bun run test:paintbrush`). **`bun create blueshed my-app`** makes one:
+  `packages/create-blueshed` is the small command (create-blueshed on npm, until now published from
+  blueshed/invoket, where it ran `bun create blueshed/paintbrush`); publishing it copies paintbrush in.
+  paintbrush keeps its ignores as `gitignore`, which setup dots, since npm drops a `.gitignore`. The
+  READMEs say `bun create blueshed my-app`. blueshed/paintbrush and blueshed/invoket on GitHub are
+  untouched, and `bun create blueshed/paintbrush` works until Peter archives it.
+- Root scripts test each package from the top: `bun run test:railroad`, `test:delta`, `test:dzql`,
+  `test:paintbrush` (the fast tier), and `:slow` beside each that has one; `bun run test` is every
+  package's fast tier.
+
 ### Removed
 
 - `feedback.md`, on Peter's word: its findings are fixed and its tensions are in `todo.jsonl`.

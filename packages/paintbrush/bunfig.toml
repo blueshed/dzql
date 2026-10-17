@@ -1,3 +1,6 @@
 [test]
 coverage = true
 coverageThreshold = 1.0
+# railroad's and delta's own source is theirs to cover: in an app it is in node_modules, in the
+# template's home (blueshed/dzql) it is their workspace folders
+coveragePathIgnorePatterns = ["**/node_modules/**", "**/delta/src/**", "**/railroad/*.ts", "**/railroad/*.tsx"]

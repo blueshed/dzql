@@ -16,6 +16,7 @@ async function scratchTemplate(files: Record<string, string>) {
 test("setup turns the template into an app", async () => {
   const { root, done } = await scratchTemplate({
     "todo.jsonl": '{"n": 1}\n',
+    gitignore: "data/\n",
     "CHANGELOG.md": "# the template's changelog\n",
     "logo.png": "the template's logo",
     "create/setup.ts": "// this script",
@@ -36,9 +37,11 @@ test("setup turns the template into an app", async () => {
     await setup(root);
 
     expect(await Bun.file(join(root, "todo.jsonl")).text()).toBe(""); // a fresh ledger
+    expect(await Bun.file(join(root, ".gitignore")).text()).toBe("data/\n"); // npm's way round: the template's gitignore, dotted
+    expect(existsSync(join(root, "gitignore"))).toBe(false);
     expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("## [Unreleased]");
     // the template's version, so the app knows which of the template's changes it has
-    expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("- Started from [paintbrush](https://github.com/blueshed/paintbrush) 0.5.0. To bring this app up to date,");
+    expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("- Started from [paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush) 0.5.0. To bring this app up to date,");
     // what is about the template goes: its logo, this script and its test, the skill's test and evals
     for (const path of ["logo.png", "create/setup.ts", "tests/setup.test.ts", "tests/evolve.ts", "evals/evolve.json"]) {
       expect(await Bun.file(join(root, path)).exists()).toBe(false);
@@ -62,6 +65,7 @@ test("setup turns the template into an app", async () => {
 test("run as a script, the way bun create runs it, setup works on the current folder", async () => {
   const { root, done } = await scratchTemplate({
     "todo.jsonl": '{"n": 1}\n',
+    gitignore: "data/\n",
     "src/index.html": "<title>Paintbrush</title>",
   });
   try {
