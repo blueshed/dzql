@@ -771,7 +771,7 @@ export function createWriter<I>(r: Registration<I>) {
       // caller (eta) redraws from.
       announce(touched, written.ops, { name: docName, version: written.version });
       for (const f of fanouts) if (f !== me) f.announce(touched, written.ops);
-      options.committed?.();
+      if (ops.length > 0) options.committed?.();   // an empty write changed nothing: the JSON file has nothing to save
     } catch (err: any) {
       log.error(`delta fan-out failed (write committed): ${err.message}`);
     }

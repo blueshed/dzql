@@ -449,7 +449,9 @@ export function registerDocs<I = unknown>(
 
     const match = findDoc(docName);
     if (!match) return;
-    // every path is a JSON Pointer, asked of the whole write before anything else (400), as delta_apply asks it
+    // every op an object and every path a JSON Pointer, asked of the whole write before anything else (400), as delta_apply asks it
+    if (!Array.isArray(msg.ops)) return respond({ error: { code: 400, message: "ops must be an array" } });
+    if (msg.ops.some((op: unknown) => op === null || typeof op !== "object")) return respond({ error: { code: 400, message: "An op is an object: { op, path, value }" } });
     try { for (const op of msg.ops as DeltaOp[]) splitPath(op.path); }
     catch (err: any) { return respond({ error: failure(err) }); }
 

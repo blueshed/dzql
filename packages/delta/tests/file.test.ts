@@ -165,6 +165,20 @@ describe("the backends save so", () => {
   });
 });
 
+describe("nothing to save", () => {
+  // an empty write saved the JSON file all the same, making one nobody had written to
+  test("the JSON file: an empty write makes no file, as registerDoc's makes none", async () => {
+    const schema = defineSchema({ notes: { columns: { text: "text" }, temporal: false } });
+    const file = join(dir, "data.json");
+    const local = createLocal();
+    const store = registerDocs(local.server, file, schema, [{ prefix: "notes:", root: "notes", include: [], scope: {} }]);
+    await local.call("open", { doc: "notes:" });
+    await local.call("delta", { doc: "notes:", ops: [] });
+    await store.persisted();
+    expect(fs.existsSync(file)).toBe(false);
+  });
+});
+
 describe("a save that fails", () => {
   test("the JSON file: logged, never an unhandled rejection, and the next save writes the whole file", async () => {
     const schema = defineSchema({ notes: { columns: { text: "text" }, temporal: false } });

@@ -56,6 +56,7 @@ export const mistakes: Record<string, { ops: unknown[]; code: number }> = {
   "an add that leaves out a required field": { ops: [{ op: "add", path: "/case_messages/-", value: {} }], code: 400 },
   "a remove of a field": { ops: [{ op: "remove", path: "/case_messages/7/text" }], code: 400 },
   "an add of a field": { ops: [{ op: "add", path: "/case_messages/7/text", value: "x" }], code: 400 },
+  "an op that is not an object": { ops: [null], code: 400 },
 };
 
 /** The same mistake, the same code: every one of `mistakes`, and nothing changed by any. */

@@ -36,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A write of `[null]` answers 400, not 500**, on SQLite and the JSON file: an op that is not
+  an object is the writer's mistake. `mistakes` in `./testing` asks it of every backend
+  ("an op that is not an object"); a write whose `ops` is not an array answers 400 too.
+- **An empty write saves nothing on the JSON file.** It saved the file all the same, making one
+  nobody had written to; it now leaves the file alone, as `registerDoc` does.
 - **`install-skills` follows a package linked into `node_modules`**, as a workspace links its
   packages: a link was passed over as not a folder, so an app in the monorepo got no skills from a
   sibling its `claudeSkills` named. The consumer's own `node_modules` is read first, so what it
