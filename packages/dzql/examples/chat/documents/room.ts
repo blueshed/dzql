@@ -3,17 +3,17 @@ import { read as readDoc } from "dzql/rendering/documents";
 // A room's conversation, the people in it, and the list of rooms -- as a page reads them, from
 // delta (../delta.ts).
 
-export type ChatMessage = { id: string; name: string; text: string; sent_at: number };
+export type ChatMessage = { id: number; name: string; text: string; sent_at: number };
 
 /**
  * A room shows fifty messages at a time, oldest first: the latest, or the fifty said before the
- * one `before` names. Their ids are time-ordered, so the key is the order, and a window named by
+ * one `before` names. Their ids are numbered as they are said, so the key is the order, and a window named by
  * one (a keyset, never an offset) does not move when someone speaks. `earlier`: there are more
  * before it.
  */
-export function read(name: string, before: string | null = null, limit = 50): { messages: ChatMessage[]; earlier: boolean } {
+export function read(name: string, before: number | null = null, limit = 50): { messages: ChatMessage[]; earlier: boolean } {
   const all = Object.values(readDoc<{ messages?: Record<string, ChatMessage> }>(`room:${name}`)?.messages ?? {}).filter((m) => before === null || m.id < before);
-  all.sort((a, b) => (a.id < b.id ? -1 : 1));
+  all.sort((a, b) => a.id - b.id);
   return { messages: all.slice(-limit), earlier: all.length > limit };
 }
 

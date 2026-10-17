@@ -8,9 +8,10 @@ import { example } from "./index";
 
 const inDelta = example.delta!.as("test");
 
-/** The market as delta has it now. */
+/** The market as delta has it now, by symbol. */
 async function quotes(): Promise<MarketDocument> {
-  return (await inDelta.call("open", { doc: "ticker:market" })).result.quotes;
+  const rows = (await inDelta.call("open", { doc: "ticker:1" })).result.quotes as Record<string, MarketDocument[string]>;
+  return Object.fromEntries(Object.values(rows).map((q) => [q.symbol, q]));
 }
 
 // TICK_MS is read when resources/ticker.ts loads; the test script sets it to 0 (see package.json)
@@ -55,10 +56,10 @@ describe("the ticker", () => {
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
     const patch = await expectMessage(a, "patch");
     // a tick is said as the fields it moves: the last price become prev (unless it was already), and the new price
-    const moved = [...(prev === before ? [] : [{ op: "replace", path: "/DLTA/prev", value: before }]), { op: "replace", path: "/DLTA/price", value: before + 1 }];
-    expect(patch).toMatchObject({ doc: "ticker:market", ops: moved });
+    const moved = [...(prev === before ? [] : [{ op: "replace", path: "/4/prev", value: before }]), { op: "replace", path: "/4/price", value: before + 1 }]; // kept at DLTA's id
+    expect(patch).toMatchObject({ doc: "ticker:1", ops: moved });
     await expectQuiet(a);
-    expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker:market" });
+    expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker:1" });
     await expectQuiet(b);
     // a tick that changes nothing (the same price) lands nothing, and the page it holds is the page still: its refusal alone is sent
     const same = write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
@@ -71,8 +72,8 @@ describe("the ticker", () => {
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 2 }]);
     // a watches DLTA now, so its board row is told of the quote too, as the row it leaves
     const told = [await expectMessage(a, "patch"), await expectMessage(a, "patch")];
-    expect(told.map((m) => m.doc).sort()).toEqual(["quote:DLTA", "ticker:market"]);
-    expect(told.find((m) => m.doc === "quote:DLTA")).toMatchObject({ ops: [{ op: "replace", path: "/prev", value: before + 1 }, { op: "replace", path: "/price", value: before + 2 }] });
+    expect(told.map((m) => m.doc).sort()).toEqual(["quote:4", "ticker:1"]);
+    expect(told.find((m) => m.doc === "quote:4")).toMatchObject({ ops: [{ op: "replace", path: "/prev", value: before + 1 }, { op: "replace", path: "/price", value: before + 2 }] });
     await expectMessage(b, "patch");
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
     expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "/symbols", value: [] }] });
@@ -122,7 +123,7 @@ describe("the ticker", () => {
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "echo" }]);
     expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "/symbols", value: ["ECHO"] }] });
     const page = (await expectMessage(a, "render")).page as string;
-    expect(page).toContain('<div data-eta-part="quote-ECHO" id="quote-ECHO" class="board-row"><div id="line-ECHO" data-applet="board" data-doc="quote:ECHO" data-under="/quote" data-props='); // the board's new row, on the quote's own document; on the box, the cell is the one tap
+    expect(page).toContain('<div data-eta-part="quote-ECHO" id="quote-ECHO" class="board-row"><div id="line-ECHO" data-applet="board" data-doc="quote:5" data-under="/quote" data-props='); // the board's new row, on the quote's own document; on the box, the cell is the one tap
     expect(page).toContain('<span id="board-count">1</span>'); // the count on its head
     expect(page).toContain('<p class="cell-summary">watched, live</p>'); // and the line that said "nothing watched yet"
     await expectQuiet(b);
@@ -149,7 +150,7 @@ describe("the ticker", () => {
     startFeed(5);
     startFeed(5); // already running: no second interval
     const first = await expectMessage(ws, "patch");
-    expect(first).toMatchObject({ doc: "ticker:market", ops: expect.arrayContaining([{ op: "replace", path: expect.stringMatching(/^\/[A-Z]{4}\/price$/), value: expect.any(Number) }]) });
+    expect(first).toMatchObject({ doc: "ticker:1", ops: expect.arrayContaining([{ op: "replace", path: expect.stringMatching(/^\/\d+\/price$/), value: expect.any(Number) }]) });
     await expectMessage(ws, "patch");
     stopFeed();
     stopFeed(); // already stopped
@@ -205,14 +206,14 @@ describe("the ticker", () => {
     // not its name or its price, which the row says, nor whether it is watched, which the button does
     const opened = drawerOf(shown(await expectMessage(ws, "render")));
     expect(opened).toContain('<span class="prop-name cap">Moved</span>');
-    expect(opened).toContain('id="spark-DLTA" class="spark" data-applet="spark" data-doc="quote:DLTA" data-under="/quote"');
+    expect(opened).toContain('id="spark-DLTA" class="spark" data-applet="spark" data-doc="quote:4" data-under="/quote"');
     for (const said of [">Name<", ">Price<", ">Watched<"]) expect(opened).not.toContain(said);
 
     const before = (await quotes()).DLTA!.price;
     write(ws, "ticker", [{ op: "replace", path: "/DLTA/price", value: 240.5 }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "ticker:market" });
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "ticker:1" });
     expect(drawerOf(shown(await expectMessage(ws, "render")))).toContain(`<span class="move up">+${(((240.5 - before) / before) * 100).toFixed(2)}%</span>`);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "quote:DLTA", ops: expect.arrayContaining([{ op: "replace", path: "/price", value: 240.5 }]) }); // the quote's own, which the sparkline takes
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "quote:4", ops: expect.arrayContaining([{ op: "replace", path: "/price", value: 240.5 }]) }); // the quote's own, which the sparkline takes
 
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "DLTA" }]);
     await expectMessage(ws, "patch");
@@ -261,7 +262,7 @@ describe("the ticker", () => {
     expect((chosen.ops as { op: string; target: string }[]).map((o) => `${o.op} ${/data-eta-part="(.*)"/.exec(o.target)![1]}`)).toEqual(["tag site", "tag tap-CHRL", "replace drawers"]);
     expect(JSON.stringify(chosen.ops)).not.toContain("data-props");
     html = chosen.page!;
-    expect(html).toContain(`<div data-eta-part="quote-CHRL" id="quote-CHRL" class="board-row"><div id="line-CHRL" data-applet="board" data-doc="quote:CHRL" data-under="/quote" aria-hidden="true" data-props=`);
+    expect(html).toContain(`<div data-eta-part="quote-CHRL" id="quote-CHRL" class="board-row"><div id="line-CHRL" data-applet="board" data-doc="quote:3" data-under="/quote" aria-hidden="true" data-props=`);
     expect(html).toContain(`<button data-eta-part="tap-CHRL" type="button" class="board-tap" aria-labelledby="line-CHRL" data-write='{"doc":"desk","op":"replace","path":"/page"}' data-value='"board?symbol=CHRL"' aria-expanded="true" data-reveal></button></div>`);
     expect(html).toContain("Stop watching");
     // the board row has the move and the sparkline, and a narrow board hides its name: its drawer gives the name
@@ -349,7 +350,7 @@ describe("the ticker", () => {
     const ws = await open();
     ws.send(JSON.stringify({ type: "inspect" }));
     const inspection = (await expectMessage(ws, "inspect")) as unknown as { docs: { doc: string }[] };
-    expect(inspection.docs.map((d) => d.doc)).toEqual(["desk", "ticker:market", "watchlist", "clock"]);
+    expect(inspection.docs.map((d) => d.doc)).toEqual(["desk", "ticker:1", "watchlist", "clock"]);
     ws.close();
   });
 });

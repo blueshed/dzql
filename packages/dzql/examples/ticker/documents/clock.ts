@@ -3,7 +3,7 @@ import type { PatchOp } from "dzql/rendering/json-patch";
 import { cityOf } from "../applets/clock"; // the applet's own, pure: the browser says the city the same way
 export { cityOf };
 
-// A session's clock, kept in delta (`clock:<id>`, ../delta.ts): the city whose time it shows, as
+// A session's clock, kept in delta (`clock:<id>`, the session's row's `tz`, ../delta.ts): the city whose time it shows, as
 // an IANA zone ("Europe/Zurich"). The zones are the runtime's own list; a write names one of them
 // or does not apply. Choosing a city is the person's doing, so it is on the ledger and Undo takes
 // them back.
@@ -30,7 +30,7 @@ export function offsetOf(tz: string, now = new Date()): string {
 }
 
 export function read(sessionId: string): ClockDocument {
-  const tz = readDoc<{ clocks?: { tz: string | null } }>(`clock:${sessionId}`)?.clocks?.tz ?? DEFAULT_TZ;
+  const tz = readDoc<{ desks?: { tz: string | null } }>(`clock:${sessionId}`)?.desks?.tz ?? DEFAULT_TZ;
   return { tz, city: cityOf(tz), offset: offsetOf(tz) };
 }
 

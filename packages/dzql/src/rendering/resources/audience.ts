@@ -33,19 +33,14 @@ export function allOpenSockets(): ServerWebSocket<ConnectionData>[] {
 }
 
 /**
- * A document's name on the wire, as `ws` is told it: the whole name, `<docType>:<docId>`, so one
- * socket can hold any number of documents of one type (this month's appointments and last
- * month's). A session's own document (its session, its ledger, its desk: `perSession`) is named by its
- * type alone: its id is a session id, a person's only credential, which never goes on the wire.
- * A document keyed by a live session's id that does not say it is `perSession` is refused by name, loudly:
- * naming it would hand that session's credential to whoever reads the wire.
+ * A document's name on the wire: the whole name, `<docType>:<docId>`, so one socket can hold any
+ * number of documents of one type (this month's appointments and last month's). A session's own
+ * document (its session, its ledger, its desk: `perSession`) is named by its type alone: a tab
+ * knows only its own, and its session's number -- a row's, like any other -- is not the wire's to
+ * say. The credential is the cookie, which nothing on the wire carries.
  */
-export function wireName(docType: string, docId: string, ws: ServerWebSocket<ConnectionData>): string {
-  if (byDocType?.get(docType)?.perSession || docId === ws.data.sessionId) return docType;
-  if ([...openSockets].some((other) => other.data.sessionId === docId)) {
-    throw new Error(`${docType} is keyed by a session id: declare its resource \`perSession\`, so the id never goes on the wire`);
-  }
-  return prefixDoc(docType, docId);
+export function wireName(docType: string, docId: string): string {
+  return byDocType?.get(docType)?.perSession ? docType : prefixDoc(docType, docId);
 }
 
 /**
@@ -89,10 +84,11 @@ export function readersOf(docType: string, docId: string): ServerWebSocket<Conne
 /**
  * A document's ops as the wire says them, for an echo and for `inspect` alike: at eta's paths (the
  * resource's `under` taken off), and -- for a session's own document, keyed by the session id -- with
- * that id taken out of whatever they carry: a credential, never on the wire, not even to its own tabs.
+ * that id taken out of whatever they carry: never on the wire, not even to its own tabs. A row's
+ * number is its `id`, the same number whether the id is written as one or as text.
  */
 export function wireOps(owner: Resource, docId: string, ops: PatchOp[]): PatchOp[] {
   const at = owner.under ?? "";
   const moved = ops.map((op) => (at && (op.path === at || op.path.startsWith(`${at}/`)) ? { ...op, path: op.path.slice(at.length) } : op));
-  return owner.perSession ? (JSON.parse(JSON.stringify(moved, (_k, v) => (v === docId ? undefined : v))) as PatchOp[]) : moved;
+  return owner.perSession ? (JSON.parse(JSON.stringify(moved, (k, v) => (v === docId || (k === "id" && typeof v === "number" && String(v) === docId) ? undefined : v))) as PatchOp[]) : moved;
 }

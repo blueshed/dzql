@@ -89,11 +89,11 @@ export async function measure(script: string): Promise<Measured> {
  * A way in to the server on `port` for a measure, or the stories' cast (src/harness.ts), which sees
  * what crosses the wire: a socket opened to `url` is passed on to the server as it is, and the size
  * of each text frame the server sends back -- its payload, compressed when it was -- is kept under
- * the session its upgrade's cookie names. `heard(sessionId, raws)` sizes the last messages a
+ * the cookie its upgrade sends. `heard(cookie, raws)` sizes the last messages a
  * session heard before one more (the answer that ended them, as a measure's `heard` asks, and the
  * stories' `settle`): each one's type, size, and size as sent.
  */
-export async function tap(port: number): Promise<{ url: string; heard: (sessionId: string, raws: string[]) => Heard[]; close: () => void }> {
+export async function tap(port: number): Promise<{ url: string; heard: (cookie: string, raws: string[]) => Heard[]; close: () => void }> {
   const frames = new Map<string, number[]>();
   const server = createServer((client) => {
     const sent: number[] = [];
@@ -128,9 +128,9 @@ export async function tap(port: number): Promise<{ url: string; heard: (sessionI
     });
   });
   await new Promise<void>((listening) => server.listen(0, "127.0.0.1", listening));
-  const heard = (sessionId: string, raws: string[]): Heard[] => {
-    const sent = (frames.get(sessionId) ?? []).slice(0, -1).slice(-raws.length);
-    if (sent.length < raws.length) throw new Error(`the wire carried ${sent.length} messages to ${sessionId} before its last, not ${raws.length}`);
+  const heard = (cookie: string, raws: string[]): Heard[] => {
+    const sent = (frames.get(cookie) ?? []).slice(0, -1).slice(-raws.length);
+    if (sent.length < raws.length) throw new Error(`the wire carried ${sent.length} messages to ${cookie} before its last, not ${raws.length}`);
     return raws.map((raw, i) => ({ type: JSON.parse(raw).type, bytes: Buffer.byteLength(raw, "utf8"), sent: sent[i]! }));
   };
   return { url: `ws://127.0.0.1:${(server.address() as AddressInfo).port}/ws`, heard, close: () => server.close() };

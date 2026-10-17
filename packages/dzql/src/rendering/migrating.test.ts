@@ -24,7 +24,7 @@ describe("two examples share a database, and each runs only its own migrations",
     const db = new Database(":memory:");
     expect(await migrate(db, list("001-x"), chat)).toEqual({ ran: [], fresh: true, unknown: [] });
     createTables(db, chat.schema);
-    db.run("INSERT INTO chat_rooms (id) VALUES ('general')");
+    db.run("INSERT INTO chat_messages (id, room, name, text, sent_at) VALUES (1, 'general', 'Ada', 'hello', 0)");
 
     // asked of the whole database, leave would not be new, and its 001-x would run on tables it never had
     expect((await migrationStatus(db, list("001-x"), { app: "leave" })).fresh).toBe(false);

@@ -52,7 +52,7 @@ export type Report = { outcomes: Outcome[]; passed: number; failed: number; warn
 /** The stories done by hand in a browser (`byHand`, or a story's own `gesture`): how many, how many presses (a button pressed, a form typed into and sent, a drag), how many writes sent as an applet declares them, and how long it took. */
 export type ByHand = { stories: number; presses: number; applets: number; ms: number };
 
-type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
+type Member = { name: string; cookie: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
 type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: string; html?: string };
 type Snapshot = Map<string, string>;
 
@@ -726,24 +726,28 @@ export async function run(
   }
 
   /** Posts a form to a route as a browser posts it: from the page's own site, with the session's cookie if it has one. The route's answer, not followed. */
-  const postForm = (how: Post, sessionId?: string): Promise<Response> =>
-    fetch(new URL(how.path, server.url), { method: "POST", body: new URLSearchParams(how.form), redirect: "manual", headers: { Origin: server.url.origin, ...(sessionId && { Cookie: `session_id=${sessionId}` }) } });
+  const postForm = (how: Post, cookie?: string): Promise<Response> =>
+    fetch(new URL(how.path, server.url), { method: "POST", body: new URLSearchParams(how.form), redirect: "manual", headers: { Origin: server.url.origin, ...(cookie && { Cookie: `session_id=${cookie}` }) } });
 
-  /** The session an answer's cookie names, if it names one. */
+  /** The session a cookie names, as the server finds it (`Example.session`). */
+  const sessionOf = (cookie: string): Promise<string> => example.session?.(cookie) ?? Promise.resolve(cookie);
+
+  /** The cookie an answer sets, if it sets one. */
   const cookieOf = (res: Response): string | undefined => /(?:^|;\s*|,\s*)session_id=([^;,\s]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
 
-  /** Signs a member in through the example's own route, as a browser posts its form: the session the answer's cookie names, or undefined for a visitor. */
+  /** Signs a member in through the example's own route, as a browser posts its form: the cookie the answer sets, or undefined for a visitor. */
   async function signIn(name: string): Promise<string | undefined> {
     const how = stories.signIn?.(name);
     if (!how) return undefined;
     const res = await postForm(how);
-    const sessionId = cookieOf(res);
-    if (!sessionId) throw new Error(`${name} could not sign in at ${how.path}: ${res.status}`);
-    return sessionId;
+    const cookie = cookieOf(res);
+    if (!cookie) throw new Error(`${name} could not sign in at ${how.path}: ${res.status}`);
+    return cookie;
   }
 
   async function connect(name: string): Promise<Member> {
-    const member = { name, sessionId: (await signIn(name)) ?? crypto.randomUUID(), inbox: [], answered: [] } as Partial<Member> as Member; // its tab is `open`'s
+    const cookie = (await signIn(name)) ?? crypto.randomUUID();
+    const member = { name, cookie, sessionId: await sessionOf(cookie), inbox: [], answered: [] } as Partial<Member> as Member; // its tab is `open`'s
     await open(member);
     return member;
   }
@@ -751,7 +755,7 @@ export async function run(
   /** Opens a tab of `member`'s session, as a page loading does: a socket of its own, and the page it is drawn. */
   async function open(member: Member): Promise<void> {
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-    const ws: WebSocket = new WebSocket(tapped.url, { headers: { Cookie: `session_id=${member.sessionId}` } });
+    const ws: WebSocket = new WebSocket(tapped.url, { headers: { Cookie: `session_id=${member.cookie}` } });
     Object.assign(member, { ws, page: "", taken: new Map() });
     const name = member.name;
     ws.addEventListener("message", (event) => {
@@ -782,7 +786,7 @@ export async function run(
    */
   async function posting(cast: Member[], who: Member, how: Post, from: Map<Member, number>): Promise<{ status: number; reason?: string }> {
     const toldBefore = JSON.stringify((await toldNow(who.sessionId)) ?? null);
-    const res = await postForm(how, who.sessionId);
+    const res = await postForm(how, who.cookie);
     await server.idle();
     if (res.status >= 400) {
       await settle(cast);
@@ -793,7 +797,8 @@ export async function run(
     if (res.status >= 300) {
       await closeTab(who);
       await server.idle();
-      who.sessionId = cookieOf(res) ?? who.sessionId;
+      who.cookie = cookieOf(res) ?? who.cookie;
+      who.sessionId = await sessionOf(who.cookie);
       from.set(who, who.inbox.length);
       await open(who);
       await settle(cast);
@@ -944,7 +949,7 @@ export async function run(
     const handed = cast.flatMap((m): Handed[] => {
       const raws = m.inbox.slice(from.get(m));
       if (raws.length === 0) return [];
-      const heard = tapped.heard(m.sessionId, raws);
+      const heard = tapped.heard(m.cookie, raws);
       return [{ member: m.name, bytes: sum(heard, "bytes"), sent: sum(heard), most: largest(raws) }];
     });
     if (phase === "undo" || phase === "redo") outcome.wire![phase] = handed;
@@ -1375,7 +1380,7 @@ export async function run(
       if ((await premise(cast, story)).length > 0) return []; // the story says so when it is told
       const start = placeOf(who.page);
       opened = true;
-      const wrong = await hand.enter(who.sessionId, start);
+      const wrong = await hand.enter(who.cookie, start);
       if (wrong) return by(wrong);
 
       let none = false; // the last press found nothing on the page that could send its write at all

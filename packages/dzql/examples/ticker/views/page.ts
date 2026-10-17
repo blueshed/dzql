@@ -10,7 +10,7 @@ import { part } from "dzql/rendering/parts";
 import type { ClockDocument } from "../documents/clock";
 import { ZONES, cityOf, offsetOf } from "../documents/clock";
 import type { Ui } from "../documents/desk";
-import { quote, type MarketDocument, type Quote } from "../documents/market";
+import { quote, quoteDoc, type MarketDocument, type Quote } from "../documents/market";
 import type { WatchlistDocument } from "../documents/watchlist";
 import { icon } from "./icons";
 
@@ -54,7 +54,7 @@ export function boardMount(list: WatchlistDocument, market: MarketDocument, ui?:
     return part(`tap-${symbol}`, `<button type="button" class="board-tap" aria-labelledby="line-${esc(symbol)}"${go(address("board", "symbol", symbol))} aria-expanded="${chosen}"${chosen ? " data-reveal" : ""}></button>`);
   };
   const line = (symbol: string): string =>
-    `<div id="line-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-under="/quote"${ui ? ' aria-hidden="true"' : ""} data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
+    `<div id="line-${esc(symbol)}" data-applet="board" data-doc="${esc(quoteDoc(symbol))}" data-under="/quote"${ui ? ' aria-hidden="true"' : ""} data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
   const rowOf = (symbol: string) => part(`quote-${symbol}`, `<div id="quote-${esc(symbol)}" class="board-row">${line(symbol)}${tap(symbol)}</div>`);
   return `<div id="board" class="board">${symbols.map(rowOf).join("")}</div>`;
 }
@@ -88,7 +88,7 @@ const cityMount = (c: ClockDocument): string => `<div id="city" class="city" dat
 // A symbol's drawer shows how its price is moving, beside a row that says what it is and what it costs:
 // the move in per cent, and a sparkline of the ticks seen while the drawer is open, an applet on the
 // quote's own document, as a board row is.
-const sparkMount = (symbol: string): string => `<div id="spark-${esc(symbol)}" class="spark" data-applet="spark" data-doc="quote:${esc(symbol)}" data-under="/quote" data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
+const sparkMount = (symbol: string): string => `<div id="spark-${esc(symbol)}" class="spark" data-applet="spark" data-doc="${esc(quoteDoc(symbol))}" data-under="/quote" data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
 
 // ───────────────────────────── the rows ─────────────────────────────
 

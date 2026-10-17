@@ -83,7 +83,7 @@ export function assemble(example: Example): Assembled {
     const docs: InspectDoc[] = [];
     for (const name of new Set(seen)) {
       const { docType, docId } = splitDoc(name);
-      const doc = wireName(docType, docId, ws); // as the wire names it: whole, or the bare type for a session's own
+      const doc = wireName(docType, docId); // as the wire names it: whole, or the bare type for a session's own
       const owner = byDocType.get(docType)!;
       const entries = (await documents.history(name, ws.data.sessionId, limit)).map((e) => ({
         id: e.id, // the ledger entry's own

@@ -64,7 +64,7 @@ function renderMessage(message: ChatMessage, index: number, messages: ChatMessag
  * there are more, and reading back, "Latest" at the foot in place of the form. Another fifty
  * share no message with these, so the conversation goes whole, as a room does when you go in.
  */
-function renderRoom(name: string, room: string, people: string[], before: string | null, { messages, earlier }: { messages: ChatMessage[]; earlier: boolean }): string {
+function renderRoom(name: string, room: string, people: string[], before: number | null, { messages, earlier }: { messages: ChatMessage[]; earlier: boolean }): string {
   return collectionPage([{ label: "Chat", back: write("session", "remove", "/room") }, { label: `#${room}` }], {
     key: "conversation",
     body: join(
@@ -102,14 +102,14 @@ export const room: Resource = {
     if (op.path !== "/messages/-" || op.op !== "add") return false;
     return sessionDoc.read(ws.data.sessionId).name !== null;
   },
-  // The wire says the text; the document takes a message: a new row under a time-ordered id, with
-  // its author and the time. Blank text is no message.
+  // The wire says the text; the document takes a message: a new row, numbered by the store, with
+  // its author and the time (its room is the document's). Blank text is no message.
   shape(ws, _room, ops) {
     const { name } = sessionDoc.read(ws.data.sessionId);
     return ops
       .map((op) => String(op.value ?? "").trim())
       .filter((text) => text !== "")
-      .map((text): PatchOp => ({ op: "add", path: `/messages/${Bun.randomUUIDv7()}`, value: { name, text, sent_at: Date.now() } }));
+      .map((text): PatchOp => ({ op: "add", path: "/messages/-", value: { name, text, sent_at: Date.now() } }));
   },
   // the first message in a room puts it on the list, and undoing the last takes it off
   afterChange: () => keepLobby(),

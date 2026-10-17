@@ -1,6 +1,6 @@
 // The board applet's drawing and patch logic: one watched symbol, a row with a sparkline, and how a
 // tick moves its quote and extends its history. The board is a row per watched symbol, each an
-// applet on that symbol's own document (`quote:<SYMBOL>`), so a board is told only what it shows.
+// applet on that symbol's own document (`quote:<id>`), so a board is told only what it shows.
 // Both are pure functions over a RowState, tested here without a browser; the mounting that owns
 // that state per element is board-applet.ts, imported only by client/main.ts.
 
@@ -11,7 +11,7 @@ export type Quote = { name: string; price: number; prev: number };
 
 export interface RowProps {
   symbol: string;
-  /** The quote as its document holds it (`quote:<SYMBOL>`): the patches land here. */
+  /** The quote as its document holds it (`quote:<id>`): the patches land here. */
   quote: Quote;
 }
 

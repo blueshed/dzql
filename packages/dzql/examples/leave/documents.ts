@@ -17,17 +17,17 @@ export const TEAM = "1";
 
 export function team(): Team {
   const doc = readDoc<{ teams: { name: string }; people: Record<string, Person>; requests: Record<string, Request> }>(`team:${TEAM}`);
-  // an id is text, as the wire says it: a backend names a new row as it likes (a UUID, a serial)
+  // an id is text, as the wire says it: a row's number, which the store names
   const people = Object.values(doc.people).map((p) => ({ ...p, id: String(p.id) }));
   const requests = Object.values(doc.requests).map((r) => ({ ...r, id: String(r.id), person_id: String(r.person_id), answered_by: r.answered_by == null ? null : String(r.answered_by) }));
-  return { name: doc.teams.name, people, requests: requests.sort((a, b) => a.starts.localeCompare(b.starts) || a.id.localeCompare(b.id)) };
+  return { name: doc.teams.name, people, requests: requests.sort((a, b) => a.starts.localeCompare(b.starts) || Number(a.id) - Number(b.id)) };
 }
 
 export type Session = { person: Person | null; page: string; draft: Span | null };
 
 /** Who a session is, if anyone, where, and their draft. A person no longer on the team is nobody. */
 export function session(sessionId: string): Session {
-  const row = readDoc<{ sessions?: { person_id?: string | null; page?: string | null; draft?: Span | null } }>(`session:${sessionId}`)?.sessions ?? {};
+  const row = readDoc<{ sessions?: { person_id?: number | string | null; page?: string | null; draft?: Span | null } }>(`session:${sessionId}`)?.sessions ?? {};
   const person = row.person_id == null ? null : (team().people.find((p) => p.id === String(row.person_id)) ?? null);
   return person ? { person, page: row.page ?? "", draft: row.draft ?? null } : { person: null, page: "", draft: null };
 }
@@ -127,14 +127,14 @@ export function shape(me: Person, ops: PatchOp[], t: Team, draft: Span | null): 
       const { starts, ends } = checked({ starts: said.starts, ends: said.ends });
       // a manager's own leave: nobody else answers it, so it is approved at once, by them, for all to see
       const manager = me.role === "manager";
-      return [{ op: "add", path: "/requests/-", value: { person_id: me.id, starts, ends, status: manager ? "approved" : "asked", answered_by: manager ? me.id : null } }];
+      return [{ op: "add", path: "/requests/-", value: { person_id: Number(me.id), starts, ends, status: manager ? "approved" : "asked", answered_by: manager ? Number(me.id) : null } }];
     }
     if (field === "starts" || field === "ends") {
       const r = t.requests.find((x) => x.id === id)!;
       moved.set(id!, { ...(moved.get(id!) ?? { starts: r.starts, ends: r.ends }), [field]: op.value as string });
       return [op];
     }
-    if (op.op === "replace") return [op, { op: "replace", path: `/requests/${id}/answered_by`, value: me.id }];
+    if (op.op === "replace") return [op, { op: "replace", path: `/requests/${id}/answered_by`, value: Number(me.id) }];
     return [op];
   });
   for (const s of moved.values()) checked(s);

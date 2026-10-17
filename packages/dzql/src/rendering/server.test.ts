@@ -885,16 +885,9 @@ describe("one socket, any documents: a document is named whole, and seen because
     ws.close();
   });
 
-  test("a session's own document goes by its type; one keyed by a live session and not perSession is refused by name", () => {
-    const me = { data: { sessionId: "s-me" } } as unknown as Bun.ServerWebSocket<{ sessionId: string }>;
-    const other = { data: { sessionId: "s-other" } } as unknown as Bun.ServerWebSocket<{ sessionId: string }>;
-    openConnection(other);
-    try {
-      expect(wireName("note", "s-other", me)).toBe("note"); // note is `perSession`
-      expect(wireName("month", "2026-09", me)).toBe("month:2026-09");
-      expect(() => wireName("month", "s-other", me)).toThrow("perSession");
-    } finally {
-      closeConnection(other);
-    }
+  test("a session's own document goes by its type; any other by its whole name, a session's number among ids like any other", () => {
+    expect(wireName("note", "1")).toBe("note"); // note is `perSession`
+    expect(wireName("month", "2026-09")).toBe("month:2026-09");
+    expect(wireName("month", "1")).toBe("month:1"); // the same number as a session's: a row's, not a credential
   });
 });

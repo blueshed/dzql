@@ -26,12 +26,13 @@ const send = (ws: Socket, message: string): void => void ws.send(message, true);
 const origins = (): string[] | undefined => process.env.ETA_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean);
 
 /**
- * The cookie that names a session -- its id, a person's only credential: sent back on every
- * request, never readable by a script, never sent from another site. An example that signs people
- * in sets it with a fresh id, never the one the visit had before (a fixed session).
+ * The cookie that names a session -- a random token, a person's only credential (the session is
+ * the row it names: `Example.session`): sent back on every request, never readable by a script,
+ * never sent from another site. An example that signs people in sets a fresh one, never the one
+ * the visit had before (a fixed session).
  */
-export function sessionCookie(sessionId: string): string {
-  return new Bun.Cookie("session_id", sessionId, { path: "/", httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" }).serialize();
+export function sessionCookie(cookie: string): string {
+  return new Bun.Cookie("session_id", cookie, { path: "/", httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" }).serialize();
 }
 
 // One example per process is an invariant: a running eta process serves exactly one example, and
@@ -157,7 +158,7 @@ function tellChanges(documents: Documents): void {
     const yours = await claimOf(doc, v);
     const echoTo = await settled(documents, () => audienceFor(docType, docId));
     const change = yours?.entry === undefined ? undefined : handleFor(yours.ws.data.sessionId, yours.entry);
-    for (const ws of echoTo) send(ws, ws === yours?.ws ? patchMessage(wireName(docType, docId, ws), v ?? 0, wire, yours.id, change) : patchMessage(wireName(docType, docId, ws), v ?? 0, wire));
+    for (const ws of echoTo) send(ws, ws === yours?.ws ? patchMessage(wireName(docType, docId), v ?? 0, wire, yours.id, change) : patchMessage(wireName(docType, docId), v ?? 0, wire));
     for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws);
     await owner.afterChange?.(docId, wire);
   });
@@ -292,7 +293,7 @@ export function createServer(example: Example, port: number | string = process.e
       () => owner?.afterWalk?.(ws, docId, { way, ops: wireOps(owner, docId, done.ops as PatchOp[]), inverse: wireOps(owner, docId, (done.inverse ?? []) as PatchOp[]) }),
       `following a walk of ${owner?.perSession ? owner.docType : plan.doc}`,
     );
-    if (id !== undefined && done.ops.length === 0) send(ws, patchMessage(wireName(docType, docId, ws), done.version ?? 0, [], id));
+    if (id !== undefined && done.ops.length === 0) send(ws, patchMessage(wireName(docType, docId), done.version ?? 0, [], id));
     return true;
   }
 
@@ -371,9 +372,10 @@ export function createServer(example: Example, port: number | string = process.e
         const identified = await example.identify?.(req);
         if (identified instanceof Response) return identified;
         const cookie = req.cookies.get("session_id");
-        const sessionId = identified ?? cookie ?? crypto.randomUUID();
+        const token = identified ?? cookie ?? crypto.randomUUID();
+        const sessionId = example.session ? await example.session(token) : token;
         const headers = new Headers();
-        if (sessionId !== cookie) headers.append("Set-Cookie", sessionCookie(sessionId));
+        if (token !== cookie) headers.append("Set-Cookie", sessionCookie(token));
 
         if (server.upgrade(req, { data: { sessionId }, headers })) return;
         return new Response("Upgrade failed", { status: 400 });

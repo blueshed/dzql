@@ -15,7 +15,9 @@ import { migrating, schema, tokenId } from "./delta";
 //
 // The previous version: a request was `asked_by` its person (now `person_id`), kept a count of its
 // `days` (now worked out from the calendar, and dropped), and gave no `reason` (now every old
-// request was a holiday). Not renamed, a request is nobody's; not dropped, no request can be made.
+// request was a holiday); a login's id was its email and a token's its hash (now each is numbered,
+// and keeps them in columns). Not renamed, a request is nobody's; not dropped, no request can be
+// made; not numbered, nobody signs in.
 
 const before = defineSchema({
   teams: { table: "leave_teams", columns: { name: "text" }, temporal: false },
@@ -57,7 +59,7 @@ async function previousVersion(): Promise<void> {
 
 /** Ann's requests as the tables hold them, by id: when, how they stand, and why. */
 const annsRequests = (db: Database) =>
-  db.query<{ id: string; starts: string; status: string; answered_by: string | null; reason: string }, []>("SELECT CAST(id AS TEXT) AS id, starts, status, answered_by, reason FROM leave_requests WHERE person_id = '1' ORDER BY id").all();
+  db.query<{ id: string; starts: string; status: string; answered_by: number | null; reason: string }, []>("SELECT CAST(id AS TEXT) AS id, starts, status, answered_by, reason FROM leave_requests WHERE person_id = 1 ORDER BY id").all();
 
 beforeAll(async () => {
   await previousVersion();
@@ -71,12 +73,18 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }));
 describe("Ann's requests are still there after leave is upgraded to a version that adds a reason, renames a field and drops one; Mo still sees them, and undo never reaches back across the upgrade", () => {
   test("the upgrade ran each migration once, in order, and each of Ann's requests is still hers, as it stood, a holiday", () => {
     const db = new Database(path);
-    expect(db.query<{ id: string }, []>("SELECT id FROM delta_migrations ORDER BY rowid").all().map((m) => m.id)).toEqual(["001-reason", "002-person", "003-days"]);
-    expect(db.query<{ name: string }, []>("PRAGMA table_info(leave_requests)").all().map((c) => c.name)).toEqual(["id", "teams_id", "person_id", "starts", "ends", "status", "answered_by", "reason"]);
+    expect(db.query<{ id: string }, []>("SELECT id FROM delta_migrations ORDER BY rowid").all().map((m) => m.id)).toEqual(["001-reason", "002-person", "003-days", "004-numbered"]);
+    expect(db.query("SELECT id, person_id, email FROM leave_logins ORDER BY id").all()).toEqual([
+      { id: 1, person_id: 1, email: "ann@leave.example" },
+      { id: 2, person_id: 2, email: "bo@leave.example" },
+      { id: 3, person_id: 3, email: "mo@leave.example" },
+    ]);
+    expect(db.query("SELECT id, hash FROM leave_tokens WHERE person_id = 1").get()).toEqual({ id: 1, hash: tokenId("ann-token") });
+    expect(db.query<{ name: string }, []>("PRAGMA table_info(leave_requests)").all().map((c) => c.name)).toEqual(["id", "teams_id", "starts", "ends", "status", "reason", "person_id", "answered_by"]);
     expect(annsRequests(db)).toEqual([
       { id: "2", starts: "2026-11-13", status: "asked", answered_by: null, reason: "holiday" },
-      { id: "3", starts: "2026-12-21", status: "approved", answered_by: "3", reason: "holiday" },
-      { id: week, starts: "2027-01-04", status: "approved", answered_by: "3", reason: "holiday" },
+      { id: "3", starts: "2026-12-21", status: "approved", answered_by: 3, reason: "holiday" },
+      { id: week, starts: "2027-01-04", status: "approved", answered_by: 3, reason: "holiday" },
     ]);
     db.close();
   });
@@ -85,8 +93,8 @@ describe("Ann's requests are still there after leave is upgraded to a version th
     const db = new Database(path);
     const delta = createLocal();
     registerDocs(delta.server, db, schema, team, [], { ledger: true });
-    const held = (await delta.as("3").call("open", { doc: "team:1" })).result as { requests: Record<string, { person_id: string; starts: string }> };
-    expect(Object.entries(held.requests).filter(([, r]) => r.person_id === "1").map(([id, r]) => [id, r.starts])).toEqual([["2", "2026-11-13"], ["3", "2026-12-21"], [week, "2027-01-04"]]);
+    const held = (await delta.as("3").call("open", { doc: "team:1" })).result as { requests: Record<string, { person_id: number; starts: string }> };
+    expect(Object.entries(held.requests).filter(([, r]) => r.person_id === 1).map(([id, r]) => [id, r.starts])).toEqual([["2", "2026-11-13"], ["3", "2026-12-21"], [week, "2027-01-04"]]);
     for (const [who, cursor] of [["3", "mo-before"], ["1", "ann-before"]] as const) expect((await delta.as(who).call("undo", { cursor })).result ?? null).toBeNull();
     expect(annsRequests(db).map((r) => [r.id, r.status])).toEqual([["2", "asked"], ["3", "approved"], [week, "approved"]]);
     db.close();

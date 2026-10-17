@@ -10,7 +10,7 @@ import type { Resource } from "dzql/rendering/resources/resource";
 export const clock: Resource = {
   docType: "clock",
   perSession: true, // keyed by the session id: this session's alone
-  under: "/clocks", // eta's `/tz` is the document's `/clocks/tz`
+  under: "/desks", // eta's `/tz` is the document's `/desks/tz`: the session's row
   // No render(): the ticker resource renders the page, the clock within it.
   resolveDoc(ws) {
     return ws.data.sessionId;

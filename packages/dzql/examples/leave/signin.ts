@@ -1,13 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
 import { refuseOrigin } from "@blueshed/delta/server";
-import { serverWrite } from "dzql/rendering/documents";
 import { tell } from "dzql/rendering/refusal";
 import { sessionCookie } from "dzql/rendering/server";
-import { db, tokenId } from "./delta";
+import { db, sessions, tokenId } from "./delta";
 
 // Signing in: an email and a password, posted from the sign-in page as a plain form -- so the
 // password goes to this route alone and never crosses the socket, the op log or the ledger. A good
-// one starts a fresh session (never the visit's own id, which a stranger could have planted) with
+// one starts a fresh session and cookie (never the visit's own, which a stranger could have planted) with
 // who it is written in, and the browser goes home with its cookie. A wrong one is told on the
 // page it came from, and says no more than that the two do not match. Someone who keeps guessing
 // one email's password may try once a minute.
@@ -18,15 +17,13 @@ import { db, tokenId } from "./delta";
 /** A hash to check a password against when the email is unknown, so a wrong email takes as long as a wrong password. */
 const NOBODY = Bun.password.hashSync(crypto.randomUUID());
 
-const loginOf = db.query<{ person_id: string; hash: string }, [string]>("SELECT person_id, hash FROM leave_logins WHERE id = ?");
-const tokenOf = db.query<{ person_id: string }, [string]>("SELECT person_id FROM leave_tokens WHERE id = ?");
-const sessionOf = db.query<{ person_id: string | null }, [string]>("SELECT person_id FROM leave_sessions WHERE id = ?");
+const loginOf = db.query<{ person_id: number; hash: string }, [string]>("SELECT person_id, hash FROM leave_logins WHERE email = ?");
+const tokenOf = db.query<{ person_id: number }, [string]>("SELECT person_id FROM leave_tokens WHERE hash = ?");
+const sessionOf = db.query<{ person_id: number | null }, [string]>("SELECT person_id FROM leave_sessions WHERE id = ?");
 
-/** A fresh session, signed in as `personId`. */
-async function signedIn(personId: string): Promise<string> {
-  const sessionId = crypto.randomUUID();
-  await serverWrite(`session:${sessionId}`, [{ op: "replace", path: "/sessions/person_id", value: personId }]);
-  return sessionId;
+/** A fresh session, signed in as `personId`: its cookie. */
+async function signedIn(personId: number): Promise<string> {
+  return (await sessions.start({ person_id: Number(personId) })).cookie; // a person's number, however an older table keeps it
 }
 
 /** Wrong tries at one email's password, each within a minute of the last, before it may try only once a minute. An unknown email's are counted too, so none is told apart. */
@@ -55,7 +52,7 @@ export async function signIn(req: Request): Promise<Response> {
   const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/", ...(cookie ? { "Set-Cookie": cookie } : {}) } });
   const told = async (reason: string) => {
     const visit = /(?:^|;\s*)session_id=([^;]+)/.exec(req.headers.get("cookie") ?? "")?.[1];
-    if (visit) await tell(visit, { doc: "session", path: "/login", reason });
+    if (visit) await tell(await sessions.of(visit), { doc: "session", path: "/login", reason });
     return home();
   };
   if (slowed(email)) return told("Too many tries: wait a minute, then try again."); // not even checked
@@ -69,6 +66,9 @@ export async function signIn(req: Request): Promise<Response> {
   return home(sessionCookie(await signedIn(login.person_id)));
 }
 
+/** A person's number as a row names it (an older table keeps it as text), or null for nobody. */
+const numbered = (id: number | string | undefined): number | null => (id == null ? null : Number(id));
+
 /** The same text, compared in the same time whatever it is. */
 const same = (a: string, b: string): boolean => timingSafeEqual(Buffer.from(tokenId(a)), Buffer.from(tokenId(b)));
 
@@ -78,25 +78,25 @@ const same = (a: string, b: string): boolean => timingSafeEqual(Buffer.from(toke
  * (`X-Proxy-Secret`, `LEAVE_PROXY_SECRET`; none set, no proxy is trusted). Null for a token or an
  * email nobody here has; undefined when it vouches for nobody.
  */
-function vouched(req: Request): string | null | undefined {
+function vouched(req: Request): number | null | undefined {
   const token = /^Bearer (.+)$/.exec(req.headers.get("authorization") ?? "")?.[1];
-  if (token) return tokenOf.get(tokenId(token))?.person_id ?? null;
+  if (token) return numbered(tokenOf.get(tokenId(token))?.person_id);
   const secret = process.env.LEAVE_PROXY_SECRET;
   const email = req.headers.get("x-forwarded-email");
   if (!secret || !email || !same(req.headers.get("x-proxy-secret") ?? "", secret)) return undefined;
-  return loginOf.get(email.trim().toLowerCase())?.person_id ?? null;
+  return numbered(loginOf.get(email.trim().toLowerCase())?.person_id);
 }
 
 /**
- * Who a socket's request is, before it opens (Example.identify): the session of the person it
- * vouches for -- the cookie's, when that is already theirs, or a fresh one -- refused when it
- * vouches for someone not here; a visit when it vouches for nobody.
+ * Who a socket's request is, before it opens (Example.identify): the cookie of the person it
+ * vouches for -- the visit's, when its session is already theirs, or a fresh one -- refused when
+ * it vouches for someone not here; a visit when it vouches for nobody.
  */
 export async function identify(req: Bun.BunRequest): Promise<string | Response | undefined> {
   const person = vouched(req);
   if (person === undefined) return undefined;
   if (person === null) return new Response("Nobody here is that.", { status: 403 });
   const visit = req.cookies.get("session_id");
-  if (visit && sessionOf.get(visit)?.person_id === person) return visit;
+  if (visit && Number(sessionOf.get(await sessions.of(visit))?.person_id) === person) return visit;
   return signedIn(person);
 }

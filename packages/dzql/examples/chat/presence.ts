@@ -64,7 +64,7 @@ export const keepPresence = (): Promise<void> =>
     await lobbyNow(where);
   });
 
-const roomsSpokenIn = db.query<{ room: string }, []>("SELECT DISTINCT rooms_id AS room FROM chat_messages");
+const roomsSpokenIn = db.query<{ room: string }, []>("SELECT DISTINCT room FROM chat_messages");
 
 /** Makes the list of rooms what it is: where something has been said, and where someone is. */
 export const keepLobby = (): Promise<void> => inTurn(() => lobbyNow());

@@ -42,13 +42,20 @@ export type Example = {
    * changes, writes through delta, and the ledger is delta's.
    */
   delta: Local;
+  /**
+   * The session a visit's cookie names (a random token, a person's only credential): its row's
+   * number, the row made the first time the cookie is seen -- `sessionRows(delta, "sessions").of`
+   * (./sessions.ts). Omitted: the cookie is the session, for an example that keeps no row by it.
+   */
+  session?(cookie: string): Promise<string>;
   /** Who a session is, as delta sees them -- for the ledger's `who` and for row-level security. Default: the session. */
   who?(sessionId: string): unknown;
   /**
-   * Who a socket's request is, before it opens: the session to open it on, or a Response that
-   * refuses it. Undefined: a visit, on the session its cookie names, or a new one. Leave's believes
-   * a trusted proxy's header and the CLI's token. A person found here gets a fresh session (never
-   * the one the visit had: a fixed session) unless the cookie's is already theirs.
+   * Who a socket's request is, before it opens: the cookie of the session to open it on, or a
+   * Response that refuses it. Undefined: a visit, on the session its cookie names, or a new one.
+   * Leave's believes a trusted proxy's header and the CLI's token. A person found here gets a fresh
+   * session and cookie (never the one the visit had: a fixed session) unless the cookie's is
+   * already theirs.
    */
   identify?(req: Bun.BunRequest): string | Response | undefined | Promise<string | Response | undefined>;
   /** Extra HTTP routes this example needs (e.g. serving uploaded pictures). Merged into the kernel's routes; a kernel route of the same path wins. */

@@ -4,6 +4,7 @@ import type { PatchOp } from "dzql/rendering/json-patch";
 import type { Resource } from "dzql/rendering/resources/resource";
 import { join, write } from "dzql/rendering/html";
 import { keepPresence } from "../presence";
+import { refuse } from "dzql/rendering/refusal";
 
 // The session: the ground the room sits on -- your name, your room and how far back in it you
 // read, kept in delta (`session:<id>`, ../delta.ts), your own and nobody else's. What a write to it
@@ -60,6 +61,7 @@ export const session: Resource = {
       if (op.path === "/name" && op.op === "remove") shaped.push({ op: "replace", path: "/name", value: null }, { op: "replace", path: "/room", value: null }, ...back);
       else if (op.path === "/name" && value) shaped.push({ op: "replace", path: "/name", value });
       else if (op.path === "/room" && op.op === "remove" && was.room !== null) shaped.push({ op: "replace", path: "/room", value: null }, ...back);
+      else if (op.path === "/room" && op.op !== "remove" && value.includes(":")) throw refuse("A room's name has no colon in it."); // a room is a document named by its name, and `:` divides one
       else if (op.path === "/room" && op.op !== "remove" && value && value !== was.room) shaped.push({ op: "replace", path: "/room", value }, ...back);
       else if (op.path === "/before" && op.op === "remove") shaped.push(...back);
       else if (op.path === "/before" && value === "earlier") {

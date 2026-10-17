@@ -11,14 +11,14 @@ import { serverWrite } from "dzql/rendering/documents";
 /** delta, as a reader of its own -- not eta's copy, whose subscriptions a test must not disturb. */
 const inDelta = example.delta!.as("test");
 
-/** A room's messages, oldest first, as delta holds them (their ids are time-ordered). */
-async function messagesOf(room: string): Promise<{ id: string; name: string; text: string }[]> {
+/** A room's messages, oldest first, as delta holds them (numbered as they are said). */
+async function messagesOf(room: string): Promise<{ id: number; name: string; text: string }[]> {
   const doc = (await inDelta.call("open", { doc: `room:${room}` })).result;
-  return Object.values(doc?.messages ?? {}).sort((a: any, b: any) => (a.id < b.id ? -1 : 1)) as never;
+  return Object.values(doc?.messages ?? {}).sort((a: any, b: any) => a.id - b.id) as never;
 }
 
-/** The session that wrote a room's latest entry: the cursor in delta's ledger, which the wire never carries. */
-const lastWriterOf = (room: string): string => db.query<{ cursor: string }, [string]>("SELECT cursor FROM delta_ledger WHERE doc = ? ORDER BY id DESC LIMIT 1").get(`room:${room}`)!.cursor;
+/** The hash a session's row keeps of its cookie (dzql/rendering/sessions). */
+const hashOf = (cookie: string): string => new Bun.CryptoHasher("sha256").update(cookie).digest("hex");
 
 /** The names of who is here, across the head of the conversation (`#people`: a face and a name each, but for your own face, which goes unnamed but to a reader). */
 function peopleIn(html: string): string[] {
@@ -579,23 +579,25 @@ describe("chat", () => {
     b.close();
   });
 
-  test("inspect never tells one person another's session id: it is their only credential", async () => {
+  test("inspect never tells one person another's cookie, nor its hash: it is their only credential", async () => {
     const room = crypto.randomUUID();
-    const a = connect();
+    const alice = crypto.randomUUID(); // what Bob must never be sent
+    const a = connect(`session_id=${alice}`);
     await login(a, "Alice", room);
     const b = connect();
     await login(b, "Bob", room);
     await heard(a);
     write(a, "room", [{ op: "add", path: "/messages/-", value: "from alice" }]);
     await heard(a);
-    const alice = lastWriterOf(room); // what Bob must never be sent
 
     b.send(JSON.stringify({ type: "inspect", limit: 10 }));
     let reply = await nextMessage(b);
     while (reply.type !== "inspect") reply = await nextMessage(b);
     const text = JSON.stringify(reply);
     expect(text).toContain("from alice"); // he may read what was said
-    expect(text).not.toContain(alice); // never who, by the id that would let him be her
+    expect(text).not.toContain(alice); // never who, by the cookie that would let him be her
+    expect(text).not.toContain(hashOf(alice));
+    expect(db.query("SELECT 1 FROM chat_sessions WHERE cookie = ?").get(hashOf(alice))).not.toBeNull(); // kept, as its hash
     const entries = (reply as unknown as { docs: { doc: string; entries: { mine: boolean }[] }[] }).docs.find((d) => d.doc === `room:${room}`)!.entries;
     expect(entries[0]!.mine).toBe(false);
     a.close();
@@ -604,12 +606,12 @@ describe("chat", () => {
 
   test("a thing is said once: a run of messages shows its author's face and name once, and your own run says only 'You', to a reader", async () => {
     const room = crypto.randomUUID();
-    const ada = crypto.randomUUID();
+    const ada = await example.session!(crypto.randomUUID());
     await inDelta.call("open", { doc: `session:${ada}` });
     await inDelta.call("delta", { doc: `session:${ada}`, ops: [{ op: "replace", path: "/sessions/name", value: "Ada" }, { op: "replace", path: "/sessions/room", value: room }] });
     await inDelta.call("open", { doc: `room:${room}` });
     for (const [name, text] of [["Bob", "one"], ["Bob", "two"], ["Bob", "three"], ["Ada", "mine"], ["Ada", "mine too"]]) {
-      await inDelta.call("delta", { doc: `room:${room}`, ops: [{ op: "add", path: `/messages/${Bun.randomUUIDv7()}`, value: { name, text, sent_at: Date.now() } }] });
+      await inDelta.call("delta", { doc: `room:${room}`, ops: [{ op: "add", path: "/messages/-", value: { name, text, sent_at: Date.now() } }] });
     }
     const page = await assemble(example).draw(ada);
     const messages = page.slice(page.indexOf('id="messages"'));

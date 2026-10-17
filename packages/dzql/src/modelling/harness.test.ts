@@ -594,7 +594,7 @@ describe("stories harness", () => {
     // the tables changed behind delta's back: each message said brings in one nobody said, and the
     // copy every page is drawn from never hears of it -- so the pages agree with the copy. (Not the
     // said message itself: delta reads back each row it writes, as it is kept, and tells that.)
-    db.run("CREATE TEMP TRIGGER drift AFTER INSERT ON chat_messages BEGIN INSERT OR REPLACE INTO chat_messages (id, rooms_id, name, text, sent_at) VALUES (NEW.id || '~', NEW.rooms_id, NEW.name, 'not what was said', NEW.sent_at); END");
+    db.run("CREATE TEMP TRIGGER drift AFTER INSERT ON chat_messages BEGIN INSERT OR REPLACE INTO chat_messages (id, room, name, text, sent_at) VALUES (NEW.id + 1000000, NEW.room, NEW.name, 'not what was said', NEW.sent_at); END");
     try {
       const failures = await failuresOf(example, only("Ada says hello"));
       expect(failures).toContain("after the story, ada's open page is not what a fresh render shows");

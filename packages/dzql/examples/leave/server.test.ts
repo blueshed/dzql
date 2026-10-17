@@ -19,20 +19,23 @@ afterAll(() => {
   server.stop(true);
 });
 
-/** Posts the sign-in form, as a browser does: the answer, and the session its cookie names. */
-async function signIn(email: string, password: string, headers: Record<string, string> = {}): Promise<{ res: Response; sessionId?: string }> {
+/** Posts the sign-in form, as a browser does: the answer, and the cookie it sets. */
+async function signIn(email: string, password: string, headers: Record<string, string> = {}): Promise<{ res: Response; cookie?: string }> {
   const res = await fetch(new URL("/login", server.url), { method: "POST", body: new URLSearchParams({ email, password }), redirect: "manual", headers });
-  return { res, sessionId: /session_id=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] };
+  return { res, cookie: /session_id=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] };
 }
+
+/** The hash a session's row keeps of its cookie (dzql/rendering/sessions). */
+const hashOf = (cookie: string): string => new Bun.CryptoHasher("sha256").update(cookie).digest("hex");
 
 type Tab = { ws: WebSocket; page: string; inbox: Heard[]; answered: (() => void)[] };
 
-/** A tab on a session: its page as the client keeps it, and everything it was sent. `headers`: what else its request carries (a proxy's). */
-async function open(sessionId: string, headers: Record<string, string> = {}): Promise<Tab> {
+/** A tab on the session a cookie names: its page as the client keeps it, and everything it was sent. `headers`: what else its request carries (a proxy's). */
+async function open(cookie: string, headers: Record<string, string> = {}): Promise<Tab> {
   const url = new URL("/ws", server.url);
   url.protocol = "ws:";
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-  const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}`, ...headers } });
+  const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${cookie}`, ...headers } });
   const tab: Tab = { ws, page: "", inbox: [], answered: [] };
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(String(event.data)) as Heard;
@@ -62,9 +65,10 @@ const go = (tab: Tab, page: string) => send(tab, "session", [{ op: "replace", pa
 
 describe("signing in", () => {
   test("signed in, a session may go to a page, draft, and sign out; never remove its page, nor say who it is", async () => {
-    const { sessionId } = await signIn("ann@leave.example", "ann-password");
-    const tab = await open(sessionId!);
-    const may = (op: PatchOp) => session.permit!({ data: { sessionId } } as never, op, sessionId!);
+    const { cookie } = await signIn("ann@leave.example", "ann-password");
+    const tab = await open(cookie!);
+    const sessionId = await example.session!(cookie!);
+    const may = (op: PatchOp) => session.permit!({ data: { sessionId } } as never, op, sessionId);
     expect(may({ op: "replace", path: "/page", value: "list" })).toBe(true);
     expect(may({ op: "remove", path: "/page" })).toBe(false);
     expect(may({ op: "remove", path: "/person_id" })).toBe(true);
@@ -79,13 +83,13 @@ describe("signing in", () => {
   });
 
   test("a good email and password start a fresh session, named by a new cookie, never the visit's own", async () => {
-    const { res, sessionId } = await signIn("ann@leave.example", "ann-password", { Cookie: "session_id=a-visit-someone-planted" });
+    const { res, cookie } = await signIn("ann@leave.example", "ann-password", { Cookie: "session_id=a-visit-someone-planted" });
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe("/");
-    expect(sessionId).toBeDefined();
-    expect(sessionId).not.toBe("a-visit-someone-planted");
+    expect(cookie).toBeDefined();
+    expect(cookie).not.toBe("a-visit-someone-planted");
     expect(res.headers.get("set-cookie")).toContain("HttpOnly");
-    const tab = await open(sessionId!);
+    const tab = await open(cookie!);
     expect(tab.page).toContain('data-applet="calendar"');
     expect(tab.page).toContain("Sign out");
     tab.ws.close();
@@ -96,22 +100,22 @@ describe("signing in", () => {
     const tab = await open(visit);
     expect(tab.page).toContain('action="/login"');
     for (const [email, password] of [["ann@leave.example", "not-it"], ["nobody@leave.example", "ann-password"]] as const) {
-      const { res, sessionId } = await signIn(email, password, { Cookie: `session_id=${visit}` });
+      const { res, cookie } = await signIn(email, password, { Cookie: `session_id=${visit}` });
       expect(res.status).toBe(303);
-      expect(sessionId).toBeUndefined();
+      expect(cookie).toBeUndefined();
     }
     await settle(tab);
     expect(tab.page).toContain('<p class="refused" role="alert">That email and password do not match.</p>');
-    expect((await signIn("ann@leave.example", "not-it")).sessionId).toBeUndefined(); // no visit to tell: nothing said, nothing kept
+    expect((await signIn("ann@leave.example", "not-it")).cookie).toBeUndefined(); // no visit to tell: nothing said, nothing kept
     tab.ws.close();
   });
 
   test("the page signs in, so a GET goes home; a form posted from another site is refused", async () => {
     const get = await fetch(new URL("/login", server.url), { redirect: "manual" });
     expect(get.status).toBe(303);
-    const { res, sessionId } = await signIn("ann@leave.example", "ann-password", { Origin: "https://elsewhere.example" });
+    const { res, cookie } = await signIn("ann@leave.example", "ann-password", { Origin: "https://elsewhere.example" });
     expect(res.status).toBe(403);
-    expect(sessionId).toBeUndefined();
+    expect(cookie).toBeUndefined();
   });
 
   test("a visitor sees only the sign-in page, and a socket from another site is refused", async () => {
@@ -128,35 +132,35 @@ describe("who you are, before the socket opens", () => {
   const SECRET = "what-the-proxy-sends";
   /** What the trusted proxy adds to a request: who it signed in, and the secret that says it is the proxy. */
   const proxy = (email: string, secret = SECRET) => ({ "X-Forwarded-Email": email, "X-Proxy-Secret": secret });
-  /** The sessions signed in as a person. */
-  const sessionsOf = (personId: string) => db.query<{ id: string }, [string]>("SELECT id FROM leave_sessions WHERE person_id = ?").all(personId).map((r) => r.id);
+  /** The sessions signed in as a person, by the hash of the cookie that names each. */
+  const sessionsOf = (personId: number) => db.query<{ cookie: string }, [number]>("SELECT cookie FROM leave_sessions WHERE person_id = ?").all(personId).map((r) => r.cookie);
   const wsUrl = () => Object.assign(new URL("/ws", server.url), { protocol: "ws:" }).href;
   beforeAll(() => void (process.env.LEAVE_PROXY_SECRET = SECRET));
   afterAll(() => void delete process.env.LEAVE_PROXY_SECRET);
   afterEach(() => void setSystemTime());
 
   test("A request from the trusted proxy naming Ann opens on Ann's calendar, with no sign-in", async () => {
-    const before = sessionsOf("1");
+    const before = sessionsOf(1);
     const planted = crypto.randomUUID();
     const tab = await open(planted, proxy("ann@leave.example"));
     expect(tab.page).toContain('data-applet="calendar"');
     expect(tab.page).toContain("Sign out");
-    expect(sessionsOf("1").length).toBe(before.length + 1); // a fresh session, Ann's
-    expect(sessionsOf("1")).not.toContain(planted); // never the visit's own id
+    expect(sessionsOf(1).length).toBe(before.length + 1); // a fresh session, Ann's
+    expect(sessionsOf(1)).not.toContain(hashOf(planted)); // never the visit's own
     tab.ws.close();
   });
 
   test("Ann's own session is kept when the proxy names her again; anyone else's is not hers", async () => {
-    const ann = (await signIn("ann@leave.example", "ann-password")).sessionId!;
+    const ann = (await signIn("ann@leave.example", "ann-password")).cookie!;
     const first = await open(ann);
     await go(first, "list");
     const again = await open(ann, proxy("ann@leave.example"));
     expect(again.page).toContain('data-page="list"'); // the same session: where she stood
-    const bo = (await signIn("bo@leave.example", "bo-password")).sessionId!;
-    const before = sessionsOf("1").length;
+    const bo = (await signIn("bo@leave.example", "bo-password")).cookie!;
+    const before = sessionsOf(1).length;
     const named = await open(bo, proxy("ann@leave.example"));
-    expect(sessionsOf("1").length).toBe(before + 1);
-    expect(sessionsOf("2")).toContain(bo); // Bo's is still Bo's
+    expect(sessionsOf(1).length).toBe(before + 1);
+    expect(sessionsOf(2)).toContain(hashOf(bo)); // Bo's is still Bo's
     for (const tab of [first, again, named]) tab.ws.close();
   });
 
@@ -187,18 +191,18 @@ describe("who you are, before the socket opens", () => {
     const tab = await open(visit);
     const from = { Cookie: `session_id=${visit}` };
     for (let i = 0; i < 5; i++) await signIn("ann@leave.example", `guess-${i}`, from);
-    expect((await signIn("ann@leave.example", "ann-password", from)).sessionId).toBeUndefined(); // even the right one, for now
+    expect((await signIn("ann@leave.example", "ann-password", from)).cookie).toBeUndefined(); // even the right one, for now
     await settle(tab);
     expect(tab.page).toContain("Too many tries: wait a minute, then try again.");
-    expect((await signIn("bo@leave.example", "bo-password")).sessionId).toBeDefined(); // Bo is not slowed by guesses at Ann
+    expect((await signIn("bo@leave.example", "bo-password")).cookie).toBeDefined(); // Bo is not slowed by guesses at Ann
     setSystemTime(new Date("2030-01-07T09:01:01Z"));
-    expect((await signIn("ann@leave.example", "ann-password")).sessionId).toBeDefined(); // a minute on, she may try again
+    expect((await signIn("ann@leave.example", "ann-password")).cookie).toBeDefined(); // a minute on, she may try again
     tab.ws.close();
   });
 });
 
-const withAnn =async () => open((await signIn("ann@leave.example", "ann-password")).sessionId!);
-const withMo = async () => open((await signIn("mo@leave.example", "mo-password")).sessionId!);
+const withAnn =async () => open((await signIn("ann@leave.example", "ann-password")).cookie!);
+const withMo = async () => open((await signIn("mo@leave.example", "mo-password")).cookie!);
 const undo = (tab: Tab) => send(tab, "ledger", [{ op: "remove", path: "/latest" }]);
 
 describe("the page", () => {
@@ -443,22 +447,22 @@ describe("the rules, on their own", () => {
   test("an ask is your draft, or days said on the wire; a move and an answer as the team takes them", () => {
     const drawn = { starts: "2026-12-01", ends: "2026-12-04" };
     expect(shape(ann, [{ op: "add", path: "/requests/-" }], t, drawn)).toEqual([
-      { op: "add", path: "/requests/-", value: { person_id: "1", starts: "2026-12-01", ends: "2026-12-04", status: "asked", answered_by: null } },
+      { op: "add", path: "/requests/-", value: { person_id: 1, starts: "2026-12-01", ends: "2026-12-04", status: "asked", answered_by: null } },
     ]);
     expect(shape(ann, [{ op: "add", path: "/requests/-" }], t, null)).toEqual([]); // no draft: nothing to ask for
     expect(shape(ann, [{ op: "add", path: "/requests/-", value: { starts: "2026-12-07", ends: "2026-12-07" } }], t, drawn)).toEqual([
-      { op: "add", path: "/requests/-", value: { person_id: "1", starts: "2026-12-07", ends: "2026-12-07", status: "asked", answered_by: null } }, // days said on the wire
+      { op: "add", path: "/requests/-", value: { person_id: 1, starts: "2026-12-07", ends: "2026-12-07", status: "asked", answered_by: null } }, // days said on the wire
     ]);
     expect(() => shape(ann, [{ op: "add", path: "/requests/-", value: { starts: "2026-12-05", ends: "2026-12-06" } }], t, null)).toThrow("There are no working days in those.");
     expect(() => shape(ann, [{ op: "replace", path: "/requests/1/ends", value: "2026-10-01" }], t, null)).toThrow("The last day is before the first.");
     expect(shape(ann, [{ op: "replace", path: "/requests/1/starts", value: "2026-10-06" }], t, null)).toEqual([{ op: "replace", path: "/requests/1/starts", value: "2026-10-06" }]);
     expect(shape(mo, [{ op: "replace", path: "/requests/1/status", value: "approved" }], t, null)).toEqual([
       { op: "replace", path: "/requests/1/status", value: "approved" },
-      { op: "replace", path: "/requests/1/answered_by", value: "3" },
+      { op: "replace", path: "/requests/1/answered_by", value: 3 },
     ]);
     expect(shape(ann, [{ op: "remove", path: "/requests/1" }], t, null)).toEqual([{ op: "remove", path: "/requests/1" }]);
     expect(shape(mo, [{ op: "add", path: "/requests/-", value: { starts: "2026-11-05", ends: "2026-11-05" } }], t, null)).toEqual([
-      { op: "add", path: "/requests/-", value: { person_id: "3", starts: "2026-11-05", ends: "2026-11-05", status: "approved", answered_by: "3" } }, // a manager's own: approved, by them
+      { op: "add", path: "/requests/-", value: { person_id: 3, starts: "2026-11-05", ends: "2026-11-05", status: "approved", answered_by: 3 } }, // a manager's own: approved, by them
     ]);
   });
 });

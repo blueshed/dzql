@@ -20,7 +20,7 @@ const room = crypto.randomUUID();
 await example.delta!.call("open", { doc: `room:${room}` });
 await example.delta!.call("delta", {
   doc: `room:${room}`,
-  ops: Array.from({ length: HISTORY - 1 }, (_, i) => ({ op: "add", path: `/messages/${Bun.randomUUIDv7()}`, value: { name: "Seed", text: `message ${i}`, sent_at: Date.now() } })),
+  ops: Array.from({ length: HISTORY - 1 }, (_, i) => ({ op: "add", path: "/messages/-", value: { name: "Seed", text: `message ${i}`, sent_at: Date.now() } })),
   cursor: "seed",
 });
 await example.delta!.call("close", { doc: `room:${room}` });

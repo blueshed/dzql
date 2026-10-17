@@ -22,7 +22,7 @@ async function closeAsked(sessionId: string, ops: PatchOp[]): Promise<void> {
 export const watchlist: Resource = {
   docType: "watchlist",
   perSession: true, // keyed by the session id: this session's alone
-  under: "/watchlists", // eta's `/symbols` is the document's `/watchlists/symbols`
+  under: "/desks", // eta's `/symbols` is the document's `/desks/symbols`: the session's row
   // No render(): the ticker resource renders the page, this list within it.
   resolveDoc(ws) {
     return ws.data.sessionId;

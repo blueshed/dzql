@@ -4,7 +4,7 @@ import { read as readDoc } from "dzql/rendering/documents";
 // of them. Kept in delta (`session:<id>`, ../delta.ts); what a write to it may be is
 // resources/session.ts's.
 
-export type SessionDocument = { name: string | null; room: string | null; before: string | null };
+export type SessionDocument = { name: string | null; room: string | null; before: number | null };
 
 export function read(id: string): SessionDocument {
   const doc = readDoc<{ sessions?: Partial<SessionDocument> }>(`session:${id}`);

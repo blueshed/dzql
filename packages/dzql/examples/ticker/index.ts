@@ -4,7 +4,7 @@ import { desk } from "./resources/desk";
 import { quote, render, ticker } from "./resources/ticker";
 import { watchlist } from "./resources/watchlist";
 import index from "./client/index.html";
-import { delta } from "./delta";
+import { delta, sessions } from "./delta";
 
 export const example: Example = {
   name: "ticker",
@@ -16,4 +16,5 @@ export const example: Example = {
   active: () => true,
   index,
   delta, // the documents are delta's (./delta.ts)
+  session: sessions.of, // a visit is a desk
 };

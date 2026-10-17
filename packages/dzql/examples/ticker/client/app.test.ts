@@ -5,9 +5,10 @@ import { tick } from "../resources/ticker";
 import type { MarketDocument } from "../documents/market";
 import { example } from "../index";
 
-/** The market as delta has it now. */
+/** The market as delta has it now, by symbol. */
 async function quotes(): Promise<MarketDocument> {
-  return (await example.delta!.as("test").call("open", { doc: "ticker:market" })).result.quotes;
+  const rows = (await example.delta!.as("test").call("open", { doc: "ticker:1" })).result.quotes as Record<string, MarketDocument[string]>;
+  return Object.fromEntries(Object.values(rows).map((q) => [q.symbol, q]));
 }
 
 let server: ReturnType<typeof createServer>;
@@ -75,7 +76,7 @@ describe("the ticker in a real browser", () => {
     expect(await view.evaluate<boolean>(`document.querySelector('.board .quote[data-row="FXTR"]').classList.contains('up')`)).toBe(true);
     // the tick reached the page as its patch (the fields it moves), and no render came with it -- other
     // ticks may land meanwhile (a feed another test started), so this tick is looked for by its value
-    expect(await view.evaluate<boolean>(`window.eta.docs()['ticker:market'].ops.some((op) => op.path === '/FXTR/price' && op.value === ${price})`)).toBe(true);
+    expect(await view.evaluate<boolean>(`window.eta.docs()['ticker:1'].ops.some((op) => op.path === '/6/price' && op.value === ${price})`)).toBe(true);
     expect(await view.evaluate<number>(`window.__renders`)).toBe(0);
     expect(await view.evaluate<number>(`document.querySelectorAll('.board .quote[data-row="FXTR"] polyline').length`)).toBe(1);
 

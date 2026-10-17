@@ -6,14 +6,14 @@ import { has, read, ticks } from "./market";
 beforeAll(async () => {
   const documents = createDocuments(delta);
   setActiveDocuments(documents);
-  await documents.load("ticker:market");
+  await documents.load("ticker:1");
 });
 
 afterAll(() => setActiveDocuments(undefined));
 
 describe("market document", () => {
   test("reads a quote per symbol, and knows which symbols it has", () => {
-    expect(read().ALPH).toEqual({ id: "ALPH", markets_id: "market", name: "Alpha Systems", price: expect.any(Number), prev: expect.any(Number) });
+    expect(read().ALPH).toEqual({ id: 1, markets_id: 1, symbol: "ALPH", name: "Alpha Systems", price: expect.any(Number), prev: expect.any(Number) });
     expect(Object.keys(read())).toHaveLength(16);
     expect(has("ALPH")).toBe(true);
     expect(has("NOPE")).toBe(false);
@@ -22,10 +22,10 @@ describe("market document", () => {
   test("a tick says both fields it moves -- the last price becomes prev -- rounded to a cent; a second tick in one write follows the first", () => {
     const before = read().BRVO!.price;
     expect(ticks([{ op: "replace", path: "/BRVO/price", value: "65.123" }, { op: "replace", path: "/BRVO/price", value: 66 }])).toEqual([
-      { op: "replace", path: "/BRVO/prev", value: before },
-      { op: "replace", path: "/BRVO/price", value: 65.12 },
-      { op: "replace", path: "/BRVO/prev", value: 65.12 },
-      { op: "replace", path: "/BRVO/price", value: 66 },
+      { op: "replace", path: "/2/prev", value: before },
+      { op: "replace", path: "/2/price", value: 65.12 },
+      { op: "replace", path: "/2/prev", value: 65.12 },
+      { op: "replace", path: "/2/price", value: 66 },
     ]);
   });
 
