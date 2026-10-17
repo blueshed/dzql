@@ -6,6 +6,11 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **`waitIn` (`./webview`) times out under `setSystemTime`**: it timed itself by `Date.now`, which a
+  test that fixes the date stops; it uses `performance.now`.
+
 ### Changed
 
 - **bun-route adds a route to delta's `serve` in a delta app**: the routes it is given, never a

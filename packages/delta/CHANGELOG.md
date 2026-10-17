@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`schemaContractCases` and `upgradeCases` in `./testing`** (`src/cases/upgrades.ts`), over an
+  `UpgradeBackend`: the schema-contract and migrate tests as cases, asked of SQLite here and of
+  Postgres by dzql. `MigrationBackend.makeTables` takes the documents as an optional third argument.
+
+### Changed
+
+- **SQLite's `registerDocs` in three files**: the registration in `sqlite.ts`, the write path
+  (`sqlite/write.ts`: `applyWrite`, `tell`, `inverseOf`) and the walks (`sqlite/walk.ts`: undo,
+  redo, history). No change in signature or behaviour.
+- **The path cases a file a feature** under `src/cases/path/`; `pathCases` and `fanOutCases` ask
+  what they asked before.
+- **`install-skills` is `src/cli/skills.ts`**, loaded when asked for; the CLI works as before.
+- **The kanban example runs with `run()`**; JSDoc examples serve with `serve()`.
+
 ### Fixed
 
 - **`install-skills` follows a package linked into `node_modules`**, as a workspace links its

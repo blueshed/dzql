@@ -6,8 +6,22 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Two bugs found by the code review** (17 October): a person's id on Postgres sign-in overflowed
+  past 2^31 (dzql); a session's own echo dropped any value equal to its id, so session 3 joining
+  room "3" was told an empty room (dzql/rendering). Each has a test that failed before. railroad's
+  `waitIn` no longer waits forever under `setSystemTime`.
+
 ### Changed
 
+- **The code reads more simply, used exactly as before** (17 October, Peter: "We are trying to be
+  understandable and consistent"). The review is `/mnt/project-files/code-review/`. delta's SQLite
+  `registerDocs` is split into `sqlite/write.ts` and `sqlite/walk.ts`, and its 3,000-line path
+  cases into a file per feature; `install-skills` has a file of its own. eta's story harness
+  `run()` is a short sequence of named steps, and reads JSON Pointers with delta's `splitPath` /
+  `joinPath`. delta's schema-contract and migrate tests are cases in `./testing`, which dzql asks of
+  Postgres instead of keeping copies. No export, name or file an app uses has moved.
 - **The vision is said once** (17 October, Peter: "cleanup the vision ... kiss clean dry and
   yagni. It is all there!"). The root README's *How an app is made* is the one statement: stories
   first, documents not entities, what grows is where they're kept, routes and resources on both

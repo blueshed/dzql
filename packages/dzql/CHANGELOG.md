@@ -23,6 +23,22 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Fixed
+
+- **A person numbered past 2^31 signs in on Postgres** (`dzql/auth-link`): their id was cast to an
+  int and overflowed; it is read whole from its `BIGINT`.
+- **A session's own echo keeps a value equal to its id** (`wireOps`): only the row's `id` is taken
+  out, so session 3 joining room "3" is told the room.
+
+### Changed
+
+- **The story harness's `run()` is a sequence of named steps** in `harness.ts`, and builds JSON
+  Pointers (and `goTo`, and chat's presence) with delta's `splitPath`, `joinPath` and
+  `escapeSegment`: a key with `/` or `~` is escaped where it made a wrong path before.
+- **delta's schema-contract and migrate tests are asked of PGlite through delta's cases**
+  (`schemaContractCases`, `upgradeCases`), not kept as copies here; the copies' SQLite re-runs (delta
+  runs them) and an unused test helper go.
+
 ### Changed
 
 - **A `bun create dzql` app has its skills and the model's page.** `bun install` runs
