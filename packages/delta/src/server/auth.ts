@@ -149,10 +149,7 @@ export function wireAuth<I>(ws: WsServer, auth: DeltaAuth<I>): void {
  * origin than the server's, and not in `createWs({ origins })`, is refused
  * with 403 first, before `onUpgrade` reads a cookie it sent.
  *
- *   server = Bun.serve({
- *     routes: { [ws.path]: upgradeWithAuth(ws, auth), ...otherRoutes },
- *     websocket: ws.websocket,
- *   });
+ *   serve({ ws, routes: { [ws.path]: upgradeWithAuth(ws, auth), ...otherRoutes } });   // its own route on the path wins over delta's
  */
 export function upgradeWithAuth<I>(
   ws: WsServer,

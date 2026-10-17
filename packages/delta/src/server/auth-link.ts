@@ -22,7 +22,7 @@
  *
  *   const auth = linkAuth({ store: sqliteLinkStore(db), personOf, people });
  *   wireAuth(ws, auth);
- *   Bun.serve({ routes: { ...auth.routes, "/ws": upgradeWithAuth(ws, auth) }, websocket: ws.websocket });
+ *   serve({ ws, routes: { ...auth.routes, [ws.path]: upgradeWithAuth(ws, auth) } });
  *   registerDocs(ws, db, schema, docs, [], { auth, owns: (me, name) => name === `mine:${me.id}` });
  */
 import type { Database } from "bun:sqlite";
@@ -236,7 +236,7 @@ export function linkAuth<P extends { id: number }>(opts: LinkAuthOpts<P>) {
   };
 
   return Object.assign(auth, {
-    /** The HTTP routes, for `Bun.serve`'s `routes`: the tap, sign out, and in development the picker. */
+    /** The HTTP routes, for `serve`'s `routes`: the tap, sign out, and in development the picker. */
     routes: {
       "/api/in/:token": { POST: tap },
       "/api/out": { POST: signOut },
