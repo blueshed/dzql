@@ -58,14 +58,14 @@ Stories, then documents, then pages drawn on the server.
 
 1. **The training prior.** A model has read far more React than eta. Asked plainly for a live app,
    it reaches for client state and REST. A router skill that chooses eta, delta or railroad for a
-   live app is the answer (todo #21).
+   live app is the answer (the root `todo.jsonl`, #17).
 2. **Writing who may do what.** The stories say who may and may not; `permit()` says it again, as a
    rule. A permit cannot be derived from stories -- a story is one example, a permit is the rule
    -- but it can be checked: `bun run stories` warns of a write the server takes that no story
    tells and no page offers.
 3. **Views by hand.** A view is written as a template, but for a collection nobody writes stories for
    (the wedding's venues), drawn from its document's shape (`src/rendering/derive.ts`).
-4. **Form wiring.** `name="/path"`, `data-write-on`, a status beside the field: conventions to
+4. **Form wiring.** `write()` on a field, `data-write-on`, a status beside the field: conventions to
    remember.
 5. **A page that stays still.** When a page never `read()` the document it shows, a change to it
    reaches nobody, and the AI has to guess why.
@@ -124,5 +124,5 @@ already says, story by story, what to build.
 If an app is people reading shared documents, changing them with a gesture, and seeing the result
 on every screen they have, eta is a short path from what they want to working code: stories that
 are the test, documents that tell every holder, and pages drawn on the server. The costs to keep in
-view: each page is drawn per reader, so the work grows with page size times readers (paging, n3,
-is the first answer), and the browser tests need Chrome.
+view: each page is drawn per reader, so the work grows with page size times readers (paging, as
+chat's rooms do, is the first answer), and the browser tests need Chrome.

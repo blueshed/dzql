@@ -41,7 +41,7 @@ them there. A later eta is a version bump of `dzql` in `package.json`, then your
 
 ## Try the examples
 
-You need [Bun](https://bun.sh). Then `bun install` and `bun run dev`, and open
+You need [Bun](https://bun.sh). Then `bun install` at the root and `bun run dev` in `packages/dzql`, and open
 http://localhost:3000. That is chat: give a name, name a room, say something. Open a private window
 as someone else and you each see the other speak. Undo, bottom right, takes back your own last
 write.
@@ -73,14 +73,14 @@ product.
 
 - **[@blueshed/delta](https://www.npmjs.com/package/@blueshed/delta)** keeps the documents, their
   history and their one stream of changes.
-- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws the small parts of
-  a page that keep their own state in the browser, like a drag or a chart (<!-- measured:railroad -->2.9 KB
+- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** can draw an applet, a small
+  part of a page that keeps its own state in the browser, like a drag or a chart: an island (<!-- measured:railroad -->2.9 KB
   gzipped for `signal` and `mount`, 3.7 KB with `list`<!-- /measured -->, only on a page that has one).
 
 ## What a write costs
 
 After a change, each page that shows it gets only the parts that changed, compressed. `bun run
-costs` measures every number on this page from a fresh run, and `bun test` fails when they drift.
+costs` measures every number on this page from a fresh run, and `bun run test:eta` fails when they drift.
 
 <!-- measured:writes -->
 - **Chat**, one message in a room of 100 messages and 5 members: 423 B, compressed from 881 B, to
@@ -100,7 +100,7 @@ costs` measures every number on this page from a fresh run, and `bun test` fails
 ```
 bun run dev          # chat, reloading as you edit (dev:wedding, dev:leave, dev:ticker, dev:modeling)
 bun run stories      # one example's stories; stories:all runs every example's
-bun test             # the tests, at 100% coverage
+bun run test:eta     # the tests, at 100% coverage
 bun check            # the type check (Bun 1.4.3 or later)
 bun run cli <verb>   # a terminal client: watch every change, undo, write
 bun run model:check  # read an app that exists as a model: who holds what, who is told
@@ -117,4 +117,4 @@ explains every setting.
 - [docs/dzql/rendering/bento/README.md](bento/README.md): a guide to pages where people know where they are
   and what they can do.
 - [docs/dzql/rendering/least-resistance.md](least-resistance.md): why eta suits an AI that builds apps.
-- `CHANGELOG.md`: what changed, and how to move an app across a change.
+- `packages/dzql/CHANGELOG.md`: what changed, and how to move an app across a change.

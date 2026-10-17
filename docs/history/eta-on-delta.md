@@ -1,5 +1,9 @@
 # eta on delta: who provides what
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *24 September 2026. A design note, written after an experiment and before the work it decides.
 The experiment is on two branches: eta's `experiment/chat-on-delta` (pushed) and delta's
 `experiment/eta-engine` (local). What it found is in `eta/examples/chat-delta/FINDINGS.md`; what it

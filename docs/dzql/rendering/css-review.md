@@ -1,5 +1,9 @@
 # Is our CSS good, and accessible?
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *25 September 2026.*
 
 eta's look is two layers: the kernel's stylesheet (`packages/dzql/src/rendering/bento.css`), which draws the bento's

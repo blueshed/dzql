@@ -1,10 +1,11 @@
 # Docs
 
 **Guidance**: what eta is for and how to build on it. Where these and the code disagree, the code,
-`CLAUDE.md` and the eta-app skill are right; say so and fix the doc.
+`packages/dzql/CLAUDE.md` and the eta-app skill are right; say so and fix the doc.
 
 - The vision is the root README's *How an app is made*; `../modelling/stories.md` -- what the
   stories are for, and how they drive an app.
+- `eta.md` -- what eta is, its examples and commands, and what a write costs, measured by `bun run costs`.
 - `bento/` -- where am I and what can I do: the directions (`README.md`), built in `src/rendering/bento.ts`,
   and two sets of sample designs (`design/`, `paintbrush/`).
 - `first-app.md` -- a first app, step by step: chat, then leave, in the order you meet the words.

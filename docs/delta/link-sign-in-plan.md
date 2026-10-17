@@ -1,5 +1,9 @@
 # Link sign-in for delta: the plan
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *Written 16 October 2026, for Peter to agree before any code is written. Nothing has changed in any
 repo yet.*
 

@@ -8,7 +8,7 @@ Row-level security is a backstop beneath the documents, for what reaches the tab
 (a report, a hand-written query). Deriving the policies from the documents' paths is not done
 yet (todo #19); until then a policy is written by hand, and must agree with the paths.
 
-From `examples/todos-vs-rls/rls.sql`: you see a todo you own or your team's; you write only your own.
+From `examples/delta/todos-vs-rls/rls.sql`: you see a todo you own or your team's; you write only your own.
 
 ```sql
 ALTER TABLE example_todos ENABLE ROW LEVEL SECURITY;
@@ -37,7 +37,7 @@ throwing on the cast.
 ## Two pools
 
 **Superusers bypass RLS, even with `FORCE`** (the default `postgres` role; the repo's compose
-`delta` role too). So:
+`dzql_test` role too). So:
 
 - an **admin pool** for schema and `jwtAuth` (login and register write `users` unscoped);
 - an **app pool**, a role without `BYPASSRLS`, for every document:
@@ -51,7 +51,7 @@ holds through it.
 
 - **RLS filters reads, not the channel.** The listener reads the change log with no identity;
   one name several identities open hands each every row written through it. One name per
-  owner, checked by its `owns` path (delta-doc's `ownership.md`). `tests/postgres-rls.test.ts` pins it as a
+  owner, checked by its `owns` path (delta-doc's `ownership.md`). `tests/delta-pg/postgres-rls.test.ts` pins it as a
   `NOSUPERUSER` role.
 - **No bare `pool.query` with auth on**: go through `docTypeFromDef(def, pool, { auth })`, or
   `withAppAuth` / `*_as`, so `app.user_id` is bound.

@@ -1,5 +1,9 @@
 # bluetools: one repo for the lineage
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *15 October 2026, reviewed 16 October. A plan, not code: nothing in railroad, delta, dzql or eta
 has been changed.
 Peter agreed the shape in conversation: eta becomes a package beside dzql, railroad and delta move

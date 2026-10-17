@@ -1,5 +1,9 @@
 # What apples_pears could bring to concept
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *Context for a discussion, 11 September 2026. Written from both trees as they stand: concept at
 `941f219` (3 Sep), apples_pears at `ba78295` (11 Sep). Facts are marked as facts; the rest is a
 reading, offered for Peter to say "is this true?".*

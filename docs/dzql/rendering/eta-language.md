@@ -1,5 +1,9 @@
 # eta's words: easier to grasp, understand, expect
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *25 September 2026. Proposed, then applied the same day, all of it; `Resource` kept, by decision. Written after writing eta's `first-app.md`, which was the test: every word
 that needed a footnote on the way in is below.*
 

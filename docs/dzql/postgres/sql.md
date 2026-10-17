@@ -26,7 +26,7 @@ functions you call stay these:
 - `delta_apply(doc, ops)`: apply, log to `_delta_ops_log`, NOTIFY.
 - `delta_fetch_ops(doc, since_version)`: the log after a version.
 - `delta_open_as` / `delta_open_at_as` / `delta_apply_as(user_id, …)`: the same with
-  `app.user_id` set for that statement. `docTypeFromDef({ auth })` uses them; no opt-in.
+  `app.user_id` set for that statement. `docTypeFromDef(def, pool, { auth })` uses them; no opt-in.
 - Ledger (`001g`): `delta_apply_logged`, `delta_walk`, `delta_undo`, `delta_redo`,
   `delta_history`, and their `_as` forms (delta-doc's `ledger.md`).
 - `delta_snapshot(name, at)` / `delta_resolve_snapshot(name)`: pin a time to a label.

@@ -1,6 +1,6 @@
 # Bento
 
-A bento box brings different things to one place, each in its own resource, in a clean layout.
+A bento box brings different things to one place, each in its own cell, in a clean layout.
 A page does the same for the things a person needs to act. The bento is not large and not
 constricting: it points the way, so that people know where they are and what they can do, and
 find the experience they expect, one an app can build on.
@@ -21,19 +21,19 @@ These are directions. A page's shape comes from its stories; the directions are 
 
 ## A page is a box or a collection
 
-- **A box** shows one place, one resource per thing on it, and only one: bigger for what
-  matters more. A resource that fits its things whole is them; one that can only sum them up
+- **A box** shows one place, one cell per thing on it, and only one: bigger for what
+  matters more. A cell that fits its things whole is them; one that can only sum them up
   says so, and goes into them as a page of their own.
 - **A collection** shows one list, in a reading: a list, a calendar, a map. A row is a summary; what
   it can carry it decides on the row, and what needs the thing itself opens the thing.
-- **Nothing is shown twice.** A thing lives in one resource. A photo and a list of the same rows
-  are one resource read two ways, never two resources.
+- **Nothing is shown twice.** A thing lives in one cell. A photo and a list of the same rows
+  are one cell read two ways, never two cells.
 - **A place with a picture is drawn as it**: an atlas is its map, a household the photo of its
   people, a plan the wall of its days. The box is the fallback. Do not invent a picture to avoid a
   box, and do not offer a box where the work has a picture.
 
 The stories choose. Chat is three steps, each one thing -- a name, a room, a conversation -- so it
-is three collections, and a box would only put the same thing in several resources. Japan in
+is three collections, and a box would only put the same thing in several cells. Japan in
 Can You is several different things at once -- what is asked, its days, its places, its people --
 and that is a box.
 
@@ -50,7 +50,7 @@ Three questions, always answered on the page:
 ## Small first, full when asked
 
 A card is a summary of one thing. Its pins -- when it is, where it is -- open a summary beside it,
-and that grows into the full calendar or map, the thing chosen. A resource is the same: small in
+and that grows into the full calendar or map, the thing chosen. A cell is the same: small in
 the box, the whole thing when it is opened.
 
 ## What a tap does
@@ -80,7 +80,7 @@ Not yet in the kernel: pins and their summaries, which Can You has (`openMap` an
 
 ## The samples
 
-`design/` holds six sample pages drawn to these directions -- a box, a resource opened, a card's
+`design/` holds six sample pages drawn to these directions -- a box, a cell opened, a card's
 pin, a drawer, a modal, a phone -- one file an artboard and `canvas.json` laying them out. They are
 drawn on Claude's design canvas, whose runtime they need to render
 (claude.ai/artifact/1QLsr4aa8aH5mLxZbPi37s, private until shared); here they are the record of what

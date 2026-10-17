@@ -5,8 +5,9 @@
 - **`dzql/modelling`**: the stories an app is for, each saying who does what and who then sees it,
   told against the app by a harness, and by hand in a phone-sized browser.
 - **`dzql/rendering`**: pages the server draws as HTML from the documents they read, each sent only
-  the parts a write changed. An island (`dzql/rendering/island`) is a railroad component, the one
-  thing that needs the optional `@blueshed/railroad`. Six apps show it in [examples/](examples).
+  the parts a write changed. An applet is the piece of a page that holds state of its own; one
+  written with railroad is an island (`dzql/rendering/island`), the one thing that needs the
+  optional `@blueshed/railroad`. Six apps show it in [examples/](examples).
 - **`dzql/postgres`**, **`dzql/pglite`**: the compiled Postgres step, below.
 
 How an app is made, from its stories to its storage: [bluetools](https://github.com/blueshed/dzql#how-an-app-is-made).

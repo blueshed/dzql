@@ -1,5 +1,9 @@
 # Genoa & Landfall: an overview
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 Two Python 2 / JavaScript projects from 2012–2013. They were published as git repositories under the **NavohPartners** GitHub organisation. Together they form a stack for building real-time, model-driven business web applications:
 
 | | **Genoa** | **Landfall** |

@@ -1,5 +1,9 @@
 # easy and hjeli: the pictures, and two kinds of complete
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *24 September 2026. Input to the next step. It follows [paintbrush.md](paintbrush.md). Written
 from the trees as they stand:
 

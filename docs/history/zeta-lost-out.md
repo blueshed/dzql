@@ -1,5 +1,9 @@
 # What zeta had that eta on delta has lost
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *24 September 2026, after railroad 0.12.0, delta 0.6.0 and eta 0.47.0.*
 
 zeta (`blueshed/zeta`) is a fork of epsilon 0.10.4 with a screen layer on top. epsilon is the

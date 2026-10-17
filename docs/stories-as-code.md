@@ -1,5 +1,9 @@
 # Stories as code: one format that grows with the app
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *A proposal, 17 October 2026. Decided (b), built 17 October: `story` and `untold` are
 `dzql/modelling/stories`'s, and paintbrush's `stories.ts` imports them.*
 

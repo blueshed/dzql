@@ -1,5 +1,9 @@
 # Moving Postgres from delta to dzql: the plan
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *Written 15 October 2026, after delta 0.14.0 and dzql 0.7.0. A plan for Peter to agree before any
 code is written. Nothing here has been changed in either repo.*
 

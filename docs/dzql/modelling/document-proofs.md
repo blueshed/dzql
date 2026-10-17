@@ -1,5 +1,9 @@
 # Proving that documents are complete
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *25 September 2026.*
 
 An app is made of **documents**: what a person sees in order to do a job. A document is

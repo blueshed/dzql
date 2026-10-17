@@ -1,5 +1,9 @@
 # paintbrush: what it carried from simple and easy, and what it dropped
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *24 September 2026. Input to the next step. Written from the trees as they stand: paintbrush at
 `a76c186` (7 Apr), simple at `03550fd` (5 Apr, local `archive/simple-2026`), easy at `c5dc39e`
 (24 May), delta at `e494a7e` (today), create-blueshed in invoket at `3cb1b1f` (13 Jun), railroad at

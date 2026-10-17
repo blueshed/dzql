@@ -8,6 +8,14 @@ what is open across them. Newest first.
 
 ### Fixed
 
+- **docs/ tells one story** (17 October, Peter: "is our docs folder telling a consistent story?").
+  Every record of a past plan, request or review opens by saying it is a record, with a link to
+  the root README's *How an app is made*. The guidance pages say what the code does now: eta's
+  first app quotes chat's documents as they are (messages scoped by room, `-` for a new row,
+  `session: sessions.of`); the bento's places on the page are cells again (the rename to resource
+  had reached them); Postgres serves on delta's one server (`serve`) and cites the paths its
+  example and tests moved to; dzql paths are written from the root. An applet is said one way
+  everywhere: the piece of a page with state of its own, an island when written with railroad.
 - **The skills teach `owns` as a path, and a part as going where its whole goes** (17 October,
   Shed run 3's two "partly" must-nots). Run 3 wrote `owns: (me, name) => name === "member:" + me.id`,
   near enough the line delta-doc's sign-in page showed (`owns: (me, name) => name === \`mine:${me.id}\``);

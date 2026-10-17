@@ -1,5 +1,9 @@
 # Bento request: the page, for all three examples
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *16 September 2026, at 0.37.0. Written after the bento mock-up (`examples/bento/`, 0.36.0) and
 the computed tray (`src/tray.ts`, 0.37.0). The mock-up's `README.md` holds eighteen rules for the
 page, drawn from apples.md's "The page" and the atlas in `Workshop/concept/location`. This is the

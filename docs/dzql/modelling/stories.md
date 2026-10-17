@@ -40,7 +40,7 @@ goTo: (address) => ...one session write...,
 story("Femi is not coming after all: the mark at his feet says so, and he leaves everyone's photo", {
   as: "okafors",
   from: "?guest=2", // his drawer
-  does: household("replace", "/guests/2/coming", "0"),
+  does: household("replace", "/guests/2/coming", 0),
   seen: { okafors: "", couple: "", benToo: "everyone" },
 });
 
@@ -185,7 +185,7 @@ Given a pile of stories, these are not written; they are read off:
   that role, and every `cannot` is refused. Today each resource hand-writes a list of regexes
   and verbs; the stories say the same thing as sentences, and the list is the one thing in a
   resource that should be derived first.
-- **The audience.** Who sees a document is who the stories say sees it. The change request's
+- **The audience.** Who sees a document is who the stories say sees it. The [change request](../rendering/change-request.md)'s
   item 1 asked for a method on the resource; it is better as a fact of the stories.
 - **The pages and their places.** Where a change shows is where stories say it shows. A page
   nobody's story sees is not a page, and a resource no story's write reaches is not a resource.
@@ -196,7 +196,8 @@ Given a pile of stories, these are not written; they are read off:
 
 ## Who compiles
 
-Claude does. The stories are the source: Claude reads them and writes the documents, the
+Claude does, from the stories to an app. (Postgres is compiled the other way: from delta's
+definitions, by dzql's deterministic compiler, which Claude writes and never is.) The stories are the source: Claude reads them and writes the documents, the
 resources and the permit tables, and the harness runs the same stories through the app and
 reports every place the reading was unfaithful. Nothing in code compiles stories into an app (the
 modelling example reads them to draw a model to talk over, and an app never depends on it). The
@@ -208,8 +209,8 @@ legible enough to read aloud. Neither the code nor a model is the product. The s
 
 ## The harness
 
-One kernel function, `run(example, stories)` in `src/modelling/harness.ts`, and one script, `bun run stories`
-(`src/modelling/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
+One kernel function, `run(example, stories)` in `packages/dzql/src/modelling/harness.ts`, and one script, `bun run stories`
+in `packages/dzql` (`src/modelling/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
 
 1. Connect the cast over real sockets to a real server, apply each member's setup writes, then
    the story's own `premise` (each write must change something), and render every member from
@@ -297,7 +298,7 @@ One kernel function, `run(example, stories)` in `src/modelling/harness.ts`, and 
    purpose (the ticker lets anyone type a tick, a demo of the wire); the warning says so once a
    run, and the builder narrows it or leaves it. Undo and Redo are the kernel's, offered on every
    page, and not asked.
-7. By hand, in a browser the size of a phone (`Bun.WebView`, `src/modelling/by-hand.ts`), as its author, in
+7. By hand, in a browser the size of a phone (`Bun.WebView`, `packages/dzql/src/modelling/by-hand.ts`), as its author, in
    a tab of their session: each story that says its `gesture`, and with `STORY_BY_HAND=1`
    (`run(example, stories, undefined, { byHand: true })`, which `bun run stories:all` sets) these:
    - a write from a page (`does`, not `offPage`): the controls on the way to where it is done are
@@ -369,7 +370,7 @@ checks:
 A page can be handed far more than its change -- 8 KB a vote, for a 146-byte patch -- with nothing
 to say so. So the harness keeps what each story's step -- the write, the refusal, the tab closing --
 handed each member's page: the bytes as the page takes them, as they crossed the wire
-(compressed: the cast's sockets go through the tap `bun run costs` uses, src/modelling/costs.ts), and the
+(compressed: the cast's sockets go through the tap `bun run costs` uses, `packages/dzql/src/modelling/costs.ts`), and the
 biggest part, beside the write's own size; and the bytes a write's undo and redo handed each,
 since a person's undo is a write too. `STORY_WIRE=1 bun run stories` says it under each story.
 The wedding's:

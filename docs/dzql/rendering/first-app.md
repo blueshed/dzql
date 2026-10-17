@@ -3,8 +3,10 @@
 This is the way in: what to write, in what order, and the words you meet at each step. Each
 word is explained when it is first used, and not before. The first app is chat, the smallest
 example, and the code here is taken from it, shortened where chat does more (paging back through
-earlier messages, for one): `examples/chat/` is the whole of it. After step 7 the path follows leave, the
-example with sign-in, a calendar and drafts, for the things a bigger app needs.
+earlier messages, for one): `examples/chat/` is the whole of it. Paths are from `packages/dzql/`;
+in a project made with `bun create dzql`, your app's `src/` is what `examples/<name>/` is here.
+After step 7 the path follows leave, the example with sign-in, a calendar and drafts, for the
+things a bigger app needs.
 
 If you only remember one thing, remember this: **write the story first, and let the failure tell
 you what to build next.**
@@ -58,18 +60,17 @@ A failure is a sentence, like `bob did not see it` or `ada has no control on the
 ```ts
 // examples/chat/delta.ts
 export const schema = defineSchema({
-  sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?" }, temporal: false },
-  rooms: { table: "chat_rooms", columns: {}, temporal: false },
-  messages: { table: "chat_messages", parent: "rooms", columns: { name: "text", text: "text", sent_at: "integer" }, temporal: false },
+  sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?", before: "integer?", cookie: "text?" }, temporal: false },
+  messages: { table: "chat_messages", columns: { room: "text", name: "text", text: "text", sent_at: "integer" }, temporal: false },
 });
 registerDocs(delta.server, db, schema, [
-  defineDoc("session:", { root: "sessions", include: [], implied: true }),
-  defineDoc("room:", { root: "rooms", include: ["messages"], implied: true }),
+  defineDoc("session:", { root: "sessions", include: [], implied: true, columns: { sessions: ["name", "room", "before"] } }),
+  defineDoc("room:", { root: "messages", scope: { room: ":room" }, include: [] }),
 ], [], { ledger: true });
 ```
 
-- A document is named `type:id`, like `room:general`. `root` is its row; `include` is the rows
-  under it.
+- A document is named `type:id`, like `room:general`. `root` is its row (with a `scope`, its rows:
+  a room is the messages that name it); `include` is the rows under it.
 - `ledger: true` records every write with its opposite, which is what makes Undo work.
 - **An id is said as text** on the wire and in a document's name. A new row's id is a serial
   number (delta names it), a session's may be a token, so never `Number()` an id.
@@ -120,14 +121,14 @@ export const room: Resource = {
     return ops
       .map((op) => String(op.value ?? "").trim())
       .filter((text) => text !== "")
-      .map((text): PatchOp => ({ op: "add", path: `/messages/${Bun.randomUUIDv7()}`, value: { name, text, sent_at: Date.now() } }));
+      .map((text): PatchOp => ({ op: "add", path: "/messages/-", value: { name, text, sent_at: Date.now() } }));
   },
 };
 ```
 
 - **permit** answers yes or no for each change in a write.
-- **shape** turns what the page sent into what the document keeps: an id made, the author added,
-  a blank value dropped. If it returns nothing, the write is refused.
+- **shape** turns what the page sent into what the document keeps: a new row (the store numbers
+  it), the author added, a blank value dropped. If it returns nothing, the write is refused.
 - A write the browser can refuse first (`required`, `pattern`) should be refused there.
 
 Both run before a write. The other hooks are named for when they run too: `permitUndo` before an
@@ -143,6 +144,7 @@ any change from anyone. Chat's room uses `afterChange` to keep the list of rooms
 export const example: Example = {
   name: "chat",
   resources: [session, room, here, lobby], // the session's first; here and lobby are memory documents, kept by the server
+  session: sessions.of,                    // the session a visit's cookie names
   render,
   active: (sessionId) => sessionDoc.read(sessionId).name !== null, // may this person write at all?
   index,                                                           // client/index.html
@@ -247,7 +249,8 @@ is in `examples/leave/signin.ts`.
 
 Draw everything on the server until something must keep state that a redraw would destroy: a
 drag halfway through, a scroll position, a chart's history. That piece is an **applet**
-(`src/rendering/applets.ts`): client code that draws inside one element.
+(`src/rendering/applets.ts`): client code that draws inside one element, written by hand or with
+railroad (an island, `src/rendering/island.ts`).
 
 - It sends its own writes with `ctx.send(doc, ops)`.
 - Its mount says exactly what it writes, `appletWrites(["team", "replace", "/requests/*/starts"], …)`
@@ -269,7 +272,7 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 - **A watched document is drawn whole into the page.** Watch one cut for who reads it, with no
   secret in it.
 - **One Undo is one document.** Keep a gesture's changes in one.
-- **Don't edit `src/` for one app.** If it seems you must, read the eta-app reference's "When it looks
+- **Don't edit the kernel (`src/rendering/`) for one app.** If it seems you must, read the eta-app reference's "When it looks
   like you need to touch the kernel" (`.claude/skills/eta-app/reference/where-an-app-lives.md`) first:
   a missing seam is rare.
 

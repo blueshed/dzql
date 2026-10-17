@@ -1,5 +1,9 @@
 # Change request: what the wedding asked of the kernel
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 *14 September 2026. Written after building `examples/wedding/` (0.23.0), the second example on
 eta. Nothing here blocked the wedding; each is a place where the example did work the kernel
 could do once, or where the kernel's vocabulary ran out and the example improvised. Numbered so

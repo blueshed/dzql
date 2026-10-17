@@ -1,5 +1,9 @@
 # The Document — a thought history
 
+> **A record.** Kept as it was written, for the history and the citations. How an app is made
+> now is the root [README](../../README.md#how-an-app-is-made); where this differs from the code, the code is
+> right.
+
 dzql → seiro → simple (+easy) → railroad → delta → hjeli → epsilon →
 apples & pears → zeta → eta → eta on delta.
 One idea carried from the first to the last, through a year of clean rewrites:

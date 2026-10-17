@@ -10,6 +10,7 @@ tables, the framework and the compiled SQL follow, and the listener serves the d
 ```ts
 import { Pool } from "pg";
 import { createWs } from "@blueshed/delta/server";
+import { serve } from "@blueshed/delta/serve";
 import { applyFramework, applySql, generateSql, createDocListener, docTypeFromDef, fromFolder, migrate } from "dzql/postgres";
 import { schema, docs } from "./schema";
 
@@ -20,12 +21,8 @@ await applySql(pool, generateSql(schema, docs));     // each document compiled
 
 const ws = createWs();
 const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)) });
-const server = Bun.serve({ routes: { "/": index, [ws.path]: ws.upgrade }, websocket: ws.websocket });
-ws.setServer(server);   // REQUIRED: without it nothing is broadcast
-
-// shutdown: the listener holds a pool client for LISTEN
-await listener.destroy();
-await pool.end();
+// delta's one server: the socket on its path, and on shutdown the listener (it holds a pool client for LISTEN), then the pool
+serve({ routes: { "/": index }, ws, close: [() => listener.destroy(), () => pool.end()] });
 ```
 
 Options: `createDocListener` and `docTypeFromDef` in `src/postgres/listener.ts` and
@@ -47,7 +44,7 @@ Options: `createDocListener` and `docTypeFromDef` in `src/postgres/listener.ts` 
   make is the next migration (delta-doc's `migrations.md`). Give the listener your
   `schema` (`createDocListener(ws, pool, { types, schema })`): it sends and writes the columns
   it declares, so two versions on one database each see their own.
-- **After upgrading delta**, run `init <dir> --upgrade` (it keeps `.bak`s and says what changed)
+- **After upgrading dzql**, run `init <dir> --upgrade` (it keeps `.bak`s and says what changed)
   or `applyFramework` again. Never edit `001*` by hand: it is the stored-function contract.
 - Mount `init_db/` at `/docker-entrypoint-initdb.d`: Postgres applies it alphabetically on the
   first boot of an empty volume, then skips; `docker compose down -v` starts fresh.
@@ -117,7 +114,7 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
 
 ## Gotchas
 
-- `bun add pg`, and `bun add -d @types/pg` to type-check (delta ships TS source).
+- `bun add pg`, and `bun add -d @types/pg` to type-check (dzql ships TS source).
 - Ids are BIGINTs from `seq_<table>`: a client id that is not a number, or past 2^53 - 1, is a
   400; one that is moves the sequence past it.
 - Implied documents are named by number here (`room:7`).
@@ -127,7 +124,7 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
   single root row is not there, which the listener answers 404.
 - Write through `delta_apply` (the listener, or `delta_apply_as` from SQL), never a raw
   `INSERT`: only that path versions, logs and NOTIFYs (`sql.md`).
-- A hand-written `DocType` hears only its own writes (delta-doc's `custom-docs.md`).
+- A hand-written `DocType` hears only its own writes (`DocType` in `src/postgres/registry.ts`).
 - **A write tells every open document that holds a row it touched, in its own transaction**: that
   is what makes each change arrive whole and in order. A row held by many open documents (a feed
   per person, each holding the same new post) costs the write one telling for each. Keep
@@ -135,6 +132,6 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
   a whole table that only grows: a document is opened whole.
 - `_delta_ops_log` is a catch-up buffer: prune it with `pruneOpsLog(pool)` (`delta_prune_ops`).
 - PGlite (`openPglite(dir?)`, `bun add @electric-sql/pglite`) is one process: a `Pool` that
-  `./postgres` runs on unchanged.
+  `dzql/postgres` runs on unchanged.
 - **Never deploy PGlite**: it needs far more memory than a small server has. Tests and development only.
 - **The superuser bypasses RLS**, even with `FORCE`: a hand-written policy needs a non-superuser pool (`rls.md`).
