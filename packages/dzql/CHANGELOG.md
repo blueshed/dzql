@@ -25,6 +25,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The repository holds railroad and delta too** (`packages/railroad`, `packages/delta`, each
+  with its history), as Bun workspaces: dzql runs against delta's source, so a delta change that
+  breaks dzql's cases is red in the same commit. dzql's CLAUDE.md, CHANGELOG.md, todo.jsonl,
+  philo.md and `/publish` moved from the root into `packages/dzql`; the root has the monorepo's own,
+  and `/publish` releases a round of packages together. CI is the root's `dzql.yml`, run when dzql,
+  create-dzql, delta or railroad changes.
 - **A replace on a table that keeps no versions updates the row in place** (`_delta_row_put`), its
   declared columns and parent key set from the row; it had deleted and inserted it again, which
   re-indexed every index and would fire a foreign key's or a trigger's delete. A column the database

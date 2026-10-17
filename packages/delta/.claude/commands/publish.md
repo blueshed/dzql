@@ -3,10 +3,12 @@ description: "Release a new version of @blueshed/delta (patch | minor | major)."
 argument-hint: "patch | minor | major"
 ---
 
-# /publish
+# /publish: delta's part
 
-The release procedure shared by railroad, delta and eta: the same steps in all three, with only
-the table below differing. The bump level is `$ARGUMENTS` (`patch`, `minor` or `major`).
+delta's steps in the monorepo's release round. The root's `.claude/commands/publish.md`
+runs steps 2 to 6 here for each package it releases, then makes one commit, a tag per package
+(`delta@x.y.z`) and one push for them all. Paths below are this package's folder's. The bump level is
+`$ARGUMENTS` (`patch`, `minor` or `major`).
 
 | | |
 |---|---|
@@ -15,7 +17,7 @@ the table below differing. The bump level is `$ARGUMENTS` (`patch`, `minor` or `
 | Gate | `bun run ci` |
 | Skills stamped with the version | `.claude/skills/delta-doc/SKILL.md` |
 
-Run the steps in order. Stop at the first failure without changing anything further. Running this
+Stop at the first failure without changing anything further. Running this
 command is the authorisation to release -- carry it through to the end, the push included, without
 asking again. Bun only: never `npm` or `npx`, and never `npm publish` from here (CI does it).
 
@@ -58,45 +60,5 @@ empty `## [Unreleased]` above it.
 
 ## 7. Commit, tag, push
 
-```
-git add package.json CHANGELOG.md .claude/skills/delta-doc/SKILL.md
-git commit -m "Release v<new version>"
-git tag -a v<new version> -m "Release v<new version>"
-git push origin main --follow-tags
-```
-
-If the push is refused (not a fast-forward, auth, a hook), report the exact error and stop. Never
-retry with `--force`, `--no-verify` or any other bypass: the commit and tag stay local for the
-person to decide.
-
-## 8. GitHub release -- this is what publishes to npm
-
-`.github/workflows/publish.yml` runs on `release: published`, not on a tag. A tag alone publishes
-nothing.
-
-```
-gh release create v<new version> -t v<new version> --notes-from-tag
-```
-
-If `gh` is missing or not signed in, report the exact error and stop: the release needs a person.
-
-## 9. Confirm on npm
-
-```
-gh run watch $(gh run list --workflow=publish.yml --limit 1 --json databaseId --jq '.[0].databaseId') --exit-status
-bun info @blueshed/delta version
-```
-
-The version npm reports must be the new one. If the workflow fails or npm still has the old
-version, report the run's URL and stop.
-
-## 10. Report
-
-```
-Released @blueshed/delta@<new version>.
-
-  commit   <short sha>
-  tag      v<new version>
-  release  https://github.com/blueshed/delta/releases/tag/v<new version>
-  npm      @blueshed/delta@<new version>
-```
+The root's `/publish` does it, for the whole round: one commit, the tag `delta@<new version>`
+beside the others, one push. The tag is what publishes (the root's `.github/workflows/publish.yml`).

@@ -1296,7 +1296,7 @@ describe("the logger", () => {
   test("is railroad's logger, line for line (re-sync it when railroad's changes)", async () => {
     const code = (src: string) => src.slice(src.indexOf("export type LogLevel"));
     const ours = await Bun.file(new URL("../src/server/logger.ts", import.meta.url)).text();
-    const railroads = await Bun.file(new URL("../node_modules/@blueshed/railroad/logger.ts", import.meta.url)).text();
+    const railroads = await Bun.file(Bun.resolveSync("@blueshed/railroad/logger", import.meta.dir)).text();
     expect(code(ours)).toBe(code(railroads));
   });
 

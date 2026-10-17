@@ -1,106 +1,53 @@
 ---
-description: "Release a new version of dzql and create-dzql (patch | minor | major)."
-argument-hint: "patch | minor | major"
+description: "Release the packages that have changed, together, in one round (railroad, delta, dzql and create-dzql)."
+argument-hint: "<package> <patch|minor|major> [<package> <level> ...]"
 ---
 
 # /publish
 
-The release procedure of railroad, delta and eta, for dzql. The bump level is `$ARGUMENTS`
-(`patch`, `minor` or `major`).
+One release round for the monorepo: every package named in `$ARGUMENTS`, each with its level
+(`railroad patch delta minor`). With no arguments, list each package's `## [Unreleased]` and stop:
+the person picks the round. Releasing comes once every stage of a plan is done, on Peter's word.
+Running this command is the authorisation to release: carry it through, the push included,
+without asking again. Never `npm publish` from here: the tags do it, in CI.
 
-| | |
-|---|---|
-| Packages | `dzql` (`packages/dzql`) and `create-dzql` (`packages/create-dzql`), one version for both |
-| Published | npm, public, by `.github/workflows/publish.yml` on a pushed tag: `dzql@x.y.z`, `create-dzql@x.y.z` |
-| Gate | `cd packages/dzql && bun check && bun run test` (Docker; port 5433 free) |
-| End to end | CLAUDE.md, *Testing the create-dzql Template*: a new app, linked to the local dzql, and its own tests |
+Each package's own steps are in `packages/<package>/.claude/commands/publish.md` (its gate, its
+end-to-end check, which skills it stamps). `dzql` releases `create-dzql` with it, one version.
 
-Run the steps in order. Stop at the first failure without changing anything further. Releasing is not a step of a plan: it comes once every stage is done, on Peter's word. Running this
-command is the authorisation to release -- carry it through to the end, the push included, without
-asking again. Bun only (`bun check`, TypeScript 7, as the gate says), and never `npm publish` from here: CI does it.
+## 1. Preflight, once
 
-## 1. Arguments
+1. On `main`, the tree clean, and not behind `origin/main` (`git fetch --quiet origin main`, then
+   `git rev-list --count HEAD..origin/main` is `0`).
+2. `bun install --frozen-lockfile` at the root.
 
-`$ARGUMENTS` must be exactly `patch`, `minor` or `major`; otherwise stop and print
-`Usage: /publish patch|minor|major`.
+## 2. Each package's steps 2 to 6
 
-## 2. Preflight
+For each package named, in the order railroad, delta, dzql (a sibling before what depends on it),
+run its file's steps 2 to 6 in `packages/<package>`: preflight (its `[Unreleased]` has something
+under it), gate, end to end where it has one, bump, stamp, promote. Stop at the first failure;
+nothing is committed until every package has passed.
 
-1. The branch is `main`: `git rev-parse --abbrev-ref HEAD`.
-2. The working tree is clean: `git status --porcelain` prints nothing.
-3. Not behind origin: `git fetch --quiet origin main`, then `git rev-list --count HEAD..origin/main`
-   is `0`. Commits ahead of origin are fine -- they go out with the release in step 8.
-4. `CHANGELOG.md` has a `## [Unreleased]` section with something under it. It is the record of
-   what is shipping, written as the work landed; if it is missing or empty, stop and say so.
-5. The two packages have the same `version`, and the template's `dzql` dependency
-   (`packages/create-dzql/template/package.json`) is `^` it or the next version.
+## 3. What depends on what was released
 
-## 3. Gate
+A sibling's range moves up to the version just made when it no longer includes it: delta's
+`@blueshed/railroad` (peer and dev), dzql's `@blueshed/delta` (peer and dev) and
+`@blueshed/railroad` (dev). Each such move is a line under the dependent's new version in its
+CHANGELOG. Then `bun install` at the root, so `bun.lock` names the new versions.
 
-Run the gate command in the table. If it fails, stop -- no file has been edited yet.
-
-## 4. End to end
-
-Follow CLAUDE.md's *Testing the create-dzql Template*: a new app from the local template, its
-`dzql` dependency set to `link:dzql` (so its runtime is the local one, not npm's), `bun check`
-clean and `bun test` passing. Its tests are the checks, in two real browsers: pick who you
-are, publish a post, see it arrive in the other window without a reload, edit it in the sheet,
-delete it; the other person sees it with no Edit or Delete; a write to everyone's posts is refused
-(403), another's posts are not there (404); someone new's link, made in one window, signs them in
-in the other, keeps them on a reload, and is used once. Then its
-*Cleanup*, the `bun unlink` included. If any check fails, stop.
-
-## 5. Bump
-
-Parse `version` in `packages/dzql/package.json` as strict `x.y.z` (refuse anything else) and compute
-the next: `patch` → `x.y.(z+1)`, `minor` → `x.(y+1).0`, `major` → `(x+1).0.0`. Write it to both
-packages' `version`, and `^<new version>` to the template's `dzql` dependency, keeping the 2-space
-indent and the trailing newline. Then `bun install`, so `bun.lock` names the new versions
-(CI installs with `--frozen-lockfile`).
-
-## 6. Promote the changelog and the ledger
-
-In `CHANGELOG.md`, replace the line `## [Unreleased]` with `## [<new version>] - <today, YYYY-MM-DD>`,
-and put a fresh, empty `## [Unreleased]` above it. In `todo.jsonl`, the settled items (`fixed`,
-`not fixed`) leave; the open ones stay as they are.
-
-## 7. Commit and tag
+## 4. Commit, tag, push
 
 ```
-git add packages/dzql/package.json packages/create-dzql/package.json packages/create-dzql/template/package.json bun.lock CHANGELOG.md todo.jsonl
-git commit -m "Release v<new version>"
-git tag -a dzql@<new version> -m "dzql <new version>"
-git tag -a create-dzql@<new version> -m "create-dzql <new version>"
-```
-
-## 8. Push -- this is what publishes to npm
-
-```
+git add -A packages bun.lock
+git commit -m "Release <package> <version>, <package> <version>"
+git tag -a <package>@<version> -m "<package> <version>"     # one per package released, create-dzql with dzql
 git push origin main --follow-tags
 ```
 
-Each tag starts its own job in `publish.yml`. If the push is refused (not a fast-forward, auth, a
-hook), report the exact error and stop. Never retry with `--force`, `--no-verify` or any other
-bypass: the commit and tags stay local for the person to decide.
+Each tag starts `.github/workflows/publish.yml`: that package's gate, then `npm publish
+--provenance`. If the push is refused, report the exact error and stop; never `--force` or
+`--no-verify`.
 
-## 9. Confirm on npm
+## 5. Confirm and report
 
-```
-gh run list --workflow=publish.yml --limit 2
-gh run watch <each run's id> --exit-status
-bun info dzql version
-bun info create-dzql version
-```
-
-Both versions npm reports must be the new one, and `main`'s CI run for the release commit green.
-If a workflow fails or npm still has the old version, report the run's URL and stop.
-
-## 10. Report
-
-```
-Released dzql@<new version> and create-dzql@<new version>.
-
-  commit   <short sha>
-  tags     dzql@<new version>, create-dzql@<new version>
-  npm      dzql@<new version>, create-dzql@<new version>
-```
+`gh run list --workflow=publish.yml` until each tag's run is green, then `bun info <name> version`
+for each. Report the commit, the tags and the versions npm has; a failed run, with its URL.

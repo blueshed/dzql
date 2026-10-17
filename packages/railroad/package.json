@@ -44,7 +44,15 @@
   "homepage": "https://github.com/blueshed/railroad",
   "repository": {
     "type": "git",
-    "url": "https://github.com/blueshed/railroad"
+    "url": "git+https://github.com/blueshed/bluetools.git",
+    "directory": "packages/railroad"
   },
-  "keywords": ["signals", "jsx", "router", "bun", "ui", "framework"]
+  "keywords": [
+    "signals",
+    "jsx",
+    "router",
+    "bun",
+    "ui",
+    "framework"
+  ]
 }

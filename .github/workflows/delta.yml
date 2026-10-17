@@ -1,0 +1,40 @@
+name: delta
+
+# Runs when delta, railroad (its client draws with railroad's signals), or what every package
+# shares changes.
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - "packages/delta/**"
+      - "packages/railroad/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/delta.yml"
+  pull_request:
+    paths: *paths
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # Pinned to the Bun the repo is developed on (delta's CLAUDE.md says how to move it).
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check
+        working-directory: packages/delta
+        run: bun check && bun check -p examples/kanban
+
+      - name: Run tests
+        working-directory: packages/delta
+        run: bun test tests/

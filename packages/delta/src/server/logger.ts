@@ -3,7 +3,7 @@
  *
  * Colored and timestamped on a terminal, plain when piped or with `NO_COLOR`,
  * level-gated; an unknown `LOG_LEVEL` falls back to "info". The code below is
- * `@blueshed/railroad/logger.ts` (0.16.0) as it is, copied rather than
+ * `@blueshed/railroad/logger.ts` as it is, copied rather than
  * imported so a server that doesn't use delta's client needs no railroad;
  * `tests/server.test.ts` fails when the two differ. Re-sync it when railroad's
  * changes.
@@ -95,14 +95,6 @@ export function createLogger(tag: string) {
 
 type Handler = (req: Request) => Response | Promise<Response>;
 
-function safePathname(url: string): string {
-  try {
-    return new URL(url).pathname;
-  } catch {
-    return url;
-  }
-}
-
 /** Wrap a route handler with access logging. */
 export function loggedRequest(tag: string, handler: Handler): Handler {
   const log = createLogger(tag);
@@ -112,14 +104,14 @@ export function loggedRequest(tag: string, handler: Handler): Handler {
       const res = await handler(req);
       const ms = (performance.now() - start).toFixed(1);
       log.info(
-        `${req.method} ${safePathname(req.url)} → ${res.status} (${ms}ms)`,
+        `${req.method} ${new URL(req.url).pathname} → ${res.status} (${ms}ms)`,
       );
       return res;
     } catch (err: unknown) {
       const ms = (performance.now() - start).toFixed(1);
       const msg = err instanceof Error ? err.message : String(err);
       log.error(
-        `${req.method} ${safePathname(req.url)} threw (${ms}ms): ${msg}`,
+        `${req.method} ${new URL(req.url).pathname} threw (${ms}ms): ${msg}`,
       );
       throw err;
     }

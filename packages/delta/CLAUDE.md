@@ -37,16 +37,18 @@ Bun only: never `npm`, `npx` or `node`.
 | Tests | `bun run test`: every test (no database server, no Docker; about 17 s) |
 | One file | `bun test tests/local.test.ts` |
 | **The gate** | **`bun run ci`**: `bun check` (and kanban's) → `bun test tests/` |
-| Release | `/publish patch\|minor\|major` (`.claude/commands/publish.md`, shared with railroad and eta) |
+| Release | the monorepo's `/publish` (the root's `.claude/commands/publish.md`); this package's part is `.claude/commands/publish.md` |
 
-GitHub Actions (`.github/workflows/ci.yml` on push, `publish.yml` on a published release) runs
-the same steps.
+delta lives in the bluetools monorepo (`packages/delta`), beside railroad and dzql, as Bun
+workspaces: its `@blueshed/railroad` is `packages/railroad`'s source, not npm's. GitHub Actions
+(the root's `.github/workflows/delta.yml`, when delta or railroad changes; `publish.yml` on a
+pushed tag `delta@x.y.z`) runs the same steps.
 
-**CI runs one Bun, pinned**: `bun-version: 1.4.3` in both workflows, the Bun the repo is
+**CI runs one Bun, pinned**: `bun-version: 1.4.3` in every workflow, the Bun the repo is
 developed on, so a Bun release cannot turn the gate red with no change here. To move it: install
-the new Bun, run `bun run ci` on it, then set `bun-version` in `ci.yml` and `publish.yml` to
-`bun --version` in one commit (`tests/package-exports.test.ts` fails if the two differ or say
-`latest`).
+the new Bun, run `bun run ci` on it, then set `bun-version` in the root's workflows to
+`bun --version` in one commit (`tests/package-exports.test.ts` fails if `delta.yml`'s says
+`latest`, or `publish.yml` stops running it).
 
 ## Invariants
 
@@ -185,8 +187,9 @@ the new Bun, run `bun run ci` on it, then set `bun-version` in `ci.yml` and `pub
 
 ## In a remote container
 
-Claude Code on the web runs in an ephemeral container. `.claude/hooks/session-start.sh`
-provisions it when `CLAUDE_CODE_REMOTE=true`: the Bun CI pins, then `bun install`. By hand, the same is
+Claude Code on the web runs in an ephemeral container. The monorepo's
+`.claude/hooks/session-start.sh` provisions it when `CLAUDE_CODE_REMOTE=true`: the Bun CI pins, then
+`bun install` at the root, and a browser. By hand, from the root, the same is
 `CLAUDE_CODE_REMOTE=true .claude/hooks/session-start.sh`; it is idempotent. The gate, `bun run ci`,
 runs there as it does locally: no database server, no Docker. Nothing in the container survives
 reclamation: commit what is worth keeping.

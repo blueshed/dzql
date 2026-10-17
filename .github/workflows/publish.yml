@@ -1,50 +1,72 @@
 name: Publish to npm
 
+# A pushed tag `<package>@x.y.z` publishes that package from packages/<package>, after its gate
+# (the package's own workflow, called). /publish pushes the tags of one release round together.
+#
+# npm Trusted Publisher, once per package on npmjs.com (Settings → Trusted publishing):
+#   GitHub Actions, this repository, workflow publish.yml, environment blank.
+
 on:
   push:
     tags:
+      - "railroad@*"
+      - "delta@*"
       - "dzql@*"
       - "create-dzql@*"
-  workflow_dispatch:
-    inputs:
-      package:
-        description: "Package to publish"
-        required: true
-        type: choice
-        options:
-          - dzql
-          - create-dzql
-          - both
 
 jobs:
-  publish-dzql:
-    if: startsWith(github.ref, 'refs/tags/dzql@') || (github.event_name == 'workflow_dispatch' && (inputs.package == 'dzql' || inputs.package == 'both'))
+  which:
+    runs-on: ubuntu-latest
+    outputs:
+      package: ${{ steps.tag.outputs.package }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - id: tag
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          echo "package=${tag%@*}" >> "$GITHUB_OUTPUT"
+          echo "version=${tag##*@}" >> "$GITHUB_OUTPUT"
+
+  gate-railroad:
+    needs: which
+    if: needs.which.outputs.package == 'railroad'
+    uses: ./.github/workflows/railroad.yml
+
+  gate-delta:
+    needs: which
+    if: needs.which.outputs.package == 'delta'
+    uses: ./.github/workflows/delta.yml
+
+  gate-dzql:
+    needs: which
+    if: needs.which.outputs.package == 'dzql' || needs.which.outputs.package == 'create-dzql'
+    uses: ./.github/workflows/dzql.yml
+
+  publish:
+    needs: [which, gate-railroad, gate-delta, gate-dzql]
+    # The one gate that ran passed; the others were skipped.
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       id-token: write
+    defaults:
+      run:
+        working-directory: packages/${{ needs.which.outputs.package }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "24"
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
 
-      - name: Publish dzql
-        run: npm publish --provenance --access public
-        working-directory: packages/dzql
+      - name: Verify the tag matches package.json
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PKG_VERSION" != "${{ needs.which.outputs.version }}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
 
-  publish-create-dzql:
-    if: startsWith(github.ref, 'refs/tags/create-dzql@') || (github.event_name == 'workflow_dispatch' && (inputs.package == 'create-dzql' || inputs.package == 'both'))
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Publish create-dzql
-        run: npm publish --provenance --access public
-        working-directory: packages/create-dzql
+      - run: NODE_AUTH_TOKEN="" npm publish --provenance --access public

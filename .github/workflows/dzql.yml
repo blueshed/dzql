@@ -1,10 +1,21 @@
-name: CI Tests
+name: dzql
 
+# Runs when dzql or create-dzql, delta or railroad (what dzql runs on), or what every package
+# shares changes.
 on:
   push:
     branches: [main]
+    paths: &paths
+      - "packages/dzql/**"
+      - "packages/create-dzql/**"
+      - "packages/delta/**"
+      - "packages/railroad/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/dzql.yml"
   pull_request:
-    branches: [main]
+    paths: *paths
+  workflow_call:
 
 jobs:
   test:

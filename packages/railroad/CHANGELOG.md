@@ -8,10 +8,14 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **railroad lives in the bluetools monorepo** (`packages/railroad`, with its history), beside
+  delta and dzql as Bun workspaces: they run against this source, not npm's. Releases are tagged
+  `railroad@x.y.z` (was `v<x.y.z>`) and published from the root's `publish.yml` on the tag; CI is
+  the root's `railroad.yml`, run when railroad changes. Nothing changes for an app that installs it.
 - `loggedRequest` reads the path with `new URL(req.url)` directly: a `Request` always has a
   URL that parses, so the fallback for one that doesn't is gone.
 - **CI runs eta's island test against railroad's own commit** (the `eta` job in
-  `.github/workflows/ci.yml`): eta's `src/island.test.ts`, in a real browser, with the checked-out
+  `.github/workflows/railroad.yml`): eta's `src/island.test.ts`, in a real browser, with the checked-out
   railroad linked in place of npm's, so a change that breaks eta's islands fails before a release.
 
 ### Docs

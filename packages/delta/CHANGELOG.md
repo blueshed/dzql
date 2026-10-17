@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **delta lives in the bluetools monorepo** (`packages/delta`, with its history), beside railroad
+  and dzql as Bun workspaces: its railroad is `packages/railroad`'s source, and dzql runs against
+  this one. Releases are tagged `delta@x.y.z` (was `v<x.y.z>`) and published from the root's
+  `publish.yml` on the tag; CI is the root's `delta.yml`, run when delta or railroad changes.
+  Nothing changes for an app that installs it.
+- `@blueshed/delta/logger` re-synced with railroad's (`loggedRequest` reads `new URL(req.url)`
+  directly, as railroad's unreleased change does); the test that holds them line for line finds
+  railroad's by resolving it, wherever it is installed.
 - **The documents say what delta is now.** README, the skill (SKILL.md, `postgres.md`, `cli.md`,
   `migrations.md`, `testing.md`) and CLAUDE.md teach migrations from empty, link sign-in and
   `owns` as a path; `delta migrations make` and `delta link` are in the CLI page. Comments no

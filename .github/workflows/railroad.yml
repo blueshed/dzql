@@ -1,9 +1,25 @@
-name: CI
+name: railroad
 
+# Runs only when railroad, or what every package shares, changes: railroad depends on no sibling.
 on:
   push:
     branches: [main]
+    paths:
+      - "packages/railroad/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/railroad.yml"
   pull_request:
+    paths:
+      - "packages/railroad/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/railroad.yml"
+  workflow_call:
+
+defaults:
+  run:
+    working-directory: packages/railroad
 
 jobs:
   test:
@@ -16,6 +32,7 @@ jobs:
           bun-version: 1.4.3 # pin explicitly; else setup-bun resolves engines.bun (">=1.3.14")
 
       - run: bun install --frozen-lockfile
+        working-directory: .
 
       - run: bun check
 
@@ -43,13 +60,13 @@ jobs:
   # eta draws its islands with railroad's `signal` and `mount` (eta's src/island.ts). Run eta's
   # island test, in a real browser, against this commit's railroad in place of the npm one, so a
   # change here that breaks eta fails here, before a release. eta's bunfig.toml is removed: it
-  # gates eta's whole-run coverage, which one file cannot meet.
+  # gates eta's whole-run coverage, which one file cannot meet. (Until eta moves in beside it.)
   eta:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          path: railroad
+          path: bluetools
 
       - uses: actions/checkout@v6
         with:
@@ -65,10 +82,11 @@ jobs:
         run: |
           bun install --frozen-lockfile
           rm -rf node_modules/@blueshed/railroad
-          ln -s "$GITHUB_WORKSPACE/railroad" node_modules/@blueshed/railroad
+          ln -s "$GITHUB_WORKSPACE/bluetools/packages/railroad" node_modules/@blueshed/railroad
           rm bunfig.toml
 
       - name: Locate Chrome for Bun.WebView
+        working-directory: .
         run: |
           chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium || true)"
           if [ -z "$chrome" ]; then echo "No Chrome/Chromium found on runner" >&2; exit 1; fi
@@ -91,5 +109,6 @@ jobs:
           bun-version: 1.3.14
 
       - run: bun install --frozen-lockfile
+        working-directory: .
 
       - run: bun test --path-ignore-patterns=tests/webview.test.ts

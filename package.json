@@ -1,12 +1,10 @@
 {
-  "name": "dzql-monorepo",
-  "version": "1.0.3",
+  "name": "bluetools",
   "private": true,
   "type": "module",
-  "description": "dzql, delta's compiled Postgres step, and create-dzql",
+  "description": "The blueshed lineage in one repo: railroad, delta, dzql and their starters, as Bun workspaces",
   "workspaces": [
-    "packages/dzql",
-    "packages/create-dzql"
+    "packages/*"
   ],
   "scripts": {
     "test": "cd packages/dzql && bun run test",
@@ -14,14 +12,14 @@
     "cache:clear": "bun pm cache rm"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "^1.4.2"
   },
   "engines": {
     "bun": ">=1.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/blueshed/dzql"
+    "url": "https://github.com/blueshed/bluetools"
   },
   "keywords": [
     "delta",
@@ -32,5 +30,8 @@
     "typescript"
   ],
   "author": "Peter Bunyan",
-  "license": "MIT"
+  "license": "MIT",
+  "overrides": {
+    "@types/node": "^25.5.0"
+  }
 }

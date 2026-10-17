@@ -164,14 +164,14 @@ describe("package exports", () => {
 // ---------------------------------------------------------------------------
 
 describe("the release gate", () => {
-  test("ci.yml and publish.yml set up the same Bun, pinned to an exact version", async () => {
-    const pinned: Record<string, string | undefined> = {};
-    for (const workflow of ["ci.yml", "publish.yml"]) {
-      const yml = await Bun.file(join(repoRoot, ".github", "workflows", workflow)).text();
-      const step = yml.match(/uses: oven-sh\/setup-bun@\S+\n(?:\s+with:\n(?:\s+[\w-]+:.*\n)*)?/)?.[0] ?? "";
-      pinned[workflow] = step.match(/bun-version:\s*"?([^\s"]+)"?/)?.[1];
-    }
-    expect(pinned["ci.yml"]).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(pinned["publish.yml"]).toBe(pinned["ci.yml"]);
+  // The monorepo's root: its workflows run every package's gate.
+  const workflows = join(repoRoot, "..", "..", ".github", "workflows");
+
+  test("delta.yml sets up one Bun, pinned to an exact version, and publish.yml runs it", async () => {
+    const yml = await Bun.file(join(workflows, "delta.yml")).text();
+    const step = yml.match(/uses: oven-sh\/setup-bun@\S+\n(?:\s+with:\n(?:\s+[\w-]+:.*\n)*)?/)?.[0] ?? "";
+    expect(step.match(/bun-version:\s*"?([^\s"]+)"?/)?.[1]).toMatch(/^\d+\.\d+\.\d+$/);
+    const publish = await Bun.file(join(workflows, "publish.yml")).text();
+    expect(publish).toContain("uses: ./.github/workflows/delta.yml");
   });
 });

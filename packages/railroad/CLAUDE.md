@@ -11,10 +11,15 @@ why: [README.md](README.md). How to use it: the `railroad` skill.
   to the code on `main`.
 - **`bun-route`** (`.claude/skills/bun-route/`) — Bun HTML routes and
   `Bun.WebView` test patterns.
-- **`/publish`** (`.claude/commands/publish.md`) — the release procedure,
-  shared with delta and eta. Only run it when asked to release. npm publishing
-  happens in CI (`.github/workflows/publish.yml`) on a published GitHub
-  release; never publish by hand.
+- **`/publish`** (the monorepo root's `.claude/commands/publish.md`; this
+  package's part is `.claude/commands/publish.md` here) — one release round
+  for every package. Only run it when asked to release. npm publishing happens
+  in CI (the root's `.github/workflows/publish.yml`) on a pushed tag
+  `railroad@x.y.z`; never publish by hand.
+
+railroad lives in the bluetools monorepo (`packages/railroad`), beside delta
+and dzql as Bun workspaces: they use this source, not npm's. Run its commands
+here; `bun install` runs at the root.
 
 ## Commands and gates
 
@@ -27,7 +32,7 @@ bun run test:webview     # real-browser suite, by explicit path
 ```
 
 The release gate is `bun check && bun run check:consumer && bun test --coverage`.
-CI (`.github/workflows/`) also runs `bun run test:webview` on its own step,
+CI (the root's `.github/workflows/railroad.yml`, run when railroad changes) also runs `bun run test:webview` on its own step,
 and a `floor` job runs `bun test` without the browser file on the Bun that
 `engines` names (1.3.14), and an `eta` job runs eta's `src/island.test.ts` with
 this checkout linked in place of npm's railroad.
@@ -151,8 +156,8 @@ so after a dependency change run `bun install` and commit `bun.lock`.
 ## The Claude Code web sandbox
 
 Locally nothing is needed. In the web sandbox (`CLAUDE_CODE_REMOTE=true`) the
-SessionStart hook `.claude/hooks/session-start.sh` (wired in
-`.claude/settings.json`) upgrades Bun to ≥ 1.4.3, runs `bun install`, and
+SessionStart hook at the monorepo root, `.claude/hooks/session-start.sh` (wired in
+`.claude/settings.json`), upgrades Bun to ≥ 1.4.3, runs `bun install` there, and
 stages a headless Chromium from the `@sparticuz/chromium` npm tarball with a
 `--no-sandbox` launch shim at `BUN_CHROME_PATH`, because the browser download
 hosts (`cdn.playwright.dev`, `googlechromelabs.github.io`, `dl.google.com`,
