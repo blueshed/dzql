@@ -1,0 +1,50 @@
+[
+  {
+    "skills": ["evolve", "railroad", "delta-doc"],
+    "query": "Add a notes page: I type a note, press Add, and it appears in a list under the box.",
+    "files": [],
+    "expected_behavior": [
+      "Makes the notes a shared document from the start (registerDoc in notes-api.ts, openDoc in notes.ts), not HTTP routes and not a 'live' feature added later",
+      "Makes src/resources/notes/ with notes-api.ts, notes.ts and notes-view.tsx, registers the document in startServer and puts the view in a route in src/app.tsx",
+      "Adds with add /notes/- and removes by id; never sets notes.data or adds the note locally: the change that comes back draws it",
+      "Renders the list with list() keyed by id, and binds signals ({x}, x$.map) rather than calling .get() in JSX",
+      "Tests what a person sees: a second window sees a note added, a refused change says Not saved; bun test passes at 100% coverage and bun run typecheck is clean",
+      "Adds a CHANGELOG.md entry under [Unreleased]"
+    ]
+  },
+  {
+    "skills": ["evolve", "railroad", "delta-doc"],
+    "query": "Customers pick from our menu and build an order. The kitchen should see every order as it comes in, and a customer should be able to undo their last change.",
+    "files": [],
+    "expected_behavior": [
+      "Designs from the action: the order page holds two documents (the menu and the customer's order), and the kitchen is a document over every order",
+      "Keeps them in SQLite with delta's backend, because the kitchen and every order share rows; the schema follows from the documents",
+      "Turns on the ledger ({ ledger: true }) for undo rather than keeping an undo stack of its own",
+      "A test shows a line added to an order reaching the kitchen's document, and an undo taking it back from both",
+      "bun test passes at 100% coverage and bun run typecheck is clean"
+    ]
+  },
+  {
+    "skills": ["evolve", "railroad"],
+    "query": "Let people upload a photo and get a link to it.",
+    "files": [],
+    "expected_behavior": [
+      "Serves files over HTTP routes with Bun.s3, not as a document: a file is not communication",
+      "Installs no AWS SDK; startServer takes the S3 client as an option so tests pass their own",
+      "Tests against a stand-in bucket: a put, a GET that redirects to the file, and a 404 for one that is not there",
+      "bun test passes at 100% coverage and bun run typecheck is clean"
+    ]
+  },
+  {
+    "skills": ["evolve", "delta-doc"],
+    "query": "The order page is live and people have orders in it. Now an order should count an item: two teas are one line with a quantity of 2, not two lines. Don't lose anyone's order.",
+    "files": [],
+    "expected_behavior": [
+      "Declares quantity in the schema, then lets `delta migrations make` write the next migration (an addColumn), and adds beside it an up that folds an order's lines of one item into one, with its count",
+      "Keeps the history from empty: migrate runs it at start-up, with the resource's app and schema, before any document opens; no createTables",
+      "Tests an upgrade: a database as the earlier version left it, with lines in it, comes through with every order kept, and a second start runs nothing",
+      "Leaves the page and its documents as they were",
+      "bun test passes at 100% coverage and bun run typecheck is clean"
+    ]
+  }
+]
