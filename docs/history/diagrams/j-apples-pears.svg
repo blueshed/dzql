@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 272" role="img" aria-labelledby="t d">
+  <title id="t">apples and pears: one collection, several readings</title>
+  <desc id="d">The same collection projected by a named field onto space, time or colour gives a different reading — lanes, a calendar, a map, a tally — and each reading offers the one gesture its axis implies.</desc>
+  <style>
+    .box{fill:#eaf1fb;stroke:#a3b2c7;stroke-width:1.5}
+    .card{fill:#eaf1fb;stroke:#a3b2c7;stroke-width:1.5}
+    .name{fill:#222b36;font-weight:640;font-size:14px}
+    .sub{fill:#59636e;font-size:12.5px}
+    .gest{fill:#3e5b84;font-size:11.5px}
+    .flow{stroke:#8fa2bd;stroke-width:2;fill:none}
+    .head{fill:#8fa2bd}
+    .key{fill:#3e5b84;font-weight:640;font-size:14px}
+    .ink{fill:none;stroke:#7d90ab;stroke-width:1.8;stroke-linejoin:round}
+    .solid{fill:#a3b2c7;stroke:none}
+    text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    @media (prefers-color-scheme:dark){
+      .box,.card{fill:#18202c;stroke:#55647c}
+      .name{fill:#e6edf3}.sub{fill:#9198a1}.flow{stroke:#7387a3}.head{fill:#7387a3}
+      .key{fill:#94add1}.gest{fill:#94add1}.ink{stroke:#8fa2bd}.solid{fill:#7387a3}
+    }
+  </style>
+
+  <rect class="box" x="10" y="72" width="132" height="64" rx="12" />
+  <text class="name" x="76" y="100" text-anchor="middle">one collection</text>
+  <text class="sub" x="76" y="120" text-anchor="middle">the same rows</text>
+
+  <g class="flow"><path d="M146 104 H 172" /></g>
+  <polygon class="head" points="170,96 186,104 170,112" />
+
+  <g>
+    <rect class="card" x="196" y="30" width="112" height="148" rx="12" />
+    <g class="ink"><rect x="222" y="54" width="18" height="40" rx="3" /><rect x="243" y="54" width="18" height="40" rx="3" /><rect x="264" y="54" width="18" height="40" rx="3" /></g>
+    <rect class="solid" x="246" y="58" width="12" height="9" rx="2" />
+    <text class="name" x="252" y="126" text-anchor="middle">lanes</text>
+    <text class="gest" x="252" y="150" text-anchor="middle">drag to replace</text>
+    <text class="gest" x="252" y="166" text-anchor="middle">the status</text>
+  </g>
+
+  <g>
+    <rect class="card" x="320" y="30" width="112" height="148" rx="12" />
+    <g class="ink"><rect x="348" y="52" width="56" height="44" rx="4" /><path d="M348 66 H 404" /></g>
+    <g class="solid"><rect x="355" y="73" width="9" height="7" rx="2" /><rect x="371" y="73" width="9" height="7" rx="2" /><rect x="387" y="83" width="9" height="7" rx="2" /></g>
+    <text class="name" x="376" y="126" text-anchor="middle">calendar</text>
+    <text class="gest" x="376" y="150" text-anchor="middle">drag to replace</text>
+    <text class="gest" x="376" y="166" text-anchor="middle">the date</text>
+  </g>
+
+  <g>
+    <rect class="card" x="444" y="30" width="112" height="148" rx="12" />
+    <g class="ink"><path d="M500 96 c 0 0 -16 -18 -16 -30 a 16 16 0 0 1 32 0 c 0 12 -16 30 -16 30 z" /></g>
+    <circle class="solid" cx="500" cy="66" r="6" />
+    <text class="name" x="500" y="126" text-anchor="middle">map</text>
+    <text class="gest" x="500" y="150" text-anchor="middle">drag to replace</text>
+    <text class="gest" x="500" y="166" text-anchor="middle">the place</text>
+  </g>
+
+  <g>
+    <rect class="card" x="568" y="30" width="112" height="148" rx="12" />
+    <g class="solid"><rect x="600" y="78" width="12" height="18" rx="2" /><rect x="618" y="60" width="12" height="36" rx="2" /><rect x="636" y="70" width="12" height="26" rx="2" /></g>
+    <text class="name" x="624" y="126" text-anchor="middle">tally</text>
+    <text class="gest" x="624" y="150" text-anchor="middle">no gesture —</text>
+    <text class="gest" x="624" y="166" text-anchor="middle">it only counts</text>
+  </g>
+
+  <text class="key" x="360" y="222" text-anchor="middle">a reading is the collection projected onto space, time or colour</text>
+  <text class="sub" x="360" y="246" text-anchor="middle">the gesture is the verb its axis implies — and there is never a fourth verb</text>
+</svg>

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 272" role="img" aria-labelledby="t d">
+  <title id="t">epsilon: there is no other door</title>
+  <desc id="d">A view, a list and presence all reach the page through one read path, doc_open, where the composition function is itself the permit.</desc>
+  <style>
+    .box{fill:#eaf1fb;stroke:#a3b2c7;stroke-width:1.5}
+    .ghost{fill:none;stroke:#a3b2c7;stroke-width:1.5;stroke-dasharray:5 4}
+    .name{fill:#222b36;font-weight:640;font-size:16px}
+    .sub{fill:#59636e;font-size:12.5px}
+    .flow{stroke:#8fa2bd;stroke-width:2;fill:none}
+    .head{fill:#8fa2bd}
+    .key{fill:#3e5b84;font-weight:640;font-size:14px}
+    .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;fill:#222b36}
+    text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    @media (prefers-color-scheme:dark){
+      .box{fill:#18202c;stroke:#55647c}.ghost{stroke:#55647c}
+      .name{fill:#e6edf3}.sub{fill:#9198a1}.flow{stroke:#7387a3}.head{fill:#7387a3}
+      .key{fill:#94add1}.mono{fill:#e6edf3}
+    }
+  </style>
+
+  <rect class="ghost" x="16" y="26" width="140" height="42" rx="10" />
+  <text class="sub" x="86" y="52" text-anchor="middle">a read-only view</text>
+  <rect class="ghost" x="16" y="92" width="140" height="42" rx="10" />
+  <text class="sub" x="86" y="118" text-anchor="middle">a list</text>
+  <rect class="ghost" x="16" y="158" width="140" height="42" rx="10" />
+  <text class="sub" x="86" y="184" text-anchor="middle">presence</text>
+
+  <g class="flow">
+    <path d="M160 47 C 220 47 230 90 268 90" />
+    <path d="M160 113 H 268" />
+    <path d="M160 179 C 220 179 230 136 268 136" />
+  </g>
+  <g class="head">
+    <polygon points="266,82 282,90 266,98" />
+    <polygon points="266,105 282,113 266,121" />
+    <polygon points="266,128 282,136 266,144" />
+  </g>
+
+  <rect class="box" x="288" y="40" width="200" height="146" rx="14" />
+  <text class="name" x="388" y="86" text-anchor="middle">one read path</text>
+  <text class="mono" x="388" y="115" text-anchor="middle">doc_open(doc, user)</text>
+  <text class="sub" x="388" y="146" text-anchor="middle">the composition function</text>
+  <text class="sub" x="388" y="163" text-anchor="middle">is the permit</text>
+
+  <g class="flow"><path d="M490 113 H 536" /></g>
+  <polygon class="head" points="534,105 550,113 534,121" />
+
+  <rect class="box" x="556" y="85" width="148" height="56" rx="12" />
+  <text class="name" x="630" y="119" text-anchor="middle">the page</text>
+
+  <text class="key" x="360" y="228" text-anchor="middle">anything you render is a document — live, permitted, versioned</text>
+  <text class="sub" x="360" y="250" text-anchor="middle">because there is no other door</text>
+</svg>

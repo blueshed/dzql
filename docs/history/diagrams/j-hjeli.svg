@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 272" role="img" aria-labelledby="t d">
+  <title id="t">hjeli: the predicates are the gate</title>
+  <desc id="d">Stories make a model; six predicates run after every change; only a model that closes is exported, and then onto three different runtimes.</desc>
+  <style>
+    .box{fill:#eaf1fb;stroke:#a3b2c7;stroke-width:1.5}
+    .ghost{fill:none;stroke:#a3b2c7;stroke-width:1.5;stroke-dasharray:5 4}
+    .name{fill:#222b36;font-weight:640;font-size:15px}
+    .sub{fill:#59636e;font-size:12px}
+    .flow{stroke:#8fa2bd;stroke-width:2;fill:none}
+    .head{fill:#8fa2bd}
+    .key{fill:#3e5b84;font-weight:640;font-size:14px}
+    .tick{fill:none;stroke:#3e5b84;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    @media (prefers-color-scheme:dark){
+      .box{fill:#18202c;stroke:#55647c}.ghost{stroke:#55647c}
+      .name{fill:#e6edf3}.sub{fill:#9198a1}.flow{stroke:#7387a3}.head{fill:#7387a3}
+      .key{fill:#94add1}.tick{stroke:#94add1}
+    }
+  </style>
+
+  <rect class="box" x="16" y="52" width="122" height="54" rx="12" />
+  <text class="name" x="77" y="77" text-anchor="middle">stories</text>
+  <text class="sub" x="77" y="95" text-anchor="middle">actor + task</text>
+
+  <g class="flow"><path d="M140 79 H 166" /></g>
+  <polygon class="head" points="164,71 178,79 164,87" />
+
+  <rect class="box" x="182" y="52" width="122" height="54" rx="12" />
+  <text class="name" x="243" y="77" text-anchor="middle">the model</text>
+  <text class="sub" x="243" y="95" text-anchor="middle">documents</text>
+
+  <g class="flow"><path d="M306 79 H 332" /></g>
+  <polygon class="head" points="330,71 344,79 330,87" />
+
+  <rect class="box" x="348" y="34" width="158" height="90" rx="12" />
+  <path class="tick" d="M414 58 l 9 11 l 18 -23" />
+  <text class="name" x="427" y="95" text-anchor="middle">six predicates</text>
+  <text class="sub" x="427" y="114" text-anchor="middle">after every change</text>
+
+  <g class="flow"><path d="M508 79 H 534" /></g>
+  <polygon class="head" points="532,71 546,79 532,87" />
+
+  <rect class="box" x="550" y="34" width="154" height="30" rx="8" />
+  <rect class="box" x="550" y="70" width="154" height="30" rx="8" />
+  <rect class="box" x="550" y="106" width="154" height="30" rx="8" />
+  <text class="sub" x="627" y="54" text-anchor="middle">a runtime</text>
+  <text class="sub" x="627" y="90" text-anchor="middle">another</text>
+  <text class="sub" x="627" y="126" text-anchor="middle">a third</text>
+
+  <g class="sub" text-anchor="middle">
+    <text x="190" y="174">reachability</text>
+    <text x="360" y="174">subscription closure</text>
+    <text x="540" y="174">actor closure</text>
+    <text x="190" y="194">precondition closure</text>
+    <text x="360" y="194">referential closure</text>
+    <text x="540" y="194">authorization closure</text>
+  </g>
+
+  <text class="key" x="360" y="232" text-anchor="middle">every write an actor can make must echo into something they are watching</text>
+  <text class="sub" x="360" y="254" text-anchor="middle">completeness is the product — a model that will not close does not export</text>
+</svg>

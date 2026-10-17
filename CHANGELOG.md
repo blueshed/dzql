@@ -66,7 +66,9 @@ what is open across them. Newest first.
   `eta-history/`, eta's changelog and ledger), and across them `monorepo-plan.md` (moved in from
   Workshop/docs, a pointer left there) and `stories-as-code.md`. Each package's README, CHANGELOG,
   CLAUDE.md and skills stay where npm and `install-skills` find them; dzql no longer publishes
-  `docs/delta`, and its README links to the docs on GitHub. `docs/README.md` is the index.
+  `docs/delta`, and its README links to the docs on GitHub. `docs/README.md` is the index. From
+  Workshop/docs, copied (the originals stay): the postgres split plan, the stories plan, the link
+  sign-in and pears plans, eta's language, CSS review and modeller, document proofs, and the history.
 
 ### Removed
 

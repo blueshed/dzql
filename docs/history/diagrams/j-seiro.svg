@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 272" role="img" aria-labelledby="t d">
+  <title id="t">seiro: the document comes first</title>
+  <desc id="d">Start from what the user sees, sketch the document, and derive the entities from it — the opposite of drawing tables first.</desc>
+  <style>
+    .box{fill:#eaf1fb;stroke:#a3b2c7;stroke-width:1.5}
+    .ghost{fill:none;stroke:#a3b2c7;stroke-width:1.5;stroke-dasharray:5 4}
+    .name{fill:#222b36;font-weight:640;font-size:16px}
+    .sub{fill:#59636e;font-size:12.5px}
+    .flow{stroke:#8fa2bd;stroke-width:2;fill:none}
+    .head{fill:#8fa2bd}
+    .key{fill:#3e5b84;font-weight:640;font-size:14px}
+    .label{fill:#5d6b7e;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}
+    text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    @media (prefers-color-scheme:dark){
+      .box{fill:#18202c;stroke:#55647c}.ghost{stroke:#55647c}
+      .name{fill:#e6edf3}.sub{fill:#9198a1}.flow{stroke:#7387a3}.head{fill:#7387a3}
+      .key{fill:#94add1}.label{fill:#9aa8bb}
+    }
+  </style>
+
+  <rect class="ghost" x="248" y="10" width="224" height="40" rx="20" />
+  <text class="sub" x="360" y="35" text-anchor="middle" font-size="13.5">“what does the user see?”</text>
+
+  <g class="flow"><path d="M360 54 V 74" /></g>
+  <polygon class="head" points="352,72 360,86 368,72" />
+
+  <rect class="box" x="230" y="90" width="260" height="62" rx="12" />
+  <text class="name" x="360" y="119" text-anchor="middle">the document</text>
+  <text class="sub" x="360" y="138" text-anchor="middle">what a client gets and updates</text>
+
+  <g class="flow">
+    <path d="M300 156 C 300 176 160 172 160 190" />
+    <path d="M360 156 V 190" />
+    <path d="M420 156 C 420 176 560 172 560 190" />
+  </g>
+  <g class="head">
+    <polygon points="152,188 160,202 168,188" />
+    <polygon points="352,188 360,202 368,188" />
+    <polygon points="552,188 560,202 568,188" />
+  </g>
+
+  <g>
+    <rect class="box" x="96" y="206" width="128" height="38" rx="10" />
+    <rect class="box" x="296" y="206" width="128" height="38" rx="10" />
+    <rect class="box" x="496" y="206" width="128" height="38" rx="10" />
+    <text class="sub" x="160" y="230" text-anchor="middle">entity</text>
+    <text class="sub" x="360" y="230" text-anchor="middle">entity</text>
+    <text class="sub" x="560" y="230" text-anchor="middle">entity</text>
+  </g>
+
+  <text class="key" x="360" y="266" text-anchor="middle">the tables are derived from the document, not the other way round</text>
+</svg>

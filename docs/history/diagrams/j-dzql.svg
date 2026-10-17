@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 272" role="img" aria-labelledby="t d">
+  <title id="t">dzql: the question it could not answer</title>
+  <desc id="d">A write lands in the tables. Two client documents hold denormalised copies. The arrows asking which of them the write touched are dashed and meet a question mark: the resolver was never finished.</desc>
+  <style>
+    .box{fill:#eaf1fb;stroke:#a3b2c7;stroke-width:1.5}
+    .ghost{fill:none;stroke:#a3b2c7;stroke-width:1.5;stroke-dasharray:5 4}
+    .name{fill:#222b36;font-weight:640;font-size:16px}
+    .sub{fill:#59636e;font-size:12.5px}
+    .flow{stroke:#8fa2bd;stroke-width:2;fill:none}
+    .head{fill:#8fa2bd}
+    .key{fill:#3e5b84;font-weight:640;font-size:14px}
+    .label{fill:#5d6b7e;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}
+    text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    @media (prefers-color-scheme:dark){
+      .box{fill:#18202c;stroke:#55647c}.ghost{stroke:#55647c}
+      .name{fill:#e6edf3}.sub{fill:#9198a1}.flow{stroke:#7387a3}.head{fill:#7387a3}
+      .key{fill:#94add1}.label{fill:#9aa8bb}
+    }
+  </style>
+
+  <g class="flow"><path d="M128 14 V 44" /></g>
+  <polygon class="head" points="120,42 128,56 136,42" />
+  <text class="label" x="148" y="34">a write lands</text>
+
+  <path class="box" d="M60 80 v76 a68 17 0 0 0 136 0 V80" />
+  <ellipse class="box" cx="128" cy="80" rx="68" ry="17" />
+  <text class="name" x="128" y="124" text-anchor="middle">tables</text>
+  <text class="sub" x="128" y="143" text-anchor="middle">the truth</text>
+
+  <rect class="box" x="470" y="26" width="200" height="62" rx="12" />
+  <text class="name" x="570" y="55" text-anchor="middle">document A</text>
+  <text class="sub" x="570" y="74" text-anchor="middle">held by one client</text>
+
+  <rect class="box" x="470" y="140" width="200" height="62" rx="12" />
+  <text class="name" x="570" y="169" text-anchor="middle">document B</text>
+  <text class="sub" x="570" y="188" text-anchor="middle">held by another</text>
+
+  <g class="ghost">
+    <path d="M200 106 C 280 106 290 57 452 57" />
+    <path d="M200 126 C 280 126 290 171 452 171" />
+  </g>
+
+  <circle class="box" cx="333" cy="116" r="26" />
+  <text class="key" x="333" y="125" text-anchor="middle" font-size="26">?</text>
+
+  <text class="key" x="360" y="242" text-anchor="middle">which documents did that write touch</text>
+  <text class="sub" x="360" y="262" text-anchor="middle">the resolver was never finished — and everything after it is an answer</text>
+</svg>

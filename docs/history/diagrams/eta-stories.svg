@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 500" role="img" aria-labelledby="t d">
+  <title id="t">Stories, as they are written</title>
+  <desc id="d">Four of eta's stories: Femi picks the sea bass, and the couple's list shows it. Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not. Bravo ticks, and every board watching it moves; nobody's page is rendered. Nobody can take a message back over the wire; only Undo can.</desc>
+  <style>
+    .say    { fill: #eaf1fb; stroke: #a3b2c7; stroke-width: 1.5; }
+    .refuse { fill: none;    stroke: #a3b2c7; stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .tail   { fill: #eaf1fb; stroke: none; }
+    .line   { fill: #222b36; font-size: 16px; }
+    .no     { fill: #59636e; font-size: 16px; }
+    .from   { fill: #7c8899; font-size: 12.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+    text    { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+    @media (prefers-color-scheme: dark) {
+      .say    { fill: #18202c; stroke: #55647c; }
+      .refuse { stroke: #55647c; }
+      .tail   { fill: #18202c; }
+      .line   { fill: #e6edf3; }
+      .no     { fill: #9198a1; }
+      .from   { fill: #8b97a8; }
+    }
+  </style>
+
+  <g>
+    <path class="tail" d="M60 82 L60 100 L44 82 Z" />
+    <rect class="say" x="40" y="24" width="480" height="58" rx="16" />
+    <text class="line" x="62" y="59">Femi picks the sea bass, and the couple’s list shows it</text>
+    <text class="from" x="44" y="118">the wedding</text>
+  </g>
+
+  <g>
+    <path class="tail" d="M660 194 L660 212 L676 194 Z" />
+    <rect class="say" x="296" y="136" width="384" height="58" rx="16" />
+    <text class="line" x="318" y="171">Ada says hello; Bob, in the room, sees it</text>
+    <text class="from" x="676" y="230" text-anchor="end">chat</text>
+  </g>
+
+  <g>
+    <path class="tail" d="M60 306 L60 324 L44 306 Z" />
+    <rect class="say" x="40" y="248" width="436" height="58" rx="16" />
+    <text class="line" x="62" y="283">Bravo ticks, and every board watching it moves</text>
+    <text class="from" x="44" y="342">the ticker</text>
+  </g>
+
+  <g>
+    <rect class="refuse" x="252" y="368" width="428" height="58" rx="16" />
+    <text class="no" x="274" y="403">Nobody can take a message back over the wire</text>
+    <text class="from" x="676" y="462" text-anchor="end">chat · a story that must fail</text>
+  </g>
+</svg>

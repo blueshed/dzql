@@ -11,7 +11,7 @@ part they do not import: `@blueshed/railroad` is an optional peer that only an i
 Before working on this codebase, read:
 - `docs/dzql/philo.md` (at the root) - **what dzql is for now**: stories to documents to pages, and the compiled Postgres step
 - `docs/dzql/` (at the root): `modelling/stories.md` (what the stories are for), `rendering/` (eta.md: what it is, its measured costs; first-app.md; the bento), `postgres/` (delta on Postgres), `eta-history/` (eta's changelog and ledger)
-- Workshop's `docs/postgres-split-plan.md` - the plan that made dzql delta's Postgres step
+- `docs/dzql/postgres-split-plan.md` (at the root) - the plan that made dzql delta's Postgres step
 - `packages/create-dzql/README.md` - `bun create dzql`: a paintbrush app on dzql
 
 ## Where the Project Is

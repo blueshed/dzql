@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 272" role="img" aria-labelledby="t d">
+  <title id="t">easy and simple: the expansion tree names the targets</title>
+  <desc id="d">A screen is one document, declared as a root entity and an expansion tree. Which documents a write touches is read off that tree and carried with the change — dzql's unanswered question, answered by declaration.</desc>
+  <style>
+    .box{fill:#eaf1fb;stroke:#a3b2c7;stroke-width:1.5}
+    .ghost{fill:none;stroke:#a3b2c7;stroke-width:1.5;stroke-dasharray:5 4}
+    .name{fill:#222b36;font-weight:640;font-size:16px}
+    .sub{fill:#59636e;font-size:12.5px}
+    .flow{stroke:#8fa2bd;stroke-width:2;fill:none}
+    .head{fill:#8fa2bd}
+    .key{fill:#3e5b84;font-weight:640;font-size:14px}
+    .node{fill:#a3b2c7;stroke:none}
+    .twig{stroke:#a3b2c7;stroke-width:1.5;fill:none}
+    .label{fill:#5d6b7e;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}
+    text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    @media (prefers-color-scheme:dark){
+      .box{fill:#18202c;stroke:#55647c}.ghost{stroke:#55647c}
+      .name{fill:#e6edf3}.sub{fill:#9198a1}.flow{stroke:#7387a3}.head{fill:#7387a3}
+      .key{fill:#94add1}.label{fill:#9aa8bb}.node{fill:#7387a3}.twig{stroke:#55647c}
+    }
+  </style>
+
+  <rect class="box" x="40" y="26" width="290" height="176" rx="14" />
+  <text class="name" x="185" y="54" text-anchor="middle">a screen</text>
+  <text class="sub" x="185" y="73" text-anchor="middle">one document, one function</text>
+
+  <g class="twig">
+    <path d="M120 106 H 186 V 140" />
+    <path d="M186 106 V 140" />
+    <path d="M186 106 H 252 V 140" />
+    <path d="M252 140 V 170" />
+  </g>
+  <g class="node">
+    <circle cx="186" cy="100" r="7" />
+    <circle cx="120" cy="146" r="6" />
+    <circle cx="186" cy="146" r="6" />
+    <circle cx="252" cy="146" r="6" />
+    <circle cx="252" cy="176" r="6" />
+  </g>
+  <text class="label" x="185" y="196" text-anchor="middle">the expansion tree</text>
+
+  <g class="flow"><path d="M338 114 H 422" /></g>
+  <polygon class="head" points="420,106 434,114 420,122" />
+  <text class="label" x="380" y="104" text-anchor="middle">read off it</text>
+
+  <rect class="box" x="444" y="72" width="236" height="84" rx="12" />
+  <text class="name" x="562" y="104" text-anchor="middle">targets</text>
+  <text class="sub" x="562" y="124" text-anchor="middle">which documents, which path,</text>
+  <text class="sub" x="562" y="141" text-anchor="middle">carried with the change</text>
+
+  <text class="key" x="360" y="240" text-anchor="middle">dzql's question, answered by declaration — and never by re-fetching</text>
+  <text class="sub" x="360" y="261" text-anchor="middle">“refreshing a document defeats the entire architecture”</text>
+</svg>

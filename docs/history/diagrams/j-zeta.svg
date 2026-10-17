@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 272" role="img" aria-labelledby="t d">
+  <title id="t">zeta: the screen is a document too</title>
+  <desc id="d">A pure function composes the app's document into a screen, which is itself a document. A node you can touch carries the write it would make, so nothing reaching the browser names a function.</desc>
+  <style>
+    .box{fill:#eaf1fb;stroke:#a3b2c7;stroke-width:1.5}
+    .node{fill:#fff;stroke:#3e5b84;stroke-width:1.5}
+    .name{fill:#222b36;font-weight:640;font-size:15px}
+    .sub{fill:#59636e;font-size:12.5px}
+    .flow{stroke:#8fa2bd;stroke-width:2;fill:none}
+    .head{fill:#8fa2bd}
+    .key{fill:#3e5b84;font-weight:640;font-size:14px}
+    .label{fill:#5d6b7e;font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+    .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;fill:#3e5b84}
+    text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    @media (prefers-color-scheme:dark){
+      .box{fill:#18202c;stroke:#55647c}.node{fill:#0d1117;stroke:#94add1}
+      .name{fill:#e6edf3}.sub{fill:#9198a1}.flow{stroke:#7387a3}.head{fill:#7387a3}
+      .key{fill:#94add1}.label{fill:#9aa8bb}.mono{fill:#94add1}
+    }
+  </style>
+
+  <rect class="box" x="8" y="92" width="118" height="60" rx="12" />
+  <text class="name" x="67" y="118" text-anchor="middle">the document</text>
+  <text class="sub" x="67" y="137" text-anchor="middle">the app's own</text>
+
+  <text class="label" x="170" y="108" text-anchor="middle">compose()</text>
+  <g class="flow"><path d="M130 122 H 186" /></g>
+  <polygon class="head" points="184,114 200,122 184,130" />
+
+  <rect class="box" x="214" y="44" width="248" height="156" rx="14" />
+  <text class="name" x="338" y="74" text-anchor="middle">the screen</text>
+  <text class="sub" x="338" y="93" text-anchor="middle">a document as well</text>
+
+  <rect class="node" x="226" y="112" width="224" height="34" rx="8" />
+  <text class="mono" x="338" y="133" text-anchor="middle">write: replace /rows/3/done</text>
+  <text class="sub" x="338" y="176" text-anchor="middle">a node carries the write it makes</text>
+
+  <text class="label" x="504" y="108" text-anchor="middle">then ops</text>
+  <g class="flow"><path d="M466 122 H 518" /></g>
+  <polygon class="head" points="516,114 532,122 516,130" />
+
+  <rect class="box" x="546" y="92" width="166" height="60" rx="12" />
+  <text class="name" x="629" y="118" text-anchor="middle">the browser</text>
+  <text class="sub" x="629" y="137" text-anchor="middle">opens the screen</text>
+
+  <text class="key" x="360" y="234" text-anchor="middle">a gesture is one verb on one path of the document</text>
+  <text class="sub" x="360" y="256" text-anchor="middle">nothing that reaches the browser names a function</text>
+</svg>
