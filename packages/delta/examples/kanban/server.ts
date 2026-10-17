@@ -3,40 +3,20 @@
  *
  *   createWs()                                  -- WS action router + pub/sub
  *   registerDocs(ws, db, schema, docs)          -- the "board:" document over SQLite
- *   serve({ ws, routes })                       -- delta's one server: HTTP + WebSocket
+ *   serve({ ws, routes, close })                -- delta's one server: HTTP + WebSocket
  *
  * No hand-written SQL in the write path: a write is applied to the tables its
  * paths name, and `ws.publish(docName, {doc, ops})` reaches every subscriber.
  */
 import type { Database } from "bun:sqlite";
-import type { Server } from "bun";
 import { createWs } from "../../src/server/server";
-import { serve } from "../../src/server/serve";
+import { serve, type App, type ServeOptions, type Served } from "../../src/server/serve";
 import { registerDocs } from "../../src/server/sqlite";
 import { schema, docs } from "./schema";
 
-export interface KanbanServer {
-  server: Server<unknown>;
-  port:   number;
-  wsUrl:  string;
-  stop(): Promise<void>;
-}
-
-export async function startServer(db: Database): Promise<KanbanServer> {
+/** The board's server: `routes` beside delta's socket, on any free port unless `options` says; stopping it closes `db`. */
+export function startServer(db: Database, routes: App["routes"] = {}, options: ServeOptions = { port: 0, dev: false }): Served {
   const ws = createWs();
   registerDocs(ws, db, schema, docs);
-
-  const { server } = serve({ ws, routes: {} }, { port: 0, dev: false }); // port 0: the OS picks
-
-  const port  = server.port!;
-  const wsUrl = `ws://localhost:${port}${ws.path}`;
-
-  return {
-    server,
-    port,
-    wsUrl,
-    async stop() {
-      server.stop(true);
-    },
-  };
+  return serve({ ws, routes, close: [() => db.close()] }, options);
 }

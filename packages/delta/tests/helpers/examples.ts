@@ -5,6 +5,7 @@
  */
 import { expect } from "bun:test";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { connectWs, openDoc, type DeltaOp } from "../../src/client/client";
 import { waitFor } from "../../src/testing";
 
@@ -26,11 +27,13 @@ export async function until(proc: Proc, pattern: RegExp): Promise<RegExpExecArra
 }
 
 const root = join(import.meta.dir, "../..");
+let runs = 0;
 
-/** `bun examples/<file>` with PORT=0, run from `cwd` (the repo by default). */
+/** `bun examples/<file>` with PORT=0, run from `cwd` (the repo by default); one that `run`s keeps its pid file in the temp folder. */
 export function runExample(file: string, env: Record<string, string> = {}, cwd = root): Proc {
+  const pidFile = join(tmpdir(), `delta-example-${process.pid}-${++runs}.pid`);
   return Bun.spawn(["bun", join(root, "examples", file)], {
-    cwd, env: { ...process.env, PORT: "0", ...env }, stdout: "pipe", stderr: "pipe",
+    cwd, env: { ...process.env, PORT: "0", PID_FILE: pidFile, ...env }, stdout: "pipe", stderr: "pipe",
   });
 }
 

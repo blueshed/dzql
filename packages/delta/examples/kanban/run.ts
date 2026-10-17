@@ -32,15 +32,15 @@ function show(label: string, value: unknown) {
 }
 
 async function main() {
-  const db = openBoard();
-  const srv = await startServer(db);
-  console.log(`delta server up on ${srv.wsUrl}  (DB: ${DB_PATH})`);
+  const srv = startServer(openBoard());
+  const wsUrl = `ws://localhost:${srv.port}/ws`;
+  console.log(`delta server up on ${wsUrl}  (DB: ${DB_PATH})`);
 
   // Two independent WS clients — each gets its own reconnecting socket and
   // its own `openDoc` state (the skill's reference/testing.md, "Driving the
   // client from Bun").
-  const alice = connectWs(srv.wsUrl);
-  const bob   = connectWs(srv.wsUrl);
+  const alice = connectWs(wsUrl);
+  const bob   = connectWs(wsUrl);
 
   const aliceBoard = openDoc<BoardDoc>("board:1", alice);
   const bobBoard   = openDoc<BoardDoc>("board:1", bob);
@@ -91,20 +91,19 @@ async function main() {
   // 4. Late-joiner opens the doc — sees the post-mutation state
   // -----------------------------------------------------------------------
   hr("4. charlie connects after the write — open returns current state");
-  const charlie = connectWs(srv.wsUrl);
+  const charlie = connectWs(wsUrl);
   const charlieBoard = openDoc<BoardDoc>("board:1", charlie);
   await charlieBoard.ready;
   show("charlie's board:", charlieBoard.data.get());
 
   // -----------------------------------------------------------------------
-  // Teardown — close each client, stop the server, end the pool. `close()`
-  // suppresses reconnection so the process exits cleanly.
+  // Teardown — close each client, then stop the server, which closes the
+  // database. `close()` suppresses reconnection so the process exits cleanly.
   // -----------------------------------------------------------------------
   alice.close();
   bob.close();
   charlie.close();
-  await srv.stop();
-  db.close();
+  await srv.stop(true);
 }
 
 main().catch((err) => {

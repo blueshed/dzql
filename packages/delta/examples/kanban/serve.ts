@@ -2,7 +2,8 @@
  * Kanban: the page and its server.
  *
  * Makes the tables in SQLite and seeds a board, registers the "board:"
- * document, serves the HTML page that drives `client.tsx`.
+ * document, serves the HTML page that drives `client.tsx`. `run` is the
+ * process around it: Ctrl-C stops the server and closes the database.
  *
  * Run:
  *   bun examples/kanban/serve.ts        # default port 3100
@@ -12,25 +13,10 @@
  */
 import index from "./index.html";
 import { openBoard, DB_PATH } from "./setup";
-import { createWs } from "../../src/server/server";
-import { serve } from "../../src/server/serve";
-import { registerDocs } from "../../src/server/sqlite";
-import { schema, docs } from "./schema";
+import { run } from "../../src/server/serve";
+import { startServer } from "./server";
 
-const db = openBoard();
+await run(() => startServer(openBoard(), { "/": index }, { port: Number(process.env.PORT ?? 3100) }));
 
-const ws = createWs();
-registerDocs(ws, db, schema, docs);
-
-const { server } = serve({ ws, routes: { "/": index } }, { port: Number(process.env.PORT ?? 3100) });
-
-console.log(`kanban (railroad UX) on http://localhost:${server.port}  (DB: ${DB_PATH})`);
+console.log(`kanban (railroad UX), DB: ${DB_PATH}`);
 console.log(`  open two tabs · click a card to cycle columns · double-click a header to rename`);
-
-const shutdown = async () => {
-  server.stop(true);
-  db.close();
-  process.exit(0);
-};
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
