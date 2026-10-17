@@ -12,7 +12,7 @@
 import { describe, expect, test } from "bun:test";
 import { addColumn, addUnique, createTable, dropColumn, dropTable, dropUnique, renameColumn, renameTable } from "../server/changes";
 import type { MigrateOptions, MigrateResult, Migration } from "../server/migrate";
-import { defineSchema, type Schema } from "../schema";
+import { defineSchema, type DocDef, type Schema } from "../schema";
 
 /** A backend, as the cases ask it: a fresh database each `open`. */
 export interface MigrationBackend<H> {
@@ -22,8 +22,8 @@ export interface MigrationBackend<H> {
   columns(h: H, table: string): Promise<string[]>;
   /** Runs SQL both backends speak alike; its rows. */
   query(h: H, sql: string): Promise<Record<string, unknown>[]>;
-  /** The schema's tables made the older way (createTables / generateSql at start-up). */
-  makeTables(h: H, schema: Schema): Promise<void>;
+  /** The schema's tables made the older way (createTables / generateSql at start-up); `docs`, the documents served over them, for a backend whose tables follow from those too. */
+  makeTables(h: H, schema: Schema, docs?: DocDef[]): Promise<void>;
   /** In a migration's `up`: SQL on the transaction it is given. */
   run(tx: unknown, sql: string): Promise<void>;
 }

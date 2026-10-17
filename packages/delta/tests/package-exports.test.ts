@@ -123,12 +123,13 @@ describe("package exports", () => {
     expect(pkg.files).toContain("src/walk-vectors.json");
   });
 
-  test('"./testing" gives the case suite another backend runs: the path, the law, owns, isolation and the writes', async () => {
+  test('"./testing" gives the case suite another backend runs: the path, the law, owns, isolation, the writes, migrations and upgrades', async () => {
     const testing = await import("../src/testing");
     for (const name of [
       "pathSchema", "pathDocs", "pathPublicDocs", "pathSeed", "inboxDoc", "emailsDoc", "guestsDoc", "openSeatsDoc", "menuCardDoc",
       "pathCases", "drivenCases", "registrationCases", "serialCases", "asItStoodCases", "columnCases", "documentCases", "fanOutCases",
       "temporalCases", "ledgerCases", "impliedCases", "customDocCases",
+      "migrationCases", "schemaContractCases", "upgradeCases",
       "drive", "onSqlite", "onJson", "lawSeeds", "lawSteps",
       "ownsCases", "permissionCases", "assertDocIsolation",
       "errorCodeCases", "createRowCases", "writeScopeCases", "uniqueCases", "shedApp", "roomsApp", "tenantsApp", "membershipsApp",
