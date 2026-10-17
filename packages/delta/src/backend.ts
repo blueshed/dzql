@@ -7,9 +7,9 @@
  * it; `tests/package-exports.test.ts` lists what it gives.
  */
 export {
-  defineDoc, defineSchema, defaultForType, holdsField, isIsoTime, isoTime, lastId, q, showDoc, showOps, showRow,
-  type ColumnDef, type ColumnShorthand, type ColumnType, type DocDef, type ResolvedTable, type Schema, type Snapshot,
-  type TableDef, type ValidationError,
+  defineDoc, defineSchema, defaultForType, holdsField, isIsoTime, isoTime, lastId, q, showDoc, showOps, showRow, uniqueIndexSql,
+  type ColumnDef, type ColumnShorthand, type ColumnType, type DocDef, type ResolvedTable, type ResolvedUnique, type Schema, type Snapshot,
+  type TableDef, type UniqueDef, type ValidationError,
 } from "./schema";
 export { assertScopeKeys, pastSafeId, resolveScope, type Scope } from "./server/scope";
 export { dropClientSubscriptions, onClientDrop, trackSubscribe, trackUnsubscribe, type WsServer } from "./server/server";
@@ -20,5 +20,5 @@ export {
 export { authless, isAuthError, ownerless, type DeltaAuth } from "./server/auth";
 export {
   appOf, fenced, fromFolder, isDeltasOwn, runMigrations, statusOf,
-  type MigrateOptions, type MigrateResult, type Migration, type MigrationStatus, type Store,
+  type MigrateOptions, type MigrateResult, type Migration, type MigrationStatus, type MigrationTools, type Store,
 } from "./server/migrate";

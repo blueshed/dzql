@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The evolve skill says what the rows are** (the Shed's run 2): a line or a part is a row under
+  its parent, never JSON of ids; a fact from other rows (a tool out) is worked out by a recompute
+  document, never stored; "one at a time" is the schema's `unique`; a migration's new rows take
+  `nextId`; and who may open a document is an `owns` path, with a field's members seeing its loans
+  as the worked case (`sqlite.md`, `migrations.md`, `postgres.md`).
+
 - **Setup installs the skills with delta's `install-skills --skip bun-route`**, not copies of its own;
   without delta installed it says what to run. The evolve skill's references link to delta-doc where
   they restated delta, and keep the app's own code.

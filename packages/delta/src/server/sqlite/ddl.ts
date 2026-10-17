@@ -3,7 +3,7 @@
  * the schema grows (`migrateSchema`) -- columns, their types and defaults, the
  * temporal scaffolding, the sequences ids are minted from.
  */
-import { defaultForType, q, type ColumnDef, type Schema } from "../../schema";
+import { defaultForType, q, uniqueIndexSql, type ColumnDef, type Schema } from "../../schema";
 
 /** Generate CREATE TABLE statements from the schema and execute them. */
 export function createTables(db: any, schema: Schema) {
@@ -14,7 +14,7 @@ export function createTables(db: any, schema: Schema) {
   for (const [, table] of Object.entries(schema.tables)) createTable(db, table);
 }
 
-/** One table, as `createTables` makes each (if it is not there): its columns, a temporal one's view, a parent key's index. */
+/** One table, as `createTables` makes each (if it is not there): its columns, a temporal one's view, a parent key's index, its unique constraints. */
 export function createTable(db: any, table: Schema["tables"][string]) {
   const name = q(table.name);
   // Ids and parent keys have integer affinity: a serial is kept, and read, as
@@ -54,6 +54,8 @@ export function createTable(db: any, table: Schema["tables"][string]) {
     const fk = table.parent.fkColumn;
     db.run(`CREATE INDEX IF NOT EXISTS ${q(`idx_${table.name}_${fk}`)} ON ${name} (${q(fk)})`);
   }
+
+  for (const u of table.unique ?? []) db.run(uniqueIndexSql(table, u));
 }
 
 /** A temporal table's current-state view (`current_<table>`, read by `current()`) and its index. */

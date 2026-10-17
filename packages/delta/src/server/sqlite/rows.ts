@@ -112,8 +112,12 @@ export function refuse(code: number, message: string): never {
   throw Object.assign(new Error(message), { code });
 }
 
-/** SQLite's own error, with the fix when the fix is a call the app left out. */
+/** SQLite's own error, with the fix when the fix is a call the app left out; a unique constraint's, 409 (as Postgres's 23505). */
 export function named(err: any): any {
+  if (typeof err?.code === "string" && err.code.startsWith("SQLITE_CONSTRAINT_UNIQUE") && typeof err.message === "string") {
+    const said = /UNIQUE constraint failed: (.*)$/.exec(err.message)?.[1];
+    return Object.assign(new Error(`Already there: another row has the same ${said ?? "values"} (a unique constraint)`), { code: 409 });
+  }
   if (typeof err?.message === "string" && /no such table/.test(err.message) && !/createTables/.test(err.message)) {
     err.message += " -- call createTables(db, schema) before the first open";
   }

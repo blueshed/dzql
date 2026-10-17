@@ -12,7 +12,7 @@ import { createWs, registerDoc } from "../src/server/server";
 import { registerMemory } from "../src/server/kinds";
 import { setLogLevel } from "../src/server/logger";
 import { applyOps } from "../src/core";
-import { createRowCases, errorCodeCases, mistakes, mockClient, sendAndAwait, writeScopeCases } from "@blueshed/delta/testing";
+import { createRowCases, errorCodeCases, mistakes, mockClient, sendAndAwait, uniqueCases, writeScopeCases } from "@blueshed/delta/testing";
 import { onJson, onSqlite } from "./helpers/case-backends";
 
 setLogLevel("silent");
@@ -22,6 +22,7 @@ for (const [name, backend] of [["SQLite", onSqlite], ["the JSON file", onJson]] 
     errorCodeCases(backend);
     createRowCases(backend);
     writeScopeCases(backend);
+    uniqueCases(backend);
   });
 }
 

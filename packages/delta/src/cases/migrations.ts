@@ -3,13 +3,14 @@
  * Django way): SQLite's in delta, Postgres's in dzql. A new database is made by running every
  * migration from the first, and nothing runs twice; one made the older way (the schema's tables at
  * start-up, rows in them) adopts the history; a migration's changes and its data run in one
- * transaction, and fail together; renames keep values and rows, drops take them; and the definitions
+ * transaction, and fail together; renames keep values and rows, drops take them; a unique constraint
+ * is made and dropped; an `up` takes the next id from the collection's serial; and the definitions
  * saying more than the history is reported.
  *
  *   migrationCases("sqlite", { open, migrate, columns, query, makeTables });
  */
 import { describe, expect, test } from "bun:test";
-import { addColumn, createTable, dropColumn, dropTable, renameColumn, renameTable } from "../server/changes";
+import { addColumn, addUnique, createTable, dropColumn, dropTable, dropUnique, renameColumn, renameTable } from "../server/changes";
 import type { MigrateOptions, MigrateResult, Migration } from "../server/migrate";
 import { defineSchema, type Schema } from "../schema";
 
@@ -84,6 +85,37 @@ export function migrationCases<H>(name: string, b: MigrationBackend<H>) {
       const h = await b.open();
       await b.migrate(h, [{ id: "001-notes", changes: [createTable("notes", { columns: { text: "text" } })] }]);
       expect(await b.columns(h, "notes")).toEqual(["id", "text", "valid_from", "valid_to"]);
+    });
+
+    test("a unique constraint made refuses a row sharing its values among those it holds; dropped, it refuses none", async () => {
+      const h = await b.open();
+      const loans: Migration[] = [
+        { id: "001-loans", changes: [createTable("loans", { columns: { tool: "integer", returned: "text?" }, temporal: false })] },
+        { id: "002-one-open", changes: [addUnique("loans", "tool", { whereNull: ["returned"] })] },
+      ];
+      await b.migrate(h, loans);
+      await b.query(h, "INSERT INTO loans (id, tool, returned) VALUES (1, 7, 'yesterday')");
+      await b.query(h, "INSERT INTO loans (id, tool) VALUES (2, 7)");
+      await expect(b.query(h, "INSERT INTO loans (id, tool) VALUES (3, 7)")).rejects.toThrow();
+      await b.migrate(h, [...loans, { id: "003-any", changes: [dropUnique("loans", "tool")] }]);
+      await b.query(h, "INSERT INTO loans (id, tool) VALUES (3, 7)");
+      expect(await b.query(h, "SELECT id FROM loans WHERE returned IS NULL ORDER BY id")).toEqual([{ id: 2 }, { id: 3 }]);
+    });
+
+    test("an up's nextId takes the collection's next serial, past any id it holds", async () => {
+      const h = await b.open();
+      await b.migrate(h, history);
+      await b.query(h, "INSERT INTO people (id, name) VALUES (4, 'Ann')");
+      const given: number[] = [];
+      await b.migrate(h, [...history, { id: "003-two-more", up: async (tx, { nextId }) => {
+        for (const name of ["Bob", "Cy"]) {
+          const id = await nextId("people");
+          given.push(id);
+          await b.run(tx, `INSERT INTO people (id, name) VALUES (${id}, '${name}')`);
+        }
+      } }]);
+      expect(given).toEqual([5, 6]);
+      expect(await b.query(h, "SELECT id, name FROM people ORDER BY id")).toEqual([{ id: 4, name: "Ann" }, { id: 5, name: "Bob" }, { id: 6, name: "Cy" }]);
     });
 
     test("the definitions saying more than the history is reported, as the next migration's changes", async () => {

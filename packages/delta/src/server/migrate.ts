@@ -40,8 +40,21 @@ export type Migration<Tx = any> = {
   /** Its name, recorded once it has run: `002-name-is-full-name`. Never change it, or the migration, once it has run anywhere. */
   id: string;
   changes?: Change[];
-  up?(tx: Tx): void | Promise<void>;
+  up?(tx: Tx, with_: MigrationTools): void | Promise<void>;
 };
+
+/**
+ * What an `up` is given beside its transaction. `nextId(collection)`: the id the collection's next
+ * row takes, its serial advanced as `add /<coll>/-` advances it, so a row an `up` inserts never
+ * meets one a write makes later (on SQLite, `_delta_sequences`; on Postgres, `seq_<table>`: neither
+ * is for an app to write).
+ *
+ *   up: async (db, { nextId }) => {
+ *     const id = await nextId("tools");
+ *     db.run("INSERT INTO tools (id, name, valid_from) VALUES (?, 'battery', datetime('now'))", [id]);
+ *   }
+ */
+export type MigrationTools = { nextId(collection: string): Promise<number> };
 
 /**
  * What `migrate` did: the ids it ran, in order; whether the database was new (an older list's: every
@@ -92,6 +105,8 @@ export interface Store<Tx> {
   fence(tx: Tx): Promise<void>;
   /** In a transaction: makes one change (`./changes.ts`), the tables before it `before` and after it `after`. */
   apply(tx: Tx, change: Change, before: State, after: State): Promise<void>;
+  /** In a transaction: the collection's next serial (its table `table`), advanced past every id it holds (`MigrationTools`). */
+  nextId(tx: Tx, collection: string, table: string): Promise<number>;
 }
 
 const log = createLogger("[delta-migrate]");
@@ -143,7 +158,8 @@ async function adopts<Tx>(store: Store<Tx>, migrations: Migration<Tx>[]): Promis
 /** What the definitions say beyond the history, as a line each (none: they agree). */
 export function driftOf(migrations: Migration[], schema: Schema): string[] {
   const { changes, byHand } = diff(stateOf(migrations), schema);
-  return [...changes.map((c) => `${c.change} ${c.key}${"column" in c ? `.${c.column}` : ""}`), ...byHand];
+  const named = (c: Change) => ("column" in c ? `.${c.column}` : "unique" in c ? `(${c.unique.columns.join(", ")})` : "columns" in c ? `(${c.columns.join(", ")})` : "");
+  return [...changes.map((c) => `${c.change} ${c.key}${named(c)}`), ...byHand];
 }
 
 /** The collections whose ledger entries a migration of the app fences: its schema's, as JSON; none named, every entry (undefined). */
@@ -201,7 +217,8 @@ export async function runMigrations<Tx>(store: Store<Tx>, migrations: Migration<
             await store.apply(tx, change, state, after);
             state = after;
           }
-          await m.up?.(tx);
+          const at = state;
+          await m.up?.(tx, { nextId: (collection) => store.nextId(tx, collection, at[collection]?.table ?? collection) });
         } catch (err) {
           throw new Error(`[delta-migrate] migration ${named(m.id)} failed, and was rolled back: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
         }

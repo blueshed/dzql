@@ -11,13 +11,13 @@
  *   export const changes = [createTable("people", { columns: { name: { type: "text" } }, temporal: false })];
  *
  * What a table is here is what the database holds of it: its name, its columns, its parent's key,
- * and whether it keeps versions. `cascadeOn` is the definitions' alone (a remove's reach, not a
+ * whether it keeps versions, and its unique constraints. `cascadeOn` is the definitions' alone (a remove's reach, not a
  * column), and is not part of a migration.
  */
-import { defineSchema, type ColumnDef, type ColumnShorthand, type Schema, type TableDef } from "../schema";
+import { defineSchema, uniqueOf, type ColumnDef, type ColumnShorthand, type Schema, type TableDef, type UniqueDef } from "../schema";
 
-/** A table as a migration makes it: its name, columns, parent's key and versions. */
-export type TableState = { table: string; columns: Record<string, ColumnDef>; parent?: { collection: string; fk: string }; temporal: boolean };
+/** A table as a migration makes it: its name, columns, parent's key, versions and unique constraints. */
+export type TableState = { table: string; columns: Record<string, ColumnDef>; parent?: { collection: string; fk: string }; temporal: boolean; unique?: UniqueDef[] };
 /** The tables a history leads to, by collection key. */
 export type State = Record<string, TableState>;
 
@@ -27,7 +27,9 @@ export type Change =
   | { change: "renameTable"; key: string; to: string }
   | { change: "addColumn"; key: string; column: string; def: ColumnDef }
   | { change: "dropColumn"; key: string; column: string }
-  | { change: "renameColumn"; key: string; column: string; to: string };
+  | { change: "renameColumn"; key: string; column: string; to: string }
+  | { change: "addUnique"; key: string; unique: UniqueDef }
+  | { change: "dropUnique"; key: string; columns: string[] };
 
 const column = (def: ColumnDef | ColumnShorthand): ColumnDef => {
   if (typeof def !== "string") return { type: def.type, ...(def.nullable ? { nullable: true } : {}), ...(def.default !== undefined ? { default: def.default } : {}) };
@@ -42,6 +44,7 @@ export function tableOf(key: string, def: TableDef): TableState {
     columns: Object.fromEntries(Object.entries(def.columns).map(([c, d]) => [c, column(d)])),
     ...(parent ? { parent } : {}),
     temporal: def.temporal ?? true,
+    ...(def.unique?.length ? { unique: def.unique.map(uniqueOf) } : {}),
   };
 }
 
@@ -57,6 +60,13 @@ export const addColumn = (key: string, name: string, def: ColumnDef | ColumnShor
 export const dropColumn = (key: string, name: string): Change => ({ change: "dropColumn", key, column: name });
 /** Rename a column, keeping its values. */
 export const renameColumn = (key: string, name: string, to: string): Change => ({ change: "renameColumn", key, column: name, to });
+
+/** Hold values unique: `addUnique("lent", "tool", { whereNull: ["returned"] })`. Refused where rows already share them. */
+export const addUnique = (key: string, columns: string | string[], opts: { whereNull?: string[] } = {}): Change => ({ change: "addUnique", key, unique: uniqueOf({ columns: typeof columns === "string" ? [columns] : columns, ...opts }) });
+/** Stop holding values unique: the constraint on those columns. */
+export const dropUnique = (key: string, columns: string | string[]): Change => ({ change: "dropUnique", key, columns: typeof columns === "string" ? [columns] : [...columns] });
+
+const sameColumns = (a: string[], b: string[]) => a.join("\0") === b.join("\0");
 
 /** The tables after one change, from those before it; a change that names what is not there is refused. */
 export function applyChange(state: State, c: Change): State {
@@ -100,6 +110,20 @@ export function applyChange(state: State, c: Change): State {
       if (!t.columns[c.column]) throw new Error(`[delta-migrate] renameColumn: ${c.key} has no column ${c.column}`);
       if (t.columns[c.to]) throw new Error(`[delta-migrate] renameColumn: ${c.key} has a column ${c.to} already`);
       t.columns = Object.fromEntries(Object.entries(t.columns).map(([k, d]) => [k === c.column ? c.to : k, d]));
+      if (t.unique) t.unique = t.unique.map((u) => ({ ...u, columns: u.columns.map((x) => (x === c.column ? c.to : x)), ...(u.whereNull ? { whereNull: u.whereNull.map((x) => (x === c.column ? c.to : x)) } : {}) }));
+      break;
+    }
+    case "addUnique": {
+      const t = table(c.key);
+      if (t.unique?.some((u) => sameColumns(u.columns, c.unique.columns))) throw new Error(`[delta-migrate] addUnique: ${c.key} (${c.unique.columns.join(", ")}) is unique already`);
+      t.unique = [...(t.unique ?? []), structuredClone(c.unique)];
+      break;
+    }
+    case "dropUnique": {
+      const t = table(c.key);
+      if (!t.unique?.some((u) => sameColumns(u.columns, c.columns))) throw new Error(`[delta-migrate] dropUnique: ${c.key} (${c.columns.join(", ")}) is not unique`);
+      t.unique = t.unique.filter((u) => !sameColumns(u.columns, c.columns));
+      if (t.unique.length === 0) delete t.unique;
       break;
     }
   }
@@ -118,12 +142,13 @@ export function stateOfSchema(schema: Schema): State {
     columns: Object.fromEntries(Object.entries(t.columns).map(([c, d]) => [c, column(d)])),
     ...(t.parent ? { parent: { collection: t.parent.collection, fk: t.parent.fkColumn } } : {}),
     temporal: t.temporal,
+    ...(t.unique ? { unique: t.unique.map((u) => ({ columns: u.columns, ...(u.whereNull.length ? { whereNull: u.whereNull } : {}) })) } : {}),
   }]));
 }
 
 /** The definitions the history's tables are: what a backend makes from them (its `createTables`). */
 export const schemaOf = (state: State): Schema =>
-  defineSchema(Object.fromEntries(Object.entries(state).map(([key, t]) => [key, { table: t.table, columns: t.columns, parent: t.parent, temporal: t.temporal } satisfies TableDef])));
+  defineSchema(Object.fromEntries(Object.entries(state).map(([key, t]) => [key, { table: t.table, columns: t.columns, parent: t.parent, temporal: t.temporal, ...(t.unique ? { unique: t.unique } : {}) } satisfies TableDef])));
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -149,8 +174,14 @@ export function diff(state: State, schema: Schema): { changes: Change[]; byHand:
     if (was.temporal !== t.temporal) byHand.push(`${key}: temporal is ${t.temporal}, was ${was.temporal}: an up()`);
     const gone = Object.keys(was.columns).filter((c) => !(c in t.columns));
     const added = Object.keys(t.columns).filter((c) => !(c in was.columns));
+    const uniqueWas = was.unique ?? [], uniqueNow = t.unique ?? [];
+    // a constraint whose columns or whereNull changed is dropped and added again; a drop goes before the columns it names do, an add after they come
+    const dropped = uniqueWas.filter((u) => !uniqueNow.some((v) => same(u, v)));
+    const made = uniqueNow.filter((u) => !uniqueWas.some((v) => same(u, v)));
+    for (const u of dropped) changes.push({ change: "dropUnique", key, columns: u.columns });
     for (const c of added) changes.push({ change: "addColumn", key, column: c, def: t.columns[c]! });
     for (const c of gone) changes.push({ change: "dropColumn", key, column: c });
+    for (const u of made) changes.push({ change: "addUnique", key, unique: u });
     if (gone.length && added.length) byHand.push(`${key}: ${gone.join(", ")} gone and ${added.join(", ")} new: if one is the other renamed, make it renameColumn (a drop loses its values)`);
     for (const c of Object.keys(t.columns)) {
       if (c in was.columns && !same(was.columns[c], t.columns[c])) byHand.push(`${key}.${c}: ${JSON.stringify(t.columns[c])}, was ${JSON.stringify(was.columns[c])}: an up()`);
@@ -176,8 +207,8 @@ function source(c: Change): string {
   const s = literal;
   switch (c.change) {
     case "createTable": {
-      const { table, columns, parent, temporal } = c.table;
-      const def = { ...(table !== c.key ? { table } : {}), columns, ...(parent ? { parent } : {}), temporal };
+      const { table, columns, parent, temporal, unique } = c.table;
+      const def = { ...(table !== c.key ? { table } : {}), columns, ...(parent ? { parent } : {}), temporal, ...(unique ? { unique } : {}) };
       return `createTable(${s(c.key)}, ${s(def)})`;
     }
     case "dropTable": return `dropTable(${s(c.key)})`;
@@ -185,6 +216,8 @@ function source(c: Change): string {
     case "addColumn": return `addColumn(${s(c.key)}, ${s(c.column)}, ${s(c.def)})`;
     case "dropColumn": return `dropColumn(${s(c.key)}, ${s(c.column)})`;
     case "renameColumn": return `renameColumn(${s(c.key)}, ${s(c.column)}, ${s(c.to)})`;
+    case "addUnique": return `addUnique(${s(c.key)}, ${s(c.unique.columns)}${c.unique.whereNull ? `, ${s({ whereNull: c.unique.whereNull })}` : ""})`;
+    case "dropUnique": return `dropUnique(${s(c.key)}, ${s(c.columns)})`;
   }
 }
 

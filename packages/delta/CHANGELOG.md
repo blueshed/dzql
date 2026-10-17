@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A unique constraint in the schema** (#81): `unique: ["name"]`, columns together
+  (`[["shed_id", "name"]]`), or `{ columns: ["tool"], whereNull: ["returned"] }`, held only among rows
+  where those are null (a tool on one open loan at a time). A row that would share them is refused,
+  **409**, the batch rolled back, on SQLite, the JSON file and dzql's Postgres alike; a table that
+  keeps versions holds it among its current rows. It is an index, `idx_<table>_unique_<columns>`
+  (`uniqueIndexSql`, in `./backend` for dzql). Migrations have `addUnique` / `dropUnique`, and
+  `migrations make` writes them (a constraint is dropped before the column it names, added after).
+  `uniqueCases` in `./testing` asks every backend (`src/cases/writes.ts`), and `migrationCases`
+  makes and drops one. The Shed's run 2 wrote a trigger by hand outside its history for this.
+- **A migration's `up` takes the next id**: `up(tx, { nextId })`, `await nextId("tools")`, the
+  collection's serial moved on as `add /tools/-` moves it, past any id the table holds
+  (`MigrationTools`; each backend's `Store` has `nextId`). The Shed's run 2 wrote
+  `_delta_sequences` by hand to give new rows ids; that table is delta's, not the app's.
+- **A fact from another parent's rows, worked out** (#79): the delta-doc skill's `custom-docs.md`
+  and `tests/derived-fact.test.ts` show whether a tool is out, and when it is due, as a recompute
+  document over the tools and their open loans, where the Shed's runs stored it on the tool. The
+  skill's `schema.md` says it, and that a line or a part is a row under its parent, never JSON of ids.
 - **`delta install-skills --skip <name,...>`** installs all but the skills named (paintbrush's setup
   leaves out railroad's `bun-route`).
 - **`registerDoc` takes `accept`**: asked of each op before any is applied, `true` takes it, `false`
@@ -24,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A SQLite unique constraint's failure is answered 409 ("Already there: another row has the same
+  ..."), as Postgres's 23505 is, where it had been a 500.
 - **delta lives in the bluetools monorepo, the blueshed/dzql repository** (`packages/delta`, with its history), beside railroad
   and dzql as Bun workspaces: its railroad is `packages/railroad`'s source, and dzql runs against
   this one. Releases are tagged `delta@x.y.z` (was `v<x.y.z>`) and published from the root's

@@ -23,6 +23,17 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **delta's unique constraints on Postgres**: `generateSql` (`tableSql`) makes each of a table's
+  `unique` as a unique index, among a temporal table's current rows; a row that would share one is
+  23505, 409, as on SQLite. `migrate` makes `addUnique` and drops `dropUnique`. An `up` is given
+  `nextId` (the table's `seq_<table>`, moved past any id it holds), so a migration never writes a
+  sequence itself. delta's `uniqueCases` and `migrationCases` pass on PGlite here; on a Postgres
+  server they want Peter's Mac (Docker).
+- `tests/delta-pg/replace-in-place-pglite.test.ts` pins that a replace, of a row and of a field, is
+  an UPDATE an app's trigger sees, never a DELETE and INSERT (the Shed's run 2, stage 5).
+
 ### Changed
 
 - **`pg`, `@electric-sql/pglite` and `jose` are optional peers**, no longer dependencies: an app

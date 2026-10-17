@@ -9,6 +9,7 @@
  *   errorCodeCases(standUp);
  *   createRowCases(standUp);
  *   writeScopeCases(standUp);
+ *   uniqueCases(standUp);
  *
  * where `standUp({ schema, docs, seed })` makes a fresh store with that
  * schema, those documents registered and those rows imported, and answers a
@@ -119,6 +120,83 @@ export function createRowCases(backend: CaseBackend): void {
       const now = await fresh(up.ws, "case-room:1");
       expect(now.case_messages["999"]).toBeUndefined();
       expect(Object.values(now.case_messages).map((m: any) => m.text).sort()).toEqual(["forged id", "hi"]);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// A shed: unique constraints
+// ---------------------------------------------------------------------------
+
+/**
+ * A shed's tools, each named once, and its members' loans, each tool on one
+ * open loan at a time (`unique`, `whereNull`): the loans keep versions, so a
+ * closed version (replaced, removed) holds nothing.
+ */
+export const shedApp: CaseApp = {
+  schema: defineSchema({
+    case_tools: { columns: { name: "text" }, temporal: false, unique: ["name"] },
+    case_members: { columns: { name: "text" }, temporal: false },
+    case_loans: {
+      columns: { tool: "integer", returned: "timestamptz?" },
+      parent: { collection: "case_members", fk: "case_members_id" },
+      unique: [{ columns: ["tool"], whereNull: ["returned"] }],
+    },
+  }),
+  docs: [
+    defineDoc("case-shed:", { root: "case_tools", include: [] }),
+    defineDoc("case-member:", { root: "case_members", include: ["case_loans"] }),
+  ],
+  seed: {
+    tables: {
+      case_tools: [{ id: 1, name: "spade" }, { id: 2, name: "rake" }],
+      case_members: [{ id: 1, name: "ann" }, { id: 2, name: "bob" }],
+      case_loans: [{ id: 1, case_members_id: 1, tool: 1, returned: null, valid_from: "2026-01-01T00:00:00.000Z", valid_to: null }],
+    },
+  },
+};
+
+/** A unique constraint refuses a row that would share its values, 409, and nothing is written; rows outside it (a loan returned, a version closed) do not count. */
+export function uniqueCases(backend: CaseBackend): void {
+  describe("a unique constraint", () => {
+    let up: Awaited<ReturnType<CaseBackend>>;
+    beforeEach(async () => { up = await backend(shedApp); });
+    afterEach(async () => { await up.end(); });
+
+    const write = async (doc: string, ops: unknown[]) => {
+      const c = mockClient();
+      await sendAndAwait(up.ws, c, { action: "open", doc });
+      return sendAndAwait(up.ws, c, { action: "delta", doc, ops });
+    };
+    const loans = async (member: number) => Object.values((await fresh(up.ws, `case-member:${member}`)).case_loans ?? {}).map((l: any) => ({ tool: l.tool, out: l.returned === null }));
+
+    test("a second tool of the same name is refused, 409, and a rename onto one too", async () => {
+      expect((await write("case-shed:", [{ op: "add", path: "/case_tools/-", value: { name: "spade" } }])).error?.code).toBe(409);
+      expect((await write("case-shed:", [{ op: "replace", path: "/case_tools/2/name", value: "spade" }])).error?.code).toBe(409);
+      const tools = Object.values((await fresh(up.ws, "case-shed:")).case_tools).map((t: any) => t.name).sort();
+      expect(tools).toEqual(["rake", "spade"]);
+    });
+
+    test("a tool out on one open loan is refused a second, 409, and the batch it was in writes nothing", async () => {
+      const r = await write("case-member:2", [
+        { op: "add", path: "/case_loans/-", value: { tool: 2 } },
+        { op: "add", path: "/case_loans/-", value: { tool: 1 } },
+      ]);
+      expect(r.error?.code).toBe(409);
+      expect(await loans(2)).toEqual([]);
+    });
+
+    test("once its loan is returned, the tool may go out again; a replace of the open loan keeps its own place", async () => {
+      expect((await write("case-member:1", [{ op: "replace", path: "/case_loans/1", value: { tool: 1, returned: null } }])).error).toBeUndefined();
+      expect((await write("case-member:1", [{ op: "replace", path: "/case_loans/1/returned", value: "2026-02-01T00:00:00Z" }])).error).toBeUndefined();
+      expect((await write("case-member:2", [{ op: "add", path: "/case_loans/-", value: { tool: 1 } }])).error).toBeUndefined();
+      expect(await loans(2)).toEqual([{ tool: 1, out: true }]);
+    });
+
+    test("a loan removed holds nothing: the tool may go out again", async () => {
+      expect((await write("case-member:1", [{ op: "remove", path: "/case_loans/1" }])).error).toBeUndefined();
+      expect((await write("case-member:2", [{ op: "add", path: "/case_loans/-", value: { tool: 1 } }])).error).toBeUndefined();
+      expect(await loans(2)).toEqual([{ tool: 1, out: true }]);
     });
   });
 }

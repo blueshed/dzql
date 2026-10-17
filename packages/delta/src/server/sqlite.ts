@@ -37,6 +37,7 @@ export type {
   ColumnDef,
   ColumnShorthand,
   TableDef,
+  UniqueDef,
   Schema,
   ResolvedTable,
   DocDef,
@@ -46,7 +47,7 @@ export type {
 export { defineSchema, defineDoc } from "../schema";
 export { createTables, migrateSchema } from "./sqlite/ddl";
 export { migrate, migrationStatus, renameColumn, dropColumn, renameTable, fromFolder } from "./sqlite/migrate";
-export type { Migration, MigrateOptions, MigrateResult, MigrationStatus } from "./sqlite/migrate";
+export type { Migration, MigrateOptions, MigrateResult, MigrationStatus, MigrationTools } from "./sqlite/migrate";
 export { validateOps } from "./sqlite/validate";
 export { loadDocAt, createSnapshot, resolveSnapshot } from "./sqlite/read";
 export { exportTables, importTables } from "./sqlite/carry";
@@ -1098,7 +1099,7 @@ export function registerDocs<I = unknown>(
       for (const take of spent) take();
       if (spent.length) options.committed?.();   // the serials it spent are kept: the JSON file saves them
       if (cache.has(docName)) cache.set(docName, snapshot); // restore in-memory cache (a rootless walk's copy was never in it)
-      named(err);
+      err = named(err);
       log.error(`delta failed: ${err.message}`);
       // A refusal carries its wire code (`refuse`); anything else is the server's.
       return { error: failure(err) };

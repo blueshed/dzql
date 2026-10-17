@@ -7,7 +7,7 @@ import { describe } from "bun:test";
 import { Pool } from "pg";
 import { createWs } from "@blueshed/delta/server";
 import { setLogLevel } from "@blueshed/delta/logger";
-import { createRowCases, errorCodeCases, writeScopeCases, type CaseApp, type CaseBackend } from "@blueshed/delta/testing";
+import { createRowCases, errorCodeCases, uniqueCases, writeScopeCases, type CaseApp, type CaseBackend } from "@blueshed/delta/testing";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
 import { openPglite } from "../../src/postgres/pglite";
 
@@ -52,5 +52,6 @@ for (const [name, backend] of [["PGlite", onPglite], ["a Postgres server", onSer
     errorCodeCases(backend);
     createRowCases(backend);
     writeScopeCases(backend);
+    uniqueCases(backend);
   });
 }

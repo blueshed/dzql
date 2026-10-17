@@ -44,6 +44,25 @@ export interface TableDef {
   cascadeOn?: (string | { fk: string; collection: string })[];
   /** Set to `false` to disable temporal versioning (valid_from/valid_to). Default: `true`. */
   temporal?: boolean;
+  /**
+   * Values no two current rows share, each refused with 409 on every backend: a column, columns
+   * together, or `{ columns, whereNull }`, held only among rows where those columns are null
+   * (`{ columns: ["tool"], whereNull: ["returned"] }`: a tool is on one open loan at a time).
+   */
+  unique?: (string | string[] | UniqueDef)[];
+}
+
+/** A unique constraint: the columns no two current rows share, among those where `whereNull` are null. */
+export interface UniqueDef {
+  columns: string[];
+  whereNull?: string[];
+}
+
+/** A unique constraint as every backend makes it: an index `idx_<table>_unique_<columns>`, held among current rows. */
+export interface ResolvedUnique {
+  name: string;
+  columns: string[];
+  whereNull: string[];
 }
 
 export interface Schema {
@@ -62,6 +81,8 @@ export interface ResolvedTable {
   children: string[];
   /** Computed: collections that reference this table via `cascadeOn`. */
   referencedBy: { collection: string; fkColumn: string }[];
+  /** Its unique constraints (`TableDef.unique`); absent when it has none. */
+  unique?: ResolvedUnique[];
 }
 
 export interface DocDef {
@@ -167,14 +188,23 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
       }
     }
 
+    const name = def.table ?? key;
+    const unique = (def.unique ?? []).map((u) => resolveUnique(key, name, u, columns, parent?.fkColumn));
+    const seen = new Set<string>();
+    for (const u of unique) {
+      if (seen.has(u.name)) throw new Error(`${key}: unique ${JSON.stringify(u.columns)} is named twice`);
+      seen.add(u.name);
+    }
+
     tables[key] = {
-      name: def.table ?? key,
+      name,
       docKey: key,
       columns,
       parent,
       temporal: def.temporal !== false,
       children: [],
       referencedBy: [],
+      ...(unique.length ? { unique } : {}),
     };
   }
 
@@ -206,6 +236,35 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
   }
 
   return { tables };
+}
+
+/** A unique constraint as given (`"email"`, `["shed_id", "name"]`, `{ columns, whereNull }`), the same shape every time. */
+export function uniqueOf(u: string | string[] | UniqueDef): UniqueDef {
+  if (typeof u === "string") return { columns: [u] };
+  if (Array.isArray(u)) return { columns: [...u] };
+  return { columns: [...u.columns], ...(u.whereNull?.length ? { whereNull: [...u.whereNull] } : {}) };
+}
+
+/** Checked against the table's columns (its own and its parent key), and named. */
+function resolveUnique(key: string, table: string, given: string | string[] | UniqueDef, columns: Record<string, ColumnDef>, fk: string | undefined): ResolvedUnique {
+  const u = uniqueOf(given);
+  if (u.columns.length === 0) throw new Error(`${key}: a unique constraint names at least one column`);
+  for (const col of [...u.columns, ...(u.whereNull ?? [])]) {
+    if (!Object.hasOwn(columns, col) && col !== fk) throw new Error(`${key}: unique names ${col}, which is not one of its columns`);
+  }
+  for (const col of u.whereNull ?? []) {
+    if (Object.hasOwn(columns, col) && !columns[col]!.nullable) throw new Error(`${key}: unique's whereNull names ${col}, which is never null`);
+  }
+  return { name: `idx_${table}_unique_${u.columns.join("_")}`, columns: u.columns, whereNull: u.whereNull ?? [] };
+}
+
+/**
+ * A unique constraint's index, as SQLite and Postgres both take it: among a temporal table's current
+ * versions alone, so a closed version (one replaced, one removed) holds nothing.
+ */
+export function uniqueIndexSql(table: ResolvedTable, u: ResolvedUnique): string {
+  const where = [...u.whereNull.map((c) => `${q(c)} IS NULL`), ...(table.temporal ? ["valid_to IS NULL"] : [])];
+  return `CREATE UNIQUE INDEX IF NOT EXISTS ${q(u.name)} ON ${q(table.name)} (${u.columns.map(q).join(", ")})${where.length ? ` WHERE ${where.join(" AND ")}` : ""}`;
 }
 
 /** The value a column that is neither nullable nor defaulted takes when a row leaves it out. */

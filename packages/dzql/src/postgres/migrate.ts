@@ -12,8 +12,9 @@ import { q } from "@blueshed/delta/backend";
 import { appOf, fenced, runMigrations, statusOf, type MigrateOptions, type MigrateResult, type Migration, type MigrationStatus, type Store } from "@blueshed/delta/backend";
 import { schemaOf } from "@blueshed/delta/migrations";
 import { tableSql } from "./codegen";
+import { lit } from "./sql";
 
-export { fromFolder, type Migration, type MigrateOptions, type MigrateResult, type MigrationStatus } from "@blueshed/delta/backend";
+export { fromFolder, type Migration, type MigrateOptions, type MigrateResult, type MigrationStatus, type MigrationTools } from "@blueshed/delta/backend";
 
 /** What a helper runs its SQL on: the client `up` is given. */
 type Tx = Pick<PoolClient, "query">;
@@ -69,11 +70,18 @@ function store(client: PoolClient, app: string, collections?: string): Store<Poo
         SELECT 1 FROM jsonb_array_elements(ops || inverse) AS o
          WHERE split_part(o->>'path', '/', 2) IN (SELECT jsonb_array_elements_text($1::jsonb)))`, [collections]);
     },
+    async nextId(tx, _collection, table) {
+      // nextval, then on past any id the table holds (a row an earlier up put in by hand): the next add follows on
+      const seq = lit(q(`seq_${table}`));
+      const { rows } = await tx.query(`SELECT setval(${seq}, GREATEST(nextval(${seq}), (SELECT COALESCE(MAX(id), 0) + 1 FROM ${q(table)}))) AS id`);
+      return Number(rows[0]!.id);
+    },
     async apply(tx, c, before, after) {
       // each change as the history makes it; made already (a database adopting the history), it is left
       switch (c.change) {
         case "createTable":
         case "addColumn":
+        case "addUnique":
           // the table's SQL as generateSql writes it: every statement idempotent, so it adds what is missing
           // (and a temporal table's view takes a column added after it)
           await tx.query(tableSql(c.key, schemaOf(after).tables[c.key]!).join("\n"));
@@ -86,6 +94,11 @@ function store(client: PoolClient, app: string, collections?: string): Store<Poo
           if (before[c.key]!.table !== after[c.to]!.table) await renameTable(tx, before[c.key]!.table, after[c.to]!.table);
           if (await regclass(tx, "_delta_collections")) await tx.query("UPDATE _delta_collections SET collection_key = $2 WHERE collection_key = $1", [c.key, c.to]);
           return;
+        case "dropUnique": {
+          const was = schemaOf(before).tables[c.key]!.unique!.find((u) => u.columns.join() === c.columns.join())!;
+          await tx.query(`DROP INDEX IF EXISTS ${q(was.name)}`);
+          return;
+        }
         case "dropTable": {
           const table = before[c.key]!.table;
           await tx.query(`DROP VIEW IF EXISTS ${q(`current_${table}`)}`);

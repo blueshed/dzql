@@ -24,7 +24,7 @@
  */
 import type { Schema, DocDef } from "./schema";
 import { lit, columnSqlType, sqlDefault, findCascadeOn } from "./sql";
-import { defaultForType, q } from "@blueshed/delta/backend";
+import { defaultForType, q, uniqueIndexSql } from "@blueshed/delta/backend";
 import { assertScopeKeys } from "@blueshed/delta/backend";
 import { compileOpens } from "../compile/opens";
 import { compileHolds } from "../compile/holds";
@@ -191,6 +191,8 @@ export function tableSql(key: string, table: Schema["tables"][string]): string[]
       `CREATE INDEX IF NOT EXISTS ${q("idx_" + table.name + "_" + table.parent.fkColumn)} ON ${q(table.name)} (${q(table.parent.fkColumn)});`,
     );
   }
+  // its unique constraints, as SQLite makes them: a row that would share one's values is refused, 23505 (409)
+  for (const u of table.unique ?? []) lines.push(`${uniqueIndexSql(table, u)};`);
   lines.push("");
   return lines;
 }

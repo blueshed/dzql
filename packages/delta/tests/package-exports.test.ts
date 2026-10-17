@@ -130,7 +130,7 @@ describe("package exports", () => {
       "pathCases", "drivenCases", "registrationCases", "serialCases", "asItStoodCases", "columnCases", "documentCases", "fanOutCases",
       "drive", "onSqlite", "onJson", "lawSeeds", "lawSteps",
       "ownsCases", "permissionCases", "assertDocIsolation",
-      "errorCodeCases", "createRowCases", "writeScopeCases", "roomsApp", "tenantsApp", "membershipsApp",
+      "errorCodeCases", "createRowCases", "writeScopeCases", "uniqueCases", "shedApp", "roomsApp", "tenantsApp", "membershipsApp",
     ]) {
       expect([name, typeof (testing as any)[name]]).not.toEqual([name, "undefined"]);
     }
@@ -142,7 +142,7 @@ describe("package exports", () => {
       "NOT_FOUND", "appOf", "assertOnePrefix", "assertOwned", "assertScopeKeys", "authless", "createCustomDocs", "defaultForType", "defineDoc", "defineSchema",
       "dropClientSubscriptions", "fenced", "fromFolder", "holdsField", "isAuthError", "isDeltasOwn", "isEntryId", "isIsoTime",
       "isoTime", "lastId", "ledgerWho", "onClientDrop", "ownerless", "pastSafeId", "q", "resolveScope", "runMigrations", "sendTo",
-      "showDoc", "showOps", "showRow", "socketCursor", "statusOf", "trackSubscribe", "trackUnsubscribe",
+      "showDoc", "showOps", "showRow", "socketCursor", "statusOf", "trackSubscribe", "trackUnsubscribe", "uniqueIndexSql",
     ]);
   });
 

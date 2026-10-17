@@ -10,7 +10,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { addColumn, applyChange, createTable, diff, dropColumn, dropTable, renameColumn, renameTable, stateOf, writeMigration } from "../src/server/changes";
+import { addColumn, addUnique, applyChange, createTable, diff, dropColumn, dropTable, dropUnique, renameColumn, renameTable, stateOf, writeMigration } from "../src/server/changes";
 import { createTables, defineDoc, defineSchema, migrate, registerDocs, type Migration } from "../src/server/sqlite";
 import { fromFolder } from "../src/server/migrate";
 import { createLocal } from "../src/server/local";
@@ -73,6 +73,34 @@ describe("the next migration, from the definitions", () => {
       'people: name gone and full_name, email new: if one is the other renamed, make it renameColumn (a drop loses its values)',
       'posts.body: {"type":"text"}, was {"type":"text","nullable":true}: an up()',
     ]);
+  });
+
+  test("a unique constraint said is added after the column it names, one gone dropped before it; a renamed column's goes with it", () => {
+    const unique = defineSchema({
+      people: { columns: { name: "text", email: "text?" }, temporal: false, unique: ["email"] },
+      posts: { parent: "people", columns: { title: "text", body: "text?" }, temporal: false, unique: [{ columns: ["people_id", "title"], whereNull: ["body"] }] },
+    });
+    const { changes } = diff(stateOf(v1), unique);
+    expect(changes).toEqual([
+      addColumn("people", "email", "text?"),
+      addUnique("people", "email"),
+      addUnique("posts", ["people_id", "title"], { whereNull: ["body"] }),
+    ]);
+    const made = stateOf([...v1, { id: "003", changes }]);
+    expect(diff(made, unique).changes).toEqual([]);
+    expect(diff(made, schema).changes).toEqual([dropUnique("people", ["email"]), dropColumn("people", "email"), dropUnique("posts", ["people_id", "title"])]);
+    const renamed = applyChange(made, renameColumn("people", "email", "mail"));
+    expect(renamed.people!.unique).toEqual([{ columns: ["mail"] }]);
+    expect(() => applyChange(made, addUnique("people", "email"))).toThrow("unique already");
+    expect(() => applyChange(made, dropUnique("people", "name"))).toThrow("is not unique");
+    expect(writeMigration(changes)).toContain(`addUnique("posts", ["people_id", "title"], { whereNull: ["body"] }),`);
+  });
+
+  test("a unique constraint names the table's columns, each once, and holds only among rows where a column that may be null is", () => {
+    expect(() => defineSchema({ t: { columns: { a: "text" }, unique: ["b"] } })).toThrow("not one of its columns");
+    expect(() => defineSchema({ t: { columns: { a: "text" }, unique: [{ columns: ["a"], whereNull: ["a"] }] } })).toThrow("never null");
+    expect(() => defineSchema({ t: { columns: { a: "text" }, unique: ["a", ["a"]] } })).toThrow("named twice");
+    expect(() => defineSchema({ t: { columns: { a: "text" }, unique: [[]] } })).toThrow("at least one column");
   });
 
   test("written as a file, it loads as the migration it says, and leaves nothing more to make", async () => {

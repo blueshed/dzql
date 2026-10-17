@@ -8,6 +8,16 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **What the Shed's run 2 tripped on is fixed at its source** (17 October). delta: a unique
+  constraint in the schema, on every backend (#81); a migration's `up` takes `nextId`, so no app
+  writes `_delta_sequences`; whether a tool is out is worked out by a recompute document, never
+  stored (#79). dzql: unique indexes in `generateSql` and `migrate`, `nextId` from `seq_<table>`,
+  and a test pinning that a replace is an UPDATE (the fix itself, dzql #43, is in its unreleased
+  changes). The skills an app reads (delta-doc, paintbrush's evolve) say a line is a row, a fact
+  from rows is worked out, "one at a time" is `unique`, and show an `owns` path through
+  memberships. Run on PGlite here; dzql's Postgres server suite and paintbrush's `test:evolve` want
+  Peter's Mac. (packages/delta, packages/dzql, packages/paintbrush CHANGELOG.md)
+
 - **eta's compartment is now a resource** (Peter's word, the concept review): the server side of a
   resource, as paintbrush's resources are. `Compartment` is `Resource`, `src/rendering/compartments/`
   is `src/rendering/resources/` (`resource.ts`), each example's `compartments` is its `resources`,

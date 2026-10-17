@@ -6,12 +6,12 @@
  * serial a collection is minted from).
  */
 import type { Database } from "bun:sqlite";
-import { q } from "../../schema";
+import { q, uniqueIndexSql } from "../../schema";
 import { appOf, fenced, isDeltasOwn, runMigrations, statusOf, type MigrateOptions, type MigrateResult, type Migration, type MigrationStatus, type Store } from "../migrate";
 import { createSequences, createTable, migrateSchema, waitForLocks } from "./ddl";
 import { schemaOf } from "../changes";
 
-export { fromFolder, type Migration, type MigrateOptions, type MigrateResult, type MigrationStatus } from "../migrate";
+export { fromFolder, type Migration, type MigrateOptions, type MigrateResult, type MigrationStatus, type MigrationTools } from "../migrate";
 
 const has = (db: Database, type: "table" | "view", name: string): boolean =>
   !!db.query("SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?").get(type, name);
@@ -62,6 +62,15 @@ function store(db: Database, app: string, collections?: string): Store<Database>
                        UNION ALL SELECT substr(json_extract(value, '$.path'), 2) FROM json_each(delta_ledger.inverse)) AS p
          WHERE (CASE WHEN instr(p.rest, '/') > 0 THEN substr(p.rest, 1, instr(p.rest, '/') - 1) ELSE p.rest END) IN (SELECT value FROM json_each(?)))`, [collections]);
     },
+    async nextId(tx, collection, table) {
+      // as a write's nextId: the sequence, or before there is one, the largest id the table holds; then on by one
+      createSequences(tx);
+      const seq = tx.query("SELECT last FROM _delta_sequences WHERE collection = ?").get(collection) as { last: number } | null;
+      const most = (tx.query(`SELECT MAX(id) AS m FROM ${q(table)} WHERE typeof(id) = 'integer'`).get() as { m: number | null } | null)?.m ?? 0;
+      const next = Math.max(seq?.last ?? 0, most) + 1;
+      tx.run("INSERT INTO _delta_sequences (collection, last) VALUES (?, ?) ON CONFLICT (collection) DO UPDATE SET last = excluded.last", [collection, next]);
+      return next;
+    },
     async apply(tx, c, before, after) {
       // each change as the history makes it; made already (a database adopting the history), it is left
       switch (c.change) {
@@ -80,6 +89,17 @@ function store(db: Database, app: string, collections?: string): Store<Database>
           if (before[c.key]!.table !== after[c.to]!.table) renameTable(tx, before[c.key]!.table, after[c.to]!.table);
           if (has(tx, "table", "_delta_sequences")) tx.run("UPDATE _delta_sequences SET collection = ?2 WHERE collection = ?1 AND NOT EXISTS (SELECT 1 FROM _delta_sequences WHERE collection = ?2)", [c.key, c.to]);
           return;
+        case "addUnique": {
+          const table = schemaOf(after).tables[c.key]!;
+          const made = table.unique!.find((u) => u.columns.join() === c.unique.columns.join())!;
+          tx.run(uniqueIndexSql(table, made));
+          return;
+        }
+        case "dropUnique": {
+          const was = schemaOf(before).tables[c.key]!.unique!.find((u) => u.columns.join() === c.columns.join())!;
+          tx.run(`DROP INDEX IF EXISTS ${q(was.name)}`);
+          return;
+        }
         case "dropTable": {
           const table = before[c.key]!.table;
           tx.run(`DROP VIEW IF EXISTS ${q(`current_${table}`)}`);
