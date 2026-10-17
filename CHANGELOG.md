@@ -109,6 +109,8 @@ what is open across them. Newest first.
   package's fast tier its seconds, which `bun run affected` says when over, beside a note on any
   changed test that waits a fixed time; `stories:all` runs at a release, as `by-hand.test` tells
   them per push.
+- **The root README** says what each package is now (create-blueshed and paintbrush among them),
+  the gate and the per-package scripts, and where the changelog, todo, docs and rules are.
 
 ### Fixed
 
