@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **The Shed, run 2's record** (`evals/shed/runs/2026-10-17-opus-5.5.md`): every story true at
+  100%, run 1's fixes holding; where it departed from `expected.md` ("out" stored, `owns` as a
+  function, lines and parts not rows, a hand-written trigger, `_delta_sequences` written by hand),
+  and where each change belongs.
+
 ### Changed
 
 - **The documents say what is built.** The 0.8.0 entry is one net statement. The evolve skill states
