@@ -21,6 +21,12 @@ export const stories: Stories = {
 
 The shape is `Story` and `Stories` in `src/modelling/stories.ts`; `docs/dzql/modelling/stories.md` says why.
 
+A story with no body yet, `story(name)`, goes in `Stories.unproven`: the harness reports it
+unproven, never failed, and a test named from it tells it until it has a body
+(`` test(`${stories.x.name} -- ...`) ``; `untold(stories, sources)` lists any no test names). That is
+how a paintbrush app keeps its stories, so one format grows from there to here
+(`docs/stories-as-code.md`).
+
 - Build nothing no story needs, and never write a story to justify what is built. One that
   describes the session's state ("opens the drawer") cannot fail: tell what the person wants.
 - A refusal is a story too (`cannot`); `told` is what its person is told ([refusal.md](refusal.md)).

@@ -37,7 +37,7 @@ If nothing settles it, ask.
 
 ## 4. Register it
 
-In the file that calls `Bun.serve()`: `import aboutPage from "./about/about.html";` and `"/about": aboutPage,` in `routes`. In a ts/tsx project `bun check` needs `@types/bun` and `"types": ["bun"]` for `Bun` and `.html` imports.
+Where the app's routes are: `import aboutPage from "./about/about.html";` and `"/about": aboutPage,` in `routes`. With `@blueshed/delta` in deps, that is the routes handed to delta's `serve()` (`@blueshed/delta/serve`; paintbrush's `src/routes.ts`): the app is routes and resources, delta is the one server, and an app never writes a `Bun.serve` of its own. Otherwise it is the file that calls `Bun.serve()`. In a ts/tsx project `bun check` needs `@types/bun` and `"types": ["bun"]` for `Bun` and `.html` imports.
 
 ## 5. Verify
 
@@ -45,7 +45,7 @@ Ask the user to start or restart the server. Read its port (default 3000), then 
 
 ## 6. Test it (when it has interaction worth locking down)
 
-Forms, drag, WebSockets, client state: write a `Bun.WebView` test. Make the server an importable `startServer(opts)` factory first. → [webview](reference/webview.md), then [webview-recipes](reference/webview-recipes.md) for polling, multi-statement `evaluate`, synthetic drag and wheel, and suite flags.
+Forms, drag, WebSockets, client state: write a `Bun.WebView` test. Make the server an importable `startServer(opts)` factory first; in a delta app it already is one, `serve(app, { port: 0 })`. → [webview](reference/webview.md), then [webview-recipes](reference/webview-recipes.md) for polling, multi-statement `evaluate`, synthetic drag and wheel, and suite flags.
 
 ## Invariants
 

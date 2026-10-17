@@ -35,7 +35,7 @@ cookie the socket is signed in by (`src/server/auth-link.ts`; `tests/auth-link.t
 // server: people are the app's own collection
 const auth = linkAuth({ store: sqliteLinkStore(db), personOf, people });   // personOf(id), people(): the app's
 wireAuth(ws, auth);                                                         // me, link
-Bun.serve({ routes: { ...auth.routes, "/ws": upgradeWithAuth(ws, auth), "/": page }, websocket: ws.websocket });
+serve({ ws, routes: { ...auth.routes, "/ws": upgradeWithAuth(ws, auth), "/": page } });   // delta's one server; its own "/ws" wins
 registerDocs(ws, db, schema, docs, [], { auth, owns: (me, name) => name === `mine:${me.id}` });
 
 // page: take a link before the socket connects (the cookie rides on the upgrade)

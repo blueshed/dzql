@@ -1,6 +1,6 @@
 # modelling reference
 
-The model's page is eta's modeling app (`examples/modeling` in eta, `eta/model/` in a project). The
+The model's page is dzql's modeling app (`examples/modeling`, shipped in the package). The
 model is one delta document: its stories, and the documents they need. `SKILL.md` is the order to
 work in.
 
@@ -15,11 +15,11 @@ work in.
 
 ## Where it runs
 
-| | In a project (`bun create blueshed/eta`) | In eta itself |
+| | In a project (`bun create dzql`) | In dzql itself (`packages/dzql`) |
 |---|---|---|
 | The page | `bun run model`, port 3001 | `bun run dev:modeling`, port 3005 |
 | A verb | `bun run cli:model <verb>` | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
-| Sign in | `login claude@modeling.example <MODEL_PASSWORD from .env>` | `login claude@modeling.example claude-password` |
+| Sign in | `login claude@modeling.example claude-password` (or `.env`'s `MODEL_PASSWORD`) | `login claude@modeling.example claude-password` |
 
 The CLI keeps the session it is given in `.eta-session`. A refused write prints `refused: <why>`
 and exits 1: read it, it is the model saying no. Everyone signs in as `<name, in lower
@@ -27,7 +27,7 @@ case>@modeling.example`; `.env`'s `MODEL_PEOPLE` says who.
 
 ## The verbs
 
-`eta/model/cli.ts` (eta: `examples/modeling/cli.ts`). Stories and documents are numbered as they are
+`examples/modeling/cli.ts` (in a project, `node_modules/dzql/examples/modeling/cli.ts`). Stories and documents are numbered as they are
 made; the page shows each story's number.
 
 | Said | Verb |

@@ -6,6 +6,11 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **bun-route adds a route to delta's `serve` in a delta app**: the routes it is given, never a
+  `Bun.serve` of the app's own; a browser test starts it with `serve(app, { port: 0 })`.
+
 ### Added
 
 - **`@blueshed/railroad/webview`**: a page in a real browser, for tests (`bun:test`, Bun.WebView):

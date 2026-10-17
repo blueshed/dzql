@@ -22,8 +22,9 @@ test("opens, writes and hears the broadcast", async () => {
 
 ## Other harnesses
 
-- **A real server**: `Bun.serve` on port 0, `connectWs("ws://localhost:<port>/ws")`
-  (`tests/client.test.ts`).
+- **A real server**: `serve({ ws, routes }, { port: 0 })` (`@blueshed/delta/serve`), then
+  `connectWs(new URL("/ws", url).href.replace("http", "ws"))`
+  (`tests/serve.test.ts`).
 - **`@blueshed/delta/testing`** (`src/testing.ts`): `mockClient(data?)` (a socket-shaped client,
   what it was sent in `.sent`; `{ identity }` signed in, `{ local: true }` in-process),
   `sendAndAwait(ws, client, msg)`, `waitFor(predicate, { timeout, interval })`.

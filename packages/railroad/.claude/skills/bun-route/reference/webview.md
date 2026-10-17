@@ -1,5 +1,9 @@
 # Testing a route with `Bun.WebView`
 
+In a delta app the factory already exists: `serve(app, { port: 0 })` (`@blueshed/delta/serve`)
+returns `{ url, stop }`, so a test starts the app's own routes on any free port and skips the
+`startServer` below.
+
 ```ts
 // server.ts: an importable factory, so a test binds port 0
 import indexHtml from "./index.html";

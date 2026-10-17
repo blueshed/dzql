@@ -2,16 +2,23 @@
 name: delta-doc
 metadata:
   version: 1.2.0
-description: "Use in a project that uses @blueshed/delta (it is in package.json): documents, their three op verbs, storage in a JSON file or SQLite (Postgres: dzql), migrations, sign-in by link, who may open what, the ledger and undo, createLocal(), and the wire a client speaks. Choosing a stack for a new live app is blueshed:live-app's."
+description: "Use in a project that uses @blueshed/delta (it is in package.json): documents, their three op verbs, storage in a JSON file or SQLite (Postgres: dzql), migrations, sign-in by link, who may open what, the ledger and undo, createLocal(), and the wire a client speaks."
 ---
 
 # delta-doc
 
 **A document is what someone needs in front of them to act.** To place an order: the catalogue
-and your order, two documents over shared rows. Think in documents, not entities; the tables
-follow. Open a document and you are subscribed: every change anyone makes reaches you. Change it with `add`, `replace` or `remove` on a JSON Pointer
-path, and everyone holding it sees it. What grows is where documents are kept (a JSON file,
-then SQLite, then Postgres on dzql); the client stays the same.
+and your order, two documents over shared rows. Open one and you are subscribed; change it with
+`add`, `replace` or `remove` on a JSON Pointer path, and everyone holding it sees it. What grows
+is where documents are kept (a JSON file, then SQLite, then Postgres on dzql); the client stays
+the same.
+
+**The shape**: an app is routes and resources on both sides of the socket, joined by documents.
+On the server, the routes given to delta's `serve` (`@blueshed/delta/serve`, the one server: no
+`Bun.serve` of the app's own) serve resources: a registered document, or an HTTP endpoint. On the
+client, railroad's `routes()` draw resources: an `openDoc` handle and its view. Entities are
+behind the documents, on the server: the collections of `defineSchema`. Think in documents, not
+entities; the tables follow.
 
 ## Order of work
 
@@ -19,7 +26,8 @@ then SQLite, then Postgres on dzql); the client stays the same.
 2. **Declare them**: `defineSchema` (tables, `parent` chains) and `defineDoc` (prefix, root,
    include, scope) in one `types.ts`.
 3. **Keep them in the smallest backend that fits** (the JSON file first), registered on
-   `createWs()` (a socket) or `createLocal()` (in-process).
+   `createWs()` and served with the app's routes by `serve` / `run` (`reference/server.md`), or
+   on `createLocal()` (in-process).
 4. **Client**: `connectWs`, `openDoc`, one keyed render path, `doc.send(ops)`. The echo renders.
 5. **Grow when a story needs it**: `{ ledger: true }` for undo, `auth` and a document's `owns`
    for who sees what, a migration for each change to the tables, dzql when servers share the
@@ -37,15 +45,15 @@ then SQLite, then Postgres on dzql); the client stays the same.
   never both, never a rebuild from `doc.data` in an `effect`.
 - A told replace may be one field: apply broadcasts with `applyOps`, never assume a whole row.
 - Undo is the ledger's (`{ ledger: true }`), never a hand-rolled stack.
-- A line or part is a row under its parent, never JSON of ids; a fact from other rows (a tool
-  out) is a recompute document, never a stored copy; "one at a time" is `unique` (`schema.md`).
+- A line is a row under its parent, never JSON of ids; a fact from other rows is a recompute
+  document, never a stored copy; "one at a time" is `unique` (`schema.md`).
 - The schema is the contract: delta sends and writes only declared columns. A database may
   hold more, never less. Its tables are made by its migrations, from empty: change the schema,
   then `delta migrations make` writes the next one; `migrate` runs them at start-up.
 - With `auth`, every document says who may have it: `owns` (a path from its row to the person)
   or `shared: true`. A name is its broadcast channel: whoever holds it hears every write through it.
 - Tokens never in the socket URL. Sign in with `connectWs(url, { onConnect })`.
-- No Redux, REST, `fetch` of state, React or Supabase patterns. `doc.data` is a signal.
+- No Redux, REST, `fetch` of state or React patterns. `doc.data` is a signal.
 
 ## The types are the contract
 

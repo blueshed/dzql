@@ -1,5 +1,10 @@
 # The server
 
+**In a delta app** (`@blueshed/delta` in deps) the server is delta's: give your routes to
+`serve({ ws, routes })` and run it with `run` (`@blueshed/delta/serve`; `/health`, the 404, HMR, the
+pid file and the signals come with it). Never write the `Bun.serve` below in such an app: add the
+route to the routes `serve` takes. The rest of this page is for a Bun app without delta.
+
 ```ts
 // server.ts
 import homepage from "./index.html";
