@@ -15,6 +15,7 @@ import {
   pathDocs, pathSchema, pathSeed, auth, customOwns, everyDoc, mineDoc, ownsCases, whoamiDoc, type Me,
 } from "@blueshed/delta/testing";
 import { postgresInbox, postgresMenuCard } from "./postgres-reads";
+import { quietOn } from "../helpers/pglite";
 
 setLogLevel("silent");
 
@@ -51,7 +52,7 @@ describe("pglite", () => ownsCases(() => ({
     listeners.push(await createDocListener(local.server, pool, { types, auth: withAuth, ledger: true, custom: custom(opts.custom) }));
     return {
       as: (identity?: Me) => (identity ? local.as(identity) : local),
-      backend: { process: { call: (action, msg) => local.call(action, msg), heard }, quiet: () => new Promise((r) => setTimeout(r, 100)), exportTables: async () => ({ tables: {} }) },
+      backend: { process: { call: (action, msg) => local.call(action, msg), heard }, quiet: () => quietOn(pool, heard), exportTables: async () => ({ tables: {} }) },
     };
   },
 })));

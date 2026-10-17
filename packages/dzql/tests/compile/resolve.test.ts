@@ -17,7 +17,7 @@ import type { Pool } from "pg";
 import { setLogLevel } from "@blueshed/delta/logger";
 import { pathDocs, pathPublicDocs, pathSchema } from "@blueshed/delta/testing";
 import { applyFramework, applySql, generateSql } from "../../src/postgres";
-import { openPglite } from "../../src/postgres/pglite";
+import { sharedPglite } from "../helpers/pglite";
 import { compileResolve, resolveFunction } from "../../src/compile/resolve";
 
 setLogLevel("silent");
@@ -34,8 +34,8 @@ const paths = [
   "fo-courses-noted-on:2021-01-01", "fo-board-on:1:2021-01-01", "fo-board-on:1:2999-01-01", "fo-asks:1", "fo-asks-from:ann", "fo-pub-courses:",
 ];
 /** Each value a check reads, put in every place of every document's name. */
-const probes = ["1", " 2 ", "+3", "-4", "007", "0", "9007199254740991", "9007199254740992", "00000000000000000001", "1.5", "1e3", ".5", "Infinity", "NaN",
-  "0x10", "1_000", "abc", "a'b", "So%", "", "2026-02-29", "2024-02-29", "2026-13-01", "0000-01-01", " 2026-01-01 ", "1e400", "1e-400", "true"];
+// one hand-picked row per kind; the full matrix the framework was compared over retired with it (17 October)
+const probes = ["1", " 2 ", "+3", "-4", "0", "9007199254740992", "1.5", "abc", "a'b", "", "2026-02-29", "2024-02-29", "true"];
 const names = [...new Set([
   ...paths,
   ...docs.flatMap((d) => {
@@ -47,7 +47,7 @@ const names = [...new Set([
 let pool: Pool;
 
 beforeAll(async () => {
-  pool = await openPglite();
+  pool = await sharedPglite();
   await applyFramework(pool);
   await applySql(pool, generateSql(pathSchema, docs));   // the compiled resolver, and _delta_resolve_scope sending each to its own
 });

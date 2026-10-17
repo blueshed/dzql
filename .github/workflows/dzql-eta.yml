@@ -24,6 +24,11 @@ on:
     paths: *paths
   workflow_call:
 
+# A newer push to main cancels this one still running: only the latest commit is worth checking.
+concurrency:
+  group: dzql-eta-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+
 jobs:
   # eta's modelling and rendering (src/modelling, src/rendering) and its examples: SQLite in the
   # process and a real browser, no Postgres. Held to 100% coverage (bunfig.toml), each example's
@@ -54,5 +59,8 @@ jobs:
 
       # two workers and a longer wait than a Mac needs: a runner is slower, and its Chrome starts cold
       - run: bun run test:eta:ci
+      # every example's stories by hand in a browser: by-hand.test tells them per push already, so
+      # the whole round is a release's (a tag's push, through publish.yml)
       - run: bun run stories:all
+        if: startsWith(github.ref, 'refs/tags/')
       - run: bun run costs --check

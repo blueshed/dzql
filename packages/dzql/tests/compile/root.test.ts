@@ -17,7 +17,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { setLogLevel } from "@blueshed/delta/logger";
 import { pathDocs, pathPublicDocs, pathSchema, pathSeed } from "@blueshed/delta/testing";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
-import { openPglite } from "../../src/postgres/pglite";
+import { sharedPglite } from "../helpers/pglite";
 import { compileRootThere, rootThereFunction } from "../../src/compile/root";
 
 setLogLevel("silent");
@@ -33,8 +33,12 @@ const paths = [
   "fo-seat-of:1:3", "fo-all-households:", "fo-party:1", "fo-slim:1", "fo-notes-on:2019-01-01", "fo-notes-on:2999-01-01", "fo-notes-on:notadate",
   "fo-courses-noted-on:2021-01-01", "fo-board-on:1:2021-01-01", "fo-board-on:1:2999-01-01", "fo-asks:1", "fo-asks-from:ann", "fo-pub-courses:",
 ];
-/** Each value a check reads, put in every place of every document's name. */
-const probes = ["1", "2", "3", " 2 ", "+3", "007", "0", "9007199254740992", "1.5", "abc", "So", "", "2026-01-01", "2026-02-30", "yes", "true", "a@x"];
+/**
+ * Each value a check reads, put in every place of every document's name: one hand-picked row per
+ * kind (an id, a sign, zero, past 2^53, not whole, text, empty, a date the calendar has not). The
+ * full matrix the framework was compared over retired with it (17 October).
+ */
+const probes = ["1", "+3", "0", "9007199254740992", "1.5", "abc", "", "2026-02-30"];
 const names = [...new Set([
   ...paths,
   ...docs.flatMap((d) => {
@@ -46,7 +50,7 @@ const names = [...new Set([
 let pool: Pool;
 
 beforeAll(async () => {
-  pool = await openPglite();
+  pool = await sharedPglite();
   await applyFramework(pool);
   await applySql(pool, generateSql(pathSchema, docs));   // the compiled root check, and _delta_root_there sending each to its own
   await importTables(pool, pathSchema, pathSeed);

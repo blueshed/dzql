@@ -86,9 +86,9 @@ export function count({ text, points }: Bundle, functions: Script["functions"], 
   }
 }
 
-/** A file this check holds: the app's own code, not a package's or a test's, and not one bun's own table holds. */
+/** A file this check holds: the kernel's own code (src/; an example's is not gated), not a package's or a test's, and not one bun's own table holds. */
 export const judged = (file: string, loaded: string[] = Object.keys(require.cache)): boolean =>
-  file.startsWith(`file://${root}/`) && /\.tsx?$/.test(file) && !/\/node_modules\/|\.test[.-]/.test(file) && !loaded.includes(Bun.fileURLToPath(file));
+  file.startsWith(`file://${root}/src/`) && /\.tsx?$/.test(file) && !/\/node_modules\/|\.test[.-]/.test(file) && !loaded.includes(Bun.fileURLToPath(file));
 
 /** Lines as runs, as bun's table says them: "12, 40-42". */
 export function spans(lines: number[]): string {

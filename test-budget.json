@@ -1,0 +1,7 @@
+{
+  "//": "Seconds each package's fast tier may take on the Mac (bun run affected says when one is over). Over budget is not a failure: the next change to that package brings it back under, by folding or deleting tests before adding. The CI design, 17 October.",
+  "railroad": 3,
+  "delta": 10,
+  "dzql": 45,
+  "paintbrush": 10
+}

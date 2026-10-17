@@ -77,6 +77,14 @@ if (runs.length === 0) {
 for (const { p, scripts } of runs) console.log(`${p.dir}: ${scripts.join(", ")}`);
 if (args.has("--dry-run")) process.exit(0);
 
+// what each package's fast tier may take (test-budget.json): said when over, never a failure
+const budget: Record<string, number> = existsSync(join(root, "test-budget.json")) ? require(join(root, "test-budget.json")) : {};
+// a fixed sleep in a changed test file: wait on an event or waitFor instead (said, never a failure)
+for (const f of files.filter((f) => /\.test\.tsx?$/.test(f) && existsSync(join(root, f)))) {
+  const text = await Bun.file(join(root, f)).text();
+  if (/setTimeout\(r, *\d|Bun\.sleep\(\d/.test(text)) console.log(`note ${f} waits a fixed time: wait on what it waits for`);
+}
+
 let failed: string[] = [];
 const started = performance.now();
 for (const { p, scripts } of runs) {
@@ -84,7 +92,9 @@ for (const { p, scripts } of runs) {
     const t = performance.now();
     const proc = Bun.spawn(["bun", "run", script], { cwd: join(root, "packages", p.dir), stdout: "inherit", stderr: "inherit" });
     const code = await proc.exited;
-    console.log(`${code === 0 ? "ok  " : "FAIL"} ${p.dir} ${script} (${((performance.now() - t) / 1000).toFixed(1)}s)`);
+    const secs = (performance.now() - t) / 1000;
+    const over = script.startsWith("test:fast") && budget[p.dir] !== undefined && secs > budget[p.dir]! ? `, over its budget of ${budget[p.dir]}s` : "";
+    console.log(`${code === 0 ? "ok  " : "FAIL"} ${p.dir} ${script} (${secs.toFixed(1)}s${over})`);
     if (code !== 0) failed.push(`${p.dir} ${script}`);
   }
 }

@@ -19,7 +19,7 @@ import type { Pool } from "pg";
 import { setLogLevel } from "@blueshed/delta/logger";
 import { pathDocs, pathPublicDocs, pathSchema, pathSeed } from "@blueshed/delta/testing";
 import { applyFramework, applySql, generateSql, importTables } from "../../src/postgres";
-import { openPglite } from "../../src/postgres/pglite";
+import { sharedPglite } from "../helpers/pglite";
 import { compileCascades } from "../../src/compile/cascades";
 
 setLogLevel("silent");
@@ -30,7 +30,7 @@ const tables = Object.entries(pathSchema.tables);
 let pool: Pool;
 
 beforeAll(async () => {
-  pool = await openPglite();
+  pool = await sharedPglite();
   await applyFramework(pool);
   await applySql(pool, generateSql(pathSchema, docs));   // the compiled cascades and rows
   await importTables(pool, pathSchema, pathSeed);

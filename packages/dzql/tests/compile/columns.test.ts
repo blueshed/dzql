@@ -27,7 +27,7 @@ import type { Pool } from "pg";
 import { setLogLevel } from "@blueshed/delta/logger";
 import { pathDocs, pathPublicDocs, pathSchema } from "@blueshed/delta/testing";
 import { applyFramework, applySql, generateSql } from "../../src/postgres";
-import { openPglite } from "../../src/postgres/pglite";
+import { sharedPglite } from "../helpers/pglite";
 import { columnsFunction, compileColumns } from "../../src/compile/columns";
 
 setLogLevel("silent");
@@ -38,7 +38,7 @@ const tables = Object.entries(pathSchema.tables);
 let pool: Pool;
 
 beforeAll(async () => {
-  pool = await openPglite();
+  pool = await sharedPglite();
   await applyFramework(pool);
   await applySql(pool, generateSql(pathSchema, docs));   // the compiled columns and checks
   // a check's answer, compiled or by the columns given: ok, or its code and message

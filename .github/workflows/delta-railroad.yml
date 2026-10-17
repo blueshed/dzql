@@ -15,6 +15,11 @@ defaults:
   run:
     working-directory: packages/delta
 
+# A newer push to main cancels this one still running: only the latest commit is worth checking.
+concurrency:
+  group: delta-railroad-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest

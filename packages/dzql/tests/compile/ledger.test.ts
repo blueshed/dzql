@@ -30,7 +30,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { setLogLevel } from "@blueshed/delta/logger";
 import { pathDocs, pathPublicDocs, pathSchema, pathSeed } from "@blueshed/delta/testing";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
-import { openPglite } from "../../src/postgres/pglite";
+import { sharedPglite } from "../helpers/pglite";
 import { compileLedger } from "../../src/compile/ledger";
 
 setLogLevel("silent");
@@ -52,7 +52,7 @@ const names = [
 let pool: Pool;
 
 beforeAll(async () => {
-  pool = await openPglite();
+  pool = await sharedPglite();
   await applyFramework(pool);
   await applySql(pool, generateSql(pathSchema, docs));   // the compiled ledger reads
   await importTables(pool, pathSchema, pathSeed);

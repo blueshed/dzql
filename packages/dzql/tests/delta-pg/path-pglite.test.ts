@@ -17,6 +17,7 @@ import {
 import { postgresEmails, postgresGuests, postgresInbox, postgresMenuCard, postgresOpenSeats } from "./helpers/postgres-reads";
 import { q } from "@blueshed/delta/backend";
 import { waitFor } from "@blueshed/delta/testing";
+import { quietOn } from "../helpers/pglite";
 
 setLogLevel("silent");
 
@@ -44,8 +45,7 @@ beforeEach(async () => {
   listeners.push(await createDocListener(local.server, pool, { types: [...pathDocs, ...pathPublicDocs].map((def) => docTypeFromDef(def, pool)), ledger: true, custom: [postgresInbox, postgresOpenSeats, postgresMenuCard, postgresEmails, postgresGuests] }));
   backend = {
     process: { call: (action, msg) => local.call(action, msg), heard },
-    // NOTIFY is heard after the write's commit, and fetched then: a beat.
-    quiet: () => new Promise((r) => setTimeout(r, 100)),
+    quiet: () => quietOn(pool, heard),
     exportTables: () => exportTables(pool, pathSchema),
     storeSetsT: async () => {
       await pool.query("CREATE FUNCTION fo_t() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.t := upper(NEW.email); RETURN NEW; END $$");
@@ -328,7 +328,7 @@ describe("pglite: a listener on framework SQL older than it", () => {
       setLogLevel("silent");
       const b: PathBackend = {
         process: { call: (action, msg) => local.call(action, msg), heard },
-        quiet: () => new Promise((r) => setTimeout(r, 100)),
+        quiet: () => quietOn(behind, heard),
         exportTables: () => exportTables(behind, pathSchema),
       };
       const copies = await openAll(b.process, ["fo-household:1", "fo-board:1", "fo-inbox:a@x", "fo-inbox:new@x"]);

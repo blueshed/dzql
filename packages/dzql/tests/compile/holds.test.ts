@@ -17,7 +17,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { setLogLevel } from "@blueshed/delta/logger";
 import { pathDocs, pathPublicDocs, pathSchema, pathSeed } from "@blueshed/delta/testing";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
-import { openPglite } from "../../src/postgres/pglite";
+import { sharedPglite } from "../helpers/pglite";
 import { compileHolds, holdsFunction } from "../../src/compile/holds";
 
 setLogLevel("silent");
@@ -38,7 +38,7 @@ const colls = Object.keys(pathSchema.tables);
 let pool: Pool;
 
 beforeAll(async () => {
-  pool = await openPglite();
+  pool = await sharedPglite();
   await applyFramework(pool);
   await applySql(pool, generateSql(pathSchema, docs));   // the compiled holds, and _delta_doc_holds sending each to its own
   await importTables(pool, pathSchema, pathSeed);

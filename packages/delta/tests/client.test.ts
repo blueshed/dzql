@@ -72,8 +72,8 @@ function startFakeDeltaServer(initialState: any): string {
 describe("openDoc per-client state", () => {
   test("two connectWs instances hold independent openDoc state", async () => {
     const url = startFakeDeltaServer({ items: {} });
-    const alice = connectWs(url);
-    const bob   = connectWs(url);
+    const alice = connectWs(url, { backoff: 10 });
+    const bob   = connectWs(url, { backoff: 10 });
 
     const aliceDoc = openDoc<{ items: Record<string, any> }>("items:", alice);
     const bobDoc   = openDoc<{ items: Record<string, any> }>("items:", bob);
@@ -113,7 +113,7 @@ describe("openDoc per-client state", () => {
 describe("a broadcast leaves what changed fresh, and the rest as it was", () => {
   test("the document and a collection's map keep their references; the row a field lands in is a new object, and so is a root a field of it is replaced in; a row left alone is the same", async () => {
     const url = startFakeDeltaServer({ settings: { theme: "dark" }, shapes: { s1: { x: 0, y: 0 }, s2: { x: 1, y: 1 } } });
-    const client = connectWs(url);
+    const client = connectWs(url, { backoff: 10 });
     const doc = openDoc<{ settings: { theme: string }; shapes: Record<string, { x: number; y: number }> }>(
       "shapes:",
       client,
@@ -146,7 +146,7 @@ describe("a broadcast leaves what changed fresh, and the rest as it was", () => 
 describe("connectWs.close()", () => {
   test("suppresses reconnect after the server stops", async () => {
     const url = startEchoServer();
-    const client = connectWs(url);
+    const client = connectWs(url, { backoff: 10 });
 
     // Round-trip once to confirm the socket is alive.
     const result = await client.send({ action: "ping" });
@@ -157,10 +157,10 @@ describe("connectWs.close()", () => {
     server = null;
 
     // Give the reconnect loop a chance to misbehave. If close() is broken,
-    // the setTimeout(connect) in reconnectingWebSocket fires after ~1s and
+    // the setTimeout(connect) in reconnectingWebSocket fires after ~20 ms (backoff 10, doubled) and
     // we'd see a failed connection attempt in the logs / hang. If close()
     // is working, nothing happens.
-    await new Promise((r) => setTimeout(r, 1200));
+    await new Promise((r) => setTimeout(r, 100));
 
     // `send` must reject promptly now that the socket is closed.
     await expect(client.send({ action: "ping" })).rejects.toMatchObject({
@@ -170,7 +170,7 @@ describe("connectWs.close()", () => {
 
   test("close() is idempotent", () => {
     const url = startEchoServer();
-    const client = connectWs(url);
+    const client = connectWs(url, { backoff: 10 });
     client.close();
     expect(() => client.close()).not.toThrow();
   });
@@ -194,7 +194,7 @@ describe("in-flight requests on transport drop", () => {
       },
     });
     const url = `ws://localhost:${server.port}/ws`;
-    const client = connectWs(url);
+    const client = connectWs(url, { backoff: 10 });
 
     // Wait for the socket to open so `ready` resolves and the request actually
     // goes into `pending` (rather than awaiting `ready`).
@@ -244,7 +244,7 @@ describe("onOps reconciliation on reconnect", () => {
     server = makeServer(0, { items: { "1": { id: 1 }, "2": { id: 2 } } });
     const port = server.port;
     const url = `ws://localhost:${port}/ws`;
-    const client = connectWs(url);
+    const client = connectWs(url, { backoff: 10 });
     const doc = openDoc<{ items: Record<string, { id: number }> }>("items:", client);
     await doc.ready;
 
@@ -319,7 +319,7 @@ describe("version gap detection + resync", () => {
       { result: { items: { "1": { id: 1 } }, _v: 5 } },                       // first open @ v5
       { result: { items: { "1": { id: 1 }, "2": { id: 2 } }, _v: 7 } },        // resync open @ v7
     ]);
-    const client = connectWs(srv.url);
+    const client = connectWs(srv.url, { backoff: 10 });
     const doc = openDoc<{ items: Record<string, { id: number }> }>("items:", client);
     await doc.ready;
     // `_v` is stripped before it reaches doc.data.
@@ -349,7 +349,7 @@ describe("version gap detection + resync", () => {
 
   test("applies a contiguous broadcast and ignores a stale/duplicate version", async () => {
     const srv = startVersionedServer([{ result: { items: { "1": { id: 1 } }, _v: 5 } }]);
-    const client = connectWs(srv.url);
+    const client = connectWs(srv.url, { backoff: 10 });
     const doc = openDoc<{ items: Record<string, { id: number }> }>("items:", client);
     await doc.ready;
 
@@ -375,7 +375,7 @@ describe("version gap detection + resync", () => {
       { result: { items: { "1": { id: 1 } }, _v: 5 } },              // first open @ v5
       { result: { items: { "1": { id: 1 }, "z": { id: "z" } }, _v: 10 } }, // resync @ v10
     ]);
-    const client = connectWs(srv.url);
+    const client = connectWs(srv.url, { backoff: 10 });
     const doc = openDoc<{ items: Record<string, { id: any }> }>("items:", client);
     await doc.ready;
     expect(srv.openCount()).toBe(1);
@@ -403,7 +403,7 @@ describe("version gap detection + resync", () => {
       { result: { items: { "1": { id: 1 } }, _v: 5 } },                  // first open @ v5
       { result: { items: { "1": { id: 1 }, "2": { id: 2 } }, _v: 7 } },  // resync @ v7
     ]);
-    const client = connectWs(srv.url);
+    const client = connectWs(srv.url, { backoff: 10 });
     const doc = openDoc<{ items: Record<string, { id: number }> }>("items:", client);
     await doc.ready;
     const received: DeltaOp[][] = [];
@@ -433,7 +433,7 @@ describe("version gap detection + resync", () => {
       { result: { items: { "1": { id: 1 } } } },
       { result: { items: { "2": { id: 2 } } } },
     ]);
-    const client = connectWs(srv.url);
+    const client = connectWs(srv.url, { backoff: 10 });
     const doc = openDoc<{ items: Record<string, { id: number }> }>("items:", client);
     await doc.ready;
 
@@ -471,7 +471,7 @@ describe("version gap detection + resync", () => {
         },
       },
     });
-    const client = connectWs(`ws://localhost:${server.port}/ws`);
+    const client = connectWs(`ws://localhost:${server.port}/ws`, { backoff: 10 });
     const received: DeltaOp[][] = [];
     const doc = openDoc<{ items: Record<string, { id: any }> }>("items:", client);
     doc.onOps((ops) => received.push(ops));
@@ -604,6 +604,7 @@ describe("onConnect: saying who you are before the docs re-open", () => {
     const port = server.port;
     let connects = 0;
     const client = connectWs(`ws://localhost:${port}/ws`, {
+      backoff: 10,
       onConnect: async (ws) => { connects++; await ws.send({ action: "call", method: "authenticate", params: { token: "t" } }); },
     });
     const doc = openDoc<{ rows: string[] }>("rows:", client);
@@ -638,6 +639,7 @@ describe("onConnect: saying who you are before the docs re-open", () => {
       },
     });
     const client = connectWs(`ws://localhost:${server.port}/ws`, {
+      backoff: 10,
       onConnect: (ws) => ws.send({ action: "call", method: "authenticate", params: {} }),
     });
     const answer = client.send({ action: "call", method: "ping" });
@@ -649,7 +651,7 @@ describe("onConnect: saying who you are before the docs re-open", () => {
     const probe = Bun.serve({ port: 0, fetch: () => new Response("x") });
     const port = probe.port;
     probe.stop(true);
-    const client = connectWs(`ws://localhost:${port}/ws`);   // nothing listening: the first attempt fails
+    const client = connectWs(`ws://localhost:${port}/ws`, { backoff: 10 });   // nothing listening: the first attempt fails
     const answer = client.send({ action: "call", method: "ping" });
     await Bun.sleep(200);
     server = Bun.serve({
@@ -664,6 +666,7 @@ describe("onConnect: saying who you are before the docs re-open", () => {
   test("nothing else goes out before onConnect is done", async () => {
     server = makeAuthServer(0, ["x"]);
     const client = connectWs(`ws://localhost:${server.port}/ws`, {
+      backoff: 10,
       onConnect: (ws) => ws.send({ action: "call", method: "authenticate", params: {} }),
     });
     const doc = openDoc<{ rows: string[] }>("rows:", client);   // opened while connecting
@@ -680,6 +683,7 @@ describe("onConnect: saying who you are before the docs re-open", () => {
     server = makeAuthServer(0, ["x"]);
     const answers: unknown[] = [];
     const client = connectWs(`ws://localhost:${server.port}/ws`, {
+      backoff: 10,
       onConnect: async () => {
         answers.push(await call("authenticate", { token: "t" }));   // no client: through DI
         await Bun.sleep(5);                                          // a token refreshed, say
@@ -715,6 +719,7 @@ describe("onConnect: saying who you are before the docs re-open", () => {
     let letFirstGo!: () => void;
     const firstMayGo = new Promise<void>((r) => (letFirstGo = r));
     const client = connectWs(`ws://localhost:${server.port}/ws`, {
+      backoff: 10,
       onConnect: () => (++hooks === 1 ? firstMayGo : undefined),   // the first waits on something that is not the socket
     });
     await new Promise<void>((r) => client.on("close", () => r()));   // the first socket has dropped; its onConnect still runs
@@ -752,7 +757,7 @@ describe("send resolves after its own echo", () => {
         },
       },
     });
-    const client = connectWs(`ws://localhost:${server.port}/ws`);
+    const client = connectWs(`ws://localhost:${server.port}/ws`, { backoff: 10 });
     const doc = openDoc<{ n: number }>("n:", client);
     await doc.ready;
     const ack = await doc.send([{ op: "replace", path: "/n", value: 1 }]);
@@ -778,7 +783,7 @@ describe("send(ops, { inverse: true }) resolves with the ops as applied: the id 
   }
 
   async function asksForTheId(url: string) {
-    const client = connectWs(url);
+    const client = connectWs(url, { backoff: 10 });
     const doc = openDoc<any>("venue:1", client);
     await doc.ready;
     const ack = await doc.send([{ op: "add", path: "/rooms/-", value: { name: "attic" } }], { inverse: true });
@@ -905,7 +910,7 @@ describe("a document the server lets go (#17)", () => {
 
   test("taken off it (404), the client opens it again: refused, its copy is let go -- null, and onOps told so", async () => {
     const srv = letGoServer();
-    const client = connectWs(srv.url);
+    const client = connectWs(srv.url, { backoff: 10 });
     const doc = openDoc<any>("items:", client);
     await doc.ready;
     const told: DeltaOp[][] = [];
@@ -921,7 +926,7 @@ describe("a document the server lets go (#17)", () => {
 
   test("put back before it asks, the client's open again is taken: its copy is the server's, and it hears on", async () => {
     const srv = letGoServer();
-    const client = connectWs(srv.url);
+    const client = connectWs(srv.url, { backoff: 10 });
     const doc = openDoc<any>("items:", client);
     await doc.ready;
     srv.state.snapshot = { items: { "1": { id: 1 }, "2": { id: 2 } }, _v: 3 };
@@ -936,7 +941,7 @@ describe("a document the server lets go (#17)", () => {
 
   test("a write in flight when its document is let go resolves then, not after waiting for an echo that never comes", async () => {
     const srv = letGoServer();
-    const client = connectWs(srv.url);
+    const client = connectWs(srv.url, { backoff: 10 });
     const doc = openDoc<any>("items:", client);
     await doc.ready;
     srv.state.refuse = 404;
@@ -952,7 +957,7 @@ describe("a document the server lets go (#17)", () => {
   test("its session over (401), the client connects again: onConnect signs it in, and its documents re-open", async () => {
     const srv = letGoServer();
     let signIns = 0;
-    const client = connectWs(srv.url, { onConnect: async (ws) => { signIns++; await ws.send({ action: "call", method: "authenticate", params: {} }); } });
+    const client = connectWs(srv.url, { backoff: 10, onConnect: async (ws) => { signIns++; await ws.send({ action: "call", method: "authenticate", params: {} }); } });
     const doc = openDoc<any>("items:", client);
     await doc.ready;
     srv.state.snapshot = { items: { "9": { id: 9 } }, _v: 5 };

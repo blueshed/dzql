@@ -2,6 +2,8 @@
 # default, so a plain `bun test` and its parallel workers read it. dzql's own tests, which need
 # Postgres, run with tests/bunfig.toml (bun run test).
 [test]
+# 100% guards the kernel (src/rendering, src/modelling), not the examples: an example keeps its stories
+# and its server test, and is not held to every line (17 October, the CI design's call, on Peter's word).
 # coverage is always on, and 100% is a gate, not an aim: the run fails below it. The table holds
 # only what a test loads in its own process, so three kinds of file are outside it, by design.
 # A script that only runs as one: src/rendering/start.ts, src/rendering/cli.ts and src/modelling/stories-run.ts, thin over tested
@@ -21,4 +23,4 @@ coverageThreshold = 1.0
 # hjeli's model and predicates (hjeli: the modeller before eta's), covered by its own tests (its README.md).
 # An example's stories.ts is a declaration `bun run stories:all` runs whole; a test that imports
 # one to run a story or two would otherwise count the rest as uncovered
-coveragePathIgnorePatterns = ["**/node_modules/**", "src/compile/**", "src/postgres/**", "src/cli/**", "tests/**", "../delta/**/*", "../railroad/**/*", "**/delta/src/**", "**/railroad/*.ts", "examples/modeling/loader/model/**", "examples/*/stories.ts", "examples/modeling/loader/londons/stories.ts"]
+coveragePathIgnorePatterns = ["**/node_modules/**", "src/compile/**", "src/postgres/**", "src/cli/**", "tests/**", "../delta/**/*", "../railroad/**/*", "**/delta/src/**", "**/railroad/*.ts", "examples/**"]

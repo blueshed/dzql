@@ -42,7 +42,7 @@
     "prepare": "bun -e \"import { cpSync, existsSync, rmSync } from 'node:fs'; const from = ['../railroad', 'node_modules/@blueshed/railroad'].map((p) => p + '/.claude/skills/railroad').find((p) => existsSync(p)); if (from) { rmSync('.claude/skills/railroad', { recursive: true, force: true }); cpSync(from, '.claude/skills/railroad', { recursive: true }); }\"",
     "test": "bun test tests/",
     "ci": "bun check && bun check -p examples/kanban && bun test tests/",
-    "test:fast": "bun run ci"
+    "test:fast": "bun check && bun check -p examples/kanban && DELTA_LAW_SEEDS=1 DELTA_LAW_STEPS=50 bun test tests/"
   },
   "peerDependencies": {
     "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0 || ^0.16.0"

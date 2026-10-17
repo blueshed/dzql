@@ -88,6 +88,20 @@ what is open across them. Newest first.
   Bun.WebView rules), from paintbrush's `tests/browser.ts`, which keeps only its `refuseWrites`.
 - **delta's `registerDoc` takes `accept`** (validation, and an empty write writes nothing), so
   paintbrush's `message-api.ts` is a type and one call.
+- **Tests that help, not slow** (the CI design, `ci-design/design.md`, steps 1 to 4 and its four
+  calls, taken on Peter's word): every workflow cancels a stale run on main (`concurrency`); delta's
+  fast tier runs the law on one seed of 50 steps (CI keeps 3 of 200; a release, more); delta's client
+  takes a first reconnect `backoff` (default 500 ms), so its tests wait 10 ms, not a second
+  (client tests 8.2 s to 1.6 s); dzql's compile tests share one PGlite, its `public` schema made
+  afresh for each file (9.5 s to 6.1 s); the path cases run once on PGlite (the duplicate
+  `tests/delta/path-pglite.test.ts` is gone) and wait on what was heard, not a 100 ms beat (path
+  and owns, about 15 s together); the framework matrices in `tests/compile/root` and `resolve`
+  retired to one hand-picked probe row per kind (2,722 tests to 1,323, every kept answer the same);
+  eta's 100% coverage guards the kernel, not the examples; in CI delta's path cases run on the
+  Postgres server, PGlite keeping owns, permissions and the law; `test-budget.json` gives each
+  package's fast tier its seconds, which `bun run affected` says when over, beside a note on any
+  changed test that waits a fixed time; `stories:all` runs at a release, as `by-hand.test` tells
+  them per push.
 
 ### Fixed
 

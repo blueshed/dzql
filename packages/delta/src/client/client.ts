@@ -92,16 +92,16 @@ function freshen(doc: any, ops: DeltaOp[]): void {
 // Reconnecting WebSocket
 // ---------------------------------------------------------------------------
 
-function reconnectingWebSocket(url: string): WebSocket {
+function reconnectingWebSocket(url: string, first = 500): WebSocket {
   let ws!: WebSocket;
   const proxy = new EventTarget();
-  let backoff = 500;
+  let backoff = first;
   let closed = false;
 
   function connect() {
     ws = new WebSocket(url);
     ws.addEventListener("open", () => {
-      backoff = 500;
+      backoff = first;
       proxy.dispatchEvent(new Event("open"));
     });
     ws.addEventListener("message", (e: MessageEvent) => {
@@ -255,6 +255,8 @@ export interface ConnectOptions {
    * logged, and the documents open anyway (and may 401).
    */
   onConnect?: (client: WsClient) => unknown;
+  /** The first wait before a reconnect, in ms, doubled at each failed try up to 30 s. Default 500 (tests pass a few). */
+  backoff?: number;
 }
 
 /**
@@ -281,7 +283,7 @@ export function connectWs(
   const url = socketUrl(wsPath);
   if (opts?.clientId) url.searchParams.set("clientId", opts.clientId);
   const connected = signal(false);
-  const ws = reconnectingWebSocket(url.href);
+  const ws = reconnectingWebSocket(url.href, opts?.backoff);
   const pending = new Map<
     number,
     { resolve: (v: any) => void; reject: (e: any) => void }
