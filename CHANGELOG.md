@@ -212,6 +212,12 @@ what is open across them. Newest first.
   railroad, delta and dzql from the checkout, held by `overrides`. The eval's record gains a scorecard
   (tests, must-nots, minutes and lines a stage); run 2 is the baseline, its minutes and lines worked
   out from its commits. The Postgres step adds only `pg` and PGlite, since the app has dzql already.
+- **The Shed, run 4** (`packages/paintbrush/evals/shed/runs/2026-10-17-run-4.md`), at b8953ac5 by
+  the same driver: 31 of 31 stories told, 48.8 minutes (67), 2,942 lines (3,191). The kit is lent
+  as a whole, and three of stage 5's four `owns` are paths (run 3: none). Not every must-not
+  passes: stage 4 fails (the due date worked out in the page, not stored), and stage 5 is partly
+  (a field's loans owned by a function; the list kept as JSON in a table the app writes over
+  delta's internals). Its friction is todo #39 to #42.
 - **The Shed, run 3** (`packages/paintbrush/evals/shed/runs/2026-10-17-run-3.md`), made with `--local`
   at 3b321038 and run by `evals/shed/driver/`: 31 of 31 stories told by a test (run 2: 8), stage 3's
   must-not passes (run 2 failed it), and run 2's friction is gone (out worked out, unique
