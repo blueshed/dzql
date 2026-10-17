@@ -9,8 +9,8 @@
   and two sets of sample designs (`design/`, `paintbrush/`).
 - `first-app.md` -- a first app, step by step: chat, then leave, in the order you meet the words.
 - `least-resistance.md` -- why eta suits an AI that builds apps, and what would make it the easy path.
-- `eta-app-notes.md` -- the why behind the eta-app skill: the numbers, the reasons and the sketches
-  (OAuth2, LDAP) that would weigh the skill down.
+- `eta-app-notes.md` -- the why behind the eta-app skill: the numbers and the reasons that would weigh
+  the skill down.
 
 **The record**: what the kernel was asked for and how it was reviewed, all done; kept because code
 comments and the changelogs cite it.
