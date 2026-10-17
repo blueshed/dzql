@@ -119,7 +119,9 @@ same thing pass.
 **Make the app from the packages as they are**, never npm's: from a blueshed/dzql checkout,
 `bun packages/create-blueshed/cli.ts ~/Workshop/shed --local` (or `BLUESHED_LOCAL=1`). The app takes
 railroad, delta and dzql from the checkout (`file:` dependencies, held by `overrides`, so a stage that
-adds one again keeps it), and nothing waits on a release.
+adds one again keeps it), and nothing waits on a release. `evals/shed/driver/run.ts <app>` then runs the five stages as runs 2
+and 3 were run (a fresh `claude -p` each, one line, the people and the stage's stories), commits after
+each, and writes each stage's minutes, tests and lines to `score.json`.
 
 **The scorecard**, at the top of the record, so two runs compare at a glance:
 

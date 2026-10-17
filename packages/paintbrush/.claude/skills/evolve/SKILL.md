@@ -9,7 +9,9 @@ description: "Grows this app from its stories: a new shared document, two docume
 
 **Think in documents, not entities.** Ask "what does someone need in front of them to do this?", not "what are the tables?" The tables follow from the documents.
 
-**Storage grows; the page does not.** A shared JSON document does a lot on its own. SQLite earns its place when documents share rows, or for undo and history. Postgres when servers share the data, or people should see only their own. The page and its documents stay the same as the storage grows.
+**Three stores, one page.** A JSON file, SQLite or Postgres keep the same documents, and the page stays the same on each. The only reason to move is ease or performance: the JSON file is the easiest; SQLite when documents share rows, or for undo and history; Postgres when servers share the data, or people should see only their own.
+
+**This is the thick client**: the browser draws the page with railroad. The thin one is eta (`bun create dzql`), where the server draws it; an applet (a railroad component) works in either. Pick for ease or performance.
 
 ## Order of work
 

@@ -45,18 +45,3 @@ and the sketches that would weigh the skill down. Nothing here is a rule the ski
 - Escape and the back button send the editing form someone is in first, because WebKit fires no
   `focusout` for a field a render takes out: a drawer's words would be lost with it.
 - The assistants' tools (`src/rendering/client/tools.ts`) cost 2.1 KB gzipped, for the app that imports them.
-
-## Signing in, not built
-
-OAuth2 and LDAP plug in behind the shapes leave uses (`examples/leave/signin.ts`):
-
-- **LDAP** is a password checked elsewhere: the `/login` route binds as the person (a client such
-  as `ldapts`, a new dependency to ask about) where leave calls `Bun.password.verify`; the rest is
-  the same.
-- **OAuth2 / OpenID Connect** is two routes: `GET /login` redirects to the provider with a `state`
-  and a PKCE challenge kept in a short cookie; `GET /callback` checks the state, exchanges the code
-  with `fetch`, verifies the id_token against the provider's keys (`crypto.subtle`, or `jose`, to ask
-  about), finds the person by email or subject, then starts a fresh session and redirects home.
-  `identify` is not needed: the cookie carries it from there.
-- A proxy that does OAuth2 for the app (oauth2-proxy, Cloudflare Access) is `identify`'s header case.
-

@@ -24,7 +24,8 @@ entities; the tables follow.
 
 1. **Name the documents**: for each thing a person does, what must be in front of them.
 2. **Declare them**: `defineSchema` (tables, `parent` chains) and `defineDoc` (prefix, root,
-   include, scope) in one `types.ts`.
+   include, scope) in one module the server and client both import (in a paintbrush app, each
+   resource's `<name>-api.ts`).
 3. **Keep them in the smallest backend that fits** (the JSON file first), registered on
    `createWs()` and served with the app's routes by `serve` / `run` (`reference/server.md`), or
    on `createLocal()` (in-process).
