@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The evolve skill says who sees what as `owns` paths, and how parts go with their whole**
+  (Shed run 3): `postgres.md` gives each shape (a member's own, a team's, the kitchen for the
+  cooks) and that rows hang under what decides who sees them; `sqlite.md` and `migrations.md` say
+  a line names the whole and its parts come with it, and how rows become parts in an `up`; and
+  that rows documents share move to SQLite together. The skill's examples no longer use the Shed's
+  nouns, which the eval holds out.
+
 - **The docs and the evolve skill say the shape, and every step adds its story**: CLAUDE.md and
   the README have the routes-and-resources table (both sides, joined by documents, entities
   behind), and each evolve reference adds its `story(...)` to `stories.ts` and names its tests

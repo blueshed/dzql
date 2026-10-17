@@ -51,6 +51,8 @@ export const permissionDocs = {
   venue: defineDoc("venue:", { root: "venues", include: [], owns: "@org_id->members[org_id=$]{active}.person_id" }),
   /** An org's venues, for its active members: the path starts at the name's value. */
   venuesOf: defineDoc("venues-of:", { root: "venues", include: [], scope: { org_id: ":org" }, owns: "members[org_id=@org_id]{active}.person_id" }),
+  /** Every venue, for North's active members: a list has no row to start from, so its path starts at a table. */
+  venues: defineDoc("venues:", { root: "venues", include: [], owns: "members[org_id=1]{active}.person_id" }),
   /** Every membership, for anyone signed in. */
   members: defineDoc("members:", { root: "members", include: [], owns: "AUTHENTICATED" }),
   /** Nobody's. */
@@ -134,6 +136,12 @@ export function permissionCases(name: string, backend: () => PermissionBackend):
       expect((await p.as(ben).call("undo", { cursor: "c1" })).error).toEqual(NOT_FOUND);
       expect((await p.as(ann).call("undo", { cursor: "c1" })).error).toBeUndefined();
       expect((await p.as(ann).call("open", { doc: "post:1" })).result.posts.title).toBe("Ann's");
+    });
+
+    test("a list for some people: a path that starts at a table opens every venue for North's active members; to anyone else it is not there", async () => {
+      const p = await backend().start(all);
+      expect(Object.keys((await p.as(ann).call("open", { doc: "venues:" })).result.venues)).toEqual(["1", "2"]);
+      expect((await p.as(cy).call("open", { doc: "venues:" })).error).toEqual(NOT_FOUND);
     });
 
     test("TRUE, FALSE and AUTHENTICATED: anyone signed in opens members:; nobody opens sealed:", async () => {

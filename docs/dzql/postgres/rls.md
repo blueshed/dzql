@@ -28,7 +28,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO example_a
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO example_app;
 ```
 
-With `auth.asSqlArg` set, every `docTypeFromDef({ auth, owns })` query runs as the identity:
+With `auth.asSqlArg` set, every `docTypeFromDef(def, pool, { auth })` query runs as the identity:
 the `*_as` stored functions set `app.user_id` with `set_config(…, true)` in the same statement
 (one round trip). `withAppAuth(pool, id, fn)` does the same for your own queries
 (`BEGIN`, `set_config`, `fn`, `COMMIT`). `NULLIF(…, '')` keeps an unbound session from
@@ -41,7 +41,7 @@ throwing on the cast.
 
 - an **admin pool** for schema and `jwtAuth` (login and register write `users` unscoped);
 - an **app pool**, a role without `BYPASSRLS`, for every document:
-  `createDocListener(ws, appPool, { types: [docTypeFromDef(def, appPool, { auth, owns })], auth })`.
+  `createDocListener(ws, appPool, { types: [docTypeFromDef(def, appPool, { auth })], auth })`, each `def` saying who may have it with its `owns` path.
 
 An implied document's root is made inside `delta_apply`, under the writer's `app.user_id`, so
 `WITH CHECK` sees it. A temporal table's `current_<table>` view is `security_invoker` (Postgres 15+), so the policy
@@ -51,9 +51,9 @@ holds through it.
 
 - **RLS filters reads, not the channel.** The listener reads the change log with no identity;
   one name several identities open hands each every row written through it. One name per
-  owner, checked by `owns` (a path, or delta-doc's `ownership.md`). `tests/postgres-rls.test.ts` pins it as a
+  owner, checked by its `owns` path (delta-doc's `ownership.md`). `tests/postgres-rls.test.ts` pins it as a
   `NOSUPERUSER` role.
-- **No bare `pool.query` with auth on**: go through `docTypeFromDef({ auth, owns })`, or
+- **No bare `pool.query` with auth on**: go through `docTypeFromDef(def, pool, { auth })`, or
   `withAppAuth` / `*_as`, so `app.user_id` is bound.
 - `SET LOCAL` cannot bind parameters: use `set_config(name, value, true)`.
 - **Who is told does not depend on what the writer may read**: `_delta_holders` is

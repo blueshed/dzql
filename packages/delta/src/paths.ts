@@ -21,7 +21,9 @@
  *
  * Where a path starts: a single document's root row (`@owner_id` is the row's); a document with a
  * scope, the row its name points at (`@org_id` is the name's value for that key). A document whose
- * name gives no row (a list with no scope) takes TRUE, FALSE or AUTHENTICATED alone, else nobody.
+ * name gives no row (a list with no scope) has no @field to start from: an @field there reaches
+ * nobody, and its path starts at a table (`members[org_id=1].person_id`) or is TRUE, FALSE or
+ * AUTHENTICATED.
  *
  * `checkPath` says what is wrong with a path against the schema (thrown at registration, naming
  * the document); `pathSql` lowers it to a boolean SQL expression, the same on SQLite and Postgres

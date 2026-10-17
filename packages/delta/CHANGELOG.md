@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A permission case for a list for some people** (`src/cases/permissions.ts`): `venues:`,
+  every venue for North's active members, a path that starts at a table
+  (`members[org_id=1]{active}.person_id`). `paths.ts`'s header no longer says a list takes only
+  TRUE, FALSE or AUTHENTICATED. The skill's `ownership.md` leads with paths; `auth.md` and
+  `sqlite.md` register by path, not a function on the name; `schema.md` says a part goes where its
+  whole goes.
+
 - **`schemaContractCases` and `upgradeCases` in `./testing`** (`src/cases/upgrades.ts`), over an
   `UpgradeBackend`: the schema-contract and migrate tests as cases, asked of SQLite here and of
   Postgres by dzql. `MigrationBackend.makeTables` takes the documents as an optional third argument.

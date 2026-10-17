@@ -8,6 +8,18 @@ what is open across them. Newest first.
 
 ### Fixed
 
+- **The skills teach `owns` as a path, and a part as going where its whole goes** (17 October,
+  Shed run 3's two "partly" must-nots). Run 3 wrote `owns: (me, name) => name === "member:" + me.id`,
+  near enough the line delta-doc's sign-in page showed (`owns: (me, name) => name === \`mine:${me.id}\``);
+  its ownership page led with a function and said a list could take no path. Now delta-doc's
+  `ownership.md` leads with paths in their shapes (one's own, a group's through its memberships,
+  a list for some people, anyone signed in), says rows hang under what decides who sees them, and
+  keeps a function for what no path can say; its sign-in and SQLite pages register by path.
+  delta's permission cases gain the list for some people (a path that starts at a table), asked
+  of SQLite, the JSON file and PGlite. A part under its whole is already lent only with it: the
+  skills now say so (a write names the whole), and how rows become parts in a migration. No API
+  changed.
+
 - **Two bugs found by the code review** (17 October): a person's id on Postgres sign-in overflowed
   past 2^31 (dzql); a session's own echo dropped any value equal to its id, so session 3 joining
   room "3" was told an empty room (dzql/rendering). Each has a test that failed before. railroad's
