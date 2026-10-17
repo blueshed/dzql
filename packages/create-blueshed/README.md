@@ -11,7 +11,9 @@ bun dev
 
 Needs Bun 1.4.3 or later. This package is only the way in: the app is `packages/paintbrush`, a
 working app with its own tests, and publishing this package copies it in. `--no-install` copies it
-only; `--no-git` makes no repository.
+only; `--no-git` makes no repository. `--local` (or `BLUESHED_LOCAL=1`), run from a blueshed/dzql
+checkout, takes railroad, delta and dzql from it rather than npm, held by `overrides`: for trying the
+packages as they are, before a release (the Shed eval is made so).
 
 ## Next release
 

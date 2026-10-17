@@ -1,9 +1,9 @@
 # Store in Postgres
 
-When servers share the data, or people should see only their own. That step is **dzql**, delta's Postgres: the schema, documents, history of migrations, page and tests carry over from [sqlite.md](sqlite.md); `orderDocs` and its imports change. A resource still on SQLite (the people of [auth.md](auth.md)) stays there: each resource moves when it needs to. A Postgres server when `DATABASE_URL` names one (what you deploy); else PGlite, Postgres in this process, keeps it in the data folder, for development and tests.
+When servers share the data, or people should see only their own. That step is **dzql**, delta's Postgres (the app has it already, for its stories; the database packages are added here): the schema, documents, history of migrations, page and tests carry over from [sqlite.md](sqlite.md); `orderDocs` and its imports change. A resource still on SQLite (the people of [auth.md](auth.md)) stays there: each resource moves when it needs to. A Postgres server when `DATABASE_URL` names one (what you deploy); else PGlite, Postgres in this process, keeps it in the data folder, for development and tests.
 
 ```sh
-bun add dzql pg @electric-sql/pglite
+bun add pg @electric-sql/pglite
 bun add -d @types/pg
 ```
 

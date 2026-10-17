@@ -11,6 +11,8 @@ in the code and in `bun test`. Run each with Haiku, Sonnet and Opus when the ski
 stories in five stages, from one shared document to two servers on dzql with each member seeing
 their own. It appears in no skill or reference, so what a session makes of it is what the skills
 and libraries lead it to. `shed/stories.md` is what a session is given, a stage at a time;
-`shed/expected.md` is what each stage is checked against, and how a run is recorded.
+`shed/expected.md` is what each stage is checked against, and how a run is recorded: the app made
+from the checkout's own packages (`create-blueshed --local`), and a scorecard of tests, must-nots,
+minutes and lines a stage. `shed/runs/` holds each run; run 2 (2026-10-17) is the baseline.
 
 These are about the template; setup deletes `evals/` from a new app.

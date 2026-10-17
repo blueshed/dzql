@@ -125,6 +125,11 @@ what is open across them. Newest first.
   `install-skills --skip bun-route` (a new `--skip`), not copies of its own; the evolve skill's
   references link to delta-doc where they restated delta (fan-out, the ledger, migrations, sign-in,
   ownership, Postgres) and keep what is the app's own: the code `test:evolve` applies and runs.
+- **The Shed runs on the packages as they are** (Peter: no release until a working, improved Shed;
+  no debugging through npm): `create-blueshed --local` (or `BLUESHED_LOCAL=1`) makes the app with
+  railroad, delta and dzql from the checkout, held by `overrides`. The eval's record gains a scorecard
+  (tests, must-nots, minutes and lines a stage); run 2 is the baseline, its minutes and lines worked
+  out from its commits. The Postgres step adds only `pg` and PGlite, since the app has dzql already.
 
 ### Fixed
 

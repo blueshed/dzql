@@ -116,6 +116,26 @@ same thing pass.
 
 ## Recording a run
 
+**Make the app from the packages as they are**, never npm's: from a blueshed/dzql checkout,
+`bun packages/create-blueshed/cli.ts ~/Workshop/shed --local` (or `BLUESHED_LOCAL=1`). The app takes
+railroad, delta and dzql from the checkout (`file:` dependencies, held by `overrides`, so a stage that
+adds one again keeps it), and nothing waits on a release.
+
+**The scorecard**, at the top of the record, so two runs compare at a glance:
+
+| | Stage 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Tests (all at 100%) | | | | | |
+| Must not | | | | | |
+| Minutes (from the commit before) | | | | | |
+| Lines of code, `src/` + `tests/` (`.ts`, `.tsx`) | | | | | |
+
+and beneath it: stories with a test that tells them (`tests/stories.test.ts`: the app's `untold`), the
+findings, the open items in the app's `todo.jsonl`, and the friction (a workaround the libraries or
+the skills made necessary). Minutes are from the stage's commit and the one before it; lines are
+`git show <commit>:<file> | wc -l` over `src/` and `tests/`.
+
+
 A run is one model taking all five stages. Record it in `runs/<date>-<model>.md`, with one line
 per stage: each check passed or failed, the files the session wrote, and what it did that the
 skills did not lead it to. Where it went wrong, say whether a skill, a reference or a library
