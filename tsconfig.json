@@ -1,0 +1,16 @@
+{
+  "//": "What every package compiles with (bun check, TypeScript 7). A package's own tsconfig.json extends this and says only what is its own: its JSX, its files. paintbrush's and create-dzql's template stand alone, since a new app leaves this repository. Nothing is checked from here.",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["bun"]
+  },
+  "files": []
+}

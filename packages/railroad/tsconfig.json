@@ -1,15 +1,17 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "jsx": "react",
     "jsxFactory": "createElement",
     "jsxFragmentFactory": "Fragment",
-    "strict": true,
     "noUncheckedIndexedAccess": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "target": "esnext",
-    "skipLibCheck": false,
-    "noEmit": true
+    "skipLibCheck": false
   },
-  "exclude": ["tests/consumer-types", "tests/fixtures/readme"]
+  "exclude": [
+    "tests/consumer-types",
+    "tests/fixtures/readme"
+  ],
+  "include": [
+    "**/*"
+  ]
 }

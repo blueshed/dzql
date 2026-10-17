@@ -56,6 +56,11 @@ what is open across them. Newest first.
   root's override of `@types/node` and railroad's `typescript` dev dependency are gone, and no
   script runs `tsc` (railroad's consumer check is `bun check` alone). `@types/node` stays only as
   what `bun-types` and `@types/pg` themselves depend on.
+- **One `tsconfig.json` at the root**: what every package compiles with (strict, ESNext, bundler
+  resolution, Bun's types); railroad's, delta's and dzql's extend it with only their JSX and files.
+  paintbrush and create-dzql's template stand alone, since a new app leaves the repository. No
+  shared `bunfig.toml`: Bun reads only the one where a command runs, and each package's differs
+  (dzql's and paintbrush's coverage gates, railroad's happy-dom; delta has none).
 
 ### Removed
 
