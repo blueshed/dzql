@@ -1,0 +1,58 @@
+name: dzql-eta
+
+# dzql's modelling and rendering (eta), in a browser: when they, their examples, delta or railroad
+# (an island is a railroad component), or what every package shares changes.
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - "packages/dzql/src/rendering/**"
+      - "packages/dzql/src/modelling/**"
+      - "packages/dzql/examples/**"
+      - "!packages/dzql/examples/delta/**"
+      - "packages/dzql/scripts/**"
+      - "packages/dzql/bunfig.toml"
+      - "packages/dzql/package.json"
+      - "packages/delta/**"
+      - "packages/railroad/**"
+      - "package.json"
+      - "bun.lock"
+      - "tsconfig.json"
+      - ".github/workflows/dzql-eta.yml"
+  pull_request:
+    paths: *paths
+  workflow_call:
+
+jobs:
+  # eta's modelling and rendering (src/modelling, src/rendering) and its examples: SQLite in the
+  # process and a real browser, no Postgres. Held to 100% coverage (bunfig.toml), each example's
+  # stories told by hand, and the README's measured numbers checked. An island is a railroad
+  # component, so a railroad change that breaks one fails here.
+  eta:
+    name: eta
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/dzql
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+
+      - run: bun install --frozen-lockfile
+        working-directory: .
+
+      - name: Locate Chrome for Bun.WebView
+        run: |
+          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium || true)"
+          if [ -z "$chrome" ]; then echo "No Chrome/Chromium found on runner" >&2; exit 1; fi
+          echo "BUN_CHROME_PATH=$chrome" >> "$GITHUB_ENV"
+
+      # two workers and a longer wait than a Mac needs: a runner is slower, and its Chrome starts cold
+      - run: bun run test:eta:ci
+      - run: bun run stories:all
+      - run: bun run costs --check

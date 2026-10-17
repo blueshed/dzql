@@ -71,6 +71,13 @@ what is open across them. Newest first.
   `docs/delta`, and its README links to the docs on GitHub. `docs/README.md` is the index. From
   Workshop/docs, copied (the originals stay): the postgres split plan, the stories plan, the link
   sign-in and pears plans, eta's language, CSS review and modeller, document proofs, and the history.
+- **CI runs less for a change** (a designer's review, applied): dzql's workflow is two,
+  `dzql-postgres.yml` (the compiler and backend against Postgres) and `dzql-eta.yml` (modelling and
+  rendering in a browser), each run only when its half, or what it stands on, changes; a railroad
+  change runs `delta-railroad.yml`, only delta's five test files that load railroad, not all of
+  delta; railroad's browser suite runs once, not twice; and railroad's oldest-Bun check (1.3.14)
+  moved to the release workflow. (The TypeScript 5.9 check had already gone with `tsc`. The 27 SVG
+  tag tests to collapse were not found in railroad's suite: its SVG tests are each a different case.)
 
 ### Removed
 

@@ -33,6 +33,25 @@ jobs:
     if: needs.which.outputs.package == 'railroad'
     uses: ./.github/workflows/railroad.yml
 
+  # package.json promises Bun 1.3.14 or later: every test but the browser's on that floor, before a
+  # release (1.3.12 and 1.3.13 pass too, but their `bun build --compile` binaries are killed on macOS
+  # arm64, so the README's one-binary deploy needs 1.3.14). Not on every push: Bun's floor moves seldom.
+  floor-railroad:
+    needs: which
+    if: needs.which.outputs.package == 'railroad'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/railroad
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+        working-directory: .
+      - run: bun test --path-ignore-patterns=tests/webview.test.ts
+
   gate-delta:
     needs: which
     if: needs.which.outputs.package == 'delta'
@@ -41,7 +60,12 @@ jobs:
   gate-dzql:
     needs: which
     if: needs.which.outputs.package == 'dzql' || needs.which.outputs.package == 'create-dzql'
-    uses: ./.github/workflows/dzql.yml
+    uses: ./.github/workflows/dzql-postgres.yml
+
+  gate-dzql-eta:
+    needs: which
+    if: needs.which.outputs.package == 'dzql'
+    uses: ./.github/workflows/dzql-eta.yml
 
   # create-blueshed publishes paintbrush (its prepack copies it in): paintbrush's gate
   gate-paintbrush:
@@ -50,7 +74,7 @@ jobs:
     uses: ./.github/workflows/paintbrush.yml
 
   publish:
-    needs: [which, gate-railroad, gate-delta, gate-dzql, gate-paintbrush]
+    needs: [which, gate-railroad, floor-railroad, gate-delta, gate-dzql, gate-dzql-eta, gate-paintbrush]
     # The one gate that ran passed; the others were skipped.
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest

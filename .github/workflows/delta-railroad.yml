@@ -1,0 +1,29 @@
+name: delta-railroad
+
+# A railroad change, against delta: only delta's tests that load railroad (its client draws with
+# railroad's signals; its logger is railroad's, line for line; install-skills copies railroad's).
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - "packages/railroad/**"
+      - ".github/workflows/delta-railroad.yml"
+  pull_request:
+    paths: *paths
+
+defaults:
+  run:
+    working-directory: packages/delta
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+        working-directory: .
+      - run: bun test tests/client.test.ts tests/railroad-client.test.ts tests/server.test.ts tests/install-skills.test.ts tests/package-exports.test.ts

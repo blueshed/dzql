@@ -1,13 +1,12 @@
 name: delta
 
-# Runs when delta, railroad (its client draws with railroad's signals), or what every package
-# shares changes.
+# Runs when delta, or what every package shares, changes. A change to railroad alone runs
+# delta-railroad.yml: only the tests that load railroad.
 on:
   push:
     branches: [main]
     paths: &paths
       - "packages/delta/**"
-      - "packages/railroad/**"
       - "package.json"
       - "bun.lock"
       - ".github/workflows/delta.yml"
