@@ -14,7 +14,7 @@ import { defineDoc, q } from "@blueshed/delta/backend";
 import {
   pathDocs, pathSchema, pathSeed, auth, customOwns, everyDoc, mineDoc, ownsCases, whoamiDoc, type Me,
 } from "@blueshed/delta/testing";
-import { postgresInbox, postgresMenuCard } from "./postgres-reads";
+import { postgresInbox, postgresMenuCard } from "../delta-pg/helpers/postgres-reads";
 import { quietOn } from "../helpers/pglite";
 
 setLogLevel("silent");

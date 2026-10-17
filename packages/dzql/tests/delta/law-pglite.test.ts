@@ -15,7 +15,7 @@ import {
   auth, drive, hearing, lawSeeds, lawSteps, onJson, onSqlite, pathDocs, pathPublicDocs, pathSchema, pathSeed, people, pubOwns,
   type Me, type Place,
 } from "@blueshed/delta/testing";
-import { postgresInbox, postgresMenuCard } from "./postgres-reads";
+import { postgresInbox, postgresMenuCard } from "../delta-pg/helpers/postgres-reads";
 
 setLogLevel("silent");
 
