@@ -128,6 +128,7 @@ describe("package exports", () => {
     for (const name of [
       "pathSchema", "pathDocs", "pathPublicDocs", "pathSeed", "inboxDoc", "emailsDoc", "guestsDoc", "openSeatsDoc", "menuCardDoc",
       "pathCases", "drivenCases", "registrationCases", "serialCases", "asItStoodCases", "columnCases", "documentCases", "fanOutCases",
+      "temporalCases", "ledgerCases", "impliedCases", "customDocCases",
       "drive", "onSqlite", "onJson", "lawSeeds", "lawSteps",
       "ownsCases", "permissionCases", "assertDocIsolation",
       "errorCodeCases", "createRowCases", "writeScopeCases", "uniqueCases", "shedApp", "roomsApp", "tenantsApp", "membershipsApp",
