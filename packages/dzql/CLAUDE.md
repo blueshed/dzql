@@ -9,7 +9,7 @@ part they do not import: `@blueshed/railroad` is an optional peer that only an i
 ## Read the Documentation First
 
 Before working on this codebase, read:
-- `docs/dzql/philo.md` (at the root) - **what dzql is for now**: stories to documents to pages, and the compiled Postgres step
+- the root `README.md`, *How an app is made* - **the one statement of the vision**: stories, documents, the storage path, routes and resources, and the compiled step
 - `docs/dzql/` (at the root): `modelling/stories.md` (what the stories are for), `rendering/` (eta.md: what it is, its measured costs; first-app.md; the bento), `postgres/` (delta on Postgres), `eta-history/` (eta's changelog and ledger)
 - `docs/dzql/postgres-split-plan.md` (at the root) - the plan that made dzql delta's Postgres step
 - `packages/create-dzql/README.md` - `bun create dzql`: eta's starter on dzql
@@ -63,7 +63,7 @@ packages/
   (`bun test --update-snapshots`, whole files: a `-t` filter drops the snapshots it did not run)
   only with the change that explains it. One `generateSql` per database: one app's definitions.
 - **Permissions are a document's** (`owns` as a path), **migrations are delta's**: no table rules,
-  no upgrade scheme of dzql's own (docs/dzql/philo.md).
+  no upgrade scheme of dzql's own.
 - **The Postgres step imports nothing of modelling or rendering**, and they nothing of it: an app on
   SQLite uses `dzql/rendering` with no Postgres, and one on Postgres uses `dzql/postgres` with no page.
   What dzql was before delta (its own client and runtime) is in CHANGELOG.md; nothing of it comes back.

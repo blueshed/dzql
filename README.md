@@ -1,29 +1,51 @@
 # bluetools
 
-blueshed's packages in one repository ([blueshed/dzql](https://github.com/blueshed/dzql)), as Bun
-workspaces. A change that crosses them lands, and is tested, in one commit.
+**Documents are how people communicate.** A document is what someone needs in front of them to
+act. To place an order you need the catalogue and your order: two documents on one page. The
+kitchen needs every open order, another document over the same rows. Open a document and you're
+subscribed: every change anyone makes reaches you as it happens, with nothing to poll, fetch or
+refresh. Change it with add, replace or remove on a path, and everyone holding it sees it at once.
 
-## The shape of an app
+These are the packages for building live apps for a few people at once on that idea: two
+clients and three stores, and nothing else to choose. They live in one repository
+([blueshed/dzql](https://github.com/blueshed/dzql)) as Bun workspaces. This page is the one
+statement of how an app is made; each package's README says only its own part.
 
-An app is **routes and resources on both sides of the socket, joined by documents**. On the server,
-the routes given to delta's one server (`@blueshed/delta/serve`) serve resources: a document
-registered on the socket, or an HTTP endpoint for what isn't communication. On the client,
-railroad's `routes()` draw resources: a handle that opens the document, and its view. A document is
-what someone needs in front of them to act; open it and you're subscribed. **Entities**, the
-collections of delta's `defineSchema`, are behind the documents on the server. **Stories** cross
-both sides: someone acts through a client resource, and everyone holding the document sees it.
+## How an app is made
 
-| | Server | Client |
-|---|---|---|
-| Routes | Bun routes, given to delta's `serve` | railroad `routes()` |
-| Resources | a registered document, or an HTTP endpoint | an `openDoc` handle and its view |
-| Joined by | the document, on the socket | |
-| Behind it | entities (`defineSchema`) | |
+- **Stories first.** An app is a set of stories, each a sentence someone using it could call true
+  or false: who does what, and who then sees it. Each is code, `story(name)` from `dzql/modelling`,
+  proven by a test named from it; on the thin client it can carry a body that the harness checks
+  against every page, including the ones that must not hear of a change. Build nothing no story needs.
+- **Documents, not entities.** Ask "what does someone need in front of them to do this?" rather
+  than "what are the tables?" The tables follow from the documents.
+- **Three ways to keep documents: a JSON file, SQLite or Postgres.** The same documents, the same
+  writes, the same page on each. A document may instead be kept in `memory`, read from a `source`,
+  or `static`: one set of names everywhere. The only reason to pick one store over another is ease
+  or performance: a JSON file is the easiest; SQLite when documents share rows, or for undo and
+  history; Postgres when servers share the data, or people should see only their own.
+- **Routes and resources on both sides of the socket, joined by documents.** On the server, the
+  routes given to delta's one server (`@blueshed/delta/serve`) serve resources: a document
+  registered on the socket, or an HTTP endpoint for what isn't communication (health, status,
+  files). On the client, railroad's `routes()` draw resources: a handle that opens the document,
+  and its view. **Entities**, the collections of delta's `defineSchema`, are behind the documents
+  on the server.
 
-paintbrush is that shape with the page in the browser. On dzql's rendering (eta) the server draws
-every page from its URL, so its routes and resources are the server's, and an island is the only
-client resource. Stories are code everywhere: `story(name)` from `dzql/modelling`, told by a test
-named from it until it has a body the harness can tell.
+  | | Server | Client |
+  |---|---|---|
+  | Routes | Bun routes, given to delta's `serve` | railroad `routes()` |
+  | Resources | a registered document, or an HTTP endpoint | an `openDoc` handle and its view |
+  | Joined by | the document, on the socket | |
+  | Behind it | entities (`defineSchema`) | |
+
+- **Two clients: thick or thin, with applets in either.** Thick, the browser draws the page with
+  railroad (paintbrush). Thin, the server draws every page from its URL (eta, `dzql/rendering`), so
+  its routes and resources are the server's. An applet (an island, in eta's code) is a railroad component inside either, for
+  what a page holds of its own (a drag, a calendar). Again, the only reason to pick one is ease or
+  performance.
+- **Small enough for an AI to hold.** One way to do each thing, and the whole of a package readable
+  before a line is written. Postgres is compiled from delta's definitions by a deterministic
+  compiler, held to delta's own cases: Claude writes the compiler; Claude is never the compiler.
 
 ## The packages
 

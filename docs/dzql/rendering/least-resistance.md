@@ -70,7 +70,7 @@ Stories, then documents, then pages drawn on the server.
 5. **A page that stays still.** When a page never `read()` the document it shows, a change to it
    reaches nobody, and the AI has to guess why.
 
-## 5. What would make eta the easy path
+## 5. What makes eta the easy path
 
 ### 1. Check the permit against the stories
 
@@ -86,23 +86,23 @@ columns). Derive more only when a real app shows which.
 
 ### 3. A failing story that says why
 
-The harness knows what each page read. So when a holder is not told, it can say so:
+The harness knows what each page read, so when a holder is not told, it says so:
 
 ```
 FAIL: Mo did not see Ada's request.
       Mo's page read session, team:2 -- not team:1, where the write landed.
 ```
 
-The cheapest of the five, and the one that saves most guessing.
+It was the cheapest of the five, and it saves most guessing.
 
 ### 4. Field helpers
 
-`derivedPage` already draws a field with its path, its write and its status. Make that one part
-(`field(...)`) the views use too, as a default an app may change.
+`derivedPage` draws a field with its path, its write and its status, and the views use the same
+part (`field(...)`, in `src/rendering/bento.ts`) as a default an app may change.
 
 ### 5. Model first
 
-The loop exists; it should be the way in, and it never generates code:
+The loop is the way in, and it never generates code:
 
 1. **Tell.** One person tells the stories; Claude writes each on the model's page (the modelling
    skill, `bun run model`), and the documents they need, while the teller watches. The page shows

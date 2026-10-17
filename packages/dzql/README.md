@@ -9,15 +9,11 @@
   thing that needs the optional `@blueshed/railroad`. Six apps show it in [examples/](examples).
 - **`dzql/postgres`**, **`dzql/pglite`**: the compiled Postgres step, below.
 
-An app is routes and resources on both sides of the socket, joined by documents, with entities
-(delta's `defineSchema`) behind them. On `dzql/rendering` the server draws every page from its
-URL, so the routes and resources are the server's: a resource looks after one document, and an
-island is the only client one.
+How an app is made, from its stories to its storage: [bluetools](https://github.com/blueshed/dzql#how-an-app-is-made).
 
 An app built on [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps its definitions
 (`defineSchema`, `defineDoc`), its client and its wire. On Postgres, dzql keeps its documents and
-compiles those definitions to SQL, each piece held equal to delta's own cases. Why, and where it
-is going: [philo.md](https://github.com/blueshed/dzql/blob/main/docs/dzql/philo.md).
+compiles those definitions to SQL, each piece held equal to delta's own cases.
 
 ## delta's Postgres step
 

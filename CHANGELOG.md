@@ -8,6 +8,17 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **The vision is said once** (17 October, Peter: "cleanup the vision ... kiss clean dry and
+  yagni. It is all there!"). The root README's *How an app is made* is the one statement: stories
+  first, documents not entities, what grows is where they're kept, routes and resources on both
+  sides joined by documents, two ways to draw the page, small enough for an AI to hold. delta's,
+  dzql's, paintbrush's and railroad's READMEs say only their own part and link to it. Gone, as
+  unbuilt or superseded: `docs/dzql/philo.md` (its patterns were never built; its one principle,
+  Claude writes the compiler and is never the compiler, is in the root README),
+  `docs/delta/peared-plan.md` (proposed, not started), `docs/stories-plan.md` (superseded).
+  `docs/README.md` separates guidance from the record (plans and requests, all built, kept because
+  code comments cite them); `least-resistance.md` says what is built in the present tense.
+  create-blueshed's README says `--local` needs `bun install` at the checkout's root.
 - **One namespace for document kinds** (17 October, Peter's word, todo #10): eta's resources use
   delta's kind names (`memory`, `source`, `static`; stored when omitted), and eta's `fact` is a
   stored document with `undoable: false`. Breaking for an app; how to move across is in

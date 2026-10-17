@@ -1,21 +1,10 @@
 # @blueshed/delta
 
-A document is what you need in front of you to take an action. To place an order you need the
-catalogue and your order: two documents on one page. The kitchen needs every open order, another
-document over the same rows.
-
-A document is never a poster on the wall. It's a conversation. Open it and you're subscribed:
-every change anyone makes reaches you as it happens, with nothing to poll, fetch or refresh.
-Change it yourself with add, replace or remove on a path, and everyone holding it sees it at once.
-
-**Think in documents, not entities.** Ask "what does someone need in front of them to do this?"
-rather than "what are the tables?" The tables follow from the documents.
-
-**What grows is where they're kept.** A shared JSON document does a lot on its own. SQLite earns
-its place when documents share the same rows, as the catalogue and every order do, or when you
-want undo and history. Postgres comes in when servers share the data, or people should see only
-their own: that step is [dzql](.claude/skills/delta-doc/reference/postgres.md), compiled Postgres.
-The page and its documents stay the same as the storage grows.
+delta keeps documents and tells everyone holding one what changed. Open a document and you're
+subscribed; change it with add, replace or remove on a path, and everyone holding it sees it at
+once. It keeps them in a JSON file or SQLite, with a ledger for undo and history; Postgres is
+[dzql](.claude/skills/delta-doc/reference/postgres.md)'s step. Why documents, and how an app is
+made around them: [bluetools](https://github.com/blueshed/dzql#how-an-app-is-made).
 
 Delta runs on [Bun](https://bun.sh) and ships TypeScript source.
 
@@ -116,9 +105,8 @@ Each of these is a page of the skill's [reference](.claude/skills/delta-doc/refe
   gives a document as a railroad signal, and `list()` renders its rows keyed.
 - **[dzql](https://github.com/blueshed/dzql)** is the Postgres step: the same definitions,
   compiled to stored functions, answering delta's cases.
-- **[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)** is a starting website:
-  routes and resources on both sides, joined by documents. Bun routes, given to delta's `serve`,
-  serve the resources; railroad's `routes()` draw them. `bun create blueshed my-app` makes one.
+- **[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)** is a starting
+  website, its page drawn in the browser. `bun create blueshed my-app` makes one.
 - **[dzql's rendering](https://github.com/blueshed/dzql/tree/main/packages/dzql)** (eta) makes live
   apps for a few people at once, told as stories and checked by them. delta keeps its documents,
   their ledger and their one stream of changes; the server draws each page from them.

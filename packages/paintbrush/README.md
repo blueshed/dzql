@@ -2,9 +2,9 @@
 
 # Paintbrush
 
-A Bun website where people share documents. **Documents are how people communicate**: a document is what you need in front of you to take an action. It is a conversation, not a poster on the wall. Open one and you're subscribed, so every change anyone makes reaches you as it happens. Change it, and everyone holding it sees it at once.
+A Bun website where people share documents: open one and you're subscribed, and a change anyone makes reaches everyone holding it at once. Why documents, and how an app is made around them: [bluetools](https://github.com/blueshed/dzql#how-an-app-is-made).
 
-[Bun](https://bun.sh) is the runtime, the bundler, the test runner and the server. [delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents, [railroad](https://github.com/blueshed/dzql/tree/main/packages/railroad) draws the page, and [Railway](https://railway.com) deploys it. What grows is where the documents are kept. A shared JSON document does a lot on its own; SQLite earns its place when documents share the same rows, or when you want undo and history; Postgres comes in when servers share the data, or people should see only their own. The page and its documents stay the same as the storage grows.
+[Bun](https://bun.sh) is the runtime, the bundler, the test runner and the server. [delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents, [railroad](https://github.com/blueshed/dzql/tree/main/packages/railroad) draws the page, and [Railway](https://railway.com) deploys it.
 
 Requires Bun 1.4.3 or later.
 
@@ -25,7 +25,7 @@ Open `http://localhost:3000` in two windows. You get a message, a shared documen
 
 ## Routes, resources and documents
 
-An app is routes and resources, on both sides of the socket. A document joins a server resource to its client resource. Entities, the collections of delta's `defineSchema`, are behind the documents, on the server.
+Here is where each part of [the shape](https://github.com/blueshed/dzql#how-an-app-is-made) lives in paintbrush:
 
 | | Server | Client |
 |---|---|---|
@@ -48,7 +48,7 @@ Every route and document is visible in the code. An AI, or a person, can read `r
 
 ## How it grows
 
-Think in documents, not entities: ask what someone needs in front of them to do something, and the tables follow. To place an order you need the catalogue and your order, two documents on one page; the kitchen needs every open order, another document over the same rows. The `evolve` skill shows each, and where to keep them as the app grows (a JSON file, SQLite, then Postgres on dzql), with code and tests: migrations, sign-in by link, routes and a build among them.
+The `evolve` skill grows the app from its stories: another document, two on one page, keeping them in SQLite or Postgres as the documents need, migrations, sign-in by link, routes and a build, each with code and tests.
 
 ## What's in the box
 

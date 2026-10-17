@@ -14,9 +14,9 @@ delta's storage path is the JSON file, then SQLite; Postgres is the next step, a
   page a change to the API or the wire protocol touches. Point to the types rather than
   re-typing them; history, rationale and measured numbers go in CHANGELOG.md or README.md, not
   the skill.
-- **Docs: the front door is small.** README.md and SKILL.md open with the concept, in the
-  owner's words (a document is what you need in front of you to act; open it and you're
-  subscribed; documents, not entities; what grows is where they're kept). Then small: README's
+- **Docs: the front door is small.** The vision is stated once, in the monorepo's root README
+  (*How an app is made*); README.md opens with delta's part of it (open a document and you're
+  subscribed; three verbs; where it is kept) and links there, and SKILL.md opens with the concept. Then small: README's
   Try it (run byte for byte by `tests/readme.test.ts`) and a line for each thing you grow into;
   SKILL.md's order of work and invariants. The recipe is `reference/recipe.md` (run as written
   by `tests/recipe.test.ts`); everything else is a `reference/` page, read on request. Don't

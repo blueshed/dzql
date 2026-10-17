@@ -118,9 +118,8 @@ a worker with no DOM and no JSX.
   railroad signal, so a document drops straight into JSX, `when()` and
   `list()`.
 - **[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)** is a starting
-  website: routes and resources on both sides, joined by documents. railroad's
-  `routes()` draw the client's resources; Bun routes, given to delta's `serve`,
-  serve the server's. `bun create blueshed my-app` makes one (Bun 1.4).
+  website whose pages railroad draws. `bun create blueshed my-app` makes one
+  (Bun 1.4).
 - **[dzql's rendering](https://github.com/blueshed/dzql/tree/main/packages/dzql)**
   (eta) makes live apps for a few people at once, told as stories and checked by
   them. The server draws each page and delta keeps its documents; railroad draws
