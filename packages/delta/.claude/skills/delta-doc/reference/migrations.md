@@ -28,8 +28,8 @@ const result = await migrate(db, await fromFolder("migrations"), { app: "team", 
   `addColumn(key, column, def)`, `dropColumn`, `renameColumn(key, from, to)`,
   `addUnique(key, columns, { whereNull })`, `dropUnique(key, columns)`, from
   `@blueshed/delta/migrations` (`src/server/changes.ts`). `make` writes a unique constraint too.
-- **A row an `up` adds takes `nextId`**: `up(tx, { nextId })`, where `await nextId("tools")` is the
-  collection's next serial, moved on as `add /tools/-` moves it, so a row a write makes later
+- **A row an `up` adds takes `nextId`**: `up(tx, { nextId })`, where `await nextId("items")` is the
+  collection's next serial, moved on as `add /items/-` moves it, so a row a write makes later
   never meets it. Never write `_delta_sequences` (SQLite) or `seq_<table>` (Postgres) yourself:
   they are delta's (`MigrationTools` in `src/server/migrate.ts`).
 - **`delta migrations make <module> [--dir migrations] [--name <name>] [--export schema]`** writes

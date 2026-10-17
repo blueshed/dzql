@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The skill's examples are not the Shed's**, which the Shed eval holds out: custom-docs.md's
+  recompute example and the test it quotes (`tests/derived-fact.test.ts`) are a hotel's desk, rooms
+  taken from the open stays; schema.md and migrations.md say the same in the same nouns.
+
 - **A permission case for a list for some people** (`src/cases/permissions.ts`): `venues:`,
   every venue for North's active members, a path that starts at a table
   (`members[org_id=1]{active}.person_id`). `paths.ts`'s header no longer says a list takes only

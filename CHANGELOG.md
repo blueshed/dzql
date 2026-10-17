@@ -18,7 +18,8 @@ what is open across them. Newest first.
   delta's permission cases gain the list for some people (a path that starts at a table), asked
   of SQLite, the JSON file and PGlite. A part under its whole is already lent only with it: the
   skills now say so (a write names the whole), and how rows become parts in a migration. No API
-  changed.
+  changed. No skill page uses the Shed's nouns any more (the eval holds its example out):
+  delta-doc's recompute example is a hotel's desk.
 
 - **Two bugs found by the code review** (17 October): a person's id on Postgres sign-in overflowed
   past 2^31 (dzql); a session's own echo dropped any value equal to its id, so session 3 joining
