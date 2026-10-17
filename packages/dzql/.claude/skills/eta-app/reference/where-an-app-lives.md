@@ -14,7 +14,7 @@ bun run eta:update               # a later eta: eta/ replaced whole, and what to
 ## A project made with `bun create blueshed/eta`
 
 ```
-src/          the app: index.ts, stories.ts, delta.ts, page, compartments, client (begun as eta's examples/starter)
+src/          the app: index.ts, stories.ts, delta.ts, page, resources, client (begun as eta's examples/starter)
 migrations/   a field renamed or dropped, or data moved; never edit one that has run
 eta/          eta's, never edited: src/ (the kernel), model/ (the model's page), docs/, CHANGELOG.md, VERSION, update.ts
 package.json  the app's, with eta as a Bun workspace ("workspaces": ["eta"], "eta": "workspace:*")
@@ -57,7 +57,7 @@ A seam is missing from what you know, not the app special:
 - may this session write at all: `Example.active`; an extra HTTP route: `Example.routes`; who a
   request is before its socket opens: `Example.identify` ([example.md](example.md));
 - a fresh write that differs from its undo: `shape` (undo is never shaped); what follows a write:
-  `afterChange` or `afterWrite`, an undo or redo: `afterWalk` ([compartment.md](compartment.md));
+  `afterChange` or `afterWrite`, an undo or redo: `afterWalk` ([resource.md](resource.md));
 - saying what just happened: `tell`, never a field of your own session ([refusal.md](refusal.md)).
 
-Never teach the kernel the name of a document, applet or compartment.
+Never teach the kernel the name of a document, applet or resource.

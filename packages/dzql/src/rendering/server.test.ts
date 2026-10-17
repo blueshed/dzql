@@ -5,15 +5,15 @@ import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
 import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
-import type { Compartment, Walk } from "./compartments/compartment";
+import type { Resource, Walk } from "./resources/resource";
 import type { Example } from "./example";
 import index from "./server.test.fixture.html";
 import { WIRE, type PatchOp, type WriteId } from "./json-patch";
-import { closeConnection, openConnection, wireName } from "./compartments/audience";
+import { closeConnection, openConnection, wireName } from "./resources/audience";
 import { read, serverWrite } from "./documents";
 import { part } from "./parts";
 import { CHANGED_SINCE, createServer } from "./server";
-import { assemble, type Inspection } from "./compartments";
+import { assemble, type Inspection } from "./resources";
 import { onFailure } from "./failed";
 import { refuse, tell, toldAt } from "./refusal";
 import { connect, expectMessage, expectQuiet, heard, htmlOf, nextMessage, open, opened, rawOf, write, type WireMessage } from "./test-socket";
@@ -39,7 +39,7 @@ registerDocs(
 );
 // a live document the server writes from outside any event, as a feed's tick is, and slow to follow
 registerMemory(delta.server, { prefix: "tick:", empty: () => ({ n: 0 }) });
-const tickCompartment: Compartment = { docType: "tick", kind: "live", resolveDoc: () => undefined, afterChange: () => Bun.sleep(60) };
+const tickResource: Resource = { docType: "tick", kind: "live", resolveDoc: () => undefined, afterChange: () => Bun.sleep(60) };
 
 function readNote(id: string): string {
   return read<{ notes: { text: string } }>(`note:${id}`).notes.text;
@@ -48,7 +48,7 @@ function readNote(id: string): string {
 // what each walk of a note was given
 const walks: Walk[] = [];
 
-const noteCompartment: Compartment = {
+const noteResource: Resource = {
   docType: "note",
   perSession: true,
   under: "/notes",
@@ -100,7 +100,7 @@ async function appointments(month: string): Promise<Appointment[]> {
   return Object.values(doc.appointments).sort((a, b) => (a.id < b.id ? -1 : 1));
 }
 
-const monthCompartment: Compartment = {
+const monthResource: Resource = {
   docType: "month",
   resolveDoc: () => "2026-09",
   permit(_ws, op, docId) {
@@ -115,7 +115,7 @@ const monthCompartment: Compartment = {
 function makeExample(name: string): Example {
   return {
     name,
-    compartments: [noteCompartment, monthCompartment, tickCompartment],
+    resources: [noteResource, monthResource, tickResource],
     render: (sessionId) => {
       if (readNote(sessionId) === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
       // one typing in the note draws it in a field
@@ -636,11 +636,11 @@ describe("createServer's one-example-per-process invariant", () => {
     }
   });
 
-  test("two compartments owning one document type throw, the kernel's ledger among them", () => {
-    const twice = { ...makeExample("twice"), compartments: [noteCompartment, noteCompartment] };
-    expect(() => assemble(twice)).toThrow('twice: two compartments own "note"');
-    const ledgered = { ...makeExample("ledgered"), compartments: [{ ...noteCompartment, docType: "ledger" }] };
-    expect(() => assemble(ledgered)).toThrow(`ledgered: two compartments own "ledger" (the kernel's own)`);
+  test("two resources owning one document type throw, the kernel's ledger among them", () => {
+    const twice = { ...makeExample("twice"), resources: [noteResource, noteResource] };
+    expect(() => assemble(twice)).toThrow('twice: two resources own "note"');
+    const ledgered = { ...makeExample("ledgered"), resources: [{ ...noteResource, docType: "ledger" }] };
+    expect(() => assemble(ledgered)).toThrow(`ledgered: two resources own "ledger" (the kernel's own)`);
   });
 
   test("calling it again with the very same example object does not throw", () => {

@@ -3,7 +3,7 @@
 // the client itself, its socket's `send` recording what the page sends (`stubSend`), and sending
 // what the server would as "message" events on that same socket (`push`).
 import { afterAll, beforeAll } from "bun:test";
-import { renderMessage } from "../compartments/render";
+import { renderMessage } from "../resources/render";
 import { waitFor, webview } from "../webview";
 
 /** What the socket says, whatever it is told: nothing. */
@@ -57,7 +57,7 @@ export async function push(view: Bun.WebView, message: unknown): Promise<void> {
   await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(data)} }))`);
 }
 
-/** The server drawing the page whole (src/compartments/render.ts's `renderMessage`). */
+/** The server drawing the page whole (src/resources/render.ts's `renderMessage`). */
 export const pushRender = (view: Bun.WebView, html: string) => push(view, renderMessage(html));
 
 /** The id of the last write this page sent, which its echo or its refusal hands back. */

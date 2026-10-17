@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { createServer } from "dzql/rendering/server";
 import { connect as socketTo, forget, expectMessage, expectQuiet, heard, nextMessage, open as openAs, opened, pageOf, write } from "dzql/rendering/test-socket";
-import { randomTick, startFeed, stopFeed } from "./compartments/ticker";
+import { randomTick, startFeed, stopFeed } from "./resources/ticker";
 import type { MarketDocument } from "./documents/market";
 import { example } from "./index";
 
@@ -13,7 +13,7 @@ async function quotes(): Promise<MarketDocument> {
   return (await inDelta.call("open", { doc: "ticker:market" })).result.quotes;
 }
 
-// TICK_MS is read when compartments/ticker.ts loads; the test script sets it to 0 (see package.json)
+// TICK_MS is read when resources/ticker.ts loads; the test script sets it to 0 (see package.json)
 // so the feed stays quiet and every tick here is the test's own.
 let server: ReturnType<typeof createServer>;
 

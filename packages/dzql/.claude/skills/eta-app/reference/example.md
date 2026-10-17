@@ -1,13 +1,13 @@
 # The app (`Example`), and the CLI
 
-An app is one export from its `index.ts`: its documents, its compartments and its page. Signing
+An app is one export from its `index.ts`: its documents, its resources and its page. Signing
 people in is [signin.md](signin.md).
 
 ```ts
 // examples/leave/index.ts
 export const example: Example = {
   name: "leave",
-  compartments: [session, team], // the session first
+  resources: [session, team], // the session first
   render,
   active: (sessionId) => sessionOf(sessionId).person !== null, // a signed-out tab writes nothing, Undo included
   who: (sessionId) => sessionOf(sessionId).person?.id ?? sessionId, // the ledger's who is the person
@@ -20,7 +20,7 @@ export const example: Example = {
 
 The fields are `Example` in `src/rendering/example.ts`.
 
-- One compartment per document type, the session's first; the kernel adds its ledger.
+- One resource per document type, the session's first; the kernel adds its ledger.
 - `active` is there because only the app knows what "signed in" means (chat: "has a name"). A tab
   left open after signing out may not write, nor undo a write made before.
 - `who` is who a session is to delta (the ledger's who, row-level security); default the session.

@@ -6,7 +6,7 @@ import { defineDoc, registerDocs } from "@blueshed/delta/sqlite";
 import { example } from "../../examples/chat";
 import { db, schema } from "../../examples/chat/delta";
 import { stories } from "../../examples/chat/stories";
-import type { Compartment } from "../rendering/compartments/compartment";
+import type { Resource } from "../rendering/resources/resource";
 import { read } from "../rendering/documents";
 import { appletProps, appletWrites, write } from "../rendering/html";
 import type { Example } from "../rendering/example";
@@ -554,7 +554,7 @@ describe("stories harness", () => {
 
   // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.
   const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
-  const withRoom = (f: (room: Compartment) => Compartment): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === "room" ? f(c) : c)) });
+  const withRoom = (f: (room: Resource) => Resource): Example => ({ ...example, resources: example.resources.map((c) => (c.docType === "room" ? f(c) : c)) });
 
   test("someone the story says is untold, told of the document all the same, fails it: a page that reads what it does not show", async () => {
     const leaky: Example = { ...example, render: (sessionId) => (read("room:general"), example.render(sessionId)) };
@@ -565,7 +565,7 @@ describe("stories harness", () => {
   }, 30000);
 
   test("a tab closing the server does not tell fails its story: nobody still looking sees it", async () => {
-    const deaf: Example = { ...example, compartments: example.compartments.map((c) => ({ ...c, onClose: undefined })) };
+    const deaf: Example = { ...example, resources: example.resources.map((c) => ({ ...c, onClose: undefined })) };
     const failures = await failuresOf(deaf, only("Bob closes his tab"));
     expect(failures).toEqual(["nothing landed: closing bob's tab changed nothing", "ada did not see it: ada's page read session, here:general, room:general"]);
   }, 30000);
@@ -648,18 +648,18 @@ describe("stories harness", () => {
     expect(first(3)).toContain("refused, but it landed: ada's write was echoed back to them");
   }, 30000);
 
-  test("a write that is not on the ledger fails, unless its compartment keeps it off; a compartment that says so and is on it fails too", async () => {
+  test("a write that is not on the ledger fails, unless its resource keeps it off; a resource that says so and is on it fails too", async () => {
     // chat's documents left off the ledger by mistake: no undo could ever work
     const bare = createLocal();
     registerDocs(bare.server, db, schema, [defineDoc("session:", { root: "sessions", include: [], implied: true }), defineDoc("room:", { root: "rooms", include: ["messages"], implied: true })], []);
     registerMemory(bare.server, { prefix: "here:", empty: () => ({ people: {} }) });
     registerMemory(bare.server, { prefix: "lobby:", empty: () => ({ rooms: {} }) });
     const forgot = await failuresOf({ ...example, delta: bare }, only("Ada says hello"));
-    expect(forgot).toContain("the server failed writing room:general: delta recorded no ledger entry: register it with { ledger: true }, or say its compartment keeps it off the ledger (ledger: false)");
+    expect(forgot).toContain("the server failed writing room:general: delta recorded no ledger entry: register it with { ledger: true }, or say its resource keeps it off the ledger (ledger: false)");
     expect(forgot.some((f) => f.startsWith("the server failed writing session: delta recorded no ledger entry"))).toBe(true); // a session's own, named by type
 
     const lying = await failuresOf(withRoom((room) => ({ ...room, ledger: false })), only("Ada says hello"));
-    expect(lying).toContain("the server failed writing room:general: its compartment keeps it off the ledger (ledger: false), yet delta recorded the write");
+    expect(lying).toContain("the server failed writing room:general: its resource keeps it off the ledger (ledger: false), yet delta recorded the write");
   }, 30000);
 
   // What happened, said to its author (src/refusal.ts): chat telling Ada her message is sent,
@@ -709,7 +709,7 @@ describe("stories harness", () => {
     const { example: wedding, stories: vows } = await load("wedding");
     const visit = await import("../../examples/wedding/documents/session");
     const named = (start: string): Story => vows.stories.find((s) => s.name.startsWith(start))!;
-    const withHousehold = (f: (household: Compartment) => Partial<Compartment>, from: Example = wedding): Example => ({ ...from, compartments: from.compartments.map((c) => (c.docType === "household" ? { ...c, ...f(c) } : c)) });
+    const withHousehold = (f: (household: Resource) => Partial<Resource>, from: Example = wedding): Example => ({ ...from, resources: from.resources.map((c) => (c.docType === "household" ? { ...c, ...f(c) } : c)) });
     const maybe = named("The Okafors say maybe");
 
     test("a line told to the author is no change of theirs: a write their own page does not show fails, whatever it says", async () => {
@@ -944,9 +944,9 @@ describe("propsCost: what a render sends in props, which the harness says and do
 });
 
 describe("a hidden verb: a write the server takes that no story tells and no page offers", () => {
-  const withOwn = (docType: string, f: (c: Compartment) => Partial<Compartment>): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === docType ? { ...c, ...f(c) } : c)) });
+  const withOwn = (docType: string, f: (c: Resource) => Partial<Resource>): Example => ({ ...example, resources: example.resources.map((c) => (c.docType === docType ? { ...c, ...f(c) } : c)) });
 
-  test("A compartment that permits a write no story tells and no page offers is named by `bun run stories`", async () => {
+  test("A resource that permits a write no story tells and no page offers is named by `bun run stories`", async () => {
     // chat's own: every write its permits take, a story tells or a page offers
     expect((await run(example, stories)).warnings).toBeUndefined();
     // a room that takes a message back over the wire: Ada's refusal tells it, so it is not hidden from her; from anyone else it is
@@ -1157,7 +1157,7 @@ describe("hear, after a render in parts: the page as a fresh render draws it, wh
 // controls the wire would refuse without a word.
 describe("a failure that says why", () => {
   const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
-  const withOwner = (docType: string, f: (c: Compartment) => Compartment): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === docType ? f(c) : c)) });
+  const withOwner = (docType: string, f: (c: Resource) => Resource): Example => ({ ...example, resources: example.resources.map((c) => (c.docType === docType ? f(c) : c)) });
   const refusing = (reason: string): never => {
     throw refuse(reason);
   };
@@ -1172,7 +1172,7 @@ describe("a failure that says why", () => {
     expect(await failuresOf(example, [{ name: "Bob closes his tab, and Cy sees it", as: "bob", closesTab: true, seen: ["ada", "cy"] }])).toEqual(["cy did not see it: cy's page read session, here:kitchen, room:kitchen; the tab closing changed here:general"]);
   }, 30000);
 
-  test("A story fails, and says which page read what, so the fix is first time: a write refused says which check refused it, in the compartment's words", async () => {
+  test("A story fails, and says which page read what, so the fix is first time: a write refused says which check refused it, in the resource's words", async () => {
     const saying = withOwner("room", (room) => ({
       ...room,
       permit: (ws, op, id) => (op.value === "hi" ? refusing("Not now.") : room.permit!(ws, op, id)),
@@ -1208,7 +1208,7 @@ describe("a failure that says why", () => {
     const wired = withOwner("session", (session) => ({ ...session, permit: (ws, op, id) => (op.path === "/mood" ? refusing("No moods.") : session.permit!(ws, op, id)) }));
     const careless: Example = {
       ...wired,
-      compartments: wired.compartments.map((c) => (c.docType === "room" ? { ...c, shape: undefined } : c)),
+      resources: wired.resources.map((c) => (c.docType === "room" ? { ...c, shape: undefined } : c)),
       render: (sessionId) =>
         example.render(sessionId) +
         part(

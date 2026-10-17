@@ -7,7 +7,7 @@ this repo.*
 ## The claim
 
 An app is a set of stories. Each story says who does what, and who then sees it. Everything else
-in the app -- the documents, the compartments on the page, the permit tables, who is told of a
+in the app -- the documents, the resources on the page, the permit tables, who is told of a
 write -- is derived from the stories, and the running app is tested by running them.
 
 Two canons hold the whole thing up:
@@ -171,8 +171,8 @@ file is not type-checked when it runs, and a key nobody reads would be dropped w
 The sentence at the front is the story's name and its whole value to a customer. It is what you
 scroll through with the groom and ask "is this true?". The object after it is what runs.
 
-Why `seen` names a place, not a compartment: a household's whole page is one compartment and the
-couple's another, so a compartment says nothing; what decides whether someone notices is the page
+Why `seen` names a place, not a resource: a household's whole page is one resource and the
+couple's another, so a resource says nothing; what decides whether someone notices is the page
 they are on, and for choices and coming, the reading of the list. And why `untold` is said, not
 read as everyone not in `seen`: home pages with counts and a photo notice nearly everything, so
 silence is said where it is meant.
@@ -182,13 +182,13 @@ silence is said where it is meant.
 Given a pile of stories, these are not written; they are read off:
 
 - **The permit table.** Every session role, path and verb that a `does` uses is permitted for
-  that role, and every `cannot` is refused. Today each compartment hand-writes a list of regexes
+  that role, and every `cannot` is refused. Today each resource hand-writes a list of regexes
   and verbs; the stories say the same thing as sentences, and the list is the one thing in a
-  compartment that should be derived first.
+  resource that should be derived first.
 - **The audience.** Who sees a document is who the stories say sees it. The change request's
-  item 1 asked for a method on the compartment; it is better as a fact of the stories.
+  item 1 asked for a method on the resource; it is better as a fact of the stories.
 - **The pages and their places.** Where a change shows is where stories say it shows. A page
-  nobody's story sees is not a page, and a compartment nobody's story sees is not a compartment.
+  nobody's story sees is not a page, and a resource nobody's story sees is not a resource.
 - **The documents and their shapes.** The paths written say what a document holds; the values
   say what the paths refer to. Entities come last.
 - **The two canons, run.** Canon 1 is every `seen` checked on that person's page. Canon 2 is
@@ -197,7 +197,7 @@ Given a pile of stories, these are not written; they are read off:
 ## Who compiles
 
 Claude does. The stories are the source: Claude reads them and writes the documents, the
-compartments and the permit tables, and the harness runs the same stories through the app and
+resources and the permit tables, and the harness runs the same stories through the app and
 reports every place the reading was unfaithful. Nothing in code compiles stories into an app (the
 modelling example reads them to draw a model to talk over, and an app never depends on it). The
 harness is not a proof tool for the app; it is the test of the compiler.
@@ -248,7 +248,7 @@ One kernel function, `run(example, stories)` in `src/modelling/harness.ts`, and 
 4. Undo, and every page must be as it was before; redo, and every page must be as it was after.
    Where the author stands is theirs, not the write's: a write that put a modal away is looked
    at from where each was taken.
-   Skipped when the write is off the ledger (its compartment says `ledger: false`, and the kernel
+   Skipped when the write is off the ledger (its resource says `ledger: false`, and the kernel
    reports a write that disagrees), when the ledger says it is a fact, or when its author
    has gone -- before the undo, or because of it (undoing the write that gave you your name).
 
@@ -289,7 +289,7 @@ One kernel function, `run(example, stories)` in `src/modelling/harness.ts`, and 
    premise's, a story's own, done or refused, and `goTo`'s, which is the URL bar's) or a control
    on a page of theirs offered is no hidden verb, a member of a collection as any one
    (`/guests/0/coming` is `/guests/2/coming`, and the market's `/ALPH/price` is `/BRVO/price`).
-   The rest are put to the compartment's `permit` and `shape`, with the value there and each
+   The rest are put to the resource's `permit` and `shape`, with the value there and each
    value a story or a page writes to that path; nothing is written. One the server would take is
    said, by the document, as a warning, not a failure: `session: a write no story tells and no
    page offers / ada, bob, cy, dee and eve may add /name`, chat's, before its permit learned
@@ -323,7 +323,7 @@ One kernel function, `run(example, stories)` in `src/modelling/harness.ts`, and 
    gesture.
 8. Report by story name. A failing story is a sentence, not a stack trace, that says why: who was
    not told names what their page read and what the write changed; a refused write, which check
-   refused it (the page did not read it, `permit`, `shape`, delta) and in the compartment's words.
+   refused it (the page did not read it, `permit`, `shape`, delta) and in the resource's words.
    And every control on every page drawn is held to the wire -- its document one that page read,
    its path a JSON Pointer, its op add, replace, remove or test, a replace's path one the document
    holds or its `permit` takes -- and one that fails is a warning: its page would stay still.
@@ -415,7 +415,7 @@ export const stories: Stories = {
   Each key came from a story that needed it (the premise, from a deadline passed for one story
   only; the gesture, from leave's calendar; `undone`, from a line that says what Undo took back;
   the budget, from a page handed far more than its change); it will not need a grammar.
-- **Not generated code.** Claude writes the compartments by hand from the stories, and a person
+- **Not generated code.** Claude writes the resources by hand from the stories, and a person
   can read both. When the permit table is the first thing derived rather than written, that is
   one function over the stories, not a code generator.
 - **Not a client copy of the document.** eta's browser holds HTML, and what it holds is compared
@@ -429,5 +429,5 @@ things; the ticker, where a tick is a story told by nobody (the feed is its auth
 where people sign in and drag across days.
 
 Next, the derivations, in the order they become pure: the permit table, then the audience.
-Documents and compartments stay Claude's to write from the stories, and the harness stays what
+Documents and resources stay Claude's to write from the stories, and the harness stays what
 says whether they were written right. What is open is in `todo.jsonl`.

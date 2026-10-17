@@ -25,7 +25,7 @@ Use `field()` for a field that edits a document: it cannot be wired wrong. Its o
 ## By hand: `write()`
 
 ```ts
-// examples/chat/compartments/room.ts: a form that creates, and a button
+// examples/chat/resources/room.ts: a form that creates, and a button
 `<form class="say" aria-label="Say something"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus aria-label="Message"><button type="submit" class="tool">Send</button></form>`
 `<button type="button" class="tool"${write("session", "replace", "/before", "earlier")}>Earlier</button>`
 ```

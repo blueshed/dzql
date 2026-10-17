@@ -1,15 +1,15 @@
-import type { Compartment } from "./compartment";
+import type { Resource } from "./resource";
 
 // The wire-facing ledger: undo is a write to "the ledger", the same way logging out is a write to
 // "the session", rather than a bare command with no document. The ledger itself is delta's: each
 // write recorded with its inverse, and the cursor undo walks is the session (src/server.ts).
 
 /**
- * Builds the ledger compartment for one assembled example. `active(sessionId)` is the guard every
+ * Builds the ledger resource for one assembled example. `active(sessionId)` is the guard every
  * write path needs -- a stale, logged-out tab shouldn't be able to walk back a write made before
  * it went stale -- and only the example knows what that means.
  */
-export function createLedgerCompartment(active: (sessionId: string) => boolean): Compartment {
+export function createLedgerResource(active: (sessionId: string) => boolean): Resource {
   return {
     docType: "ledger",
     perSession: true, // a session's own ledger: its undo cursor

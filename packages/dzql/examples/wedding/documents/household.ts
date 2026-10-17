@@ -189,7 +189,7 @@ const rowOf = (op: PatchOp | undefined): Record<string, unknown> => ((op as { va
 /**
  * What a household's write did, in the household's words: from the rows it left and the rows as
  * they were before it (`was`), each whole, as the ledger keeps them. Undo says it took this back,
- * and Redo that it did it again (compartments/household.ts `afterWalk`). A guest the rows only
+ * and Redo that it did it again (resources/household.ts `afterWalk`). A guest the rows only
  * number is named from `h`, a claimed gift from `gifts`.
  */
 export function whatItDid(left: PatchOp[], was: PatchOp[], h: HouseholdDocument, gifts: { id: number; name: string }[]): string[] {

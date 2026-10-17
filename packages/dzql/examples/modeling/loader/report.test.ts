@@ -98,7 +98,7 @@ describe("fromStories", () => {
   test("names nobody cast are noted, in seen and in unseen", () => {
     expect(kinds("uncast-member").map((n) => n.detail)).toEqual(['"ghost" notices but is not in the cast', '"nobody" must not notice but is not in the cast']);
   });
-  test("no documents are invented: who holds what is documents.ts's, from the stories, the compartments and a run", () => {
+  test("no documents are invented: who holds what is documents.ts's, from the stories, the resources and a run", () => {
     expect(r.model.documents).toEqual([]);
     expect(r.model.stories.every((s) => s.opens!.length === 0)).toBe(true);
   });
@@ -216,7 +216,7 @@ describe("the examples", () => {
 const SESSION_ID = /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/;
 
 describe("extract: an example's facts, from its files and a run of its stories", () => {
-  test("a compartment's rules, with the lists they name; none where its permit is code", () => {
+  test("a resource's rules, with the lists they name; none where its permit is code", () => {
     const rules = rulesIn(['const LIST = "(gifts|places)";', "const RULES: Rule[] = [", '  { path: /^\\/message$/, ops: ["replace"], dated: true },', "  { path: new RegExp(`^/${LIST}/-$`), ops: [\"add\"] },", "];"].join("\n"));
     expect(rules.map((r) => [r.path.test("/message"), r.path.test("/gifts/-"), r.ops, !!r.dated])).toEqual([[true, false, ["replace"], true], [false, true, ["add"], false]]);
     expect(rulesIn("permit: (ws, op) => op.path === \"/room\"")).toEqual([]);

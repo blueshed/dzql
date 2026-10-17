@@ -2,7 +2,7 @@ import * as householdDoc from "../documents/household";
 import * as sessionDoc from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 import { activeDocuments, settled } from "dzql/rendering/documents";
 import { putAway } from "./session";
 import { householdPage, type HouseholdView } from "../views/household";
@@ -59,7 +59,7 @@ export function renderHousehold(session: sessionDoc.SessionDocument, sessionId: 
   return v && householdPage(v);
 }
 
-export const household: Compartment = {
+export const household: Resource = {
   docType: "household",
   resolveDoc(ws) {
     const session = sessionDoc.read(ws.data.sessionId);

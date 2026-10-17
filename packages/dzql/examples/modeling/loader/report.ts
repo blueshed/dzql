@@ -3,7 +3,7 @@
 // this reads and judges.
 //
 // Two of the six are not run: reachability and subscription closure ask what a document watches,
-// and documents are documents.ts's now, read from the stories, the compartments and a run -- not
+// and documents are documents.ts's now, read from the stories, the resources and a run -- not
 // invented one per actor per page, over which the one thing either could find was a write nobody
 // notices (an empty `seen`): documents.ts flags that as a write that tells nobody. Nor is actor
 // closure's dead actor, which read those pages: an actor with nothing in front of them and nothing

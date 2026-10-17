@@ -1,14 +1,14 @@
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 import { serverWrite } from "dzql/rendering/documents";
 import { address, parseAddress } from "dzql/rendering/bento";
 import { splitPath } from "@blueshed/delta/core";
 import { may, session as sessionOf, shape, shapeSession, team as teamOf, TEAM, type Request } from "./documents";
 
-// leave's two compartments. The session: where you are, your draft, and who -- but who is written
+// leave's two resources. The session: where you are, your draft, and who -- but who is written
 // only by the sign-in page (./signin.ts); over the wire a session may move about, draft, and sign
 // out. The team is everyone's, and what a person may write to it is who they are (./documents.ts).
 
-export const session: Compartment = {
+export const session: Resource = {
   docType: "session",
   perSession: true, // keyed by the session id: this session's alone
   ledger: false, // signing in, moving about and a draft are not the team's history (./delta.ts)
@@ -24,7 +24,7 @@ export const session: Compartment = {
   shape: (_ws, id, ops) => shapeSession(sessionOf(id), ops),
 };
 
-export const team: Compartment = {
+export const team: Resource = {
   docType: "team",
   resolveDoc: (ws) => (sessionOf(ws.data.sessionId).person ? TEAM : undefined),
   permit(ws, op) {

@@ -4,15 +4,15 @@ import * as weddingDoc from "./documents/wedding";
 import { delta } from "./delta";
 import { welcome } from "./views/welcome";
 import { toldAt } from "dzql/rendering/refusal";
-import { board, everyone, renderBoard, wedding, welcome as welcomeDoc } from "./compartments/board";
-import { household, renderHousehold } from "./compartments/household";
-import { session } from "./compartments/session";
+import { board, everyone, renderBoard, wedding, welcome as welcomeDoc } from "./resources/board";
+import { household, renderHousehold } from "./resources/household";
+import { session } from "./resources/session";
 import { routes } from "./routes";
 import index from "./client/index.html";
 
 export const example: Example = {
   name: "wedding",
-  compartments: [session, household, board, wedding, welcomeDoc, everyone],
+  resources: [session, household, board, wedding, welcomeDoc, everyone],
   // The welcome until a code says who you are, then whichever of the two it makes you.
   render(sessionId) {
     const visit = sessionDoc.read(sessionId);

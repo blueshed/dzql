@@ -95,7 +95,7 @@ every change to it.** You never subscribe by hand. So cut your documents by who 
 `write(doc, op, path, value?)`:
 
 ```ts
-// examples/chat/compartments/session.ts
+// examples/chat/resources/session.ts
 `<form${write("session", "replace", "/name")}>`,
 `<input id="name" name="name" required>`,
 ```
@@ -106,12 +106,12 @@ every change to it.** You never subscribe by hand. So cut your documents by who 
 
 ## 5. Say who may write what
 
-A **Compartment** (`src/rendering/compartments/compartment.ts`) looks after one type of document. (Chat's
+A **Resource** (`src/rendering/resources/resource.ts`) looks after one type of document. (Chat's
 is written here on one line per hook; the real file spells them out.)
 
 ```ts
-// examples/chat/compartments/room.ts
-export const room: Compartment = {
+// examples/chat/resources/room.ts
+export const room: Resource = {
   docType: "room",
   resolveDoc: (ws) => sessionDoc.read(ws.data.sessionId).room ?? undefined, // which room this person is in
   permit: (ws, op) => op.op === "add" && op.path === "/messages/-" && sessionDoc.read(ws.data.sessionId).name !== null, // may they?
@@ -142,7 +142,7 @@ any change from anyone. Chat's room uses `afterChange` to keep the list of rooms
 // examples/chat/index.ts
 export const example: Example = {
   name: "chat",
-  compartments: [session, room, here, lobby], // the session's first; here and lobby are live, kept by the server
+  resources: [session, room, here, lobby], // the session's first; here and lobby are live, kept by the server
   render,
   active: (sessionId) => sessionDoc.read(sessionId).name !== null, // may this person write at all?
   index,                                                           // client/index.html
@@ -182,7 +182,7 @@ Once they pass, add a server test for anything a story cannot see, and keep `bun
 Chat has one page. Most apps have several, plus drawers and modals, and that is where the
 **session** comes in: each visitor's own document, holding where they are.
 
-- Its compartment says `perSession: true`: it belongs to one session, and is named on the wire by its
+- Its resource says `perSession: true`: it belongs to one session, and is named on the wire by its
   type alone, because the session id is a credential.
 - It says `ledger: false`: moving about is not history, so Undo skips it.
 - Where you are is one **address**: `path?what=which`, like `2026-10?request=1` in leave, the
@@ -214,7 +214,7 @@ refuses without a word; that is right for a write no page offers.
 Undo and redo are free: every write is recorded with its opposite. Three things to know:
 
 - If Undo must obey a rule of time or state (answers close at a deadline), add `permitUndo` to the
-  compartment. It is asked before an undo, and may refuse with a reason.
+  resource. It is asked before an undo, and may refuse with a reason.
 - Where what Undo changed may be out of sight (a drawer that is shut), say what it took back:
   `afterWalk` runs after an undo or redo, knowing which way it went, and `tell`s the line the kernel
   draws beside Undo. The story then says `undone: "Undone: your answer."`, and `redone` for the

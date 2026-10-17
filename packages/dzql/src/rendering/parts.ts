@@ -1,4 +1,4 @@
-import type { HtmlOp } from "./compartments/render";
+import type { HtmlOp } from "./resources/render";
 import { esc } from "./html";
 import { applyOps } from "@blueshed/delta/core";
 

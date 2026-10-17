@@ -12,7 +12,7 @@
 # client/main.ts and its applets' mountings (`*-applet.ts*`, the wedding's picture-field.ts). The
 # preload holds it to the same bar: what the WebView tests' pages ran, read from Chrome
 # (src/rendering/client-coverage.ts), and the run fails at its end on a line no page ran. And a file of types alone (src/rendering/example.ts, src/rendering/connection.ts,
-# src/rendering/compartments/compartment.ts), with nothing to run. Anything else is loaded by a test: even
+# src/rendering/resources/resource.ts), with nothing to run. Anything else is loaded by a test: even
 # src/modelling/costs.ts, a script, is taken in hand by its own
 coverage = true
 preload = ["./src/rendering/client-coverage.ts"]

@@ -5,7 +5,7 @@ import { hear, type Heard } from "dzql/modelling/harness";
 import { may, placed, shape, shapeSession, type Person, type Team } from "./documents";
 import { alsoOff, calendarHtml, clashes, colourOf, days, daysOf, isWorkingDay, listRows, mondayOf, nextDay, nextMonth, offOn, prevMonth, rowHtml, workingDaysOf, type CalendarProps } from "./calendar";
 import { example } from "./index";
-import { session } from "./compartments";
+import { session } from "./resources";
 import { db } from "./delta";
 import { connectCli, runCommand } from "dzql/rendering/cli/commands";
 

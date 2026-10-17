@@ -1,7 +1,7 @@
 import * as sessionDoc from "../documents/session";
 import * as roomDoc from "../documents/room";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 import { join, write } from "dzql/rendering/html";
 import { keepPresence } from "../presence";
 
@@ -33,7 +33,7 @@ export function renderNameForm(): string {
 // A session's writable surface: the paths a connection may write on its own session.
 const WRITABLE_PATHS = new Set(["/name", "/room", "/before"]);
 
-export const session: Compartment = {
+export const session: Resource = {
   docType: "session",
   perSession: true, // keyed by the session id: this session's alone
   under: "/sessions", // eta's `/name` is the document's `/sessions/name`

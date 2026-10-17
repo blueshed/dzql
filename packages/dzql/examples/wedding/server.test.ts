@@ -6,7 +6,7 @@ import { decoded } from "dzql/rendering/parts";
 import { crowd } from "./applets/photo";
 import { asCouple, asHousehold, board, household } from "./setup";
 import { example } from "./index";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 import { keepEveryone } from "./everyone";
 import { serverWrite } from "dzql/rendering/documents";
 import { esc } from "dzql/rendering/html";
@@ -876,18 +876,18 @@ describe("the couple keep a family's invitation", () => {
   });
 });
 
-// Each compartment permits what its pages offer, to whom they offer it, and nothing more (`bun
+// Each resource permits what its pages offer, to whom they offer it, and nothing more (`bun
 // run model:check wedding`): a field is emptied by replacing it with nothing, never removed; a row's
 // parent and a dish's or a drink's order are the server's; a reply is changed, never taken back.
 // What the wedding's stories no longer tell one by one is here, each write put to its permit.
 describe("a permit allows what a page offers, and nothing more", () => {
   type W = [PatchOp["op"], string];
-  /** A session that has entered `who`'s code, and what a compartment permits it. */
+  /** A session that has entered `who`'s code, and what a resource permits it. */
   async function as(who: string) {
     const sessionId = crypto.randomUUID();
     const ws = await enter(who, `session_id=${sessionId}`);
     const may = (docType: string, [op, path]: W) => {
-      const c = example.compartments.find((x) => x.docType === docType) as Compartment;
+      const c = example.resources.find((x) => x.docType === docType) as Resource;
       return c.permit!({ data: { sessionId } } as never, op === "remove" ? { op, path } : { op, path, value: "x" }, "1");
     };
     return { ws, may };

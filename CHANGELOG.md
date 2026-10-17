@@ -8,6 +8,12 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **eta's compartment is now a resource** (Peter's word, the concept review): the server side of a
+  resource, as paintbrush's resources are. `Compartment` is `Resource`, `src/rendering/compartments/`
+  is `src/rendering/resources/` (`resource.ts`), each example's `compartments` is its `resources`,
+  the eta-app skill's `compartment.md` is `resource.md`, everywhere in code, tests, docs and skills
+  (not in changelogs or history). The modelling grammar's `resource` flag, a junction's fk to what
+  a group is granted, is `reach`, so the word means one thing.
 - **One repository: railroad, delta and dzql** (17 October). railroad and delta moved in as Bun
   workspaces with their history (`packages/railroad`, `packages/delta`); dzql and create-dzql moved
   to `packages/dzql` and `packages/create-dzql`. The repository keeps the name **blueshed/dzql**

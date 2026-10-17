@@ -16,7 +16,7 @@ return frame(false, layers(d.page, d.drawer, d.modal), page);
 
 It gives a collection of rows, a drawer that changes one (`?row=<id>`), and the modals that add one
 (`?new`) and take one off (`?confirm=<id>`). `rows` are the document's, as the page read them; `may(op,
-path)` is the compartment's permit ([compartment.md](compartment.md)), asked for each control.
+path)` is the resource's permit ([resource.md](resource.md)), asked for each control.
 
 The ladder, and where it stops:
 

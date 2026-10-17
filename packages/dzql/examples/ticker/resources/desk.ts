@@ -1,13 +1,13 @@
 import * as deskDoc from "../documents/desk";
 import { collectionsWrite } from "dzql/rendering/bento";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 
 // The desk is the ticker's session (docs/dzql/rendering/change-request.md item 10): the ground the ticker's cells sit on,
 // not a place of its own on the page -- no `render`. It takes the writes that open a cell,
 // a drawer or a modal, switch a reading or say what find says, each field it moves replaced whole:
 // a visit is nobody else's to see, and nothing here is on the ledger (../delta.ts).
 
-export const desk: Compartment = {
+export const desk: Resource = {
   docType: "desk",
   ledger: false, // a visit is not history (../delta.ts)
   perSession: true, // keyed by the session id: this session's alone

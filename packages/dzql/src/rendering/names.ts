@@ -1,5 +1,5 @@
 // A document's whole name, `<docType>:<docId>` (`room:general`, `month:2026-09`): how delta names
-// it, and how the wire does, but for a session's own (src/compartments/audience.ts).
+// it, and how the wire does, but for a session's own (src/resources/audience.ts).
 
 export function prefixDoc(docType: string, docId: string): string {
   return `${docType}:${docId}`;

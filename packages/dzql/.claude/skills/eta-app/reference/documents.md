@@ -1,7 +1,7 @@
 # Documents (`delta.ts`, `documents/<thing>.ts`)
 
 An app's documents are delta's: `delta.ts` says the tables and the documents, `documents/<thing>.ts`
-reads them for the page. Who may write them is [compartment.md](compartment.md).
+reads them for the page. Who may write them is [resource.md](resource.md).
 
 ```ts
 // examples/chat/delta.ts
@@ -47,7 +47,7 @@ again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server
 - Tests and scripts write as a person would, through the same `shape`.
 - A page reads through `read()`. Go to the tables only for what no page reads as a document: what a
   live document is computed from, a credential, a blob, a rule `shape` checks across rows.
-- A session that is not history goes in a registry without `{ ledger: true }`, and its compartment
+- A session that is not history goes in a registry without `{ ledger: true }`, and its resource
   says `ledger: false`, so one left off the ledger by mistake is caught (leave's).
 - Read a long document in windows by a keyset, never an offset (chat's `/before`); the page still
   reads it whole, so it is told every change. A document whose rows only pile up (every bill ever)

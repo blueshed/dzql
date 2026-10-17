@@ -2,7 +2,7 @@ import * as roomDoc from "../documents/room";
 import type { ChatMessage } from "../documents/room";
 import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 import { part } from "dzql/rendering/parts";
 import { bento, layers, rows } from "dzql/rendering/bento";
 import { esc, join, write } from "dzql/rendering/html";
@@ -93,7 +93,7 @@ export function render(sessionId: string): string {
 }
 
 /** A room's conversation, kept in delta (`room:<name>`): a message is written by someone with a name. */
-export const room: Compartment = {
+export const room: Resource = {
   docType: "room",
   resolveDoc(ws) {
     return sessionDoc.read(ws.data.sessionId).room ?? undefined;
@@ -116,7 +116,7 @@ export const room: Compartment = {
 };
 
 /** Who is in a room: live, kept by the server (../presence.ts), written by nobody on the wire. */
-export const here: Compartment = {
+export const here: Resource = {
   docType: "here",
   kind: "live",
   resolveDoc(ws) {
@@ -125,7 +125,7 @@ export const here: Compartment = {
 };
 
 /** Which rooms there are: live, kept by the server, seen by the pages that show it (the rooms). */
-export const lobby: Compartment = {
+export const lobby: Resource = {
   docType: "lobby",
   kind: "live",
   resolveDoc: () => undefined,

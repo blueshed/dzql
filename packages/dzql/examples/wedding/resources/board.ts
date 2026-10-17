@@ -1,7 +1,7 @@
 import * as boardDoc from "../documents/board";
 import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 import { putAway } from "./session";
 import { boardPage } from "../views/board";
 import { keepEveryone } from "../everyone";
@@ -49,7 +49,7 @@ export function renderBoard(session: sessionDoc.SessionDocument): string | undef
   return b && boardPage({ session, b, may });
 }
 
-export const board: Compartment = {
+export const board: Resource = {
   docType: "board",
   resolveDoc(ws) {
     const session = sessionDoc.read(ws.data.sessionId);
@@ -65,10 +65,10 @@ export const board: Compartment = {
 };
 
 /** What a household reads of the wedding (`wedding:<id>`): written by the couple, through the board, and by nobody from the wire. */
-export const wedding: Compartment = { docType: "wedding", resolveDoc: () => undefined };
+export const wedding: Resource = { docType: "wedding", resolveDoc: () => undefined };
 
 /** What a visitor without a code reads (`welcome:<id>`): the wedding's own row. */
-export const welcome: Compartment = { docType: "welcome", resolveDoc: () => undefined };
+export const welcome: Resource = { docType: "welcome", resolveDoc: () => undefined };
 
 /** Who stands in the photo and how many have claimed each gift (`everyone:<id>`): live, kept by the server. */
-export const everyone: Compartment = { docType: "everyone", kind: "live", resolveDoc: () => undefined };
+export const everyone: Resource = { docType: "everyone", kind: "live", resolveDoc: () => undefined };

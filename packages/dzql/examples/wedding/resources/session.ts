@@ -1,13 +1,13 @@
 import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 import { serverWrite } from "dzql/rendering/documents";
 import { collectionsWrite } from "dzql/rendering/bento";
 import { keepEveryone } from "../everyone";
 
 // A visit (`session:<id>`): who this session is (a code) and where it is on the site. This is the
-// session (docs/dzql/rendering/change-request.md item 10) -- the ground the household and board compartments sit on, not
+// session (docs/dzql/rendering/change-request.md item 10) -- the ground the household and board resources sit on, not
 // a place of its own on the page: it has no `render`. It takes the writes that move around the
 // page -- a code, a page, a drawer, a reading -- and, as a first page opens, makes sure `everyone`
 // (../everyone.ts) says who stands in the photo.
@@ -22,7 +22,7 @@ const RULES: { path: RegExp; ops: PatchOp["op"][] }[] = [
   { path: /^\/(resend|page)$/, ops: ["replace"] },
 ];
 
-export const session: Compartment = {
+export const session: Resource = {
   docType: "session",
   ledger: false, // a visit is not history (../delta.ts)
   perSession: true, // keyed by the session id: this session's alone
@@ -42,7 +42,7 @@ export const session: Compartment = {
 };
 
 /** The household's and the board's `afterWrite`: the modal that asked is put away by the write that answers it. */
-export const putAway: NonNullable<Compartment["afterWrite"]> = async (ws, _id, ops) => {
+export const putAway: NonNullable<Resource["afterWrite"]> = async (ws, _id, ops) => {
   const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
   if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
 };

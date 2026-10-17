@@ -36,7 +36,7 @@ export function createDocuments(local: Local) {
   const inflight = new Set<Promise<unknown>>();
   const waiting = new Map<string, { v: number; resolve: () => void }[]>();
   // Changes are told one at a time, in the order they came: what one change sets going (a
-  // compartment keeping who is here) is done before the next is told, so it is never done twice.
+  // resource keeping who is here) is done before the next is told, so it is never done twice.
   let telling: Promise<void> = Promise.resolve();
 
   // the one stream of changes: every publish on a document's channel

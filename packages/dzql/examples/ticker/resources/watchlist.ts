@@ -1,7 +1,7 @@
 import * as market from "../documents/market";
 import * as watchlistDoc from "../documents/watchlist";
 import * as deskDoc from "../documents/desk";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 import { parseAddress } from "dzql/rendering/bento";
 import { activeDocuments, serverWrite, settled } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
@@ -19,11 +19,11 @@ async function closeAsked(sessionId: string, ops: PatchOp[]): Promise<void> {
   if (answered) await serverWrite(`desk:${sessionId}`, [{ op: "replace", path: "/desks/page", value: path }]);
 }
 
-export const watchlist: Compartment = {
+export const watchlist: Resource = {
   docType: "watchlist",
   perSession: true, // keyed by the session id: this session's alone
   under: "/watchlists", // eta's `/symbols` is the document's `/watchlists/symbols`
-  // No render(): the ticker compartment renders the page, this list within it.
+  // No render(): the ticker resource renders the page, this list within it.
   resolveDoc(ws) {
     return ws.data.sessionId;
   },

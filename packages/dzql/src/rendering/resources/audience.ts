@@ -3,7 +3,7 @@ import type { ConnectionData } from "../connection";
 import type { PatchOp } from "../json-patch";
 import { prefixDoc, splitDoc } from "../names";
 import { shows } from "../reading";
-import type { Compartment } from "./compartment";
+import type { Resource } from "./resource";
 
 // Who sees a document is derived, not declared: a connection sees what its page read
 // (`src/reading.ts`), and the one of each type it is on (`resolveDoc`). A session's own documents
@@ -11,11 +11,11 @@ import type { Compartment } from "./compartment";
 // here; the kernel tells a change to its `audienceFor` and redraws its `readersOf` (src/server.ts).
 
 const openSockets = new Set<ServerWebSocket<ConnectionData>>();
-let byDocType: Map<string, Compartment> | undefined;
+let byDocType: Map<string, Resource> | undefined;
 
 /** Set by `createServer` when an example becomes active, and cleared when it stops -- so a
  * server-less call (unreachable in practice) answers "nobody" rather than throwing. */
-export function setActiveCompartments(map: Map<string, Compartment> | undefined): void {
+export function setActiveResources(map: Map<string, Resource> | undefined): void {
   byDocType = map;
 }
 
@@ -43,21 +43,21 @@ export function allOpenSockets(): ServerWebSocket<ConnectionData>[] {
 export function wireName(docType: string, docId: string, ws: ServerWebSocket<ConnectionData>): string {
   if (byDocType?.get(docType)?.perSession || docId === ws.data.sessionId) return docType;
   if ([...openSockets].some((other) => other.data.sessionId === docId)) {
-    throw new Error(`${docType} is keyed by a session id: declare its compartment \`perSession\`, so the id never goes on the wire`);
+    throw new Error(`${docType} is keyed by a session id: declare its resource \`perSession\`, so the id never goes on the wire`);
   }
   return prefixDoc(docType, docId);
 }
 
 /**
- * The document a write names, for the compartment that owns it: a whole name (`room:general`) is
+ * The document a write names, for the resource that owns it: a whole name (`room:general`) is
  * that document; a bare type (`room`, `session`) is the one of that type this connection is on --
  * its `resolveDoc`. Undefined when nothing owns the type or the connection is on none of it.
  */
 export function resolveName(
-  owners: Map<string, Compartment>,
+  owners: Map<string, Resource>,
   name: string,
   ws: ServerWebSocket<ConnectionData>,
-): { owner: Compartment; docId: string } | undefined {
+): { owner: Resource; docId: string } | undefined {
   const { docType, docId } = name.includes(":") ? splitDoc(name) : { docType: name, docId: undefined };
   const owner = owners.get(docType);
   if (!owner) return undefined;
@@ -69,7 +69,7 @@ export function resolveName(
  * Does `ws` see `docId`: a session's own document only its session; any other, when it is the one
  * of its type the connection is on (`resolveDoc`), or when the page last drawn for it read it.
  */
-export function sees(owner: Compartment, ws: ServerWebSocket<ConnectionData>, docId: string): boolean {
+export function sees(owner: Resource, ws: ServerWebSocket<ConnectionData>, docId: string): boolean {
   if (owner.perSession) return docId === ws.data.sessionId;
   return owner.resolveDoc(ws) === docId || shows(ws, owner.docType, docId);
 }
@@ -88,10 +88,10 @@ export function readersOf(docType: string, docId: string): ServerWebSocket<Conne
 
 /**
  * A document's ops as the wire says them, for an echo and for `inspect` alike: at eta's paths (the
- * compartment's `under` taken off), and -- for a session's own document, keyed by the session id -- with
+ * resource's `under` taken off), and -- for a session's own document, keyed by the session id -- with
  * that id taken out of whatever they carry: a credential, never on the wire, not even to its own tabs.
  */
-export function wireOps(owner: Compartment, docId: string, ops: PatchOp[]): PatchOp[] {
+export function wireOps(owner: Resource, docId: string, ops: PatchOp[]): PatchOp[] {
   const at = owner.under ?? "";
   const moved = ops.map((op) => (at && (op.path === at || op.path.startsWith(`${at}/`)) ? { ...op, path: op.path.slice(at.length) } : op));
   return owner.perSession ? (JSON.parse(JSON.stringify(moved, (_k, v) => (v === docId ? undefined : v))) as PatchOp[]) : moved;

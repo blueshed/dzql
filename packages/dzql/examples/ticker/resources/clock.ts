@@ -1,17 +1,17 @@
 import * as clockDoc from "../documents/clock";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 
 // A session's clock: its own to write, seen by nobody else. The clock applet names this document
 // and takes the `replace /tz` itself, so the face and the hands follow at once; the page says the
-// city too (on the clock's compartment, in its drawer), so the write is answered with the page,
+// city too (on the clock's resource, in its drawer), so the write is answered with the page,
 // and the applets, being a morph boundary, are left as they are. Undo and Redo walk the choice of
 // city like any write.
 
-export const clock: Compartment = {
+export const clock: Resource = {
   docType: "clock",
   perSession: true, // keyed by the session id: this session's alone
   under: "/clocks", // eta's `/tz` is the document's `/clocks/tz`
-  // No render(): the ticker compartment renders the page, the clock within it.
+  // No render(): the ticker resource renders the page, the clock within it.
   resolveDoc(ws) {
     return ws.data.sessionId;
   },

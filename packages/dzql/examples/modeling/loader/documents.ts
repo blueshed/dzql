@@ -5,20 +5,20 @@
 //   the stories  -- each action (who, the document, the verb, the path) puts its document in
 //                   front of its author, and each `seen` names who must hold it. Nothing else is
 //                   needed, so a pile of stories with no app yet (loader/londons) reads too.
-//   the example  -- the documents its compartments own (`example.compartments`, each a docType).
+//   the example  -- the documents its resources own (`example.resources`, each a docType).
 //   a run        -- the harness tells the stories over real sockets, and says at each step what
 //                   each member's page read (`Trace.holds`) and what each was sent; while a step's
-//                   state stands, each held document is put to its compartment's permit.
+//                   state stands, each held document is put to its resource's permit.
 //
 // The checks are advice: they flag, they never fail a run.
 
 import { basename, resolve } from "node:path";
 import type { Example } from "dzql/rendering/example";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
+import type { Resource } from "dzql/rendering/resources/resource";
 import { writeOf, type Stories, type Story } from "dzql/modelling/stories";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { controlsOn, run, type Control, type Heard, type Trace } from "dzql/modelling/harness";
-import { allOpenSockets } from "dzql/rendering/compartments/audience";
+import { allOpenSockets } from "dzql/rendering/resources/audience";
 import { activeDocuments } from "dzql/rendering/documents";
 
 /** One actor's dealings with one document, counted in stories: held (in front of them), written, refused, told of a change. */
@@ -36,7 +36,7 @@ export type Finding = { story: string; detail: string };
 export type Reading = {
   /** Whether a run of the stories was read, or the stories alone. */
   ran: boolean;
-  /** The documents: the compartments' when there is an app, else the stories'. */
+  /** The documents: the resources' when there is an app, else the stories'. */
   docs: { name: string; kind: string }[];
   actors: string[];
   grid: Record<string, Record<string, Cell>>;
@@ -154,7 +154,7 @@ export type Watched = { traces: Trace[]; controls: Set<string>; allowed: Map<str
 
 /**
  * An observer for `run`: keeps each trace, and at each story's step -- while its state stands --
- * puts every document each member holds to its compartment's permit, path by path, and keeps the
+ * puts every document each member holds to its resource's permit, path by path, and keeps the
  * controls each member's page draws there. A member's socket is the one whose session their page
  * read (its own documents are named by it). `everywhere` keeps what every page a member can get to
  * offers (`run`'s walk, after the stories), so a write is offered whether or not a story opened
@@ -162,7 +162,7 @@ export type Watched = { traces: Trace[]; controls: Set<string>; allowed: Map<str
  */
 export function watch(example: Example): Watched & { observe: (t: Trace) => void; everywhere: (member: string, place: string, controls: Control[]) => void } {
   const watched: Watched = { traces: [], controls: new Set(), allowed: new Map() };
-  const byType = new Map(example.compartments.map((c) => [c.docType, c]));
+  const byType = new Map(example.resources.map((c) => [c.docType, c]));
   const control = (doc: string, op: string, path: string) => `${typeOf(doc)} ${op} ${shapeOf(path)}`;
   const drawn = (html: string) => controlsOn(html).forEach((c) => watched.controls.add(control(c.doc, c.op, c.path)));
   const observe = (t: Trace) => {
@@ -197,27 +197,27 @@ const kindOf = (s: Story): StoryRow["kind"] => (s.does ? "does" : s.cannot ? "ca
 const seenBy = (s: Story): string[] => (Array.isArray(s.seen) ? s.seen : Object.keys(s.seen ?? {}));
 
 /** A document as a page about it may name it: a session's own (`perSession`) by its type alone, since its id is a credential. */
-export function privately(compartments: Compartment[]): (doc: string) => string {
-  const perSession = new Set(compartments.filter((c) => c.perSession).map((c) => c.docType));
+export function privately(resources: Resource[]): (doc: string) => string {
+  const perSession = new Set(resources.filter((c) => c.perSession).map((c) => c.docType));
   return (doc) => (perSession.has(typeOf(doc)) ? typeOf(doc) : doc);
 }
 
 /** A ledger entry as a page about it may show it: its document named `privately`, and a session's own entry without its values, whose rows carry the session's id. */
 export function privateEntry(example: Example): (entry: Trace["ledger"][number]) => Trace["ledger"][number] {
-  const name = privately(example.compartments);
+  const name = privately(example.resources);
   const bare = (ops: PatchOp[]) => ops.map(({ op, path }) => ({ op, path }) as PatchOp);
   return (e) => (name(e.doc) === e.doc ? e : { ...e, doc: name(e.doc), ops: bare(e.ops), inverse: bare(e.inverse) });
 }
 
 /**
  * The documents of an example: from its stories, and -- given the example and a run of them -- from
- * its compartments and what the run saw. `defined` names the documents its delta.ts defines
- * (`documentsIn`): one no compartment owns is a document too, and nobody can be shown it.
+ * its resources and what the run saw. `defined` names the documents its delta.ts defines
+ * (`documentsIn`): one no resource owns is a document too, and nobody can be shown it.
  */
 export function read(stories: Stories, example?: Example, watched?: Watched, defined: string[] = []): Reading {
   const write = writeOf;
-  const types: Reading["docs"] = example ? example.compartments.map((c) => ({ name: c.docType, kind: c.kind ?? "written" })) : [];
-  for (const name of defined) if (!types.some((t) => t.name === name)) types.push({ name, kind: "no compartment" });
+  const types: Reading["docs"] = example ? example.resources.map((c) => ({ name: c.docType, kind: c.kind ?? "written" })) : [];
+  for (const name of defined) if (!types.some((t) => t.name === name)) types.push({ name, kind: "no resource" });
   for (const s of stories.stories) {
     const w = write(s);
     if (w && !types.some((t) => t.name === typeOf(w.doc))) types.push({ name: typeOf(w.doc), kind: example ? "not defined" : "from the stories" });
@@ -226,7 +226,7 @@ export function read(stories: Stories, example?: Example, watched?: Watched, def
   const grid: Reading["grid"] = Object.fromEntries(actors.map((a) => [a, Object.fromEntries(types.map((t) => [t.name, blank()]))]));
   const cell = (actor: string, doc: string) => (grid[actor] ??= {})[doc] ??= blank();
   const own = new Set(types.map((t) => t.name));
-  const name = privately(example?.compartments ?? []);
+  const name = privately(example?.resources ?? []);
   /** A document as the picture names it (`privately`); a kernel's (the ledger, what a session is told) not at all. */
   const named = (doc: string): string | undefined => (own.has(typeOf(doc)) ? name(doc) : undefined);
 
@@ -240,7 +240,7 @@ export function read(stories: Stories, example?: Example, watched?: Watched, def
     if (doc && s.cannot) cell(s.as, doc).refused++;
     const kind = doc && example && types.find((t) => t.name === doc)!.kind;
     if (kind === "not defined") noDocument.push({ story: s.name, detail: `${s.as} writes ${doc}, a document the example does not have` });
-    if (kind === "no compartment") noDocument.push({ story: s.name, detail: `${s.as} writes ${doc}, a document no compartment owns` });
+    if (kind === "no resource") noDocument.push({ story: s.name, detail: `${s.as} writes ${doc}, a document no resource owns` });
     if (doc && s.does && seenBy(s).length === 0) tellsNobody.push({ story: s.name, detail: `${s.as} writes ${doc}, and the story says nobody sees it` });
     if (watched || !doc || !s.does) return row;
     // the stories alone: the author needs the document in front of them, and whoever sees it must hold it
@@ -337,7 +337,7 @@ export function format(name: string, r: Reading): string {
   const out = (s = "") => lines.push(s);
   out(`# ${name}: documents`);
   out();
-  out(r.ran ? `Read from the stories, the example's compartments, and a run of the stories (${r.stories.length}).` : `Read from the stories alone (${r.stories.length}): there is no app to run, so what is held is what the stories say each person needs.`);
+  out(r.ran ? `Read from the stories, the example's resources, and a run of the stories (${r.stories.length}).` : `Read from the stories alone (${r.stories.length}): there is no app to run, so what is held is what the stories say each person needs.`);
   out();
   out(`## Who holds what`);
   out();
@@ -364,7 +364,7 @@ export function format(name: string, r: Reading): string {
   if (r.ran) {
     out(`## Writes the server accepts that no page offers (${r.permitAllows.length} ${r.permitAllows.length === 1 ? "path" : "paths"})`);
     out();
-    out(`permit allows: each path in what a member holds, per verb, put to its compartment's permit, where no story does it and no page a member can get to offers it. It over-reports: a shape may refuse what permit lets by, and a value is never tried.`);
+    out(`permit allows: each path in what a member holds, per verb, put to its resource's permit, where no story does it and no page a member can get to offers it. It over-reports: a shape may refuse what permit lets by, and a value is never tried.`);
     for (const a of r.permitAllows) out(`- permit allows ${a.doc} ${a.path}: ${a.ops.join(", ")} — to ${a.who.join(", ")}`);
     out();
   }

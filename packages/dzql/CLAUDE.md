@@ -34,7 +34,7 @@ an item is worked on. Same shape as duckdown's.
 packages/
 ├── dzql/                # The dzql package on npm
 │   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told), by-hand.ts (in a browser), costs.ts
-│   ├── src/rendering/   # dzql/rendering: eta's kernel: server.ts, compartments/, client/ (the browser's), bento, island.ts (railroad)
+│   ├── src/rendering/   # dzql/rendering: eta's kernel: server.ts, resources/, client/ (the browser's), bento, island.ts (railroad)
 │   ├── examples/<app>/  # eta's examples: chat, leave, modeling (the model's page), starter, ticker, wedding
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
@@ -74,7 +74,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
 `src/modelling/` and `src/rendering/` are the contract.
 
 - Someone telling you the stories, there to answer: the **modelling** skill. Building or extending an
-  app or an example, or touching the `Compartment` contract, an app's `delta.ts`, the applet
+  app or an example, or touching the `Resource` contract, an app's `delta.ts`, the applet
   registry or the wire: the **eta-app** skill. Documents: delta's **delta-doc** skill.
 - **Stories first.** `docs/dzql/modelling/stories.md` is what it is for. An app's `stories.ts` says who does
   what and who then sees it; everything else follows. Start a feature with its story, watch it fail,
@@ -85,7 +85,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
   `examples/modeling/` is the model's page; its `loader/` reads an app that exists.
 - railroad only in `src/rendering/island.ts`; the examples add `lucide`; the kernel imports no icon set.
 - Documents are delta's: rendering owns people and pages, delta owns documents, their ledger and
-  their one stream of changes. A **compartment** owns one `docType` and has no place on the page; a
+  their one stream of changes. A **resource** owns one `docType` and has no place on the page; a
   place on the page is a **cell**, in the bento's **tray**; the visitor's own document is the **session**.
 - **The wire.** HTML is the only vocabulary: no node or JSON tree on the wire or in the client. A
   write names a document (`<docType>:<docId>`) and a JSON Pointer path, never a function. A

@@ -1,11 +1,11 @@
 import type { Local } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
-import type { Compartment } from "./compartments/compartment";
+import type { Resource } from "./resources/resource";
 import { activeDocuments, read, serverWrite, settled, type Documents } from "./documents";
 import { esc } from "./html";
 
 // What a session is told of its last write: why it was refused, or what it did (docs/dzql/modelling/stories.md; the
-// page rule "a refused write says why, next to the control that sent it"). A compartment's `permit`
+// page rule "a refused write says why, next to the control that sent it"). A resource's `permit`
 // or `shape` throws `refuse(reason)`, and the kernel keeps the reason; what follows a write that
 // lands (`afterWrite`, `afterWalk` for an undo or redo), or a route that answers a form, `tell`s
 // what it did. The line is kept in the session's own `told` document -- in memory, off the ledger,
@@ -20,7 +20,7 @@ export class Refusal extends Error {
   }
 }
 
-/** Throw from a compartment's `permit` or `shape` to refuse a write and say why. */
+/** Throw from a resource's `permit` or `shape` to refuse a write and say why. */
 export const refuse = (reason: string): Refusal => new Refusal(reason);
 
 /**
@@ -69,8 +69,8 @@ export async function tell(sessionId: string, line?: Line): Promise<void> {
 
 const registered = new WeakSet<Local>();
 
-/** The kernel's `told` compartment, its documents registered in the example's delta once. */
-export function createToldCompartment(delta: Local): Compartment {
+/** The kernel's `told` resource, its documents registered in the example's delta once. */
+export function createToldResource(delta: Local): Resource {
   if (!registered.has(delta)) registerMemory(delta.server, { prefix: "told:", empty: none });
   registered.add(delta);
   return { docType: "told", perSession: true, kind: "live", resolveDoc: (ws) => ws.data.sessionId };

@@ -9,7 +9,7 @@ the wedding is not a rule of the page. Numbered so the changelog can name them.*
 ## Where this comes from
 
 The wedding was built before the rules were written down, and it breaks about half of them: its
-tools are pills, undo and redo and leave sit in a toolbar under the box, opening a compartment goes
+tools are pills, undo and redo and leave sit in a toolbar under the box, opening a resource goes
 to another page, the property panel narrows the page behind it, there is no filter and adding is a
 form on the page. Chat and the ticker were never drawn as boxes at all, though rule 1 says every
 page is a box or a collection and both are one or the other. The wedding goes first because it has
@@ -31,7 +31,7 @@ and the kernel draws it (`src/rendering/icons.ts`, 0.36.0).
   before a view is touched, and `bun run stories` says when the retelling is done. Rules that are
   only look have no stories; the mock-up and the design canvas are their reference.
 - **A rule that will not fit is a finding.** If an example cannot honour a rule without strain --
-  a delete that should not need a modal, a compartment that is neither a collection nor a thing --
+  a delete that should not need a modal, a resource that is neither a collection nor a thing --
   stop, write it down under "Findings" at the foot of this document, and go on to the next item.
   The rule is what is on trial. Do not bend the rule quietly and do not bend the example.
 - **One item, one commit**, with a changelog entry naming the item, `bun run test` at exit 0 with
@@ -57,7 +57,7 @@ the kernel's own client stylesheet, if it gets one, else documented for the exam
 
 **Why.** Rule 7: opening does not go anywhere; the same element grows into the window. The morph
 is the kernel's, so the kernel has to name the moving element, and the mock-up learned the hard
-way that naming every compartment animates the moving one under its neighbours.
+way that naming every resource animates the moving one under its neighbours.
 
 **Not this.** Not a general animation vocabulary. One attribute, one name, one element.
 
@@ -99,7 +99,7 @@ grammar in `stories.ts` already carries any key.
 Rule 11, rule 9, rule 18's second half. One family of corners: a button inside a control 4px, a
 control 6, a thumbnail 8, the drawer and the modal 20, the tray and the window 28, and nothing is a
 pill -- every `border-radius: 999px` goes. Every shadow tints toward the ink. Undo, redo and leave
-leave the foot and float as one stack at the bottom right of the tray, over the compartments,
+leave the foot and float as one stack at the bottom right of the tray, over the resources,
 leave set apart by a rule; a collection's tools (the reading switch, what adds) float as stacks on
 the right edge of its page. The panel overlaps: `main#app:has(.sheet)` no longer narrows the page,
 and the tray keeps its shape whatever is open. Nothing on the wire changes and every story stays
@@ -110,15 +110,15 @@ green as it is.
 Rules 13, 14, 15. A figure in a reading -- a guest's row, a gift's row, a photo, an event -- opens
 its properties in the drawer and shows it is chosen: a row lights across its whole line, a photo
 rings. What a figure can carry waits in its drawer as one control: claiming a gift, keeping a row,
-answering, are buttons in the drawer, not on the line. A compartment that is a thing -- the
+answering, are buttons in the drawer, not on the line. A resource that is a thing -- the
 household's own answer; the couple's welcome message -- carries ✎, not ›, and a tap opens its
-drawer with each property by its kind, the compartment lit while the drawer is open. Adding a
+drawer with each property by its kind, the resource lit while the drawer is open. Adding a
 guest, a gift, an ask, an event, is the plus on the collection's rail and a modal (`<dialog>`)
 asking one question, the name, with everything behind it dimmed; removing one asks in a modal too,
 one question, since a modal is new or delete and nothing else. The panel is a panel from 820px and
 a sheet from the foot below, and while either is open the page behind holds still.
 
-Stories, retold and new (the `seen` place is the compartment or page the drawer sits on):
+Stories, retold and new (the `seen` place is the resource or page the drawer sits on):
 
 ```ts
 story("Grace opens Arjun's drawer, and only her page shows him chosen", { as: "okafors", does: at("guests @ focus=1"), seen: { okafors: "guests" } }),
@@ -133,12 +133,12 @@ place where a drawer is now the way to the button.
 ### W3. Open in place
 
 Rules 7, 8, 10, 12. Going to a collection stays a write of `/page`, and the trail stays as it is,
-one crumb longer. What changes is the render: the box is rendered with the named compartment grown
-into the window and the others gone behind it, the compartment's element carrying
+one crumb longer. What changes is the render: the box is rendered with the named resource grown
+into the window and the others gone behind it, the resource's element carrying
 `data-moving="<key>"` in both renders so K1 morphs the shape. A map, a list, a grid, the photos:
 all open the same way, and the reading scrolls under the controls, clear of them where it is a list
-or a grid. The `collectionPage` view goes; `boxPage` learns an open compartment. No story changes
-its `does`; some `seen` places that named a page now name the compartment, which is the same key.
+or a grid. The `collectionPage` view goes; `boxPage` learns an open resource. No story changes
+its `does`; some `seen` places that named a page now name the resource, which is the same key.
 
 ### W4. The filter
 
@@ -160,7 +160,7 @@ pass by Fable against the mock-up itself, every screen at both widths: item 1 as
 -- the mock-up's window is the screen less a margin, not the tray's rectangle, and the mock-up won;
 the reading's clearance, the stacks and the rails' step-aside are the mock-up's own numbers; item 5,
 the eye, is built with its three stories. The same pass gave every list one row grammar and every
-drawer one property grammar, made the guests a compartment that opens, and moved the invite into
+drawer one property grammar, made the guests a resource that opens, and moved the invite into
 a modal (see CHANGELOG 0.41.0).
 
 
@@ -172,10 +172,10 @@ wedding's own CSS, never the mock's, but take the numbers from it rather than in
 the wedding differs from the mock in any of these, the mock wins.
 
 1. **The window is the tray's rectangle.** Today `.cells.has-open .cell:not(.open) { display: none }`
-   removes the other compartments and `.cell.open` is `position: fixed` to the viewport, so the
+   removes the other resources and `.cell.open` is `position: fixed` to the viewport, so the
    tray collapses and the window is as wide as the screen. Rule 7 and rule 18: the tray keeps its
-   shape whatever is open. From 820px the other compartments stay in flow and are covered (the
-   tray is `position: relative`, the open compartment `position: absolute; inset: 0` over them,
+   shape whatever is open. From 820px the other resources stay in flow and are covered (the
+   tray is `position: relative`, the open resource `position: absolute; inset: 0` over them,
    drawn on top); the window is exactly the tray's rectangle, corners 28, and it transitions from
    the cell's rectangle to the tray's. Below 820px the window is the screen, as now, since the
    phone's column is taller than the screen. A reading taller than the window scrolls inside it.
@@ -192,8 +192,8 @@ the wedding differs from the mock in any of these, the mock wins.
    viewport, so on the box it floats outside the tray's right edge, and `.rail`'s own top offset is
    a guess (76px) at clearing chrome that lives outside the window in the wedding, not inside it as
    in the mock. Rule 9: undo, redo and leave are a stack at the bottom right of the tray on the box
-   and of the window when one is open, the compartment's own tools a stack at its top right;
-   position both within `.cells` (and within the open compartment), not the viewport, from 820px,
+   and of the window when one is open, the resource's own tools a stack at its top right;
+   position both within `.cells` (and within the open resource), not the viewport, from 820px,
    at the mock's own offset from the window's edge. On a phone they may stay fixed to the screen's
    corner.
 4. **The rails step aside for the drawer** (the rule 18 finding). The render knows a drawer is
@@ -239,14 +239,14 @@ room the member stands in.
 *Done, 0.42.0.* Entering a room opens the conversation, since that is what you came for; the way out of a room is the trail's root crumb on the box.
 
 
-Rules 1 to 6, 9, 11, 12. Three compartments: the people (faces with names; the summary counts who
+Rules 1 to 6, 9, 11, 12. Three resources: the people (faces with names; the summary counts who
 is here), the conversation (the transcript, a list; the summary is the last line), and the rooms
-(the room picker applet becomes this compartment's reading: a list of rooms with a › into each,
-the current one marked). Compartments are cut into the tray by `src/tray.ts`, the conversation big.
+(the room picker applet becomes this resource's reading: a list of rooms with a › into each,
+the current one marked). Resources are cut into the tray by `src/tray.ts`, the conversation big.
 The trail is `eta chat › #general`. Leave and log out are the stack at the bottom right, log out set
 apart by a rule; undo and redo above them. Say is the conversation's own tool at the foot of its
 reading, as it is. The corner family as in W1. The six stories stay green; their `seen` names the
-compartment where it named the page.
+resource where it named the page.
 
 ### C2. People are things
 
@@ -256,7 +256,7 @@ compartment where it named the page.
 Rules 13, 15. A face opens that person's drawer: the name, and whether they are here; your own
 face's drawer lets you change your name, which is the write to `/name` that already exists. The
 name asked at the door stays where it is: without a name you cannot enter a room, and the door is
-not a drawer. Entering a room is the › on the rooms compartment; a room nobody has is the plus and
+not a drawer. Entering a room is the › on the rooms resource; a room nobody has is the plus and
 a modal asking one question, the room's name, which is the write to `/room` that already makes a
 room.
 
@@ -291,7 +291,7 @@ say the drawer and the filter are the session's, whoever the session is.
 *Done, 0.42.0.* The tray is `documents/desk.ts`, a session's own.
 
 
-Rules 1 to 6, 9, 11. Three compartments: the board (the watched symbols; its summary counts them),
+Rules 1 to 6, 9, 11. Three resources: the board (the watched symbols; its summary counts them),
 the market (every quote; the summary is how many symbols move), and the clock (a thing: the city
 and the time). The trail is `eta ticker › The desk`. Undo and redo are the stack at the bottom
 right; there is no leave. The thirteen stories stay green.
@@ -302,7 +302,7 @@ right; there is no leave. The thirteen stories stay green.
 
 
 Rules 16, 17. The board applet's drawing -- the table with a sparkline each -- is one reading and a
-plain list is the other, the current one pressed; the applet is the reading, not the compartment.
+plain list is the other, the current one pressed; the applet is the reading, not the resource.
 Find on the market dims the symbols the word misses and counts.
 
 ```ts
@@ -360,12 +360,12 @@ clear of an open drawer (`main#app:has(.sheet)`). What still overlaps is the box
 on the household's box the undo, redo and leave stack sits on the answer drawer's header.*
 
 **Rule 7, the wedding, W3.** "Opening does not go anywhere; the same element grows into the
-window" describes a tray cell growing into its own compartment. It does not, and cannot, describe
+window" describes a tray cell growing into its own resource. It does not, and cannot, describe
 the couple's own hop from a row in the households list (or a figure in its photo) into that
 family's own box (`households/<id>`) -- a row is not a tray cell with a `data-moving` name to
 grow from, so that one hop is a plain navigation, unanimated, the way every page transition was
 before K1. The family's own box does honour rule 7 one level further in, growing its own "asks"
-compartment into its own window exactly as the root box grows any of its six.
+resource into its own window exactly as the root box grows any of its six.
 
 **Rule 13, the wedding, W5.** "What the figure can carry waits in its drawer." An ask on the
 couple's side has no drawer -- it is a name and one decision -- so its yes or no sits on its own
@@ -385,13 +385,13 @@ first page built on them outside eta, and not a page of summaries: a person work
 of markdown, with the words and the page as a reader sees it side by side. These are the places
 where the rules strained.
 
-**Rules 4 and 7–10, duckdown's editor.** "A compartment shows the state it is in … a › because it
-opens" and "the same element grows into the window". The editor's tray is three compartments
+**Rules 4 and 7–10, duckdown's editor.** "A resource shows the state it is in … a › because it
+opens" and "the same element grows into the window". The editor's tray is three resources
 that are all open all the time: where you are (the tree), what you are changing (the page and
 the one slot beneath it), what a reader would see (the preview). Nothing in it is a summary and
 nothing grows into a window, because working means looking at all three at once. The rules
 describe one kind of box, a box of summaries you open one at a time. This is a second kind, a
-box of working compartments, where the tray, the trail, the drawer and the modal hold and the
+box of working resources, where the tray, the trail, the drawer and the modal hold and the
 window has no part. The rules should say there are two kinds, so a workspace does not read as a
 box that forgot its windows.
 
@@ -413,15 +413,15 @@ working is a control, not a label said twice. It is the case "say a thing once" 
 28." That holds while the drawer floats at the viewport's edge, as eta's `.sheet` does. duckdown's
 drawer sits inside the tray, a wall in from its edge, and at a fixed 20px against the tray's 22px
 its corners bulged. It is now `calc(var(--radius-tray) - var(--wall))`, the same cut rule 3 gives
-a compartment in a corner. Rule 3's cut applies to anything placed inside the tray, not only to
-compartments. Rule 11's list should say its 20 is for a drawer outside the tray.
+a resource in a corner. Rule 3's cut applies to anything placed inside the tray, not only to
+resources. Rule 11's list should say its 20 is for a drawer outside the tray.
 
 **Rule 6, duckdown's editor.** "On a phone the tray is a column … in the box's own order." Below
 768px the preview has no place in the column: a page shown under the words it comes from is a
 page you can't see while you type. It stays mounted and rendering, hidden. The header's Preview
 lays it over the tree and the page at full height (the others go `visibility: hidden`, so the text
 keeps its caret and scroll), and Edit or Escape puts it away. It counts as one of the things laid
-over the page: showing it closes a drawer, and opening a drawer puts it away. So a compartment can
+over the page: showing it closes a drawer, and opening a drawer puts it away. So a resource can
 leave the phone's column and come back as an overlay, when showing it beside its neighbours would
 show nothing.
 
@@ -441,8 +441,8 @@ the rule should bend.
 
 **Rule 1, chat.** Chat is neither kind of box. It is one window to work in, with nothing to open,
 and rules 4, 7 and 13-18 have nothing there to act on. Beside duckdown's box of working
-compartments, that is a third kind. The name form in front of it (`renderNameForm`,
-`compartments/session.ts`) is a fourth: a door that asks one question before any page exists.
+resources, that is a third kind. The name form in front of it (`renderNameForm`,
+`resources/session.ts`) is a fourth: a door that asks one question before any page exists.
 
 **C1-C3, chat.** They are marked done at 0.42.0, but 0.43.0 took the box down again: its drawers,
 modal and find came from stories written after it was built, and the stories won. That is the
@@ -462,7 +462,7 @@ no modal, and the story "The couple take the beef off" needs none. A list inside
 property of the thing, not a new thing.
 
 **Rules 1, 11 and 15, the wedding.** The household's answer and the couple's welcome are speech
-bubbles above the tray, not compartments in it. Each is a voice over the whole box, and its tail
+bubbles above the tray, not resources in it. Each is a voice over the whole box, and its tail
 points at the photo. The rules should allow a thing that stands on the ground rather than in the
 tray.
 
@@ -473,13 +473,13 @@ never hides anyone. The eye is for lists.
 are circles too, and read rightly as dots.
 
 **Rule 16, the ticker.** The board's figures are a subset of the market's, so read literally the
-two should be one compartment with a reading or a filter. They are rightly two: two documents,
-told to different people (the board only its own quotes). A compartment is a document someone
+two should be one resource with a reading or a filter. They are rightly two: two documents,
+told to different people (the board only its own quotes). A resource is a document someone
 reads, not a set of figures.
 
 **Rule 4, the ticker.** "A summary line with the count" should move, but a live summary over a
 shared document is told to every page of the box, and the stories want a tick to reach only
-those watching that symbol. So the market's compartment is blank today, and a summary's liveness
+those watching that symbol. So the market's resource is blank today, and a summary's liveness
 has to be scoped to who reads it.
 
 **Rule 13, the ticker.** A quote has nothing to edit. Its drawer exists for one control, and its

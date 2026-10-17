@@ -1,6 +1,6 @@
 import { db } from "../rendering/db";
 import type { Example } from "../rendering/example";
-import { assemble } from "../rendering/compartments";
+import { assemble } from "../rendering/resources";
 import { createServer } from "../rendering/server";
 import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
 import { isTest, isVerb, applyPatch, type PatchOp, type Test, type WriteId } from "../rendering/json-patch";
@@ -10,9 +10,9 @@ import { comparable, decoded, ownProps, splitTag } from "../rendering/parts";
 import { toldNothing, toldTo, type Line } from "../rendering/refusal";
 import { esc } from "../rendering/html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
-import { allOpenSockets, resolveName, sees } from "../rendering/compartments/audience";
+import { allOpenSockets, resolveName, sees } from "../rendering/resources/audience";
 import { shownTo } from "../rendering/reading";
-import type { Compartment, Kind } from "../rendering/compartments/compartment";
+import type { Resource, Kind } from "../rendering/resources/resource";
 import { prefixDoc, splitDoc } from "../rendering/names";
 import { size, sum, tap } from "./costs";
 
@@ -681,7 +681,7 @@ export async function run(
    * Canon 2's fresh render: the page drawn from storage. Each document it reads is opened again
    * from delta's tables (`open_at`). One the tables do not hold is nothing, as the kernel holds a
    * document delta cannot open, so a row they lost fails; only one with no tables at all -- a
-   * compartment's `live`, `sourced` or `static` kind, kept where delta keeps it -- is the server's copy. The page reads the
+   * resource's `live`, `sourced` or `static` kind, kept where delta keeps it -- is the server's copy. The page reads the
    * active copy, so this one is made active while it draws, and only then: a drawing is synchronous.
    */
   async function fresh(sessionId: string): Promise<string> {
@@ -1455,7 +1455,7 @@ export async function run(
   }
 
   /** Which of `owner`'s checks refuses `ops` to `docId` from `ws`, if one does: its `permit`, or its `shape`, shaping them to nothing. One that throws refuses. Nothing is written. */
-  async function refuser(owner: Compartment, ws: ReturnType<typeof allOpenSockets>[number], ops: PatchOp[], docId: string): Promise<"permit" | "shape" | undefined> {
+  async function refuser(owner: Resource, ws: ReturnType<typeof allOpenSockets>[number], ops: PatchOp[], docId: string): Promise<"permit" | "shape" | undefined> {
     try {
       if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return "permit";
     } catch {
@@ -1469,12 +1469,12 @@ export async function run(
   }
 
   /** Would the server take `op` to `docId` from `ws`: permitted, and shaped to something? */
-  const takes = async (owner: Compartment, ws: ReturnType<typeof allOpenSockets>[number], op: PatchOp, docId: string): Promise<boolean> => (await refuser(owner, ws, [op], docId)) === undefined;
+  const takes = async (owner: Resource, ws: ReturnType<typeof allOpenSockets>[number], op: PatchOp, docId: string): Promise<boolean> => (await refuser(owner, ws, [op], docId)) === undefined;
 
   /**
    * Which check refused `write` from `m`'s page, asked again as the server asks (src/server.ts
    * `write`), as the failure says it: the page did not read its document, which the wire does not
-   * write, or its compartment's `permit` or `shape`; past them both, delta. Nothing is written.
+   * write, or its resource's `permit` or `shape`; past them both, delta. Nothing is written.
    */
   async function refusedBy(m: Member, write: Write): Promise<string> {
     const ws = socketOf(m)!;

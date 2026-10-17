@@ -1,7 +1,7 @@
 import { applets } from "../applets";
 import { applyPatch, WIRE, type PatchOp, type Test } from "../json-patch";
 import { formValue, groupOf, held, isBox, isField, isRadio, pressed, rendered, sends, type Field } from "./form-value";
-import type { HtmlOp } from "../compartments/render";
+import type { HtmlOp } from "../resources/render";
 import { keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;

@@ -2,8 +2,8 @@ import * as clockDoc from "../documents/clock";
 import * as market from "../documents/market";
 import * as watchlistDoc from "../documents/watchlist";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import type { Compartment } from "dzql/rendering/compartments/compartment";
-import { audienceFor } from "dzql/rendering/compartments/audience";
+import type { Resource } from "dzql/rendering/resources/resource";
+import { audienceFor } from "dzql/rendering/resources/audience";
 import { activeDocuments, serverWrite, settled } from "dzql/rendering/documents";
 import { toldAt } from "dzql/rendering/refusal";
 import * as deskDoc from "../documents/desk";
@@ -59,7 +59,7 @@ const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
  * board is told only the symbols it watches. Written only through the market, whose ticks delta
  * tells it; nobody writes one from the wire.
  */
-export const quote: Compartment = {
+export const quote: Resource = {
   docType: "quote",
   kind: "fact",
   under: "/quotes", // the document is the row: eta's paths start at it
@@ -70,7 +70,7 @@ export const quote: Compartment = {
 export const render = (sessionId: string): string =>
   page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId), said: toldAt(sessionId, "watchlist", "/symbols/-") });
 
-export const ticker: Compartment = {
+export const ticker: Resource = {
   docType: "ticker",
   kind: "fact", // on the ledger, never undone
   under: "/quotes", // eta's `/ALPH/price` is the document's `/quotes/ALPH/price`

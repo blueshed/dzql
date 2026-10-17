@@ -15,10 +15,10 @@ scale is what showed these.
 
 ## 1. Who sees a document
 
-*Done, 0.29.0.* Landed almost exactly as specified: `Compartment.sees?(ws, docId)`, defaulting to
-`resolveDoc(ws) === docId` (a compartment only needs to implement it when someone else sees the
+*Done, 0.29.0.* Landed almost exactly as specified: `Resource.sees?(ws, docId)`, defaulting to
+`resolveDoc(ws) === docId` (a resource only needs to implement it when someone else sees the
 document without writing it -- only the wedding's `household` does, for the couple), and
-`src/rendering/compartments/audience.ts`'s kernel-kept open-socket registry (`audienceFor`/`notify`). Chat's
+`src/rendering/resources/audience.ts`'s kernel-kept open-socket registry (`audienceFor`/`notify`). Chat's
 `roomSocketSets` and the wedding's whole `concepts/presence.ts` are gone. One thing the "How"
 didn't anticipate: the wedding's *render* audience for a household/board write stayed "everyone"
 on purpose, not "everyone" as a workaround -- an aggregate view (the couple's totals, the
@@ -228,61 +228,61 @@ concept's `fragments` says nothing follows. A tick on the ticker is 104 bytes to
 fragment (item 7's caveat), and the client's kernel does not yet apply an op to props for the
 applet -- each applet does its own, which is right while there are two of them.
 
-## 10. The words: tray, compartment, tools
+## 10. The words: tray, resource, tools
 
 *Done, 0.27.0, in the two commits rule 5 asked for.* Rule 3's "the tray renders the ground" turned
 out to mean something specific once built: the tray has no `render` at all (nothing for the
 kernel to wrap), so whatever it used to show before a code/name existed -- chat's name form, the
-wedding's welcome -- moved into whichever domain compartment is tried first (`room.ts`,
-`household.ts`); that compartment's own wrapper is the page in that state, exactly as rule 1
-allows. One thing the contract didn't say: a compartment's wrapper is a DOM/morph boundary, not a
+wedding's welcome -- moved into whichever domain resource is tried first (`room.ts`,
+`household.ts`); that resource's own wrapper is the page in that state, exactly as rule 1
+allows. One thing the contract didn't say: a resource's wrapper is a DOM/morph boundary, not a
 layout one, and chat's CSS relied on `.messages` being a direct flex child of `#app` -- fixed
 with `[id^="c-"] { display: contents; }`, now documented in the skill for the next example that
 hits it. `Example.tray` is optional; the ticker (no sign-in) has none.
 
 **What.** Bento is eta's page model, and the kernel says so in its names. The code unit now
-called a *concept* becomes a **compartment**: a document with a place on the page, where it shows
-its state. The session becomes the **tray**: the ground the compartments sit on, holding which
+called a *concept* becomes a **resource**: a document with a place on the page, where it shows
+its state. The session becomes the **tray**: the ground the resources sit on, holding which
 page a tab is on, which drawer is open, how a collection is read. Undo, redo and leave are
-**tools**: verbs beside the compartments, on the box, not in it. Applets keep their name: a piece
-of behaviour inside a compartment.
+**tools**: verbs beside the resources, on the box, not in it. Applets keep their name: a piece
+of behaviour inside a resource.
 
 **Why.** Three reasons, in order of weight. It says where a thing lives, where "concept" only says
-that something is owned; and every example is already a box of compartments -- the ticker's clock,
+that something is owned; and every example is already a box of resources -- the ticker's clock,
 watchlist and market; the wedding's guests, asks, gifts, the day, where to stay, everyone; chat's
 room, with the session's welcome filling the page before it. It names what the examples are. And
 it keeps a stranger from bringing React with them: "component" means a client-side thing owning
 its state, re-rendering itself, composed by a parent passing props down -- everything eta is not.
-"Compartment" refuses all of that in one word, and the thing in eta that does resemble a component,
-the applet, keeps its own name, so the line stays sharp: a compartment is where a document is
+"Resource" refuses all of that in one word, and the thing in eta that does resemble a component,
+the applet, keeps its own name, so the line stays sharp: a resource is where a document is
 shown; an applet is behaviour inside one.
 
 **How.** A rename, and two things that follow from taking the name seriously. `Concept` becomes
-`Compartment` (`src/concepts/` becomes `src/rendering/compartments/`, `concepts: [...]` on `Example`
-becomes `compartments`); the skill and CLAUDE.md follow. Then: a compartment renders into a keyed
+`Resource` (`src/concepts/` becomes `src/rendering/resources/`, `concepts: [...]` on `Example`
+becomes `resources`); the skill and CLAUDE.md follow. Then: a resource renders into a keyed
 element, so a write to its document re-renders that element by default -- which is most of item 1
 falling out of a name, and the natural unit for item 7's fragments. And the odd ones out become
-honest: the ledger has no compartment (it is the tools' document, not a place), and the session is
-the tray, not a compartment, so neither is "a concept with no render" any more.
+honest: the ledger has no resource (it is the tools' document, not a place), and the session is
+the tray, not a resource, so neither is "a concept with no render" any more.
 
-**Not this.** Not a component model. A compartment holds nothing in the browser and composes
+**Not this.** Not a component model. A resource holds nothing in the browser and composes
 nothing; the box does the composing and the render does the filling.
 
 **The contract**, for whoever builds it:
 
-1. A compartment's `render(sessionId)` returns the HTML of its own place on the page, or
+1. A resource's `render(sessionId)` returns the HTML of its own place on the page, or
    `undefined` to defer, as `Concept.render` does today. The kernel wraps what it returns in
-   `<div id="c-<docType>">` and the page is the compartments in order. A compartment may still
+   `<div id="c-<docType>">` and the page is the resources in order. A resource may still
    return the whole page (the welcome, before a code): it is then the only one rendered, and its
    wrapper is the page.
-2. After a write to a document, the kernel re-renders the owning compartment's element for every
+2. After a write to a document, the kernel re-renders the owning resource's element for every
    connection that sees the document (item 1's audience; `renderRequested` with the write, as
-   now) as a single `replace` of `#c-<docType>` -- unless the compartment answers `fragments`
+   now) as a single `replace` of `#c-<docType>` -- unless the resource answers `fragments`
    itself, in which case its answer stands, `[]` included. So `fragments` becomes the exception,
-   not the rule, and the default cost of a write is one compartment, never the page.
+   not the rule, and the default cost of a write is one resource, never the page.
 3. The tray is the session: it renders the ground (the crumbs, the tools, the drawer that is
-   open) and is not a compartment; the ledger renders nothing and is not one either. Both keep
-   the same contract minus `render`, and `Example.compartments` lists only compartments.
+   open) and is not a resource; the ledger renders nothing and is not one either. Both keep
+   the same contract minus `render`, and `Example.resources` lists only resources.
 4. `WriteResult.rendered` goes. A write's own connection is rendered by rule 2 like any other;
    nothing is rendered twice.
 5. Do the rename first, as its own commit, the full suite green and nothing else changed; then
@@ -328,7 +328,7 @@ export const patch = db.transaction(function patch(name: string, ops: PatchOp[],
 Every document that records on the ledger (chat's room and session; the ticker's clock, market
 and watchlist; the wedding's household and board) and the wedding's session, which records
 nothing but has more than one statement. Nested calls become savepoints in `bun:sqlite`, so a
-compartment that one day patches two documents inside a transaction of its own still gets one
+resource that one day patches two documents inside a transaction of its own still gets one
 commit. The proof: a test that makes `record()` throw once, calls `patch()`, and finds the table
 unchanged and the version where it was; revert the wrapper and it must fail. CLAUDE.md's "patch()
 is the only write path" gains "and one transaction"; the skill's reference says the same under
@@ -342,7 +342,7 @@ nothing. The measure scripts should not change, since nothing on the wire does; 
 changes is the time a `patch()` takes, which nobody has measured and which this item does not
 promise.
 
-**Not this.** Not the dispatcher wrapping `write` and `replay`. A compartment sends its echo and
+**Not this.** Not the dispatcher wrapping `write` and `replay`. A resource sends its echo and
 emits the render inside `write`, so a rollback there would follow a message already sent; that
 is only right once the kernel does the echoing (item 1, and item 10's rule 2), and then it is
 one line.

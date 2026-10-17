@@ -4,7 +4,7 @@ import { splitPath } from "@blueshed/delta/core";
 
 // The market: one document, a quote per symbol, kept in delta (`ticker:market`, ../delta.ts), and
 // each quote as its own document too (`quote:<SYMBOL>`), for a board that watches it. A
-// tick is `replace /<SYMBOL>/price`, from the feed or from anyone the compartment permits. It is a
+// tick is `replace /<SYMBOL>/price`, from the feed or from anyone the resource permits. It is a
 // fact, not the person's doing: on the ledger with its inverse, so the last minute can be read
 // back, and never undone -- nobody's Undo can move the market.
 

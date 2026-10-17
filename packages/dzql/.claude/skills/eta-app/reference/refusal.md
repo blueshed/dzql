@@ -1,7 +1,7 @@
 # Saying why: refusals, successes, and Undo checked
 
 A write refused says why beside the control that sent it; a write, an undo or a redo may say what
-it did. The rules are a compartment's ([compartment.md](compartment.md)).
+it did. The rules are a resource's ([resource.md](resource.md)).
 
 ```ts
 // examples/leave/documents.ts: a rule in shape, in the story's words
@@ -10,7 +10,7 @@ if (ends < starts) throw refuse("The last day is before the first.");
 // examples/leave/page.ts: the line drawn beside the field that sent it
 `<input type="date" name="${which}"${write(doc, "replace", `${base}/${which}`)} value="${esc(s[which] ?? "")}"></label>${toldAt(sessionId, doc, `${base}/${which}`)}`
 
-// examples/wedding/compartments/household.ts: a rule of time that holds against Undo too,
+// examples/wedding/resources/household.ts: a rule of time that holds against Undo too,
 // and what a walk did, said over the page
 permitUndo(_ws, _id, ops) {
   if (weddingDoc.answersOpen()) return true;

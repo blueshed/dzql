@@ -36,7 +36,7 @@ function everyonePhoto(props: CrowdProps): string {
 - The ticker's board is a row applet per symbol, each on its own document (`quote:<SYMBOL>`), so a
   board is told only the quotes it shows.
 - From one big document, cut a second over the same rows in `delta.ts` ([documents.md](documents.md)),
-  with a compartment of its own that permits nothing. A `defineCustomDoc` recompute holds only what
+  with a resource of its own that permits nothing. A `defineCustomDoc` recompute holds only what
   it selects but is told whole (`replace ""`) on every write to what it watches: keep it small. A
   plain `defineDoc` over just the collections is told field by field; `columns` narrows it.
   `src/rendering/documents.test.ts` holds both.

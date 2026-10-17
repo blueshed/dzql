@@ -3,7 +3,7 @@ import { address, bento, choice, collectionsWrite, field, layers, matches, parse
 import { appletProps, esc, join, write } from "./html";
 import { decoded, diff, drawParts, part } from "./parts";
 import { waitFor, webview } from "./webview";
-import { renderMessage } from "./compartments/render";
+import { renderMessage } from "./resources/render";
 import fixture from "./bento.test.html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out

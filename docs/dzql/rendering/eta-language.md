@@ -1,6 +1,6 @@
 # eta's words: easier to grasp, understand, expect
 
-*25 September 2026. Proposed, then applied the same day, all of it; `Compartment` kept, by decision. Written after writing eta's `first-app.md`, which was the test: every word
+*25 September 2026. Proposed, then applied the same day, all of it; `Resource` kept, by decision. Written after writing eta's `first-app.md`, which was the test: every word
 that needed a footnote on the way in is below.*
 
 ## What makes a word hard
@@ -8,7 +8,7 @@ that needed a footnote on the way in is below.*
 Writing the first-app path showed three kinds of trouble:
 
 1. **One word, two meanings.** You learn one meaning, then meet the other and it misleads you.
-   eta has four of these words: *Compartment*, *tray*, *at* and *walk*.
+   eta has four of these words: *Resource*, *tray*, *at* and *walk*.
 2. **A name that doesn't say when it runs.** `permit`, `shape`, `walkable`, `wrote` and `changed`
    are all hooks on one object. Nothing in the names says which run before a write and which
    after, or who they run for.
@@ -29,18 +29,18 @@ follow the table.
 
 | Now | Where | The trouble | Proposed |
 |---|---|---|---|
-| `Compartment` in `src/tray.ts` | a cell of a box's grid | Same name as the kernel's Compartment | **`Cell`** (bento already calls it `cell`) |
+| `Resource` in `src/tray.ts` | a cell of a box's grid | Same name as the kernel's Resource | **`Cell`** (bento already calls it `cell`) |
 | `tray()` | lays out a box's grid | Same name as the session doc | **`grid()`** |
 | "the tray" | the session's own document | Means two things; "session" is what every example names it | **say "session"**; `bento({ tray: "session" })` becomes `bento({ session: "session" })` |
-| `Compartment.at` | where eta's paths sit in the document (`/sessions`) | Same name as `Stories.at`, which puts a person somewhere | **`under: "/sessions"`** |
+| `Resource.at` | where eta's paths sit in the document (`/sessions`) | Same name as `Stories.at`, which puts a person somewhere | **`under: "/sessions"`** |
 | `Stories.at(where)` | the write that puts a person at an address | Same as above | **`goTo(address)`** |
 
 These are small breaks. `Cell`, `grid()` and `under` live in the kernel and a handful of examples,
 and `goTo` is one line in each example's stories.
 
-### B. The Compartment's hooks: say when, and for whom
+### B. The Resource's hooks: say when, and for whom
 
-A compartment answers four questions in order: may they write this, what does it become, may
+A resource answers four questions in order: may they write this, what does it become, may
 they undo it, and what follows afterwards?
 
 | Now | When it runs | Proposed |
@@ -78,7 +78,7 @@ With these names you can tell from the name alone which hooks run before and aft
 
 ### E. Keep, but explain better
 
-- **`Compartment`** (the kernel's). Once the grid cell is renamed, it has one meaning. The word
+- **`Resource`** (the kernel's). Once the grid cell is renamed, it has one meaning. The word
   still suggests a place on a page, though, which is the misreading the CLAUDE.md warns about.
   A rename (*Keeper*: "the keeper of room documents") would be the biggest break of all, since
   every example and every doc says it. So do A to D first, then see whether it still grates.
@@ -107,7 +107,7 @@ Proposed, for `reference.md` and each kernel doc comment:
    old names kept as deprecated aliases for one version.
 2. B and C, the hook and story renames, in the next, with the aliases again.
 3. The reference rewrite (the section above), section by section.
-4. Then look at `Compartment` again.
+4. Then look at `Resource` again.
 
 Each rename is mechanical across `src/`, the four examples, the skill and the reference. The
 gate (tsc, 100% tests, every example's stories) would catch any name missed.
@@ -117,18 +117,18 @@ gate (tsc, 100% tests, every example's stories) would catch any name missed.
 A to D as proposed, with the gate green (338 tests at 100%, stories 10/17/46/21). Where applying
 them changed the plan:
 
-- **The bento's own words stayed, and one moved.** *Tray* and *compartment* were the bento's words
-  before the kernel borrowed them: a box is a tray with compartments cut into it. *Tray* is kept
-  as the visual box, now that the session is no longer called that. The bento's *compartment*
+- **The bento's own words stayed, and one moved.** *Tray* and *resource* were the bento's words
+  before the kernel borrowed them: a box is a tray with resources cut into it. *Tray* is kept
+  as the visual box, now that the session is no longer called that. The bento's *resource*
   became **cell**, in the code (`Cell`, `grid()`, `src/grid.ts`) and in the design rules, so
-  *compartment* is only the kernel's. The CSS tokens (`--tray`, `--radius-tray`) are unchanged.
+  *resource* is only the kernel's. The CSS tokens (`--tray`, `--radius-tray`) are unchanged.
 - **Two more `at`s were found and renamed.** An applet's `data-at` (where its document sits in
-  its props) is now **`data-under`**, the same idea as a compartment's `under`. The browser-test
+  its props) is now **`data-under`**, the same idea as a resource's `under`. The browser-test
   helper `at(view, url)` is now **`urlFor(view, url)`**. A ledger entry's `at` (a time) stays.
 - **No deprecated aliases.** eta is private and all its apps are its own examples, so aliases would
   have been complexity without a user. The CHANGELOG has a table from each old name to its new one.
 - **The ticker's own `drawer(v)`** clashed with the new `drawer()`, and is now `openDrawer(v)`.
-- **Doc comments rewritten** in the new pattern for `Compartment`, `Kind`, `Stories.goTo`,
+- **Doc comments rewritten** in the new pattern for `Resource`, `Kind`, `Stories.goTo`,
   `untold`, `Example.active`, `write`, `appletWrites`.
 - **`reference.md` rewritten** in the pattern, section by section, with nothing dropped. Two facts
   in it were stale and are now right: "The ledger" still described delta 0.6.0's two limits
@@ -139,9 +139,9 @@ them changed the plan:
   `.undo-said`. Where "sheet" is English (a phone's bottom sheet, the wedding's dressing sheet) it
   stays.
 
-### `Compartment`: kept
+### `Resource`: kept
 
-With the bento's compartment now a cell, the kernel's `Compartment` has one meaning, and the test
-that started this (writing `first-app.md`) needed no footnote for it: "a compartment looks after
-one type of document" reads plainly. A rename would move every example's `compartments/` folder
+With the bento's resource now a cell, the kernel's `Resource` has one meaning, and the test
+that started this (writing `first-app.md`) needed no footnote for it: "a resource looks after
+one type of document" reads plainly. A rename would move every example's `resources/` folder
 and every doc for no gain in clarity. Revisit only if a newcomer misreads it.

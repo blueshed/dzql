@@ -5,9 +5,9 @@ import type { PatchOp } from "../json-patch";
 import { prefixDoc, splitDoc } from "../names";
 import { shownTo } from "../reading";
 import { part } from "../parts";
-import type { Compartment } from "./compartment";
-import { createLedgerCompartment } from "./ledger";
-import { createToldCompartment, toldAt } from "../refusal";
+import type { Resource } from "./resource";
+import { createLedgerResource } from "./ledger";
+import { createToldResource, toldAt } from "../refusal";
 import { sees, wireName, wireOps } from "./audience";
 import { createDocuments, settled, type Documents } from "../documents";
 
@@ -22,10 +22,10 @@ export type InspectDoc = { doc: string; version: number; entries: InspectEntry[]
 export type Inspection = { docs: InspectDoc[] };
 
 export type Assembled = {
-  /** The example's compartments and the kernel's own (the ledger, what a session is told), for lifecycle (`onOpen`/`onClose`) and write dispatch. */
-  compartments: Compartment[];
+  /** The example's resources and the kernel's own (the ledger, what a session is told), for lifecycle (`onOpen`/`onClose`) and write dispatch. */
+  resources: Resource[];
   /** Every entry above, indexed by the docType it owns -- what server.ts's dispatcher resolves a `{doc, ops}` write against. */
-  byDocType: Map<string, Compartment>;
+  byDocType: Map<string, Resource>;
   /** The page for a session: the example's, and what its last undo or redo did, or why it was refused. */
   page(sessionId: string): string;
   /** The page, drawn until every document it reads is held. */
@@ -36,19 +36,19 @@ export type Assembled = {
 };
 
 /**
- * Wires one example's compartments into a running set: appends the kernel's own ledger and
- * told compartments, and returns the render/inspect/dispatch surface server.ts needs -- without
- * server.ts ever importing a specific example's compartments itself.
+ * Wires one example's resources into a running set: appends the kernel's own ledger and
+ * told resources, and returns the render/inspect/dispatch surface server.ts needs -- without
+ * server.ts ever importing a specific example's resources itself.
  */
 export function assemble(example: Example): Assembled {
-  const kernel = [createLedgerCompartment(example.active), createToldCompartment(example.delta)];
+  const kernel = [createLedgerResource(example.active), createToldResource(example.delta)];
 
-  const compartments = [...example.compartments, ...kernel];
-  const byDocType = new Map<string, Compartment>();
-  for (const compartment of compartments) {
+  const resources = [...example.resources, ...kernel];
+  const byDocType = new Map<string, Resource>();
+  for (const resource of resources) {
     // two owners of one type would leave the first silently unreachable
-    if (byDocType.has(compartment.docType)) throw new Error(`${example.name}: two compartments own "${compartment.docType}"${kernel.includes(compartment) ? " (the kernel's own)" : ""}`);
-    byDocType.set(compartment.docType, compartment);
+    if (byDocType.has(resource.docType)) throw new Error(`${example.name}: two resources own "${resource.docType}"${kernel.includes(resource) ? " (the kernel's own)" : ""}`);
+    byDocType.set(resource.docType, resource);
   }
 
   const documents = copies.get(example) ?? createDocuments(example.delta);
@@ -69,13 +69,13 @@ export function assemble(example: Example): Assembled {
   async function inspectFor(ws: ServerWebSocket<ConnectionData>, limit = 1): Promise<Inspection> {
     const seen = await settled(documents, () => {
       const names: string[] = [];
-      for (const compartment of example.compartments) {
-        const docId = compartment.resolveDoc(ws);
-        if (docId !== undefined) names.push(prefixDoc(compartment.docType, docId));
+      for (const resource of example.resources) {
+        const docId = resource.resolveDoc(ws);
+        if (docId !== undefined) names.push(prefixDoc(resource.docType, docId));
       }
       for (const name of shownTo(ws)) {
         const { docType, docId } = splitDoc(name);
-        const owner = example.compartments.find((c) => c.docType === docType);
+        const owner = example.resources.find((c) => c.docType === docType);
         if (owner && sees(owner, ws, docId)) names.push(name); // not another session's own
       }
       return names;
@@ -99,5 +99,5 @@ export function assemble(example: Example): Assembled {
     return { docs };
   }
 
-  return { compartments, byDocType, page, draw, inspectFor, documents };
+  return { resources, byDocType, page, draw, inspectFor, documents };
 }

@@ -1,6 +1,6 @@
-import { assemble } from "./compartments";
-import { allOpenSockets, audienceFor, closeConnection, openConnection, readersOf, resolveName, sees, setActiveCompartments, wireName, wireOps } from "./compartments/audience";
-import { fragmentsMessage, renderMessage } from "./compartments/render";
+import { assemble } from "./resources";
+import { allOpenSockets, audienceFor, closeConnection, openConnection, readersOf, resolveName, sees, setActiveResources, wireName, wireOps } from "./resources/audience";
+import { fragmentsMessage, renderMessage } from "./resources/render";
 import type { ConnectionData } from "./connection";
 import { setActiveDocuments, settled, type Documents } from "./documents";
 import type { Example } from "./example";
@@ -10,7 +10,7 @@ import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
 import { diff, drawnValues, type Drawn } from "./parts";
 import { Refusal, refuse, tell } from "./refusal";
-import { handleOf, newHandle } from "./compartments/ledger";
+import { handleOf, newHandle } from "./resources/ledger";
 import { refuseOrigin } from "@blueshed/delta/server";
 import { serve } from "@blueshed/delta/serve";
 
@@ -143,7 +143,7 @@ async function claimOf(doc: string, v: number | undefined): Promise<{ ws: Socket
 /**
  * A change to a document -- a write here, an undo, or another process's over Postgres -- is told
  * from here, and only here: its ops echoed to everyone who sees the document, in eta's paths (a
- * compartment's `under` taken off), and every page that read it drawn again.
+ * resource's `under` taken off), and every page that read it drawn again.
  */
 function tellChanges(documents: Documents): void {
   if (heard.has(documents)) return;
@@ -208,8 +208,8 @@ export function createServer(example: Example, port: number | string = process.e
   }
   const assembled = assemble(example);
   active = { example, assembled, servers: (active?.servers ?? 0) + 1 };
-  const { compartments, byDocType, inspectFor, documents } = assembled;
-  setActiveCompartments(byDocType);
+  const { resources, byDocType, inspectFor, documents } = assembled;
+  setActiveResources(byDocType);
   setActiveDocuments(documents);
   tellChanges(documents);
 
@@ -239,7 +239,7 @@ export function createServer(example: Example, port: number | string = process.e
   }
 
   /** A permitted write from the wire: shaped, written through delta as the person. */
-  async function writeDelta(ws: Socket, owner: (typeof compartments)[number], docId: string, ops: PatchOp[], id?: WriteId): Promise<boolean> {
+  async function writeDelta(ws: Socket, owner: (typeof resources)[number], docId: string, ops: PatchOp[], id?: WriteId): Promise<boolean> {
     const kind = owner.kind ?? "written";
     const shaped = owner.shape ? await settled(documents, () => owner.shape!(ws, docId, ops)) : ops;
     if (shaped.length === 0) return false;
@@ -251,7 +251,7 @@ export function createServer(example: Example, port: number | string = process.e
     if ("error" in written || written.ops.length === 0) return false;
     const named = owner.perSession ? owner.docType : doc; // a session's own named by type: its id is a credential
     if ((written.entry === undefined) !== (owner.ledger === false)) {
-      const why = owner.ledger === false ? "its compartment keeps it off the ledger (ledger: false), yet delta recorded the write" : "delta recorded no ledger entry: register it with { ledger: true }, or say its compartment keeps it off the ledger (ledger: false)";
+      const why = owner.ledger === false ? "its resource keeps it off the ledger (ledger: false), yet delta recorded the write" : "delta recorded no ledger entry: register it with { ledger: true }, or say its resource keeps it off the ledger (ledger: false)";
       failed(`writing ${named}`, new Error(why));
     }
     await landed(ws, () => owner.afterWrite?.(ws, docId, ops, wireOps(owner, docId, written.ops as PatchOp[])), `following a write to ${named}`);
@@ -388,7 +388,7 @@ export function createServer(example: Example, port: number | string = process.e
         openConnection(ws);
         enqueue(async () => {
           try {
-            for (const compartment of compartments) await compartment.onOpen?.(ws);
+            for (const resource of resources) await resource.onOpen?.(ws);
           } finally {
             await redraw(ws, true); // the page is drawn, whatever failed opening it
           }
@@ -407,7 +407,7 @@ export function createServer(example: Example, port: number | string = process.e
         closeConnection(ws);
         if (![...allOpenSockets()].some((open) => open.data.sessionId === ws.data.sessionId)) handles.delete(ws.data.sessionId);
         enqueue(async () => {
-          for (const compartment of compartments) await compartment.onClose?.(ws);
+          for (const resource of resources) await resource.onClose?.(ws);
           await quiet(documents);
           await release();
         });
@@ -420,7 +420,7 @@ export function createServer(example: Example, port: number | string = process.e
   server.stop = ((...args: Parameters<typeof server.stop>) => {
     if (!stopped && active?.example === example && --active.servers === 0) {
       active = undefined;
-      setActiveCompartments(undefined);
+      setActiveResources(undefined);
       setActiveDocuments(undefined);
     }
     stopped = true;

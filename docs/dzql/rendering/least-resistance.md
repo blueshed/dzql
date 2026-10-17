@@ -74,7 +74,7 @@ Stories, then documents, then pages drawn on the server.
 
 ### 1. Check the permit against the stories
 
-Not derive it: the probe in `bun run stories` names any write a compartment takes that no story
+Not derive it: the probe in `bun run stories` names any write a resource takes that no story
 tells and no page offers, and who may make it.
 
 ### 2. Pages from a document's shape
@@ -108,7 +108,7 @@ The loop exists; it should be the way in, and it never generates code:
    skill, `bun run model`), and the documents they need, while the teller watches. The page shows
    the gaps as questions.
 2. **Build.** The eta-app skill turns the model into the app, story by story: a story in
-   `stories.ts`, a document in `delta.ts`, who holds it in its compartment. Then `bun run stories`
+   `stories.ts`, a document in `delta.ts`, who holds it in its resource. Then `bun run stories`
    and the least that makes the next one pass.
 3. **Read it back.** `bun run model:load` loads the app that was built into the model, so the
    teller sees it; `bun run model:check` reads its documents from a run of its stories; and

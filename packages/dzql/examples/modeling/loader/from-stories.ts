@@ -14,7 +14,7 @@
 //                 (it is the permit table's), nor does a tab closing
 //
 // Documents are not read here: who holds which, and who is told, is documents.ts's, from the
-// stories, the example's compartments and a run. So the model has none, and the predicates that
+// stories, the example's resources and a run. So the model has none, and the predicates that
 // ask what a document watches are not run over it (report.ts).
 //
 // No example knowledge: the one document left out is the session's, found by asking the example's

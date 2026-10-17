@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { press, urlFor, waitFor, webview } from "dzql/rendering/webview";
 import { createServer } from "dzql/rendering/server";
-import { tick } from "../compartments/ticker";
+import { tick } from "../resources/ticker";
 import type { MarketDocument } from "../documents/market";
 import { example } from "../index";
 

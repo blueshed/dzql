@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Compartment } from "../compartments/compartment";
+import type { Resource } from "../resources/resource";
 import type { Example } from "../example";
 import index from "../server.test.fixture.html";
 import { Database } from "bun:sqlite";
@@ -166,7 +166,7 @@ describe("loadOrCreateSessionCookie", () => {
   });
 });
 
-// A tiny, self-contained compartment + example, the same kind server.test.ts uses -- proving the
+// A tiny, self-contained resource + example, the same kind server.test.ts uses -- proving the
 // CLI's generic commands (inspect/watch/undo/write) work against any example, without needing the
 // chat example to exist. A widget per session, its colour, kept in a delta of this file's own.
 const db = new Database(":memory:");
@@ -175,7 +175,7 @@ createTables(db, schema);
 const delta = createLocal();
 registerDocs(delta.server, db, schema, [defineDoc("widget:", { root: "widgets", include: [], implied: true })], [], { ledger: true });
 
-const widgetCompartment: Compartment = {
+const widgetResource: Resource = {
   docType: "widget",
   perSession: true,
   under: "/widgets",
@@ -198,7 +198,7 @@ const cliTestExample: Example = {
       return new Response(null, { status: 303, headers: { Location: "/", "Set-Cookie": `session_id=signed-${form.get("email")}; Path=/` } });
     },
   },
-  compartments: [widgetCompartment],
+  resources: [widgetResource],
   render: (sessionId) => `<p>${read<{ widgets: { color: string } }>(`widget:${sessionId}`).widgets.color}</p>`,
   active: () => true,
   index,

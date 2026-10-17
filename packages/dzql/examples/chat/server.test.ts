@@ -3,7 +3,7 @@ import type { PatchOp } from "dzql/rendering/json-patch";
 import { db } from "./delta";
 import { createServer } from "dzql/rendering/server";
 import { connect as socketTo, open, expectMessage, expectQuiet, heard as heardBy, htmlOf, nextMessage, opened, pageOf, write, type WireMessage } from "dzql/rendering/test-socket";
-import { assemble } from "dzql/rendering/compartments/index";
+import { assemble } from "dzql/rendering/resources/index";
 import { example } from "./index";
 import { keepPresence } from "./presence";
 import { serverWrite } from "dzql/rendering/documents";

@@ -3,7 +3,7 @@ import { bento, choice, type Field } from "../bento";
 import { appletProps, write } from "../html";
 import { diff, drawParts, part, splitTag } from "../parts";
 import { press, waitFor, webview } from "../webview";
-import { renderMessage } from "../compartments/render";
+import { renderMessage } from "../resources/render";
 import { lastId, push, pushRefused, pushRender, quietPages, reconnected, stubEverySocket, stubSend } from "./socket.test.helpers";
 import fixture from "./app.test.html";
 

@@ -155,12 +155,12 @@ describe("from a run", () => {
     expect(format("chat", r)).toContain("- permit allows room /messages/*/text: replace, remove — to ada, bob");
   });
 
-  test("a document delta.ts defines that no compartment owns, and no story uses, is one nobody needs", async () => {
+  test("a document delta.ts defines that no resource owns, and no story uses, is one nobody needs", async () => {
     const src = (await Bun.file(`${import.meta.dir}/../../chat/delta.ts`).text()) + '\nregisterDocs(delta.server, db, schema, [defineDoc("archive:", { root: "rooms", include: [] })]);\n';
     const defined = documentsIn(src, null).map((d) => d.name);
     expect(defined).toEqual(["session", "room", "archive", "here", "lobby"]);
     const r = read(chatStories, chat, { traces: [], controls: new Set(), allowed: new Map() }, defined);
-    expect(r.docs).toContainEqual({ name: "archive", kind: "no compartment" });
+    expect(r.docs).toContainEqual({ name: "archive", kind: "no resource" });
     expect(r.unneeded).toContain("archive");
   });
 
@@ -177,7 +177,7 @@ describe("from a run", () => {
       ],
     };
     const step = (name: string, heard: Trace["heard"]): Trace => ({ story: name, phase: "does", as: "ada", heard, holds: [{ member: "ada", docs: ["told:x", "session:x"] }], ledger: [] });
-    const w = watch({ ...chat, compartments: [...chat.compartments, { docType: "cellar", resolveDoc: () => undefined }] });
+    const w = watch({ ...chat, resources: [...chat.resources, { docType: "cellar", resolveDoc: () => undefined }] });
     // outside a run no socket is open: a step's controls are kept, and nothing is put to permit
     w.observe({ ...step(stories.stories[0]!.name, [{ member: "ada", messages: [
       { type: "patch", doc: "told" },
@@ -189,10 +189,10 @@ describe("from a run", () => {
     w.observe(step(stories.stories[2]!.name, []));
     expect(w.controls).toEqual(new Set(["room add /messages/-"]));
     expect(w.allowed.size).toBe(0);
-    const r = read(stories, { ...chat, compartments: [...chat.compartments, { docType: "cellar", resolveDoc: () => undefined }] }, w, ["archive"]);
+    const r = read(stories, { ...chat, resources: [...chat.resources, { docType: "cellar", resolveDoc: () => undefined }] }, w, ["archive"]);
     expect(r.noDocument).toEqual([
       { story: "Ada writes to a document nobody keeps", detail: "ada writes attic, a document the example does not have" },
-      { story: "Ada files a room away", detail: "ada writes archive, a document no compartment owns" },
+      { story: "Ada files a room away", detail: "ada writes archive, a document no resource owns" },
       { story: "Ada says something with no room in front of her", detail: "ada writes room with no room in front of them" },
     ]);
     expect(r.tellsNobody).toEqual([{ story: "Ada says something nobody sees", detail: "ada writes room, and the story says nobody sees it" }]);

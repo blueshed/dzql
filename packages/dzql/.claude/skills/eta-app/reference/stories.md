@@ -44,6 +44,6 @@ The shape is `Story` and `Stories` in `src/modelling/stories.ts`; `docs/dzql/mod
   ([tests.md](tests.md)).
 - A `cannot` story can pass before anything is built, when `permit` already refuses the write: let
   the write through for a moment, watch the story fail, then put the rule back.
-- A write a compartment permits that no story tells and no page offers is a hidden verb, warned of
+- A write a resource permits that no story tells and no page offers is a hidden verb, warned of
   by document: `session: a write no story tells and no page offers / ada may add /name`. Narrow the
   `permit`, or leave it wide on purpose and say why beside it. Never write a story to quiet it.

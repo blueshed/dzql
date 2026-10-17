@@ -23,6 +23,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Changed
+
+- **A compartment is a resource**: `Compartment` → `Resource` (`dzql/rendering/resources/resource`,
+  `dzql/rendering/resources/index`), an example's `compartments` → `resources`; the model grammar's
+  `resource` flag → `reach`. An app renames its imports and the word.
+
 ### Added
 
 - **eta comes in: `dzql/modelling` and `dzql/rendering`**, with eta's history. Modelling is the

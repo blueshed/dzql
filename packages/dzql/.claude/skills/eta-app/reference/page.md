@@ -4,7 +4,7 @@
 document is drawn again and sent only the parts that changed. How it looks is [bento.md](bento.md).
 
 ```ts
-// examples/chat/compartments/room.ts (trimmed)
+// examples/chat/resources/room.ts (trimmed)
 export function render(sessionId: string): string {
   const { name, room: current, before } = sessionDoc.read(sessionId);
   const page = !name ? renderNameForm() : !current ? renderRooms(name, roomDoc.list()) : renderRoom(name, current, roomDoc.people(current), before, roomDoc.read(current, before));
@@ -21,8 +21,8 @@ A message said goes as its one `<li>`, put in after the last; were the messages 
 message would send the whole conversation again. `part(key, html)` is `src/rendering/parts.ts`.
 
 - `render` is the only renderer: it decides which screen, and reads whichever documents it must. It
-  must `read()` what it shows, or its page is not told of a change ([compartment.md](compartment.md#who-sees-what)).
-- A compartment looks after a document, not a place on the page.
+  must `read()` what it shows, or its page is not told of a change ([resource.md](resource.md#who-sees-what)).
+- A resource looks after a document, not a place on the page.
 - A part is the unit of a message: a change goes as the smallest part that holds it, whole. Make
   what changes alone -- a row, a card, a count -- a part of its own.
 - Parts already: the bento's cells, the open window, rows with an id, lists given a key

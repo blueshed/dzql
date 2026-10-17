@@ -1,5 +1,5 @@
 // The facts of an app, read from it as it stands: its stories, its delta.ts
-// (tables, and documents as root + include), its compartments' permit rules, what the harness
+// (tables, and documents as root + include), its resources' permit rules, what the harness
 // says when it runs the stories, and its documents as that run read them (documents.ts). Nothing
 // here is proposed; everything is read. A project with no app yet (no index.ts) is read from its
 // stories alone: no run, so nothing of who was told.
@@ -14,7 +14,7 @@ import { heartOf, inSql } from "./facts";
 type Column = { type: string; nullable?: boolean };
 type Permit = { doc: string; path: string; ops: string[]; dated: boolean };
 
-/** A compartment's `RULES`, as written: a path pattern and the ops it allows, each. None when its permit is code, not a list. */
+/** A resource's `RULES`, as written: a path pattern and the ops it allows, each. None when its permit is code, not a list. */
 export function rulesIn(src: string): { path: RegExp; ops: string[]; dated?: boolean }[] {
   const body = src.match(/const RULES: Rule\[\] = (\[[\s\S]*?\n\]);/)?.[1];
   if (!body) return [];
@@ -53,10 +53,10 @@ export async function extract(at: string) {
 
   const documents = documentsIn(await Bun.file(`${dir}/delta.ts`).text(), session);
 
-  // ── permits: each compartment's RULES, as written ──
+  // ── permits: each resource's RULES, as written ──
   const permits: Permit[] = [];
   for (const { name: doc } of documents) {
-    const file = Bun.file(`${dir}/compartments/${doc}.ts`);
+    const file = Bun.file(`${dir}/resources/${doc}.ts`);
     if (await file.exists()) for (const r of rulesIn(await file.text())) permits.push({ doc, path: r.path.source, ops: r.ops, dated: !!r.dated });
   }
   const ruled = new Set(permits.map((p) => p.doc));
@@ -117,7 +117,7 @@ export async function extract(at: string) {
   for (const s of storyRows) if (!cast.includes(s.as)) cast.push(s.as);
 
   const reading = example ? read(stories, example, watched, documents.map((d) => d.name)) : read(stories);
-  const perSession = example?.compartments.filter((c) => c.perSession).map((c) => c.docType) ?? [];
+  const perSession = example?.resources.filter((c) => c.perSession).map((c) => c.docType) ?? [];
   const heart = heartOf({ example: name, ran: reading.ran, session, perSession, stories: storyRows, rows: reading.stories, traces: watched?.traces ?? [], documents, tables: schema, files, cast: castSetup, held: reading.grid });
 
   return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: report ? { passed: report.passed, failed: report.failed } : null, read: reading, heart };

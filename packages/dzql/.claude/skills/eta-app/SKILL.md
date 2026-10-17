@@ -1,6 +1,6 @@
 ---
 name: eta-app
-description: Use before building an eta app -- the src/ of a project made with `bun create blueshed/eta`, an example under examples/<name>/, or an app in a repo of its own -- or adding a document, compartment, applet, route or CLI verb to one; and before touching the Compartment contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference/ has one short file a piece; SKILL.md says which to read for which step.
+description: Use before building an eta app -- the src/ of a project made with `bun create blueshed/eta`, an example under examples/<name>/, or an app in a repo of its own -- or adding a document, resource, applet, route or CLI verb to one; and before touching the Resource contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference/ has one short file a piece; SKILL.md says which to read for which step.
 metadata:
   version: 0.53.0
 ---
@@ -27,10 +27,10 @@ Each step is the least that makes the next story pass. Run `bun run stories` aft
    it. → [documents](reference/documents.md)
 3. **What a document is to its pages** (`documents/<thing>.ts`): `read(id)`, and the pure rules a
    write follows, tested directly. → [documents](reference/documents.md)
-4. **Its compartment**: `permit`, `shape`, what follows. → [compartment](reference/compartment.md),
+4. **Its resource**: `permit`, `shape`, what follows. → [resource](reference/resource.md),
    [refusal](reference/refusal.md)
 5. **What is live**: a document the server works out, written as the difference. →
-   [compartment](reference/compartment.md#after-a-write)
+   [resource](reference/resource.md#after-a-write)
 6. **The page** (`render(sessionId)`): a box or a collection, in parts. → [page](reference/page.md),
    [controls](reference/controls.md), [bento](reference/bento.md)
 7. **An applet**, only for state a redraw would destroy. → [applets](reference/applets.md)
@@ -65,7 +65,7 @@ Each step is the least that makes the next story pass. Run `bun run stories` aft
 | Declare and read documents; undo | [documents](reference/documents.md) |
 | Keep a document from growing forever: today's, what is open, or a window | [scope](reference/scope.md) |
 | Rename or drop a field, or move data | [migrations](reference/migrations.md) |
-| Permit, shape, follow a write | [compartment](reference/compartment.md) |
+| Permit, shape, follow a write | [resource](reference/resource.md) |
 | Say why a write was refused, or what it did | [refusal](reference/refusal.md) |
 | Draw the page in parts | [page](reference/page.md) |
 | Build a field, a form or a button | [controls](reference/controls.md) |

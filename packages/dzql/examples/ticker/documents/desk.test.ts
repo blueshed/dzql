@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { shape, type Ui } from "./desk";
-import { desk } from "../compartments/desk";
+import { desk } from "../resources/desk";
 import type { PatchOp } from "dzql/rendering/json-patch";
 
 describe("the desk (the ticker's session)", () => {

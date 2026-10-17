@@ -1,5 +1,5 @@
 import type { Example } from "dzql/rendering/example";
-import { session, team } from "./compartments";
+import { session, team } from "./resources";
 import { session as sessionOf } from "./documents";
 import { render } from "./page";
 import { identify, signIn } from "./signin";
@@ -11,7 +11,7 @@ import { delta } from "./delta";
 export const example: Example = {
   name: "leave",
   // The session first: who you are, and where.
-  compartments: [session, team],
+  resources: [session, team],
   render,
   // Signed in or not: a signed-out tab writes nothing, Undo included.
   active: (sessionId) => sessionOf(sessionId).person !== null,

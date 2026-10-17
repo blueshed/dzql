@@ -27,20 +27,20 @@ export type Field = {
    *  such a group resolves *through* this grant → a join RLS policy (access scoped
    *  by membership in the owning group, reads + writes). */
   grant?: boolean;
-  /** Relationship-grant junction: this `fk` points to the RESOURCE the junction
+  /** Relationship-grant junction: this `fk` points to the entity the junction
    *  grants a group access to. Paired with a `grant` fk (the grantee group) and an
-   *  optional `gate` field, every member of that group reaches the resource — e.g.
-   *  Promoter(venue_id resource→Venue, org_id grant→Organisation, status gate="accepted")
-   *  lets a promoter org's members reach the venue. The resource (and its FK-descendants,
+   *  optional `gate` field, every member of that group reaches it — e.g.
+   *  Promoter(venue_id reach→Venue, org_id grant→Organisation, status gate="accepted")
+   *  lets a promoter org's members reach the venue. The reached entity (and its FK-descendants,
    *  via the ancestor recursion) resolve through the grant in generated RLS, OR'd with
    *  any direct owner. Distinct from `owner`+`grant` (a user→group membership): this is a
-   *  group→resource grant. Honoured only on an `fk` field. */
-  resource?: boolean;
-  /** On a relationship-grant junction (one carrying a `resource` fk), restrict the grant
+   *  group→reached grant. Honoured only on an `fk` field. */
+  reach?: boolean;
+  /** On a relationship-grant junction (one carrying a `reach` fk), restrict the grant
    *  to rows where this field equals the given value — only those rows confer access (e.g.
    *  `status` `gate: "accepted"`, so pending/disabled rows grant nothing). If the junction
    *  is `temporal`, the grant reads the `current_<table>` view, so flipping the gate revokes
-   *  (or restores) access live. Ignored on a junction with no `resource` fk. */
+   *  (or restores) access live. Ignored on a junction with no `reach` fk. */
   gate?: string;
 };
 export type Entity = {

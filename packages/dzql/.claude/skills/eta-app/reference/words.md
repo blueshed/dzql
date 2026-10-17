@@ -6,7 +6,7 @@ The pieces of an app by name, and what to reach for first. The order to work in 
 // examples/chat/index.ts: the whole app, by its pieces
 export const example: Example = {
   name: "chat",
-  compartments: [session, room, here, lobby], // one per document type, the session first
+  resources: [session, room, here, lobby], // one per document type, the session first
   delta,                                       // its documents (delta.ts)
   render,                                      // the page: render(sessionId), the whole page as HTML
   active: (sessionId) => sessionDoc.read(sessionId).name !== null,
@@ -16,11 +16,11 @@ export const example: Example = {
 
 ## Words
 
-- A **compartment** looks after one type of document: which one a page is on, who may write to it,
-  what a write becomes. It has no place on the page. → [compartment.md](compartment.md)
+- A **resource** looks after one type of document: which one a page is on, who may write to it,
+  what a write becomes. It has no place on the page. → [resource.md](resource.md)
 - The **page** is the app's one `render(sessionId)`: which screen, reading whichever documents it
   must. Much HTML goes in files of its own (the wedding's `views/`). → [page.md](page.md)
-- The **session** is each visitor's own document -- who you are, where you are -- and a compartment
+- The **session** is each visitor's own document -- who you are, where you are -- and a resource
   like any other; list it first. Keep in it only what the stories need: a page and its open drawer
   are one address, not six fields. → [bento.md](bento.md)
 - An **applet** is only for a piece of the page whose browser state a redraw would destroy (a drag
@@ -33,9 +33,9 @@ export const example: Example = {
 
 | To | Do |
 |---|---|
-| Show a document and let people change it | A compartment (`permit`, `shape`) and plain `data-write` controls ([controls.md](controls.md)). |
+| Show a document and let people change it | A resource (`permit`, `shape`) and plain `data-write` controls ([controls.md](controls.md)). |
 | Make a new document | Ask who must be told it was made. Its maker alone (a plan of my own): a plain form posting to a route that writes its root with `serverWrite` and redirects there ([signin.md](signin.md)). Everyone holding a list of them (a room in a lobby): add its root row through that document and open the id the answer names. Named by its reader (a session, chat's room): `implied: true` in `defineDoc`, made by its first write. Never through a document that tells people nobody asked. |
 | Act before holding any document (sign in, join by a link) | A route answering a plain form, writing the session with `serverWrite` and redirecting ([signin.md](signin.md)). |
-| Keep a document the server works out (who is here) | `registerMemory`, computed whole in `afterChange`, written as the difference ([compartment.md](compartment.md#after-a-write)). Nobody writes it. |
+| Keep a document the server works out (who is here) | `registerMemory`, computed whole in `afterChange`, written as the difference ([resource.md](resource.md#after-a-write)). Nobody writes it. |
 | Refuse a write, saying why | `throw refuse(...)` in `permit` or `shape` ([refusal.md](refusal.md)). |
 | Let a person undo | Register the documents with `{ ledger: true }` ([documents.md](documents.md#the-ledger)). |

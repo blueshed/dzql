@@ -22,14 +22,14 @@ export type Kind = "written" | "fact" | "live" | "sourced" | "static";
 export type Walk = { way: "undo" | "redo"; ops: PatchOp[]; inverse: PatchOp[] };
 
 /**
- * A compartment looks after one type of document: which one a page is on, who may write to it, and
+ * A resource looks after one type of document: which one a page is on, who may write to it, and
  * what a write becomes. It has no place on the page: the page is the example's `render(sessionId)`.
  *
  * Its hooks, in the order they run: `permit` and `shape` before a write; `permitUndo` before an
  * undo or redo; `afterWrite` after a fresh write, and `afterWalk` after an undo or redo, for the
  * writer; `afterChange` after any change.
  */
-export type Compartment = {
+export type Resource = {
   /** The document type it looks after, as the wire names it: `"room"` for `room:general`. */
   docType: string;
   /**

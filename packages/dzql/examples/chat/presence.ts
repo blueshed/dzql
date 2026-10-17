@@ -1,4 +1,4 @@
-import { allOpenSockets } from "dzql/rendering/compartments/audience";
+import { allOpenSockets } from "dzql/rendering/resources/audience";
 import { activeDocuments, read, serverWrite, settled } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { db } from "./delta";

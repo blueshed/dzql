@@ -1,11 +1,11 @@
-# Compartments, and telling a change
+# Resources, and telling a change
 
-A compartment looks after one type of document: which one a page is on, who may write to it, what a
+A resource looks after one type of document: which one a page is on, who may write to it, what a
 write becomes, what follows. Saying why a write was refused is [refusal.md](refusal.md).
 
 ```ts
-// examples/chat/compartments/room.ts
-export const room: Compartment = {
+// examples/chat/resources/room.ts
+export const room: Resource = {
   docType: "room",
   resolveDoc(ws) {
     return sessionDoc.read(ws.data.sessionId).room ?? undefined; // the room this person is in
@@ -26,7 +26,7 @@ export const room: Compartment = {
 };
 ```
 
-The hooks, in the order they run: see `Compartment` in `src/rendering/compartments/compartment.ts`.
+The hooks, in the order they run: see `Resource` in `src/rendering/resources/resource.ts`.
 
 ## Who sees what
 
@@ -47,7 +47,7 @@ The hooks, in the order they run: see `Compartment` in `src/rendering/compartmen
    path (`/guests/2/minifigure/top`) turned into the rows it moves. Shaped to nothing is refused.
 4. **delta:** is it valid data?
 
-Undo and redo are delta's inverses, never shaped. Never write another compartment's document from
+Undo and redo are delta's inverses, never shaped. Never write another resource's document from
 `shape`. `kind`: `written` (default: ledger, undoable), `fact` (never undone), `live` (the server's,
 in memory, never from the wire), `sourced` and `static` (read only).
 

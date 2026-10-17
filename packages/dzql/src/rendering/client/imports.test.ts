@@ -3,7 +3,7 @@ import { dirname, relative, resolve } from "node:path";
 
 // What a page's bundle takes of the kernel -- the client, and an island an example's client mounts --
 // reaches nothing only a server has: the documents, the database, the server, a refusal, the
-// harness, what a drawing read, the compartments, delta's server side, Bun's and Node's own. Walked
+// harness, what a drawing read, the resources, delta's server side, Bun's and Node's own. Walked
 // through what each really imports, as a bundle would (a type-only import goes), the way an app's
 // own browser-safe check walks it (an app's own browser-safe test), so the kernel breaks
 // no app's rule.
@@ -13,7 +13,7 @@ const ENTRIES = ["src/rendering/client/app.ts", "src/rendering/island.ts"];
 
 /** A module only a server has. */
 const serverOnly = (spec: string, file: string): boolean =>
-  /^(bun|node):/.test(spec) || /\/src\/(rendering\/(documents|db|server|refusal|reading|compartments\/)|modelling\/harness)/.test(file) || /@blueshed\/delta\/(sqlite|server|local|postgres|kinds)/.test(spec);
+  /^(bun|node):/.test(spec) || /\/src\/(rendering\/(documents|db|server|refusal|reading|resources\/)|modelling\/harness)/.test(file) || /@blueshed\/delta\/(sqlite|server|local|postgres|kinds)/.test(spec);
 
 const transpiler = new Bun.Transpiler({ loader: "ts" });
 

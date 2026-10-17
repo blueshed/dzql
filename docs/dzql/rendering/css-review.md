@@ -34,7 +34,7 @@ eta todo #40-54.
 - #49 no cascade layers;
 - #50 dark mode written twice, and `--ink-rgb`;
 - #51 physical sides, not logical;
-- #52 compartments answer the window, not their cell;
+- #52 resources answer the window, not their cell;
 - #53 the small modern wins;
 - #54 nothing tests the examples' contrast.
 
@@ -83,7 +83,7 @@ scratchpad).
   scale with the window (`clamp()`). Fields never below 16px, with the reason written beside it
   (iOS zooms the page otherwise). A line length of 46rem, about 75 characters.
 - **eta** -- the page behind a modal is `inert`, so nothing behind it can be reached by keyboard
-  either; an `sr-only` class for words only a screen reader needs; focus rings on compartments and
+  either; an `sr-only` class for words only a screen reader needs; focus rings on resources and
   rows; the drawer and modal skip their animation under reduced motion; 16px fields; a `--touch`
   token for control height. Text contrast passes in every example (checked below).
 
@@ -95,8 +95,8 @@ These matter first, because a person hits them.
 |---|---|---|
 | 40 | The find field removes its focus ring and puts nothing in its place | A keyboard user cannot see they are typing in it |
 | 41 | Buttons have no focus rule; the trail shows focus only as an underline | The browser's default ring can vanish on a pressed (accent) button |
-| 42 | A chosen compartment or row is marked only by shadow and background | Forced colours removes both: the selection disappears |
-| 43 | Opening a compartment animates (260ms) under reduced motion; so do the rails | The drawer and modal already stop; these were missed |
+| 42 | A chosen resource or row is marked only by shadow and background | Forced colours removes both: the selection disappears |
+| 43 | Opening a resource animates (260ms) under reduced motion; so do the rails | The drawer and modal already stop; these were missed |
 | 44 | Field and control borders are about 1.7:1 | WCAG 1.4.11 asks 3:1 for the edge of a control |
 | 45 | "Reconnecting…" is drawn by CSS, and others' changes arrive silently | Screen readers do not reliably read CSS-generated text |
 | 46 | Text is sized in px; 13 rules set 11-12px text | The reader's own font-size setting is ignored |
@@ -125,12 +125,12 @@ lack it.
 | 49 | **Cascade layers** (`@layer kernel, example;`) | Examples overriding the kernel by out-specifying it, and the `!important`s that fight over reduced motion |
 | 50 | **`light-dark()`** with **`color-mix()`** | Every colour written twice, once in a dark-mode block; `--ink-rgb`, a token that exists only to make translucent shadows, which chat's dark theme bends to `0,0,0`; `--card-hover` |
 | 51 | **Logical properties** (`inset-inline-end`, `padding-inline-start`) | `right`, `left` and friends; right-to-left then needs only a `dir` attribute |
-| 52 | **Container queries** | A compartment's contents answer the window's width though the compartment may be a third of it; the 820px breakpoint written eight times |
+| 52 | **Container queries** | A resource's contents answer the window's width though the resource may be a third of it; the 820px breakpoint written eight times |
 | 46 | **A rem type scale** | px sizes (above) |
 | 53 | **Small ones** | `text-wrap: balance` for headings; `accent-color` for checkboxes; `scrollbar-gutter: stable` so the page does not jump when a drawer locks scrolling; `:user-invalid`, which shows a required field refused before the save -- proof rule P4 done by the browser |
 
 Container queries are the one that fits eta's idea most closely: the bento is a box of
-compartments, and each compartment should be drawn for the space it has, not for the screen.
+resources, and each resource should be drawn for the space it has, not for the screen.
 
 ## What to take forward
 

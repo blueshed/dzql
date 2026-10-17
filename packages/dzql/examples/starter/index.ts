@@ -8,7 +8,7 @@ import { delta } from "./delta";
 // the model's page), then built here, the least that makes each pass (the eta-app skill).
 export const example: Example = {
   name: "starter",
-  compartments: [],
+  resources: [],
   render,
   active: () => false, // nobody writes anything yet
   index,

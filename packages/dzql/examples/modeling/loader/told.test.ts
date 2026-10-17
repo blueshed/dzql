@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { signIn } from "dzql/rendering/cli/commands";
-import { assemble } from "dzql/rendering/compartments/index";
+import { assemble } from "dzql/rendering/resources/index";
 import { db } from "dzql/rendering/db";
 import { createServer } from "dzql/rendering/server";
 import { connect, opened } from "dzql/rendering/test-socket";

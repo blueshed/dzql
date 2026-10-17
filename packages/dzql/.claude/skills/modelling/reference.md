@@ -85,9 +85,9 @@ Load the **eta-app** skill; the model says what to build, story by story:
 | A story | A story in `src/modelling/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into, `model` the model story's number |
 | A document | A `defineDoc` in `src/delta.ts`: its root, and what it holds as its includes |
 | An entity, its fields, its parent | A table in `defineSchema`, its columns, its `parent` |
-| `own` | A `perSession` compartment |
-| Who holds it | Who its compartment lets see it |
-| What each story does or cannot | Its compartment's `permit` and `shape` |
+| `own` | A `perSession` resource |
+| Who holds it | Who its resource lets see it |
+| What each story does or cannot | Its resource's `permit` and `shape` |
 
 Then `bun run stories`: the least that makes the next story pass, then the next.
 

@@ -1,7 +1,7 @@
 import type { HTMLBundle } from "bun";
 import type { Local } from "@blueshed/delta/local";
 import type { ConnectionData } from "./connection";
-import type { Compartment } from "./compartments/compartment";
+import type { Resource } from "./resources/resource";
 
 /** A route handler in the same shape server.ts already hands Bun.serve's `routes` (e.g. the "/ws" upgrade handler). */
 type RouteHandler = (
@@ -11,7 +11,7 @@ type RouteHandler = (
 
 /**
  * Everything the kernel needs from one example to become a running app: its
- * compartments, its one render, the page to serve, and the one guard the
+ * resources, its one render, the page to serve, and the one guard the
  * kernel can't derive generically -- whether a session may write at all
  * right now (a stale, logged-out tab shouldn't be able to undo a write made
  * before it went stale, but only the example knows what "logged out" means
@@ -21,12 +21,12 @@ export type Example = {
   /** Identifies this example (distinguishes it from another example object at runtime). */
   name: string;
   /**
-   * This example's compartments: one per document type, for write dispatch, who sees what, and
+   * This example's resources: one per document type, for write dispatch, who sees what, and
    * lifecycle. The session's own document (chat's and the wedding's `session`, the ticker's
    * `desk`) is one of them like any other; list it first, so `inspect` tells it first. The kernel
-   * appends its own ledger compartment.
+   * appends its own ledger resource.
    */
-  compartments: Compartment[];
+  resources: Resource[];
   /** The whole page for this session, as HTML. The server is the only renderer, and this is all of it: which screen, in what order, reading whichever documents it must. */
   render(sessionId: string): string;
   /**
