@@ -18,6 +18,17 @@ afterAll(async () => {
 linkStoreCases("pglite", () => postgresLinkStore(lite));
 linkStoreCases("postgres", () => postgresLinkStore(server));
 
+// person::int overflowed past 2^31: a person's id is a BIGINT, read whole
+test.each([["pglite", () => lite], ["postgres", () => server]] as const)("%s: a person numbered past 2^31 keeps their number", async (_, db) => {
+  const store = await postgresLinkStore(db() as any);
+  const person = 2 ** 31 + 7, later = new Date(Date.now() + 60_000).toISOString();
+  await store.addLink("big-link", { person, opens: null, expires: later });
+  expect((await store.link("big-link"))?.person).toBe(person);
+  expect((await store.useLink("big-link", new Date().toISOString()))?.person).toBe(person);
+  await store.addSession("big-session", { person, expires: later });
+  expect((await store.session("big-session"))?.person).toBe(person);
+});
+
 test("dzql link prints the first person's link, made in the app's Postgres", async () => {
   const { hashToken } = await import("@blueshed/delta/auth-link");
   const { PG_URL } = await import("./setup");
