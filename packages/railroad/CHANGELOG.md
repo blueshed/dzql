@@ -1,0 +1,1242 @@
+# Changelog
+
+All notable changes to `@blueshed/railroad`. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
+[Semantic Versioning](https://semver.org/), where a 0.x minor release may break.
+
+## [Unreleased]
+
+### Changed
+
+- `loggedRequest` reads the path with `new URL(req.url)` directly: a `Request` always has a
+  URL that parses, so the fallback for one that doesn't is gone.
+- **CI runs eta's island test against railroad's own commit** (the `eta` job in
+  `.github/workflows/ci.yml`): eta's `src/island.test.ts`, in a real browser, with the checked-out
+  railroad linked in place of npm's, so a change that breaks eta's islands fails before a release.
+
+### Docs
+
+- **eta is named where railroad pairs**: the README's "What it pairs with" has it, and the
+  skill's `reference/realtime.md` has an island, railroad's `mount()` drawing one piece of a
+  page eta's server draws (eta's `island()`). The 0.16.0 note no longer calls eta private.
+- **The documents say what is built**: `docs/why-railroad.md` is linked from the README and counts
+  the eleven things that bite; the README has one tagline; stale phrases (`legacy`, `now purely`,
+  `since TypeScript 6`, a section that does not exist) are gone; `todo.jsonl` records the one open
+  item, and the session-start hook names the right CLAUDE.md section.
+- **The skills are cut to a compass, and each manual is a folder of topics.** `railroad`'s
+  `reference.md` and `bun-route`'s are gone: each skill's `reference/` holds one topic a file
+  (railroad: setup, signals, scopes, jsx, async, when-list, routes, realtime, testing,
+  shared-logger, one-copy; bun-route: templates, server, tsconfig, webview, webview-recipes),
+  each leading with an example that runs, and each `SKILL.md` is under 600 words and says
+  which file is for which job. Options tables became pointers to the types; the Bun release
+  history moved to `docs/why-railroad.md`. To move across: copy the skill folders again
+  (`cp -r node_modules/@blueshed/railroad/.claude/skills/* .claude/skills/`) and delete the
+  old `.claude/skills/railroad/reference.md` and `.claude/skills/bun-route/reference.md`,
+  which a copy over the top leaves behind.
+- **The skills set up Bun's types the way TypeScript 6+ needs** (found by running the skill
+  evaluations on Haiku): `@types/bun` with `"types": ["bun"]`, never `bun-types` beside the
+  `@types/bun` that `bun init` adds (the two copies clash); railroad's tsconfig names it too.
+
+## [0.16.2] - 2026-10-11
+
+### Changed
+
+- `@types/bun` is `^1.4.2`, the latest published, beside the Bun 1.4.3 that CI pins.
+- **Bun 1.3.14 or later** (`engines`, was 1.3.12). On 1.3.12 and 1.3.13 the
+  unit suite passes, but a `bun build --compile` binary is killed at launch on
+  macOS arm64, so the README's one-binary deploy fails there. CI runs the unit
+  suite on 1.3.14 as a job of its own.
+
+### Fixed
+
+- **An app's production build drops railroad's development warnings.** The
+  development flag was set inside a `try`, which no minifier folds, so a
+  production bundle still carried every warning's text. Every warning about a
+  programming mistake is now development-only: a `.get()` in a render body, a
+  second copy of railroad, an async `effect()`, a non-function `on*`, a
+  `fallback` that isn't a thunk, a Node in a reactive child, `when()`/`list()`
+  outside a dispose scope, and duplicate `list()` keys. Defining
+  `process.env.NODE_ENV` as `"production"` (`bun build --production`, Bun.serve
+  with `development: false`, esbuild and Vite by default) removes them all: a
+  page with `signal`, `when`, `list` and `mount` goes from 5051 to 4314 B
+  gzipped (−737 B), the whole package from 7609 to 6840 B (Bun.build,
+  minified). Development, and a page served unbundled with no `process`, still
+  warn. What throws, and the errors logged for a failed async component or
+  route, are the same in production.
+- **The server examples turn HMR off in production.** README, the manual and
+  bun-route's templates set `development: { hmr: true, console: true }` and
+  said Bun drops it in production; on Bun 1.4.3 a server started with
+  `NODE_ENV=production` still serves the HMR client. They now write
+  `development: process.env.NODE_ENV !== "production" && { hmr: true, console: true }`,
+  and a test runs that server both ways.
+
+### Docs
+
+- **The docs promise only what the tests show.** Development-only messages
+  are marked as such, and `bun build --minify` alone is not a production
+  build. The README's server step adds `"types": ["bun"]` to `tsconfig.json`
+  (TypeScript 6+ no longer picks up `@types/bun` by itself). `bun create
+  blueshed` makes a paintbrush app with railroad; delta comes later. Claims
+  no test backed are cut: "siblings run in subscription order", "every fix
+  is pinned by a regression test", and a bare `bun test` dropping files from
+  discovery. The README's Try it and server now run as written in the tests.
+
+## [0.16.0] - 2026-10-11
+
+### Removed
+
+- **An async route handler that resolves to a bare `Promise<Node>`**
+  (deprecated in 0.14.0). What it built after its first `await` had no owner
+  scope and outlived the route. It no longer compiles (the `@deprecated`
+  overload is gone), and at run time it is an error, to `onError` or the
+  console, naming the fix, as an async component's already was.
+  **How to move across:** resolve to a thunk:
+  `async ({ id }) => { const u = await load(id); return () => <User u={u} />; }`
+  (keyed, `{ keyed: true, handler }`, when it reads its params, so `/users/1` →
+  `/users/2` loads again).
+
+### Fixed
+
+- **An `<a>`, `<script>`, `<style>` or `<title>` adopted into an `<svg>`
+  keeps its reactive props exactly as long as the render that placed it**
+  (todo #9). These four are created as HTML and adopted (made afresh, their
+  props applied again) as they are placed; outside a `list()` row that
+  happened after the render's scope had closed. In a `when()` branch the
+  adopted props stopped updating at the condition's next change of truthy
+  value (`href.set()` left the old `href`); placed by `mount()`, an async
+  component's thunk or a `routes()` handler (sync or async) into an
+  `<svg>`, they went on updating after `dispose()` or navigation, and a sync
+  handler's stopped at a change of params. Each is now adopted inside its
+  render's scope, as a `list()` row already was.
+
+- **A `list()` row that disposes the list's owner mid-render stops the
+  render** (todo #10). A row whose render disposed the scope that owns the
+  list (a navigation, say) left the list placing rows into what its
+  teardown had just removed: a `DOMException` from `insertBefore`, and the
+  row built after the teardown never disposed. The list now stops at that
+  row and disposes it. A `when()` branch or an async component's thunk
+  that does the same is no longer inserted after the teardown, and what it
+  made is disposed (it stayed live).
+
+- **A `routes()` `onError` fallback for an async handler's failure has its
+  bindings disposed when the router moves on.** It rendered with no scope,
+  so a binding in it (`<p>{status}</p>`) went on updating after navigation
+  or `dispose()`. The fallback now renders under a scope of its own, as a
+  handler does. (A sync failure's fallback was already owned by the
+  router.)
+
+- **A `routes()` handler that returns something other than a Node is an
+  error, to `onError` or the console.** Placing it threw from
+  `appendChild`: out of `routes()` itself on the first render, before its
+  disposer existed (a router nothing could dispose, still rendering on
+  every `hashchange`), and out of the `hashchange` listener after that.
+
+### Changed
+
+- **Type checks run with `bun check`** (Bun 1.4.3, TypeScript 7) in place of
+  `tsc --noEmit`, 10-15x faster; CI pins Bun 1.4.3. The consumer gate compiles
+  the documented surface under TypeScript 7 and 5.9 both, since a project
+  compiles railroad's source with its own TypeScript. TypeScript 7's DOM types
+  every `oninput` as `InputEvent`, a `<select>`'s too; railroad follows it.
+
+- **A component that throws has what it made disposed at the throw**, as a
+  `when()` branch or a `list()` row already did, rather than when the scope
+  around it went. Internal: every render under a scope of its own (a
+  component, a fallback, an async thunk, a `when()` branch, a `list()` row,
+  `mount()`, a route handler) goes through one helper that closes the scope
+  on every path, where seven wrote it by hand; an async component and an
+  async route handler run their thunk through one function, so a bare-Node
+  resolution, a thunk that throws and one that returns no Node are reported
+  alike (an async component's as `<Name> async component failed:` and the
+  error).
+
+### Docs
+
+- **bun-route's WebView footguns gain five found in paintbrush's tests**: await every
+  call, `click` doesn't scroll, `type` appends, `view.title` is empty on WebKit after the
+  first navigate, one WebView per file. Its render check names any browser tool, not
+  Playwright.
+
+- **The README explains a signal where it first uses one, and its skills
+  copy works in a fresh project** (`mkdir -p .claude/skills` first; `cp`
+  failed with "Not a directory"). It names paintbrush, which
+  `bun create blueshed` scaffolds, in place of eta.
+
+## [0.15.1] - 2026-09-28
+
+### Fixed
+
+- **A `list()` row that throws closes its scope.** Each row renders under a
+  dispose scope of its own, pushed with no `try/finally`, so a row whose
+  render threw (a new row, keyed or not, or an index-based row rebuilt on a
+  change) left it open: the effect running the list then closed the row's
+  scope in place of its own, and every scope after it was off by one
+  (todo #8). Now the scope closes on every path, what the row made before
+  the throw is disposed, and nothing of it is inserted: a new row is left
+  out, an index-based row is left empty between its brackets. The other rows
+  still render, then the first error is rethrown, as a throw in a `when()`
+  branch is: out of `list()` on the first render (the rows made beside it
+  are disposed with the scope around it), to the writer of the items on an
+  update. The next update renders the row again.
+
+- **A `when()` branch that throws on its first render is disposed with its
+  scope.** A branch that threw was kept as the live branch, so what it made
+  before the throw stayed subscribed: for good on the first render, where
+  the throw leaves `when()` before its teardown is registered, and until the
+  next swap on an update. A later truthy value then didn't build it again,
+  since the truthiness hadn't changed. Now what the branch made is disposed
+  at the throw, its brackets stay empty, the throw goes on as before, and
+  the next change of the condition builds it again. Its teardown is now
+  registered before its first render, as `list()`'s is, so a `when()` whose
+  first render threw, in a scope that outlives the throw, still goes with
+  that scope, with any branch it builds later. An async component's
+  `fallback` that throws had the same gap, and has the same fix.
+
+## [0.15.0] - 2026-09-28
+
+### Breaking
+
+- **`mount()`'s render runs untracked**, as a component body already did.
+  A `.get()` directly in the function given to `mount()` subscribed
+  whatever effect was running, so an effect that mounted, as in
+  `effect(() => mount(root, () => <p>{x.get()}</p>))`, re-ran and
+  re-mounted when `x` changed. It no longer does: the read is one-shot, and
+  warns in development (see Added).
+  **Who is affected:** an effect that calls `mount()` and relied on the
+  render's own reads to re-run it.
+  **How to move across:** read the signal in the effect, outside the
+  render: `effect(() => { const v = x.get(); return mount(root, () => <p>{v}</p>); })`;
+  or bind it, `mount(root, () => <p>{x}</p>)`, which updates in place.
+
+- **Each tag's props are typed (types only).** `JSX.IntrinsicElements` was
+  `[tag: string]: any`, so a typo (`<div clas>`), React's casing
+  (`onClick`, `tabIndex`), a string handler (`onclick="…"`) or a made-up tag
+  compiled and did nothing, or the wrong thing. Props now come from the
+  DOM's element types (`HTMLElementTagNameMap`) in railroad's spelling: an
+  attribute is the element's property lowercased (`tabindex`, `readonly`,
+  `colspan`), plus `class`/`className`, `for`/`htmlFor` and any name with a
+  hyphen (`data-*`, `aria-*`, `hx-get`); each value static, a Signal or a
+  function. An `on*` prop is one of the element's own events, lowercase
+  (with `onfocusin`, `onfocusout` and `oncomposition*`, which the DOM types
+  list but give no property), and its handler gets the event with
+  `currentTarget` typed (`oninput={(e) => e.currentTarget.value}`);
+  `oninput`'s event is an `InputEvent`, except on a `<select>`. A `ref` gets
+  the element's type. SVG tags and custom elements (a name with a hyphen) still take any
+  attribute, with typed handlers and `ref`: SVG's element types don't name
+  their attributes. Nothing changes at run time.
+  **Who is affected:** JSX that uses React-cased handlers or attributes
+  (`onClick`, `onKeyDown`, `tabIndex`, `readOnly`), a `key` (which railroad
+  ignores), an attribute the DOM types don't know that has no hyphen, a tag
+  outside the HTML and SVG maps (`<center>`, `<math>`), or an object as an
+  attribute value.
+  **How to move across:** write the HTML name, lowercase (`onclick`,
+  `tabindex`), which tsc suggests ("Did you mean 'onclick'?"); give a
+  custom attribute a `data-` prefix, or set it in a `ref`. delta's and eta's
+  JSX gain no errors.
+
+### Added
+
+- **A `.get()` in a render body warns, once per render body, in development.**
+  Components, `when()` branches, `list()` rows and route handlers (and
+  async thunks, fallbacks and `mount()`'s render) run once and untracked, so
+  `<span>{count.get()}</span>` there is a snapshot that never updates, with
+  nothing to say so: the skill's §1, §7 and §9 traps. Such a read now logs
+  `[railroad] .get() in a render body (<View>) reads once and never updates`,
+  naming the component (or `a when() branch`, `a list() row`, `a route
+  handler`), with the fixes: bind the signal, or read it with `.peek()` if
+  once is meant. It warns once per render body, keyed by the function's
+  source: once for a component however often it renders, once for a row
+  function however many rows.
+  `.peek()` and `untrack()` stay silent, as does a `.get()` in an effect, a
+  computed, a function child or prop, or an event handler. Development is
+  anything but a production build: Bun's bundler replaces
+  `process.env.NODE_ENV`, so a production bundle (`Bun.serve` with
+  `development: false`, `bun build --production`, or `NODE_ENV=production`)
+  turns the check off (its text stays in the bundle).
+
+### Changed
+
+- **A Signal from another copy of railroad throws where it is rendered.**
+  With two copies in a page (a `file:` or `bun link` dependency on a local
+  checkout that brings its own `node_modules/@blueshed/railroad`), the other
+  copy's signal rendered as `[object Object]`, a `when()` on it never
+  switched, and the load-time `console.error` was the only sign. Given as a
+  child, a prop, a `when()` condition or a `list()` source, it now throws
+  `This Signal was made by another copy of @blueshed/railroad (…)`, naming
+  both copies and the skill's "Local development across repos". The copies
+  are still not made to cooperate: sharing tracking state through
+  `globalThis` would make this file's internals a contract between versions,
+  and an effect reading the other copy's signal still never re-runs, so the
+  fix remains one copy. Only a signal made by this version or later is
+  recognised.
+
+### Fixed
+
+- **A computed that switches what it reads no longer lets an effect see it
+  half-updated.** Depth was fixed when a reader subscribed, so after
+  `c = computed(() => flag.get() ? b.get() : a.get() * 2)` moved onto the
+  deeper `b`, a later write could run an effect reading `a` and `c` once on
+  the new `a` and the old `c`, then again on the settled values; and an
+  effect that started reading a computed in the same pass as that
+  computed's input changed read it stale. Now a computed that deepens
+  raises its readers with it, and a read during a pass of a computed that
+  hasn't settled yet brings it up to date first. An effect that writes a
+  signal also lets what reads that signal settle before the next effect at
+  its depth runs. The same now holds for an effect that reads inside its own
+  `batch()`, and for one created in the middle of a pass (a `when()`
+  branch's bindings): a batch holds writes back only outside a pass, since
+  inside one they already wait for the running listener. One visible
+  difference: an effect that writes `a` and then reads a computed of `a`
+  for the first time during a pass sees the new value, where it saw the old
+  one and ran again. The randomized checker the ledger asked for is in
+  `fixes.test.tsx`: over 300 graphs whose computeds switch inputs, read by
+  effects that read plainly, inside a `batch()`, or are created mid-pass,
+  it counts no half-updated read, no second run and no stale value, where
+  0.14 counted thousands. Graphs whose computeds read the same inputs every run
+  do the same work as before, and a deep chain settles about 3× faster: the
+  drain no longer rescans from depth 0 for each depth.
+
+### Docs
+
+- **The skill's repacked-tarball recipe refreshes the app's copy.** It said
+  to repeat `bun pm pack` and `bun add <tgz>` after each change, but
+  `bun add` of the same tarball again keeps the old contents, as does
+  `bun install --force`: `bun.lock` pins the first tarball by its integrity
+  hash. *Local development across repos* now says `bun remove` the package,
+  then `bun add` the tarball (todo #7).
+
+## [0.14.0] - 2026-09-25
+
+### Breaking
+
+- **Railroad declares no global `JSX` namespace (types only).** Importing
+  the root barrel, `/jsx`, `/routes` or `/jsx-runtime` declared
+  `global { namespace JSX }`, which clashed with React's in a mixed app
+  (TS2300 Duplicate identifier 'Element'). The types now live on the factory,
+  `createElement.JSX`, which `jsx: react` with `jsxFactory: "createElement"`
+  looks up before any global, and in `jsx-runtime`'s `JSX` export, which
+  `jsx: react-jsx` uses. JSX in both modes type-checks as before, and `JSX`
+  is exported as a type from the root and `/jsx`.
+  **Who is affected:** code that names the global in an annotation without
+  importing it, such as `function View(): JSX.Element`; it no longer
+  compiles (TS2503 Cannot find namespace 'JSX').
+  **How to move across:** import the type,
+  `import type { JSX } from "@blueshed/railroad"`, or annotate `Node`, which
+  `JSX.Element` is.
+
+### Deprecated
+
+- **An async route handler that resolves to a bare `Promise<Node>`.** It
+  still renders, but what it builds after its first `await` has no owner
+  scope and outlives the route. `routes()` given such a handler now resolves
+  to a `@deprecated` overload, so an editor strikes the call through; a later
+  release drops the form from the type.
+  **How to move across:** resolve to a thunk, which railroad runs under a
+  scope it owns: `async ({ id }) => { const u = await load(id); return () => <User u={u} />; }`
+  (keyed, `{ keyed: true, handler }`, when it reads its params, so `/users/1` →
+  `/users/2` loads again).
+
+### Added
+
+- **`when(cond, (v$) => …)`: the truthy branch gets the current value.**
+  `when()` rebuilds its branch only when truthiness flips, so a branch that
+  read the value once kept the first one (`/sites/42` → `/sites/99` still
+  showed 42). The truthy branch is now passed `v$`, a `ReadonlySignal` of the
+  current truthy value narrowed to `NonNullable<T>`, which notifies whenever
+  the condition does while it stays truthy (an in-place `.touch()`
+  included): `when(detail, (d$) => <SiteDetail id={d$.map(d => d.id)} />)`.
+  No `!` is needed, so `when(doc.data, (d$) => …)` reads a delta document
+  without one. Branches that take no argument are unchanged; one passed by
+  reference, `when(x, View)`, now receives `v$` as its first argument, so
+  write `when(x, () => <View />)`.
+- **Keyed routes.** A table value may be `{ handler, keyed: true }`: the
+  handler re-runs, disposing the previous run, whenever the matched params
+  change (compared value by value), as Solid's `<Show keyed>` does. So
+  `"/users/:id": { keyed: true, handler: ({ id }) => <User id={id} /> }`
+  follows `/users/1` → `/users/2`. A plain handler still runs once per
+  pattern and follows the params through `params$`; don't key a wildcard
+  layout, whose `params["*"]` changes on every sub-path.
+
+### Fixed
+
+- **`navigate()` updates the route before it returns.** It set
+  `location.hash` and left the route signal to the `hashchange` a tick
+  later, so `route()` read straight after `navigate()` showed the old path.
+  The signal is now set from `location.hash` as the browser stored it
+  (percent-encoded), so the `hashchange` that follows sets the same string
+  and re-runs nothing. A handler that redirects with `navigate()` lands on
+  the target in the same pass. Setting `location.hash` yourself, or following
+  a `#/…` link, still lands a macrotask later.
+
+## [0.13.0] - 2026-09-25
+
+A minor release. The five entries under Breaking change what some working
+code does, or whether it compiles; each says who is affected and the one
+move across. Most code needs none of them.
+
+### Breaking
+
+- **Render bodies are untracked.** A `.get()` in a component body, a
+  `when()` branch, a `list()` row or a `routes()` handler ran with the effect
+  around it as the listener, so an unrelated write re-ran that effect: every
+  row of an index-based `list()` was rebuilt, the router re-notified
+  `params$`, and an effect that built a component re-ran on that
+  component's reads. Components run once, as documented, and those reads are
+  now one-shot.
+  **Who is affected:** an index-based `list()` row that reads another signal
+  with `.get()` and relied on the list rebuilding every row to show its new
+  value (`list(items, (it) => <li class={sel.get() === it ? "on" : ""}>…`);
+  and an effect that re-rendered a component by reading signals only inside
+  that component.
+  **How to move across:** bind the signal instead of reading it:
+  `class={() => sel.get() === it ? "on" : ""}`; or read it in the effect
+  itself: `effect(() => { const v = x.get(); el.replaceChildren(<View v={v} />); })`.
+- **An effect's first run defers its writes, as every later run already
+  did.** Writes made inside an effect body reach other listeners after the
+  body returns. Before, only the first run (at mount, in an event handler, a
+  timer) propagated them synchronously, so the same effect saw a computed of
+  what it had just written fresh on its first run and stale on later ones
+  (and could re-enter itself: see Fixed).
+  **How to move across:** code that wrote a signal in an effect and then read
+  something derived from it in the same body (a computed, or DOM another
+  effect updates) now reads the old value there. An effect that read a
+  computed re-runs once the write settles; for anything else, read the
+  signal you wrote.
+- **Props are applied after an element's children.** A `ref` now sees the
+  element with its children, and a `<select>`'s value finds its options
+  (see Fixed).
+  **How to move across:** a `ref` that appends nodes of its own to an element
+  that also has JSX children now appends them after those children, not
+  before; insert with `el.prepend(…)` for the old order. `innerHTML` and JSX
+  children on one element: `innerHTML` now replaces the children (give one
+  or the other).
+- **A signal or function child holding a boolean renders nothing,** as a
+  static `{true}`/`{false}` always did. Before, `{flag}` printed "true" or
+  "false", and so did `{() => flag.get()}`.
+  **How to move across:** to show a boolean as text, map it:
+  `{flag.map(String)}`.
+- **Two types that let bugs compile are narrower (types only).**
+  `.patch(partial)` takes `Partial<T>`, so `filter.patch({ colr: "blue" })`
+  no longer compiles (it took any key). A route handler's `params$` is a
+  `ReadonlySignal`, as the docs already said; writing it would desync it from
+  the URL.
+  **How to move across:** fix the misspelt key; for a key the type really
+  lacks, widen the signal's type. Annotate a handler's second parameter as
+  `ReadonlySignal<Record<string, string>>` (or leave it inferred), and change
+  the route with `navigate()`.
+
+### Added
+
+- **A second copy of railroad says so when it loads.** Two copies in one
+  page (typically a `file:` or `bun link` dependency on a local checkout
+  that brings its own `node_modules/@blueshed/railroad`) can't see each
+  other's signals, scopes or providers, so the UI stopped updating with
+  nothing on the console. The second copy now logs a `console.error` naming
+  both files and pointing at the skill's new "Local development across
+  repos" section: install the checkout as a packed tarball instead
+  (`bun pm pack`, then `bun add <tgz>`). `bun --hot` re-evaluating the same
+  file is not reported. Only copies that include this check take part, so
+  both copies must be this version or later.
+
+### Fixed
+
+- **An effect that wrote its own dependency on its first run leaked.** A
+  clamp such as `effect(() => { if (page.get() > max.get()) page.set(max.get()); … })`
+  ran again *inside* itself, and the outer run then overwrote the inner
+  run's cleanup and children, so they were never disposed: a timer the
+  effect started kept running after unmount. It now runs again after its
+  current run, and every run's cleanup and children are disposed.
+- **An effect's return value broke the next write.** Whatever the body
+  returned was kept as its cleanup, so `effect(async () => …)` or an
+  expression body such as `effect(() => (el.textContent = s.get()))` made
+  the next `s.set()` throw "cleanup is not a function", from the writer.
+  Only a returned function is a cleanup now; an async callback also gets a
+  `console.error` saying effects must be synchronous and what to do instead.
+- **A cleanup ran twice when the next run threw.** The thrown run left the
+  old cleanup in place, so dispose called it again.
+- **A keyed `list()` reorder moved rows that hadn't moved, and they lost
+  focus.** Moving the last row to the front moved every other row instead,
+  so an `<input>` being typed into in one of them lost focus when another
+  user's change reordered the list. Rows outside the longest run already in
+  order now move, and only those.
+- **`<select value="b">` showed the first option.** The value was set
+  before any `<option>` existed, so the browser had nothing to select;
+  static and reactive values alike. Props now follow the children.
+- **A CSS custom property in a style object was dropped.**
+  `style={{ "--accent": "red", color: "var(--accent)" }}` assigned `--accent`
+  as a declaration property, which doesn't exist; it now goes through
+  `style.setProperty`, and a later object that omits it removes it.
+- **A signal child holding `null` or `undefined` rendered "null" or
+  "undefined".** It now renders nothing, as a static child and a function
+  child did. A signal holding a DOM Node now gets the same console warning a
+  function child returning one gets.
+- **`<label htmlFor="x">` wrote an attribute named `htmlfor`.** It now writes
+  `for`, as `className` already wrote `class`.
+
+### Changed
+
+- **The browser suite skips when there is no browser** (development only).
+  On Linux with no Chrome/Chromium on `$PATH` and no `BUN_CHROME_PATH`, e.g. a
+  fresh sandbox, `tests/webview.test.ts` is skipped with a warning, so the
+  release gate `bun test --coverage` passes or fails on the unit tests alone
+  instead of failing on "Failed to spawn Chrome". In CI it is never skipped.
+
+### Docs
+
+- **The README's `tsconfig.json` compiles.** It set `moduleResolution:
+  "bundler"` without `module`, which TypeScript rejects (TS5095), and
+  without `target`, so railroad's own source failed on iteration (TS2802).
+  It (and the manual's copy) now sets `module` and `target` to `esnext`, as
+  `check:consumer` does.
+- **The skill says what bites today.** It no longer tells delta users to
+  pass `{ equals: () => false }` to `list()` (every delta backend broadcasts
+  whole rows); it adds §9, that `when()` rebuilds only on a truthiness flip
+  and a handler's `params` stay the first match (pass signals; read
+  `params$`), fixes its wildcard-layout example accordingly, and covers the
+  changes above: untracked render bodies, effect writes and return values,
+  `onchange` on text inputs, event handlers not being scopes, and local
+  development across repos. The unrelated "no `transition-all`" item is gone.
+- **"Glitch-free" now says where it stops.** Propagation is glitch-free
+  while each computed reads the same signals every run. A computed that
+  switches what it reads (`flag.get() ? b.get() : a.get() * 2`) can end up
+  deeper than its readers were ordered for, and on a later write one of them
+  can run once on half-updated values before it re-runs on the settled ones.
+  Every write still settles consistently, within the same synchronous pass,
+  so bindings never paint the half-updated value. The signals header, the
+  README, the skill and its manual said it could not happen.
+
+## [0.12.0] - 2026-09-24
+
+A minor release (0.12.0). The JSX runtime gets three fixes, `when()`/`list()`
+render synchronously, and effects now own what they create. That last change
+can break code that keeps something built inside an effect body; the fix is
+one move, below.
+
+### Breaking
+
+- **Each `effect()`/`computed()` run owns what its body creates.** A
+  computed (including `.map()`), nested effect, `when()`, `list()`,
+  component, or anything registered with `trackDispose()` that is created
+  inside an effect body is now disposed before that effect's next run and
+  when the effect is disposed — the Solid model. Before, it landed in the
+  *enclosing* scope, so every re-run stacked another live copy until the
+  whole scope tore down (5 writes → 20 inner evaluations instead of 5,
+  growing quadratically).
+  **Who is affected:** code that creates something inside an effect body and
+  keeps using it after the effect re-runs — a cached `.map()` or `computed()`,
+  a nested effect meant to outlive the run, or `@blueshed/delta`'s
+  `openDoc()` (it registers with `trackDispose()`, so the doc is now closed
+  when the effect re-runs).
+  **How to move across:** create long-lived things outside the effect body —
+  in the component, or at module level with the disposer kept:
+
+  ```ts
+  // before — `doc` and `title` die on the effect's second run under 0.12
+  effect(() => { filter.get(); doc ??= openDoc("board:1"); title ??= name.map(f); });
+  // after
+  const doc = openDoc("board:1");
+  const title = name.map(f);
+  effect(() => { filter.get(); /* use doc, title */ });
+  ```
+
+  Opening a fresh resource on every run (`` openDoc(`room:${room.get()}`) ``)
+  keeps working, and the previous run's resource is now released for you.
+
+### Changed
+
+- **`when()` and `list()` render synchronously.** Their first render was
+  deferred to a microtask, so when `mount()` returned the DOM held only
+  `<!--when-->` / `<!--list-->`: code that ran straight after mount —
+  focusing or measuring an element, a test assertion — found nothing. The
+  anchors are now placed in their fragment before the driving effect runs,
+  so the content is in the DOM as soon as the fragment is appended. (A `ref`
+  still fires when its element is created, before it is connected, as for
+  any element.) `when()` keeps its branch between `<!--when-->` /
+  `<!--/when-->` brackets, like `list()` rows, so removal stays correct when
+  SVG adoption swaps node identities. Code that awaited a tick before
+  reading `when()`/`list()` output keeps working.
+  The first render is built before the fragment has a parent, so its
+  namespace is decided where the fragment is placed: JSX, `mount()`,
+  `routes()` and a parent `when()`/`list()` adopt it into `<svg>`. A
+  fragment appended into an `<svg>` *by hand* (`svg.appendChild(when(…))`)
+  keeps an `a`, `script`, `style` or `title` of its first render in the
+  HTML namespace; place it through one of those instead.
+- **`routes()` takes any `Element` as its target**, as `mount()` does, and
+  places what a handler returns the way `mount()` does: adopted into an
+  `<svg>` target's namespace. Before, only a deferred `when()`/`list()`
+  render was adopted there, and a plain element never was.
+- **`when()`/`list()` created inside an `effect()` body no longer warn** that
+  they have no dispose scope: the effect's run is their scope now, and they
+  are disposed when it re-runs.
+- **`CHANGELOG.md` ships in the package.**
+
+### Fixed
+
+- **Function props were stringified.** `<div class={() => open.get() ? "a" : "b"} />`
+  wrote the function's source into the attribute. Function props (other than
+  `ref` and `on*`) are now reactive, exactly like function children — for
+  `class`, `style`, `value`/`checked`/…, `innerHTML`, and plain attributes.
+- **`style={Signal<string>}` threw** "Attempted to assign to readonly
+  property": the reactive path assumed an object and indexed the string. A
+  style value may now be a CSS string or an object, static or reactive, and a
+  reactive style can switch between the two forms; `null`, `false` and `""`
+  remove the attribute.
+- **`class={Signal<undefined>}` wrote the string `"undefined"`.** `null`,
+  `undefined` and `false` now remove the `class` attribute.
+- **`innerHTML={undefined}` wrote the text `"undefined"`.** It now clears the
+  element, as `null` does.
+- **A `when()` branch that threw left its scope pushed**, so every later
+  `pushDisposeScope`/`popDisposeScope` pairing was off by one. The branch now
+  renders under a scope that is popped whatever happens.
+
+### Docs
+
+- The README is now a short introduction: what railroad is, one example that
+  runs, what it pairs with, where to go next. The manual it held moved,
+  intact, to `.claude/skills/railroad/reference.md`, which ships with the
+  package and is linked from the `railroad` skill.
+- The `railroad` skill describes the 0.12 behaviour: effects owning their
+  run, synchronous `when()`/`list()`, reactive function props, string styles.
+- `CLAUDE.md` lists the gates, invariants and contracts for working in the
+  repo; `.claude/commands/publish.md` is the release procedure shared with
+  delta and eta (neither ships in the package).
+
+## 0.11.0
+
+Async, made honest. The 0.10.2 guard said "components are synchronous"; the
+truth was that railroad had no ownership story for code that resumes after an
+`await` — including the sanctioned async route handlers, whose post-await
+signal bindings silently outlived navigation. This release replaces the fence
+with a contract: **async components and async route handlers resolve to a
+thunk**, which railroad runs under a scope it owns. When TC39 AsyncContext
+ships, the thunk requirement can be dropped without breaking anyone.
+
+### Added
+
+- **Async components.**
+  `async function Profile() { const u = await fetchUser(); return () => <div>{u.name}</div>; }`
+  renders a bracketed placeholder immediately and fills in on resolution; an
+  optional `fallback` thunk prop (`<Profile fallback={() => <p>loading…</p>} />`)
+  shows until settlement. Effects created before the first `await` are owned
+  by the component scope as usual; the resolution thunk runs under a fresh
+  railroad-owned scope composed into the component's cleanup; teardown before
+  settlement drops the thunk unrun. Rejections clear the fallback (no stuck
+  spinners) and log. A bare-Node resolution gets a pointed `console.error`
+  with the one-word fix — the 0.10.2 throw, relocated to the only shape that
+  genuinely cannot work. Typed via `JSX.ElementType` plus a universal
+  `fallback` intrinsic attribute in both JSX namespaces, so `<AsyncThing />`
+  type-checks under `jsx: react` and `react-jsx` alike.
+- **Composition:** an async component as a keyed `list()` row rides the 0.10.1
+  row brackets — content resolving after a reorder still lands inside its row.
+
+### Fixed
+
+- **Async route handlers leaked post-await bindings.** A handler like
+  `async () => <span>{sig}</span>` builds its reactive bindings after the
+  first `await`, where the dispose-scope stack is necessarily empty (popped
+  pre-await since the 0.9.0 balance fix) — so those bindings had no owner,
+  survived navigation, and kept writing to detached DOM. Handlers may now
+  resolve to a thunk (`Promise<() => Node>`); railroad brackets the thunk in a
+  scope composed into the route's teardown. Bare `Promise<Node>` remains
+  supported for back-compat, with the caveat documented in the header and
+  skill.
+
+## 0.10.2
+
+Guardrails from a full review that found no logic bugs in the core — only
+places where a footgun failed silently or inscrutably. Each is pinned by a
+regression test in `fixes.test.tsx`.
+
+### Fixed
+
+- **Async components now throw a pointed error at render**, naming the
+  component and the way out (effect + signal, or a `routes()` handler, which
+  may return `Promise<Node>`). Previously the returned Promise either
+  stringified to `[object Promise]` as a child or crashed inside `appendChild`
+  at a `mount()`/`when()`/`list()` root with an error naming neither
+  components nor promises.
+- **A non-function `on*` prop warns and attaches nothing.** `onclick={count$}`
+  (a Signal) or `onclick={handler()}` (accidentally invoked) previously went
+  into `addEventListener`, which ignores non-callables — the element was
+  silently inert. null/undefined stay legal for the conditional-handler
+  pattern.
+- **`.patch()` throws on array signals** instead of silently spreading the
+  array into an index-keyed plain object. Arrays update via `.set()`,
+  `.update()`, or `.mutate()`.
+
+### Docs
+
+- `route()` at module level documented as supported (app-lifetime binding —
+  why it doesn't warn when scopeless like `when()`/`list()` do).
+- Sharp edges: async components; index-based `list()` rebuilds every row per
+  change (use the keyed form for anything that updates).
+- Skill: new §8 "Components are synchronous"; §6 extended with the
+  function-only handler rule. Line count refreshed (~1.6KLOC).
+
+## 0.10.1
+
+A cross-library hardening pass with `@blueshed/delta`: two `when()`/`list()`
+lifecycle bugs found in an adversarial review, and an escape hatch for
+in-place patch streams. Every fix is pinned by a regression test, and the
+delta repo gains an integration suite that drives the pairing — real server,
+real WebSocket, real DOM — end to end.
+
+### Added
+
+- **Keyed `list()` takes a fourth `options` argument** (`SignalOptions<T>`,
+  forwarded to each row's item signal). Patch streams that mutate row objects
+  in place and notify via `.touch()` (delta's JSON-file backend, hand-rolled
+  `applyPatch` loops) re-deliver the same reference on sync, which the default
+  `Object.is` equality swallowed — edited rows went silently stale. Pass
+  `{ equals: () => false }` to force per-row re-projection; row-level `.map()`
+  computeds still prune unchanged values, so DOM writes stay minimal.
+
+### Fixed
+
+- **`when()`/`list()` no longer build content after disposal.** Their first
+  render is always deferred by a microtask (the anchor has no parent until the
+  returned fragment is appended), so disposing the owning scope in that window
+  — e.g. a keyed row added and removed in the same flush of a realtime patch
+  stream — let the queued swap/sync run anyway: it rebuilt the branch/rows and
+  leaked their effects, whose disposers were captured after the scope cleanup
+  had already run. Both helpers now latch a `disposed` flag in their scope
+  cleanup and the deferred callback is a no-op after it. (`list()` was only
+  shielded when its anchor had left the DOM entirely; an anchor still sitting
+  in a detached-but-parented subtree rebuilt every row.)
+- **Keyed `list()` reorders no longer strand `when()` branch nodes.** A row
+  whose top-level content is a `when()` (or a fragment containing one) kept
+  only the `when` anchor comment in the list's node bookkeeping — the branch
+  nodes it inserts beside that anchor later were left behind on reorder,
+  silently scrambling row content. Each row is now bracketed by
+  `<!--row-->`/`<!--/row-->` comment markers and reorders/removals operate on
+  the whole live range, so nodes that `when()` (or a nested `list()`) inserts
+  next to its anchor travel with the row. Rows therefore contribute two extra
+  comment nodes each — invisible to CSS and `children`, but visible to code
+  that walks `childNodes` by index.
+
+## 0.10.0
+
+SVG promoted to first-class and the two long-standing core caveats removed:
+propagation is now glitch-free, and the dispose-scope rule got a real API plus
+a guardrail. Every change is pinned by a regression test; the WebView suite
+verifies the SVG work in real Chrome.
+
+### Added
+
+- **`mount(target, render)`** — root dispose scope for apps mounted outside
+  `routes()`. Effects, `when()`, and `list()` created by the render callback
+  tear down via the returned disposer, which also removes the rendered nodes.
+- **`hasActiveDisposeScope()`** — exported alongside the scope primitives.
+- **Scope guardrail:** `when()`/`list()` created outside any dispose scope now
+  `console.warn` — their internal disposers are unreachable, a guaranteed leak
+  once that UI unmounts.
+
+### Changed
+
+- **Signals are glitch-free.** Propagation is topologically scheduled: a write
+  (or batch) runs each affected computed/effect at most once per settled pass,
+  ordered by derivation depth. A diamond (`a → b`, `a → c`, effect reads both)
+  re-runs the effect once and never observes half-updated state. Deep computed
+  chains no longer grow the call stack. The cycle guard is now per-listener per
+  flush (same `Maximum effect depth` error).
+- **SVG namespace is decided at creation.** SVG-only tags (`circle`, `g`,
+  `linearGradient`, `clipPath`, `foreignObject`, `fe*` filters, …) are created
+  via `createElementNS` directly, so refs fire once, manual `addEventListener`
+  survives, and camelCase needs no rescue. Only the four HTML-ambiguous tags
+  (`a`, `script`, `style`, `title`) still use append-time adoption.
+
+### Fixed
+
+- **`when()` leaked its active branch on parent teardown.** The branch scope's
+  disposer was only invoked on the next truthiness swap, so effects inside the
+  rendered branch outlived route/component teardown and kept writing to
+  detached DOM. `when()` now registers branch cleanup in the parent scope, as
+  `list()` already did.
+- **camelCase SVG tags were silently broken** (pre-table):
+  `document.createElement` lowercased `linearGradient` et al. before adoption,
+  producing SVG-namespace elements the browser doesn't recognise. Now created
+  with correct case; real Chrome asserts `instanceof SVGLinearGradientElement`
+  in the WebView suite.
+- **`<foreignObject>` children were force-adopted into the SVG namespace**,
+  destroying HTML islands. Adoption (and `when()`/`list()` insertion) stops at
+  the `foreignObject` boundary.
+- **Fragment children inside `<svg>` bypassed adoption** — `<>...</>` and
+  components returning fragments left children in the HTML namespace.
+- **A throwing effect run stranded its new subscriptions:** the dep-set swap
+  was skipped on throw, so `dispose()` could never unsubscribe signals first
+  read in the failed run.
+- **`batch()` no longer masks an error thrown by `fn()`** with a later flush
+  error; the flush still drains, but the original exception wins.
+- **Docs:** route matching documented as segment-only (query strings fold into
+  the last param; trailing slash is a real empty segment); README
+  ships-both-skills copy instructions; bun-route reference updated to the seven
+  gotchas and the `mount()` pattern.
+
+## 0.9.0
+
+A deep correctness/fitness review drove this release. Every item below is pinned
+by a regression test; the full suite and a new consumer-typecheck pass are green.
+
+### Fixed
+
+- **Router: async first render no longer imbalances the dispose stack.** When a
+  router's first matching handler was async, `routes()` returned with an extra
+  scope left on the global dispose stack. Nested inside a parent scope (the
+  documented pattern), the parent then popped the wrong scope — leaking its own
+  disposers — and the resolving render captured the parent scope into
+  `activeDispose`, recursing into a **stack overflow on teardown**. `run()` now
+  always returns at the depth it entered, sync or async.
+- **Router: `dispose()` is idempotent.** Calling the returned disposer more than
+  once (or via both the handle and a parent scope) previously drove the shared
+  `hashListenerCount` negative and detached the `hashchange` listener out from
+  under other live routers. `route()` got the same guard.
+- **Router: same-pattern param navigation during a pending async render** now
+  invalidates the in-flight render and re-runs the handler, instead of painting
+  stale content built from the original params.
+- **Router: a throwing `onError` boundary on the async-reject path** is now
+  contained (logged via `console.error`) like the sync path, instead of escaping
+  as an unhandled rejection.
+- **Signals: an effect disposed mid-`batch()` no longer runs.** Effects carry a
+  `disposed` flag checked before execution, so a `batch()` flush that snapshotted
+  the queue before disposal can't run a dead effect. `effect()`'s disposer is now
+  idempotent.
+- **JSX: SVG namespace adoption no longer double-subscribes.** Adopting an HTML
+  element into `<svg>` re-applied its props to a fresh SVG element while leaving
+  the discarded element's reactive effects live (writing to a detached node). The
+  discarded element's effects are now torn down first; the `ref` ends on the
+  final SVG-namespace element.
+- **JSX: cleared signal values coerce to `""`** for `value`/`checked`/`src`/etc.,
+  instead of writing the literal string `"null"`/`"undefined"`.
+- **`matchRoute`** keeps the raw segment when a `:param` has a malformed percent-
+  escape (consistent with the wildcard branch) instead of silently failing to
+  match.
+
+### Changed
+
+- **`provide(k, undefined)` is now honored** — presence is tracked by key
+  (`registry.has`), so `inject(k)` returns a provided `undefined` instead of
+  throwing "No provider".
+- **Infinite-loop guard raised** from 100 to 1000 (and the check now precedes the
+  increment), so a legitimately deep computed chain isn't misreported as a loop.
+- **Logger emits ANSI colors only to an interactive TTY** and respects
+  `NO_COLOR`; logs stay plain when piped, redirected, or in a browser. Env is read
+  via a typed cast so consumers no longer need `@types/bun`.
+
+### Added
+
+- `clearProviders()` (DI registry reset, for test isolation).
+- Re-exported dispose-scope primitives from the package root: `trackDispose`,
+  `pushDisposeScope`, `popDisposeScope`.
+- New `./logger` and `./package.json` subpath exports; `engines.bun` marker.
+- Dev-mode `console.warn` for `list()` duplicate keys and for a function child
+  that returns a Node.
+- Scripts: `test:webview` (explicit WebView run) and `check:consumer` (type-check
+  against the documented react-jsx + strict + no-`@types/bun` config).
+- `tests/consumer-types/` fixture exercising the documented consumer surface.
+
+### Type-safety / DX
+
+- **`list()` is now real overloads**, so the bare-arrow keyed form
+  `list(rows, r => r.id, …)` infers `r` and compiles under a consumer's `strict`
+  tsconfig (previously `implicitly has an 'any' type`).
+- **Importing the package root type-checks without `@types/bun`** (the
+  `globalThis.Bun` `TS7017` break is fixed); CI now gates the consumer config.
+
+### CI / packaging
+
+- `bun.lock` is committed; CI and publish install with `--frozen-lockfile`.
+- CI and publish run the WebView suite as an explicit step (bare `bun test` can
+  drop it from discovery) and run `bun run check:consumer`.
+- Pinned `setup-bun` to `1.3.14` in CI/publish (previously resolved implicitly
+  from `engines.bun`), and gave the WebView suite a 30s default timeout so a cold
+  Chrome launch on CI runners can't trip Bun's 5s per-test default.
+
+### Skills
+
+- **`bun-route` skill refreshed for Bun 1.3.13–1.3.14 `Bun.WebView`/`Bun.serve`:**
+  native double-click via `click(selector, { clickCount: 2 })` (retires the
+  synthetic-`dblclick` recipe), per-click `timeout`, constructor `console`/
+  `dataStore` options, `view.url`/`title`/`loading` properties, `Range`/`206`
+  file serving, `--target=bun` keeping `using` native, and the `bun test`
+  `--isolate`/`--parallel`/`--shard`/`--changed` flags.
+
+## 0.8.2
+
+### Fixed
+
+- **`batch()` no longer strands queued effects on a throw** — if an effect throws mid-flush, the remaining effects already queued behind it still run; the first error is remembered and rethrown once the flush drains. Previously a throwing effect aborted the loop and silently dropped the rest.
+- **Throwing components keep the dispose-scope stack balanced** — `createElement` now wraps component render in `try/finally`, so a component that throws still pops its dispose scope. Previously the leaked scope corrupted every later `pushDisposeScope`/`popDisposeScope`.
+- **Unknown `LOG_LEVEL` falls back to `info`** — a typo'd value (env or `setLogLevel`) no longer makes `LEVELS[current]` undefined and silence all logs including errors; unknown values coerce back to `"info"`.
+
+### Docs
+
+- JSDoc on `signals.ts` (eager/non-glitch-free propagation, `.mutate()` `structuredClone` limits), `routes.ts` (declaration-order matching), and `shared.ts` (process-global DI, not per-request on the server).
+- README: new "Sharp edges to know" section; added `CLAUDE.md` repository guide.
+
+### CI
+
+- Added `.github/workflows/ci.yml` (tsc + test on push/PR) and a Chrome-locating step for the `Bun.WebView` integration tests in both CI and publish workflows.
+
+### Tests
+
+- Added tests for batch throw-resilience, component-throw dispose balance, and logger level fallback. Suite: 109 → **112 passing tests**.
+
+## 0.8.1
+
+### Added
+
+- **`options.onError` router boundary callback** — `routes(container, table, options)` now accepts `options.onError(err)`. Synchronous route throws and async handler rejections invoke the callback; if it returns a `Node`, the fallback is rendered into the container instead of a blank screen. Dispose scope stack stays balanced. Returning nothing preserves the prior behavior (sync re-throws, async logs to `console.error`).
+
+### Fixed
+
+- **`style` signal property clearance** — reactive style updates now track previously written keys and reset any key omitted by the next style object to `""`. Previously, `sty.set({ color: "blue" })` after `{ color: "red", fontSize: "10px" }` left `fontSize: 10px` lingering on the element.
+
+### Tests
+
+- **`routes.test.ts`** — added two tests covering sync and async `onError` boundary fallback rendering.
+- **`jsx.test.tsx`** — added a test verifying dynamic style-key clearance when style signals omit keys.
+- Suite: 106 → **109 passing tests**.
+
+### Docs
+
+- **SKILL.md** — expanded operational checklist from five to seven gotchas: lowercase HTML event handlers (`onclick`, not `onClick`), and `list()` vs plain `.map()` for dynamic arrays.
+- **`/publish` skill** — restructured with frontmatter; codified the rule that the skill itself is the authorisation for the push (per global `CLAUDE.md`); requires skill `version:` frontmatter to track `package.json`.
+
+## 0.8.0
+
+### Re-positioned, not redesigned
+
+Railroad's earliest commit message described it as "based on the TC39 Signals proposal." The code never matched that claim — railroad has always been push-based, with `effect()` and `batch()` in core, in the same family as Vue's `ref`, Solid's `createSignal`, and Preact's signals. The TC39 proposal is pull-based and explicitly leaves effects out of core. They are different things.
+
+This release stops claiming TC39 alignment and re-pitches railroad honestly under the brief it actually serves: **the smallest correct reactive layer for Bun realtime apps**, designed to be small enough that an LLM can use it correctly without re-learning the framework.
+
+### Added — borrowed-from-RFC, useful on their own merits
+
+- **`ReadonlySignal<T>`** — interface returned by `computed()` and `Signal.map()`. `.set()` on a computed is now a TypeScript error. Runtime is unchanged (the underlying object is still a Signal).
+- **`SignalOptions { equals }`** — per-signal equality function on `signal()`, `computed()`, and the `Signal` constructor. Default is `Object.is`.
+- **`untrack(fn)`** — read without registering a dependency. Function-form complement to `.peek()`.
+
+### Fixed
+
+- **`routes()` no longer leaks dispose state on async first-render.** The outer dispose function was being registered into the route's own internal scope when the first handler returned a Promise, causing infinite recursion on teardown.
+- **`routes()` no longer kills the router on a synchronous handler error.** Errors are caught at the boundary, dispose stack stays balanced, error is logged via `console.error`.
+- **`routes()` async handler rejections** are similarly caught and logged rather than swallowing the rejection unsafely.
+- **`popDisposeScope()` throws on empty stack** instead of silently returning a no-op — surfaces push/pop imbalance immediately.
+- **`computed()` evaluates `fn()` exactly once on creation** (was twice). The new implementation creates the inner Signal during the effect's first run, eliminating the double evaluation that surprised callers using `Date.now()` / `Math.random()` inside `fn`.
+
+### Tests
+
+- **`routes.test.ts` (new)** — 15 happy-dom tests covering `routes()`, `route()`, `navigate()`, the async race, sync handler errors, `params$` reactivity within the same pattern, wildcard layouts, dispose semantics. The async-first-render bug above was caught by these tests.
+- **Reactive prop tests in `jsx.test.tsx`** — value, checked, disabled, class, generic attribute, style, innerHTML, function children, event handlers, ref callbacks. Plus a nested when-inside-list composition test.
+- **`tests/webview.test.ts` (new)** — Bun.WebView integration tests with a fixture app at `tests/fixtures/`. Five tests run the actual DOM in a real headless browser (WKWebView on macOS): home route + DI + reactive count, keyed list identity, hash navigation + params reactivity, SVG namespace, async route resolution. Catches what happy-dom misses.
+- **`signals.test.ts` additions** — equals option, untrack, computed-as-readonly TS contract.
+- Suite: 64 → **106 passing tests**.
+
+### Docs
+
+- **README rewritten** — leads with the actual brief ("smallest correct thing for the Bun-HTML-import-TSX workflow"), explicit about not being a TC39 implementation, explicit about what to use instead (Preact / Solid / signal-polyfill) when railroad isn't the right fit. Added a worked realtime example showing in-place patch application via `.touch()`.
+- **SKILL.md rewritten** — operational checklist of the five failure modes encountered in development (no `.get()` in JSX children, list keyed render gets a Signal, SVG only adopts inside `<svg>`, effects auto-dispose only inside parent scopes, realtime escape hatches for large documents). Added a "when not to use railroad" section.
+
+## 0.7.1
+
+### Added
+
+- **`Signal.touch()`** — public escape hatch to fire listeners without replacing the value reference. Pair with in-place mutation to skip the `structuredClone` cost of `.mutate(fn)` — intended for large documents where a single-field update shouldn't clone the whole tree, and for keeping child-ref identity stable across updates (closures that captured a row don't go stale). The `Object.is` guard still gates computed propagation: effects and primitive-returning computeds re-run, but a computed that returns the same reference bails out — by design.
+
+### Fixed
+
+- **`list()` and `when()` now adopt HTML-namespace children into SVG** — previously, `<circle>` rendered through `list(shapes, …)` inside an `<svg>` stayed in the HTML namespace and didn't render, even though `appendChildren` already handled this for static JSX. Adoption runs before the render result's child nodes are captured, so subsequent list reorders/removals and `when()` branch swaps operate on the adopted SVG nodes rather than stale HTML references.
+
+### Tests
+
+- **DOM test infra** — added `@happy-dom/global-registrator` as a dev dep and a `bunfig.toml` preload so `bun test` has a DOM available. Enables `jsx.test.tsx`, which covers the SVG adoption fix across keyed create, index-based recreate, reorder, remove, nested `<g>/<circle>`, and `createElementNS` pass-through paths. Suite grew from 46 to 64 passing tests.
+
+## 0.7.0
+
+### Removed (breaking)
+
+- **`./delta`, `./delta-client`, `./delta-server`, `./delta-sqlite` subpath exports** are gone, along with the root-level `applyOps` / `DeltaOp` re-exports. Real-time document sync now lives in the sibling package [`@blueshed/delta`](https://www.npmjs.com/package/@blueshed/delta), extracted from railroad's 0.6.x delta-* modules and since extended with a Postgres backend, auth integration, temporal reads, DOM-ops helper, and a ~200-test suite. Railroad was the proving ground; delta is the finished product.
+- Migration for existing users:
+  - `@blueshed/railroad/delta` → `@blueshed/delta/core`
+  - `@blueshed/railroad/delta-client` → `@blueshed/delta/client`
+  - `@blueshed/railroad/delta-server` → `@blueshed/delta/server`
+  - `@blueshed/railroad/delta-sqlite` → `@blueshed/delta/sqlite`
+  The public API is a superset — no symbol names change.
+
+### Changed
+
+- **Scope and taglines rewritten.** No longer a "micro full-stack framework" — with delta extracted, railroad is client-side reactivity (signals, JSX, routes) plus a typed DI container and a logger that happen to work on either side. Package description, README, and SKILL.md all refresh to reflect that. `@blueshed/delta`'s client imports railroad's signals, so `openDoc("name")` still drops straight into a railroad JSX tree — no glue changes required.
+- **`futures.md` removed** — the roadmap was all delta-doc / CRDT follow-ups (conflict resolution, path-aware merge), which belong with `@blueshed/delta` now. Nothing UI-framework-shaped was in there.
+
+## 0.6.3
+
+### Docs
+
+- **README** — rebranded from "micro UI framework" to "micro full-stack framework." Added "Why Railroad?" positioning section comparing against SolidJS + Yjs composition. Updated line count to ~1,700 (actual code, excluding comments/blanks). Added delta-doc to the Design bullet list.
+- **SKILL.md** — updated description, line count, and delta-doc section to reflect full-stack scope and SQLite backend.
+- **futures.md** — replaced vague conflict resolution options with a concrete three-level plan: version stamping + conflict notification (next), path-aware auto-merge (future), custom merge strategies (future). Added "Why not CRDTs?" rationale.
+
+## 0.6.2
+
+### Added
+
+- **`delta-sqlite` module** — SQLite relational backend for delta-doc. Declare schemas with typed columns, parent/child relationships, cascade deletes, and temporal versioning. Define doc lenses that load a root row plus its included collections. Same client API as the JSON file backend — swap `registerDoc` for `registerDocs` on the server.
+- **166 tests** — full test coverage for `delta-sqlite` (schema DDL, CRUD ops, nested collections, cascade deletes, temporal queries, scope filters).
+
+### Docs
+
+- **README** — added delta-doc and delta-sqlite usage sections with server/client examples, schema declaration reference, and doc lens configuration.
+
+## 0.6.1
+
+### Changed
+
+- **Strict `noUncheckedIndexedAccess`** — tsconfig now enables `noUncheckedIndexedAccess: true` so consumers with strict settings don't hit type errors that railroad's own checks miss.
+
+## 0.6.0
+
+### Added
+
+- **Configurable WebSocket options** — `createWs()` accepts `WsOptions` with `path`, `idleTimeout`, and `sendPings`. Defaults: `"/ws"`, `60`, `true`.
+- **`"silent"` log level** — suppresses all output including errors. Set via `setLogLevel("silent")` or `LOG_LEVEL=silent` in `.env`.
+- **Test coverage** — 90 tests across 5 files covering `delta`, `delta-server`, `signals`, `shared`, and `logger`. `bun test --coverage` reports 87% overall.
+
+### Changed
+
+- **`createWs()` exposes `upgrade` not `routes`** — the consumer owns `Bun.serve()` and wires the upgrade handler into their own routes: `{ [ws.path]: ws.upgrade, ...myRoutes }`.
+- **`log.error()` respects log level** — previously always logged regardless of level. Now gated like other levels, enabling silent mode for tests.
+- **Logger reads `Bun.env`** — replaced `process.env` Node-ism with `globalThis.Bun?.env?.LOG_LEVEL`.
+- **Client URL construction** — `connectWs()` uses `new URL()` to resolve the WebSocket path instead of manual string concatenation.
+- **Server upgrade URL parsing** — removed unnecessary `"http://localhost"` base from `new URL(req.url)`.
+
+### Docs
+
+- **`.env` setup** — README now documents `LOG_LEVEL` environment variable and available levels (`debug | info | warn | error | silent`).
+
+## 0.5.0
+
+### Added
+
+- **Delta-doc** — JSON document patching primitive for real-time sync. Three new modules:
+  - `@blueshed/railroad/delta` — shared `DeltaOp` type and `applyOps()` function. Pure, zero dependencies, usable on both server and client.
+  - `@blueshed/railroad/delta-server` — `createWs()` (shared WebSocket server with action routing and Bun pub/sub), `registerDoc()` (persist a typed JSON document, sync via delta ops), `registerMethod()` (stateless RPC handler).
+  - `@blueshed/railroad/delta-client` — `connectWs()` (reconnecting WebSocket with request/response), `openDoc()` (open a doc as a reactive signal), `call()` (invoke RPC methods). Includes auto-reconnect with exponential backoff.
+- **`DeltaOp` and `applyOps`** re-exported from the main `@blueshed/railroad` barrel for convenience.
+
+## 0.4.0
+
+### Added
+
+- **Function children** — `{() => count.get() > 5 ? "High" : "Low"}` as JSX children auto-tracks dependencies and updates the text node. Replaces `text()`.
+- **`Signal.map(fn)`** — derive a new signal: `count.map(n => n * 2)`. Clean pattern for reactive attributes and list items.
+- **Component auto-scoping** — `createElement` wraps function components in a dispose scope automatically. Effects and computeds inside components clean up when the parent scope tears down. No manual `pushDisposeScope`/`popDisposeScope` needed.
+- **Effect auto-tracking** — `effect()` and `computed()` register their dispose in the current scope automatically. No manual `trackDispose()` needed inside components.
+- **Wildcard route patterns** — `matchRoute("/sites/*", "/sites/42/settings")` matches, capturing the rest as `params["*"]`. Enables nested routing with persistent layouts.
+- **Nested routing** — use `/*` to keep a layout mounted while `route()` signals drive sub-views. Both `routes()` and `route()` auto-track in the parent dispose scope for clean teardown.
+
+### Fixed
+
+- **`when()` nesting** — `when()` inside `when()` now works without wrapper elements. Branches that return fragments (from nested `when`/`list`) are tracked as node arrays instead of a single reference.
+- **`list()` fragment handling** — same fix as `when()` — list items returning fragments are handled correctly.
+- **`route()` hash listener leak** — `route()` now tracks `releaseHash()` in the dispose scope, fixing a pre-existing ref-count leak.
+
+### Removed
+
+- **`text()`** — removed from public API. Use function children `{() => expr}` instead.
+- **`pushDisposeScope` / `popDisposeScope`** — removed from public API. Components auto-scope, framework owns cleanup internally.
+
+### Changed
+
+- **Anti-patterns reduced from 8 to 4** — function children, auto-scoping, and fragment-safe `when`/`list` eliminate the need for most documented gotchas.
+
+## 0.3.4
+
+### Fixed
+
+- **`computed()` inside `list()` leak** — `computed()` created inside a `list()` render function was leaking subscriptions to the outer list effect's listener, causing infinite synchronous re-entry. Initial evaluation now suspends outer tracking by saving/restoring `currentListener` and `currentDeps`.
+
+## 0.3.3
+
+### Docs
+
+- **Skill anti-patterns** — added rules for nested `when()` (wrap in real element), shared DOM nodes across branches (create fresh), and null guards inside branches (signal cascade order is not guaranteed).
+
+## 0.3.2
+
+### Fixed
+
+- **Index-based `list()` reactivity** — index-based list items now dispose and recreate when the signal changes, so inner content that depends on external signals updates correctly. Previously, existing items were reused without re-rendering, causing stale DOM when unrelated data changed.
+
+## 0.3.1
+
+### Added
+
+- **Async route handlers** — route handlers can now return `Promise<Node>`. The router awaits the result before appending to the DOM, enabling `async` components that `await` data before rendering. Stale results are discarded if the user navigates away during the await.
+
+## 0.3.0
+
+### Added
+
+- **Reactive route params** — route handlers now receive `(params, params$)`. The second argument is a `Signal` that updates when params change within the same pattern (e.g. `/users/1` → `/users/2`). Fully backwards compatible — ignore the second arg if you don't need it.
+- **Reactive style signals** — `style={someSignal}` now works for reactive inline styles alongside static style objects.
+- **Progressive adoption docs** — README now shows the dependency graph and three adoption levels (signals only → JSX → full app).
+
+### Fixed
+
+- **Computed disposal** — `computed()` now tracks its internal effect in the active dispose scope, preventing memory leaks when computed signals are created inside components.
+- **Effect depth guard** — fixed off-by-one in infinite loop detection (`>` → `>=`).
+- **Logger error handling** — proper type narrowing for non-Error throws, guarded `new URL()` against malformed URLs.
+- **Route cleanup** — `hashchange` listener is now reference-counted and removed when the last router disposes.
+
+### Changed
+
+- **Dispose scopes moved to `signals.ts`** — `pushDisposeScope`, `popDisposeScope`, and `trackDispose` now live in `signals.ts` (re-exported from `jsx.ts` for compatibility). This allows `computed()` to participate in dispose scopes.
+- **Consolidated skill docs** — five skill files (~900 lines) replaced by a single compact `SKILL.md` (~75 lines) that references source files.
+
+## 0.2.8
+
+### Fixed
+
+- **npm publish workflow** — Node 24 (npm 11.5+) with `NODE_AUTH_TOKEN=""` for proper OIDC trusted publishing.
+
+## 0.2.7
+
+### Fixed
+
+- **npm publish workflow** — use granular access token via `NPM_TOKEN` secret with provenance signing.
+
+## 0.2.6
+
+### Fixed
+
+- **npm publish workflow** — strip token placeholder from `.npmrc` so npm falls through to OIDC auth.
+
+## 0.2.5
+
+### Fixed
+
+- **npm publish workflow** — pin Node 22 to get npm 10.9+ required for OIDC trusted publishing. Remove token env var.
+
+## 0.2.4
+
+### Fixed
+
+- **npm publish workflow** — use `setup-node` with `registry-url` only (no explicit node version, no token env) for correct OIDC trusted publishing.
+
+## 0.2.3
+
+### Fixed
+
+- **npm publish workflow** — removed `actions/setup-node` registry config that was overriding OIDC auth with an empty token.
+
+## 0.2.2
+
+### Changed
+
+- **npm publish via OIDC** — switched from `NPM_TOKEN` secret to trusted publishing with OpenID Connect. No token rotation needed.
+
+## 0.2.1
+
+### Added
+
+- **GitHub Actions workflow** — publishes to npm automatically when a GitHub release is created. Runs tests and type check before publishing.
+
+### Fixed
+
+- **npm package contents** — excluded test files and local Claude settings from the published tarball.
+
+## 0.2.0
+
+### Added
+
+- **`signal.mutate(fn)`** — `structuredClone` the value, mutate in place, notify. Eliminates forgotten-clone bugs when modifying objects, arrays, Sets, or Maps.
+- **`signal.patch(partial)`** — shallow merge for object signals. `s.patch({ color: "blue" })` instead of `s.set({ ...s.peek(), color: "blue" })`.
+- **`list()` keyed item signals** — the keyed overload now passes `Signal<T>` and `Signal<number>` to the render function. When an item's value changes, the signal updates in place — no node recreation. **(Breaking: keyed render callbacks must use `item.get()` instead of `item` directly.)**
+
+### Docs
+
+- Updated README, skill docs (signals.md, jsx.md, SKILL.md), and source comments for all three features.
+
+## 0.1.9
+
+### Fixed
+
+- **Another strict-mode fix** — non-null assertion on `NamedNodeMap` index access in SVG attribute copying.
+
+## 0.1.8
+
+### Added
+
+- **`tryInject()`** — non-throwing variant of `inject()` that returns `undefined` when no provider exists.
+
+### Fixed
+
+- **TypeScript strict-mode compatibility** — fixed `NamedNodeMap` spread in SVG adoption (use index loop), added non-null assertions for array access in `list()`. Disabled `skipLibCheck` so we catch consumer-facing type errors.
+
+## 0.1.7
+
+### Added
+
+- **Logger** — `createLogger(tag)` returns a tagged logger with `info`, `warn`, `error`, `debug` methods. Level-gated via `setLogLevel()` or `LOG_LEVEL` env var. Includes `loggedRequest(tag, handler)` for wrapping route handlers with access logging and timing.
+
+### Removed
+
+- **`log.ts`** — consolidated into `logger.ts`.
+
+## 0.1.6
+
+### Added
+
+- **SVG support** — `<svg>` elements are created with the SVG namespace. Child elements appended to an SVG-namespaced parent are automatically adopted into the SVG namespace, handling JSX's bottom-up evaluation order transparently. Write `<svg><g><circle /></g></svg>` and it just works.
+- **`applyProps()` extracted** — shared prop application for both initial element creation and SVG adoption, ensuring signals and event handlers survive namespace adoption.
+
+### Fixed
+
+- **`className`/`class` now uses `setAttribute`** instead of `.className` property, which is required for SVG elements.
+
+## 0.1.5
+
+### Fixed
+
+- **Export JSX namespace from `jsx-runtime`** — TypeScript's `react-jsx` mode requires the JSX namespace to be exported from the runtime module for type checking to work.
+
+## 0.1.4
+
+### Fixed
+
+- **`Fragment` now reads `props.children`** — `createElement` passes children as `props.children` when calling function components, but `Fragment` only read rest params (which were empty). This broke all `<>...</>` usage via the automatic JSX runtime.
+
+### Docs
+
+- Added anti-patterns: `text()` for attributes (#6), missing dispose scopes (#9), `transition-all` CSS (#10).
+- Added `computed()` for reactive attributes example and full dispose scope pattern to `jsx.md`.
+
+## 0.1.3
+
+### Fixed
+
+- **`jsx-dev-runtime` now exports `jsxDEV`** — Bun's dev bundler uses `"jsx": "react-jsxdev"` internally and imports `jsxDEV`, which was missing. Added as a re-export of `jsx`.
+
+## 0.1.2
+
+### Added
+
+- **Automatic JSX runtime** — `jsx-runtime.ts` and `jsx-dev-runtime.ts` enable `"jsx": "react-jsx"` with `"jsxImportSource": "@blueshed/railroad"`, so consumers can write JSX without importing `createElement`.
+- **Claude Code skill** — ships in `.claude/skills/railroad/` with API reference, patterns, and anti-patterns for correct railroad code generation.
+
+## 0.1.1
+
+### Fixed
+
+- **`when()` now only swaps on truthiness transitions.** Previously, any value change (e.g. `"a"` → `"b"`) would destroy and recreate the truthy branch. Now it compares `!!oldVal` vs `!!newVal` and only swaps when the branch actually changes (falsy↔truthy). Components inside each branch should use signals to react to value changes within the same branch.
+
+## 0.1.0
+
+### Added
+
+- **Signals** — `signal`, `computed`, `effect`, `batch` with automatic dependency tracking and cleanup.
+- **JSX runtime** — `createElement`, `Fragment` producing real DOM nodes. Signal-aware children and props auto-update via effects.
+- **Reactive helpers** — `text()` for computed text nodes, `when()` for conditional rendering, `list()` for keyed list rendering.
+- **Dispose scoping** — `pushDisposeScope` / `popDisposeScope` to collect and clean up effects.
+- **Routes** — hash-based client router with automatic dispose scoping on navigation.
+- **Shared** — typed dependency injection via `key`, `provide`, `inject`.

@@ -1,0 +1,45 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3 # pin explicitly; else setup-bun resolves engines.bun (">=1.3.14")
+
+      - run: bun install --frozen-lockfile
+
+      # tests/webview.test.ts needs a browser for Bun.WebView; ubuntu-latest
+      # ships google-chrome-stable. Fail loudly if a future image drops it.
+      - name: Locate Chrome for Bun.WebView
+        run: |
+          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium || true)"
+          if [ -z "$chrome" ]; then echo "No Chrome/Chromium found on runner" >&2; exit 1; fi
+          echo "BUN_CHROME_PATH=$chrome" >> "$GITHUB_ENV"
+
+      - run: bun test
+
+      # The WebView suite again, as its own step: the real-browser layer gates a
+      # publish, and in CI a missing browser fails it rather than skipping it.
+      - run: bun test ./tests/webview.test.ts
+
+      - run: bun check
+
+      - run: bun run check:consumer
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - run: NODE_AUTH_TOKEN="" npm publish --provenance --access public

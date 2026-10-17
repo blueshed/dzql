@@ -1,0 +1,160 @@
+# CLAUDE.md
+
+For a Claude session starting work in this repository. What railroad is and
+why: [README.md](README.md). How to use it: the `railroad` skill.
+
+## Which skill to load
+
+- **`railroad`** (`.claude/skills/railroad/SKILL.md`, manual in
+  `reference/` beside it, one topic a file) — before changing behaviour,
+  writing examples, or touching docs. All of it ships to users; keep it true
+  to the code on `main`.
+- **`bun-route`** (`.claude/skills/bun-route/`) — Bun HTML routes and
+  `Bun.WebView` test patterns.
+- **`/publish`** (`.claude/commands/publish.md`) — the release procedure,
+  shared with delta and eta. Only run it when asked to release. npm publishing
+  happens in CI (`.github/workflows/publish.yml`) on a published GitHub
+  release; never publish by hand.
+
+## Commands and gates
+
+```sh
+bun install              # dev deps only; bun.lock is committed
+bun check                # Bun's type check (TypeScript 7): strict, noUncheckedIndexedAccess, jsx: react
+bun run check:consumer   # tests/consumer-types/ and the README's files as a consumer compiles, under TypeScript 7 and 5.9
+bun test --coverage      # unit suite (happy-dom) + coverage table
+bun run test:webview     # real-browser suite, by explicit path
+```
+
+The release gate is `bun check && bun run check:consumer && bun test --coverage`.
+CI (`.github/workflows/`) also runs `bun run test:webview` on its own step,
+and a `floor` job runs `bun test` without the browser file on the Bun that
+`engines` names (1.3.14), and an `eta` job runs eta's `src/island.test.ts` with
+this checkout linked in place of npm's railroad.
+Where no browser is found (no `BUN_CHROME_PATH`, nothing on `PATH`) and `CI` is
+unset, the browser tests skip with a warning, so a green bare `bun test` is not
+proof they ran; in CI a missing browser fails them.
+
+`check:consumer` compiles two programs as a consumer does, **with no
+`@types/bun`**: `tests/consumer-types/app.tsx` under the config the README's
+example uses (`jsx: react-jsx`, `jsxImportSource`, `strict`), beside a
+React-style global `JSX` it must not clash with; and `react-app.tsx` under
+`tsconfig.react.json` (`jsx: react`, `jsxFactory: "createElement"`), which
+proves railroad declares no global `JSX`. It also compiles
+`tests/fixtures/readme/`, the README's files, under `tsconfig.server.json`:
+the README's `tsconfig.json` plus the `"types": ["bun"]` its server step adds.
+Each compiles under TypeScript 7 (`bun check`) and 5.9 (`tsc`, the only
+use of the `typescript` dev dependency): users compile railroad's source with
+their own TypeScript. The `tsc` half goes once 5.x users are gone (todo #1).
+
+Bun only: `bun`, `bunx`, `bun run`. Coverage has no enforced threshold; don't
+let lines a change touches go uncovered. CI installs with `--frozen-lockfile`,
+so after a dependency change run `bun install` and commit `bun.lock`.
+
+## Where the contracts live
+
+- **The JSDoc header of each source file** is the authoritative API. Read it
+  before changing behaviour, and update it with the behaviour.
+
+  | File | Exports | Depends on |
+  |---|---|---|
+  | `signals.ts` | `signal` `computed` `effect` `batch` `untrack` `Signal` `trackDispose` `pushDisposeScope` `popDisposeScope` `hasActiveDisposeScope` (and `assertOwnSignal`, `untrackRender`, `scoped`, `warn`, internal: for `jsx.ts` and `routes.ts`) | — |
+  | `jsx.ts` | `createElement` `Fragment` `when` `list` `mount`, the `JSX` types (on `createElement`, not global; and `adoptIntoSvg`, `renderThunk`, internal: for `routes.ts`) | signals |
+  | `routes.ts` | `routes` `route` `navigate` `matchRoute` | signals, jsx (SVG adoption only; loads without a DOM) |
+  | `shared.ts` | `key` `provide` `inject` `tryInject` `clearProviders` | — |
+  | `logger.ts` | `createLogger` `setLogLevel` `getLogLevel` `loggedRequest` | — |
+  | `index.ts` | the public surface | all of the above |
+  | `jsx-runtime.ts` / `jsx-dev-runtime.ts` | `jsx` `jsxs` `jsxDEV` `Fragment`, and `JSX` re-exported from jsx | jsx |
+
+- **Tests pin the behaviour.** `signals.test.tsx`, `jsx.test.tsx`,
+  `routes.test.tsx`, `shared.test.ts`, `logger.test.ts`, one per module,
+  grouped by feature (a `describe` per feature). A regression test goes in
+  its module's file, in the describe for the feature it pins (or a new one
+  beside it), with a comment saying what was wrong. Shared helpers
+  (`tick`, `flush`, `defer`, `SVG_NS`) are in `tests/helpers.ts`.
+  `tests/webview.test.ts` drives `tests/server.ts` + `tests/fixtures/` in a
+  real browser. `tests/readme.test.ts` runs what README.md promises as
+  written: `tests/fixtures/readme/` is its files byte for byte (checked
+  there), served, built with `--compile`, and loaded with no DOM.
+- **`CHANGELOG.md`** — Keep a Changelog. Add to `## [Unreleased]` as work
+  lands, breaking changes first, each with how to move across. `/publish`
+  promotes it.
+- **`todo.jsonl`** — what is known and not done, one JSON object per line
+  (`n, status, severity, area, file, summary, detail, note`), the same shape
+  as delta's and eta's. Close an item in the commit that does it.
+
+## Invariants that must not break
+
+- **Zero runtime dependencies; TypeScript source, no build step.** Imports are
+  extensionless (`moduleResolution: "bundler"`). Nothing may reference a
+  Bun ambient type (`globalThis.Bun`, `Bun.*`) without a cast — consumers
+  compile railroad's source without `@types/bun`.
+- **The dispose stack stays balanced.** Every `pushDisposeScope()` is popped
+  on every path, throws included (`try/finally`), and never across an
+  `await`. An imbalance corrupts every later scope.
+- **Every `effect()`/`computed()` run is an owner scope.** What the body
+  creates is disposed before the next run and on dispose.
+- **Components run once, untracked.** So do `when()` branches, `list()` rows,
+  route handlers and `mount()`'s render: a `.get()` in a render body subscribes nothing, and
+  warns once per render body in development (railroad's own reads there use
+  `.peek()`; `untrack()` doesn't warn). A Signal
+  or a function child/prop (other than `ref` and `on*`) is reactive; anything
+  else is applied once. `on*` must be a function (non-function warns, attaches
+  nothing). Props are applied after children, so `<select value>` finds its
+  option and a `ref` sees the element whole.
+- **`when()` and `list()` render synchronously**, keep their content between
+  bracket comments, and never rebuild after disposal (the `disposed` latch).
+  Outside a dispose scope they warn.
+- **Propagation is topologically ordered**: each listener at most once per
+  settled pass, and glitch-free: no listener reads a half-updated computed,
+  whether a computed switches what it reads, an effect reads inside its own
+  `batch()`, or an effect is created mid-pass (levels rise with the reads, a
+  computed read before it has settled is brought up to date first, and a
+  batch holds writes back only outside a pass). Every write settles
+  consistently, and a true cycle throws. The randomized checker in
+  `signals.test.tsx` pins it. Other effects see an effect's writes, its first
+  run's included, after its body returns, so an effect never re-enters
+  itself.
+- **One copy per page.** In development a second copy of railroad logs an error naming both;
+  signals, scopes and providers never cross copies, and a Signal from another
+  copy throws where JSX, `when()` or `list()` is given it. The copies are not
+  made to cooperate: that would freeze signals.ts's internals as a contract
+  between versions.
+- **Warnings are development-only; throws are not.** Every warning about a
+  programming mistake is in signals.ts's `warnings`, named only by
+  `startDevelopment()`, so a production build drops it; what throws, or logs
+  a caught failure, does so in both.
+- **SVG tags get their namespace at creation.** Only `a`, `script`, `style`,
+  `title` are adopted on append, and adoption disposes the old element's prop
+  effects before re-applying them.
+- **Async components and async route handlers resolve to a thunk**, run under
+  a scope railroad owns.
+- **`routes()` dispose is idempotent** and releases the shared `hashchange`
+  refcount exactly once.
+
+## Docs
+
+- `README.md` is for someone deciding whether to use railroad: the pitch, one
+  example that runs, what it pairs with, where to go next. Keep it short, and
+  run the example if you change it.
+- The manual is `.claude/skills/railroad/reference/`, a file a topic; the
+  checklist of what bites is `SKILL.md`. Don't copy either into this file or
+  the README.
+- The skills are cut to one standard, shared with delta and eta: `SKILL.md` under ~600
+  words (model, order of work, invariants, which file for which job); each
+  reference file under ~600 (aim 200-400), leading with one complete example
+  that runs; point to the types, never re-type them; history and rationale
+  go to `docs/why-railroad.md`, not the skill.
+- Skills carry `metadata: version:` in frontmatter. Leave the number alone; `/publish`
+  stamps it.
+
+## The Claude Code web sandbox
+
+Locally nothing is needed. In the web sandbox (`CLAUDE_CODE_REMOTE=true`) the
+SessionStart hook `.claude/hooks/session-start.sh` (wired in
+`.claude/settings.json`) upgrades Bun to ≥ 1.4.3, runs `bun install`, and
+stages a headless Chromium from the `@sparticuz/chromium` npm tarball with a
+`--no-sandbox` launch shim at `BUN_CHROME_PATH`, because the browser download
+hosts (`cdn.playwright.dev`, `googlechromelabs.github.io`, `dl.google.com`,
+`storage.googleapis.com`) are blocked there while npm and GitHub are not.
+The hook's comments explain each step. Unit tests need none of it.

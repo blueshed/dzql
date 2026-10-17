@@ -1,0 +1,134 @@
+// Type-only fixture (never executed). It exercises the documented consumer
+// surface so `tsc -p` here fails if any of it stops type-checking under a real
+// downstream config. Imports come from the bare package name on purpose, so the
+// root barrel (and thus logger.ts's env access) is type-checked without
+// @types/bun present.
+import {
+  signal,
+  computed,
+  effect,
+  when,
+  list,
+  mount,
+  routes,
+  route,
+  navigate,
+  key,
+  provide,
+  inject,
+  createLogger,
+} from "@blueshed/railroad";
+import type { Dispose, JSX } from "@blueshed/railroad";
+import type { JSX as RuntimeJSX } from "@blueshed/railroad/jsx-runtime";
+
+const count = signal(0);
+const doubled = computed(() => count.get() * 2);
+const label = count.map((n) => `count: ${n}`);
+effect(() => void count.get());
+
+const detail = signal<{ id: string } | null>(null);
+
+type Row = { id: number; text: string };
+const rows = signal<Row[]>([{ id: 1, text: "a" }]);
+
+const STORE = key<{ name: string }>("store");
+provide(STORE, { name: "x" });
+void inject(STORE).name;
+
+const log = createLogger("[consumer]");
+log.info("typechecks");
+
+// Async component — must type-check as a JSX tag (JSX.ElementType admits the
+// thunk resolution) and accept the universal `fallback` IntrinsicAttribute.
+async function AsyncProfile(props: { id: number }) {
+  await Promise.resolve();
+  return () => <div>{props.id}</div>;
+}
+
+function App(): JSX.Element {
+  return (
+    <div class={label}>
+      <span>{count}</span>
+      <span>{doubled}</span>
+      <span>{() => (count.get() > 5 ? "high" : "low")}</span>
+      <ul>
+        {/* bare-arrow keyFn — must infer `r` as Row, no annotation */}
+        {list(rows, (r) => r.id, (r$) => (
+          <li>{r$.map((r) => r.text)}</li>
+        ))}
+        {/* 4-arg keyed overload — options.equals must infer a/b as Row */}
+        {list(rows, (r) => r.id, (r$) => (
+          <li>{r$.map((r) => r.text)}</li>
+        ), { equals: (a, b) => a.id === b.id && a.text === b.text })}
+      </ul>
+      {/* index-based overload — `item` is raw Row */}
+      {list(rows, (item, i) => (
+        <li>
+          {i}: {item.text}
+        </li>
+      ))}
+      {when(count.map((c) => c > 0), () => (
+        <p>positive</p>
+      ))}
+      {/* v$ is the current truthy value, narrowed: no `!` */}
+      {when(detail, (d$) => <p>{d$.map((d) => d.id)}</p>, () => <p>none</p>)}
+      <AsyncProfile id={1} fallback={() => <p>loading</p>} />
+    </div>
+  );
+}
+
+// Tags are typed from the DOM's element types: refs and events know their
+// element, and a typo or React's casing doesn't compile.
+const typed: JSX.Element[] = [
+  <input
+    ref={(el) => void el.valueAsNumber}
+    oninput={(e) => void e.currentTarget.value}
+    value={count}
+    readonly
+    aria-label="count"
+    data-id={count}
+  />,
+  <label for="n" class={() => (count.get() > 1 ? "many" : null)}>n</label>,
+  <svg viewBox="0 0 4 4"><circle r={count} stroke-width={1} /></svg>,
+  <my-widget some-prop="x" />,
+  // @ts-expect-error -- React's casing: railroad's handlers are lowercase
+  <button onClick={() => {}} />,
+  // @ts-expect-error -- a typo
+  <div clas="x" />,
+];
+void typed;
+
+// railroad JSX is a DOM Node, typed from the runtime's JSX namespace even with
+// React's global JSX beside it (react-global.d.ts).
+const node: Node = <App />;
+const el: RuntimeJSX.Element = node;
+void el;
+
+const user = route<{ id: string }>("/users/:id");
+void user.get();
+
+const root = document.getElementById("root");
+if (root) {
+  const disposeApp: Dispose = mount(root, () => <App />);
+  void disposeApp;
+  routes(root, {
+    "/": () => <App />,
+    // keyed: the handler re-runs when the params change; params are inferred
+    "/sites/:id": { keyed: true, handler: ({ id }) => <p>{id}</p> },
+    "/load/:id": {
+      keyed: true,
+      handler: async ({ id }) => {
+        await Promise.resolve();
+        return () => <p>{id}</p>;
+      },
+    },
+    "/users/:id": (_p, params$) => {
+      const span = document.createElement("span");
+      effect(() => {
+        span.textContent = params$.get().id ?? "";
+      });
+      return span;
+    },
+  });
+}
+navigate("/");
