@@ -10,9 +10,12 @@ bun add -d @types/pg
 ```ts
 // src/resources/order/order-api.ts
 /** Order: the catalogue, each order and the kitchen, kept by Postgres: DATABASE_URL's server, else PGlite in pg/ in the data folder. */
-import { mkdirSync } from "node:fs";
+import { Database } from "bun:sqlite";
+import { existsSync, mkdirSync } from "node:fs";
 import { Pool } from "pg";
 import type { WsServer } from "@blueshed/delta/server";
+import { exportTables as jsonRows, type Snapshot } from "@blueshed/delta/json";
+import { exportTables as sqliteRows } from "@blueshed/delta/sqlite";
 import { openPglite } from "dzql/pglite";
 import { applyFramework, applySql, createDocListener, defineDoc, defineSchema, docTypeFromDef, fromFolder, generateSql, importTables, migrate } from "dzql/postgres";
 
@@ -35,6 +38,15 @@ export const docs = [
 
 export const catalogue = { tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }] } };
 
+// A new database takes the rows from where the app kept them before: SQLite, else the JSON file; a new app starts with the catalogue
+function keptBefore(dataDir: string): Snapshot {
+  if (existsSync(`${dataDir}/app.db`)) {
+    const db = new Database(`${dataDir}/app.db`, { readonly: true });
+    try { return sqliteRows(db, schema); } finally { db.close(); }
+  }
+  return existsSync(`${dataDir}/order.json`) ? jsonRows(`${dataDir}/order.json`, schema) : catalogue;
+}
+
 // Answers what closes it: the server calls that when it stops
 export async function orderDocs(ws: WsServer, dataDir: string) {
   const url = process.env.DATABASE_URL;
@@ -44,7 +56,7 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
   await migrate(pool, await fromFolder(`${import.meta.dir}/migrations`), { app: "order", schema });
   await applyFramework(pool); // delta's own tables and functions
   await applySql(pool, generateSql(schema, docs)); // each document's reads and writes compiled
-  if (!(await pool.query("SELECT 1 FROM items")).rowCount) await importTables(pool, schema, catalogue);
+  if (!(await pool.query("SELECT 1 FROM items")).rowCount) await importTables(pool, schema, keptBefore(dataDir));
   // last: it answers 404 for a name it does not own
   const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)), ledger: true });
   return async () => {
@@ -103,11 +115,46 @@ test(`${stories.carriesOn.name} -- started on a data folder not there yet, stopp
 });
 ```
 
+The orders kept in SQLite come across, as the JSON file's came to SQLite:
+
+```ts
+// tests/order-pg-move.test.ts
+import { test, expect, afterAll } from "bun:test";
+import { Database } from "bun:sqlite";
+import { connectWs, openDoc } from "@blueshed/delta/client";
+import { fromFolder, importTables, migrate } from "@blueshed/delta/sqlite";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { startServer } from "../src/routes";
+import { schema, type Order } from "../src/resources/order/order-api";
+import { stories } from "../stories";
+
+const dataDir = mkdtempSync(`${tmpdir()}/order-pg-move-`);
+afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
+
+test(`${stories.moved.name} -- from SQLite to Postgres: order 1, a cake`, async () => {
+  const db = new Database(`${dataDir}/app.db`, { create: true });
+  await migrate(db, await fromFolder(`${import.meta.dir}/../src/resources/order/migrations`), { app: "order", schema });
+  importTables(db, schema, { tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }], orders: [{ id: 1 }], lines: [{ id: 1, orders_id: 1, item: 2 }] } });
+  db.close();
+  const server = await startServer({ port: 0, dev: false, dataDir });
+  const client = connectWs(new URL("/ws", server.url).href);
+  try {
+    const order = openDoc<Order>("order:1", client);
+    await order.ready;
+    expect(Object.values(order.data.peek()!.lines).map((l) => l.item)).toEqual([2]);
+  } finally {
+    client.close();
+    await server.stop(true);
+  }
+});
+```
+
 - `@types/pg` is for the typecheck only: dzql ships TypeScript source that names `pg`'s types.
 - One process owns the folder: `startServer` runs the close pushed onto `closing` when it stops (and before `bun --hot` starts again).
 - Unclosed, Postgres recovers the folder as after a crash and skips the 32 ids it set aside: the second line is 34, not 2.
 - Each server registers its own documents with its listener (`types`): two servers in one process each answer for theirs.
-- Rows come across with `exportTables` from SQLite and `importTables` here.
+- Rows come across with `exportTables` from where they were kept (SQLite, or the JSON file) and `importTables` here, so the story of the move to SQLite stays true.
 - **Deploy a Postgres server, never PGlite** (it needs far more memory than a small server has): on Railway a Postgres service, its `DATABASE_URL` set on the app. One app to a database.
 - **The history moves with the app**: the migrations that made the SQLite tables make Postgres's. An `up` is the backend's SQL (`await tx.query(...)` here): [migrations.md](migrations.md).
 - **Who may open what is a path in the document**, `owns` in its `defineDoc`, registered as `docTypeFromDef(def, pool, { auth })` with `createDocListener(ws, pool, { types, auth })`: a member's own orders, `member:` rooted at their membership, `owns: "@person"`; a team's, for its members, `team:` rooted at the team, `owns: "@id->members[teams_id=$].person"`; the kitchen, every order, for the cooks, a list whose path starts at a table: `owns: "staff[cook=true].person"`. A function on the name is for what no path can say, and a path almost always can: delta-doc's `reference/ownership.md` has each shape and the grammar. SQLite and Postgres answer a path alike, and a write that would take a row out of the writer's reach is refused, 403.

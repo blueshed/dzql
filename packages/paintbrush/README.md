@@ -20,7 +20,7 @@ Open `http://localhost:3000` in two windows. You get a message, a shared documen
 
 - **Routes** are `Bun.serve()` routes, all written out in `src/routes.ts` (delta serves them): the page, `GET /api/status`, `/ws` and `/health`.
 - **The page** is an imported `index.html`. Bun bundles the TypeScript, JSX and CSS it references, so there is no build step in development.
-- **Documents** ride one WebSocket, a route like any other. delta keeps each one (the message is a JSON file in the data folder) and tells every page holding it of every change.
+- **Documents** ride one WebSocket, a route like any other. delta keeps each one (the message's rows are a JSON file in the data folder) and tells every page holding it of every change.
 - **Tests** are `bun test`. Routes are tested with `fetch`, a document with a client in the test, and the page in a real browser with `Bun.WebView`. The run fails below 100% coverage.
 
 ## Routes, resources and documents

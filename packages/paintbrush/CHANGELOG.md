@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Breaking: every document is a schema and a `defineDoc` from the start, kept in a JSON file**
+  (`@blueshed/delta/json`). `message` is `message:1`, one row of `messages`: it opens as Hello,
+  the first save makes the row, and a save is `replace /messages/1/text`. The schema refuses what it
+  does not declare, in place of `accept`. Moving to SQLite or Postgres now changes the import, not
+  the definitions, and the page does not change: `sqlite.md` takes `two-documents.md`'s definitions
+  as they are and carries the JSON file's rows across. The reasons to move change with it: the JSON
+  file holds documents over the same rows, undo and history; SQLite is for when the file is too much
+  to rewrite after every change, or the schema must change on data in use. To move an app across:
+  keep `message.json`'s text, delete the file, start the app and save the text again (or write
+  `{ "tables": { "messages": [{ "id": 1, "text": "..." }] } }`).
+
 - **The evolve skill says who sees what as `owns` paths, and how parts go with their whole**
   (Shed run 3): `postgres.md` gives each shape (a member's own, a team's, the kitchen for the
   cooks) and that rows hang under what decides who sees them; `sqlite.md` and `migrations.md` say

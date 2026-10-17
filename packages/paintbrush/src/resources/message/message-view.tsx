@@ -1,26 +1,28 @@
 import { effect, signal } from "@blueshed/railroad";
+import { joinPath } from "@blueshed/delta/core";
 import { Save } from "lucide";
 import { Icon } from "../icon";
 import { toast } from "../toast";
 import { message } from "./message";
 
 export function MessageView() {
-  const text = signal(message.data.peek()?.text ?? "");
+  const text = signal(message.data.peek()?.messages.text ?? "");
   let shown = text.peek(); // what the box last took from the document
 
   // Follow the document, unless the box holds typing that has not been saved
   effect(() => {
-    const doc = message.data.get();
-    if (doc && (text.peek() === shown || text.peek() === doc.text)) {
-      shown = doc.text;
-      text.set(doc.text);
+    const row = message.data.get()?.messages;
+    if (row && (text.peek() === shown || text.peek() === row.text)) {
+      shown = row.text;
+      text.set(row.text);
     }
   });
 
   // Say "Saved" only once the server has applied the change and sent it back
   async function onsave() {
     try {
-      await message.send([{ op: "replace", path: "/text", value: text.peek() }]);
+      const id = message.data.peek()!.messages.id;
+      await message.send([{ op: "replace", path: joinPath("messages", id, "text"), value: text.peek() }]);
       toast("Saved");
     } catch {
       toast("Not saved", "alert");

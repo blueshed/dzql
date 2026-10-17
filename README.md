@@ -23,8 +23,9 @@ statement of how an app is made; each package's README says only its own part.
 - **Three ways to keep documents: a JSON file, SQLite or Postgres.** The same documents, the same
   writes, the same page on each. A document may instead be kept in `memory`, read from a `source`,
   or `static`: one set of names everywhere. The only reason to pick one store over another is ease
-  or performance: a JSON file is the easiest; SQLite when documents share rows, or for undo and
-  history; Postgres when servers share the data, or people should see only their own.
+  or performance: a JSON file is the easiest, and holds documents over the same rows, undo and
+  history; SQLite when the file is too much to rewrite after every change, or the schema must change
+  on data in use; Postgres when servers share the data, or people should see only their own.
 - **Routes and resources on both sides of the socket, joined by documents.** On the server, the
   routes given to delta's one server (`@blueshed/delta/serve`) serve resources: a document
   registered on the socket, or an HTTP endpoint for what isn't communication (health, status,

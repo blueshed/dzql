@@ -1,24 +1,36 @@
 # Two documents on one page
 
-To place an order you need the catalogue and your order: the page opens both, draws both, and sends to the one it changes. A JSON file each is enough until documents share rows ([sqlite.md](sqlite.md)).
+To place an order you need the catalogue and your order: the page opens both, draws both, and sends to the one it changes. The tables follow from the documents: items for the catalogue, an order and its lines for the order. One JSON file keeps them, and the same definitions run on SQLite ([sqlite.md](sqlite.md)) and Postgres.
 
 ```ts
 // src/resources/order/order-api.ts
-import { registerDoc, type WsServer } from "@blueshed/delta/server";
+/** Order: the catalogue and each order, their rows kept by delta in order.json in the data folder. */
+import { existsSync } from "node:fs";
+import type { WsServer } from "@blueshed/delta/server";
+import { defineDoc, defineSchema, importTables, registerDocs } from "@blueshed/delta/json";
 
 export type Item = { id: number; name: string; price: number };
-export type Line = { id: string; item: number };
+export type Line = { id: number; item: number };
 export type Catalogue = { items: Record<string, Item> };
 export type Order = { lines: Record<string, Line> };
 
-const items: Catalogue["items"] = {
-  1: { id: 1, name: "Tea", price: 2.5 },
-  2: { id: 2, name: "Cake", price: 3 },
-};
+export const schema = defineSchema({
+  items: { columns: { name: "text", price: "real" } },
+  orders: { columns: {} },
+  lines: { parent: "orders", columns: { item: "integer" } },
+});
 
-export async function orderDocs(ws: WsServer, dataDir: string) {
-  await registerDoc<Catalogue>(ws, "catalogue", { file: `${dataDir}/catalogue.json`, empty: { items } });
-  await registerDoc<Order>(ws, "order", { file: `${dataDir}/order.json`, empty: { lines: {} } });
+export const docs = [
+  defineDoc("catalogue:", { root: "items", include: [] }), // every item
+  defineDoc("order:", { root: "orders", include: ["lines"], implied: true }), // order:1 is order 1 and its lines
+];
+
+export const catalogue = { tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }] } };
+
+export function orderDocs(ws: WsServer, dataDir: string) {
+  const file = `${dataDir}/order.json`;
+  if (!existsSync(file)) importTables(file, schema, catalogue); // a new app starts with the catalogue
+  return registerDocs(ws, file, schema, docs);
 }
 ```
 
@@ -27,8 +39,8 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
 import { openDoc } from "@blueshed/delta/client";
 import type { Catalogue, Order } from "./order-api";
 
-export const catalogue = openDoc<Catalogue>("catalogue");
-export const order = openDoc<Order>("order");
+export const catalogue = openDoc<Catalogue>("catalogue:");
+export const order = openDoc<Order>("order:1");
 ```
 
 The view names and prices each line from the catalogue, so a change to either redraws it:
@@ -36,7 +48,7 @@ The view names and prices each line from the catalogue, so a change to either re
 ```tsx
 // src/resources/order/order-view.tsx
 import { list } from "@blueshed/railroad";
-import type { DeltaOp } from "@blueshed/delta/core";
+import { joinPath, type DeltaOp } from "@blueshed/delta/core";
 import { Plus, X } from "lucide";
 import { Icon } from "../icon";
 import { toast } from "../toast";
@@ -66,7 +78,7 @@ export function OrderView() {
         {list(lines, (l) => l.id, (l$) => (
           <li>
             {() => item(l$.get().item)?.name ?? ""}
-            <button onclick={() => void change([{ op: "remove", path: `/lines/${l$.peek().id}` }])}>
+            <button onclick={() => void change([{ op: "remove", path: joinPath("lines", l$.peek().id) }])}>
               <Icon icon={X} label="Remove" />
             </button>
           </li>

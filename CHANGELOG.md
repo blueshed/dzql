@@ -36,6 +36,12 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **An app's documents are a schema and a `defineDoc` from its first document** (17 October,
+  Peter: go with the judgement that the documents you model are the app's documents from the first
+  story). paintbrush's `message` and the evolve skill's notes and order are on delta's JSON file
+  (`@blueshed/delta/json`); moving to SQLite or Postgres changes the import and carries the rows,
+  and the page stays the same. Two delta bugs found on the way are fixed in delta (a write of
+  `[null]` answered 500; an empty write saved the JSON file).
 - **The code reads more simply, used exactly as before** (17 October, Peter: "We are trying to be
   understandable and consistent"). The review is `/mnt/project-files/code-review/`. delta's SQLite
   `registerDocs` is split into `sqlite/write.ts` and `sqlite/walk.ts`, and its 3,000-line path

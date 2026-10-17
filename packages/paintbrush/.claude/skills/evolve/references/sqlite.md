@@ -1,13 +1,14 @@
 # Store documents in SQLite
 
-When documents share rows, or for undo and history. The kitchen needs every open order: a third document over the rows of each order. The tables follow from the documents of [two-documents.md](two-documents.md). `order-api.ts` changes, and the names the page opens; the tables are made by the resource's history of migrations, from its first, `001-order`.
+When the JSON file is rewritten too often to keep up (it is saved whole after every change), or the schema must change on data people already have ([migrations.md](migrations.md)). The documents of [two-documents.md](two-documents.md) and the page stay as they are: `order-api.ts` takes its definitions from `@blueshed/delta/sqlite` in place of `@blueshed/delta/json`, a database in place of the file, and carries the file's rows across. The tables are made by the resource's history of migrations, from its first, `001-order`. Added here, as they would be on the JSON file: the kitchen, every open order, a third document over the same rows; and undo.
 
 ```ts
 // src/resources/order/order-api.ts
 /** Order: the catalogue, each order, and the kitchen, kept in SQLite (app.db in the data folder). */
 import { Database } from "bun:sqlite";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import type { WsServer } from "@blueshed/delta/server";
+import { exportTables } from "@blueshed/delta/json";
 import { defineDoc, defineSchema, fromFolder, importTables, migrate, registerDocs } from "@blueshed/delta/sqlite";
 
 export type Item = { id: number; name: string; price: number };
@@ -34,7 +35,9 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
   const db = new Database(`${dataDir}/app.db`, { create: true });
   // the history makes the tables: each migration once, in order (a new database runs them all)
   await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), { app: "order", schema });
-  if (!db.query("SELECT 1 FROM items").get()) importTables(db, schema, catalogue);
+  // a new database takes the JSON file's rows, every order people made, or starts with the catalogue
+  const file = `${dataDir}/order.json`;
+  if (!db.query("SELECT 1 FROM items").get()) importTables(db, schema, existsSync(file) ? exportTables(file, schema) : catalogue);
   registerDocs(ws, db, schema, docs, [], { ledger: true }); // undo, redo and history
 }
 ```
@@ -57,16 +60,7 @@ export const changes = [
 ];
 ```
 
-```ts
-// src/resources/order/order.ts
-import { openDoc } from "@blueshed/delta/client";
-import type { Catalogue, Order } from "./order-api";
-
-export const catalogue = openDoc<Catalogue>("catalogue:");
-export const order = openDoc<Order>("order:1");
-```
-
-The page's test passes as it was. The kitchen and undo are stories of their own:
+The page and its test are as they were. The kitchen and undo are stories of their own:
 
 ```ts
 // stories.ts: after export const stories = {
@@ -132,6 +126,45 @@ test(`${stories.kitchen.name} -- a line changed is told as the field that change
   await until(() => kitchenLines()[0]![1] === 2);
   stop();
   expect(told).toEqual([[{ op: "replace", path: `/lines/${line!.id}/item`, value: 2 }]]);
+});
+```
+
+What people ordered before the move is there after it:
+
+```ts
+// stories.ts: after export const stories = {
+  // The move
+  moved: story("The orders people made are still there after the app moves its documents to the next store."),
+```
+
+```ts
+// tests/order-move.test.ts
+import { test, expect, afterAll } from "bun:test";
+import { connectWs, openDoc } from "@blueshed/delta/client";
+import { importTables } from "@blueshed/delta/json";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { startServer } from "../src/routes";
+import { schema, type Order } from "../src/resources/order/order-api";
+import { stories } from "../stories";
+
+const dataDir = mkdtempSync(`${tmpdir()}/order-move-`);
+afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
+
+test(`${stories.moved.name} -- from the JSON file to SQLite: order 1, a tea and a cake`, async () => {
+  importTables(`${dataDir}/order.json`, schema, {
+    tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }], orders: [{ id: 1 }], lines: [{ id: 1, orders_id: 1, item: 1 }, { id: 2, orders_id: 1, item: 2 }] },
+  });
+  const server = await startServer({ port: 0, dev: false, dataDir });
+  const client = connectWs(new URL("/ws", server.url).href);
+  try {
+    const order = openDoc<Order>("order:1", client);
+    await order.ready;
+    expect(Object.values(order.data.peek()!.lines).map((l) => l.item)).toEqual([1, 2]);
+  } finally {
+    client.close();
+    await server.stop(true);
+  }
 });
 ```
 

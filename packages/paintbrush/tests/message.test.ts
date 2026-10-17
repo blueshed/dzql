@@ -4,7 +4,7 @@ import type { DeltaOp } from "@blueshed/delta/core";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
-import type { Message } from "../src/resources/message/message-api";
+import type { MessageDoc } from "../src/resources/message/message-api";
 import { browser } from "./browser";
 import { stories } from "../stories";
 
@@ -24,10 +24,10 @@ afterAll(async () => {
 });
 
 // A client of the document from this process, as a page holds it; closed in a finally
-async function holding(run: (doc: ReturnType<typeof openDoc<Message>>) => Promise<void>) {
+async function holding(run: (doc: ReturnType<typeof openDoc<MessageDoc>>) => Promise<void>) {
   const client = connectWs(new URL("/ws", server.url).href);
   try {
-    const doc = openDoc<Message>("message", client);
+    const doc = openDoc<MessageDoc>("message:1", client);
     await doc.ready;
     await run(doc);
   } finally {
@@ -38,21 +38,21 @@ async function holding(run: (doc: ReturnType<typeof openDoc<Message>>) => Promis
 // --- The document ---
 // Tests run in file order: the first one needs a data folder nothing has been saved to.
 
-test("the message is Hello until someone changes it, and a change that is not a message is refused", async () => {
+test("the message is Hello until someone changes it, and a change the schema does not take is refused", async () => {
   await holding(async (doc) => {
-    expect(doc.data.peek()).toEqual({ text: "Hello" });
-    const refused: unknown[] = [
-      [{ op: "replace", path: "/text", value: 1 }],
-      [{ op: "remove", path: "/text" }],
-      [{ op: "add", path: "/other", value: "x" }],
-      [null],
+    expect(doc.data.peek()).toEqual({ messages: { id: 1, text: "Hello" } });
+    const refused: [unknown[], string][] = [
+      [[{ op: "replace", path: "/messages/1/text", value: 1 }], "/messages/1/text: text must be a string"],
+      [[{ op: "remove", path: "/messages/1/text" }], "/messages/1/text: Invalid op: remove /messages/1/text"],
+      [[{ op: "replace", path: "/messages/1/other", value: "x" }], "/messages/1/other: Unknown field: other"],
+      [[{ op: "add", path: "/other", value: "x" }], "/other: Unknown collection: other"],
+      [[null], "An op is an object: { op, path, value }"],
+      ["not ops" as unknown as unknown[], "ops must be an array"],
     ];
-    for (const ops of refused) {
-      await expect(doc.send(ops as DeltaOp[])).rejects.toMatchObject({ code: 400, message: "a message is a replace of /text with a string" });
+    for (const [ops, message] of refused) {
+      await expect(doc.send(ops as DeltaOp[])).rejects.toMatchObject({ code: 400, message });
     }
-    // not a list of changes at all: delta's own answer
-    await expect(doc.send("not ops" as unknown as DeltaOp[])).rejects.toMatchObject({ code: 400, message: "ops must be an array" });
-    expect(doc.data.peek()).toEqual({ text: "Hello" });
+    expect(doc.data.peek()).toEqual({ messages: { id: 1, text: "Hello" } });
   });
 });
 
@@ -74,7 +74,7 @@ test("waiting for the page gives up, saying what it waited for", async () => {
 test(`${stories.follows.name} -- the message is in the box, and a change made anywhere else shows in it`, async () => {
   await open();
   await waitFor(`document.querySelector("textarea")?.value === "Hello"`);
-  await holding((doc) => doc.send([{ op: "replace", path: "/text", value: "changed elsewhere" }]));
+  await holding((doc) => doc.send([{ op: "replace", path: "/messages/1/text", value: "changed elsewhere" }]));
   await waitFor(`document.querySelector("textarea")?.value === "changed elsewhere"`);
 });
 
@@ -147,7 +147,7 @@ test(`${stories.restarts.name} -- after the server restarts, the page has what c
 
   const port = server.port;
   await server.stop(true); // closes the page's socket
-  await Bun.write(`${dataDir}/message.json`, JSON.stringify({ text: "changed while down" }));
+  await Bun.write(`${dataDir}/message.json`, JSON.stringify({ tables: { messages: [{ id: 1, text: "changed while down" }] } }));
   server = await startServer({ port, dev: false, dataDir });
   await waitFor(`document.querySelector("textarea")?.value === "changed while down"`, 10_000); // the page reconnects by itself
 

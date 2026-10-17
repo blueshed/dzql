@@ -1,20 +1,27 @@
 /**
  * Message — a shared document. Every window that opens it is subscribed: a change anyone
- * makes reaches them all. delta keeps it as message.json in the data folder.
+ * makes reaches them all. delta keeps its rows in message.json in the data folder.
  *
- * The type is shared: the client imports it as a type only (`import type`), so none
+ * The schema says what the rows are; the document says what a person has in front of them.
+ * The same two definitions run on SQLite and Postgres: moving on changes the import, not them.
+ *
+ * The types are shared: the client imports them as types only (`import type`), so none
  * of the server code below reaches the browser bundle.
  */
-import { registerDoc, type WsServer } from "@blueshed/delta/server";
+import type { WsServer } from "@blueshed/delta/server";
+import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/json";
 
-export type Message = { text: string };
+export type Message = { id: number; text: string };
+/** What `message:1` holds: its one row. */
+export type MessageDoc = { messages: Message };
+
+export const schema = defineSchema({
+  messages: { columns: { text: { type: "text", default: "Hello" } }, temporal: false },
+});
+
+// `implied`: `message:1` opens as Hello before anyone has written it, and its first save makes the row
+export const docs = [defineDoc("message:", { root: "messages", include: [], implied: true })];
 
 export function messageDoc(ws: WsServer, dataDir: string) {
-  return registerDoc<Message>(ws, "message", {
-    file: `${dataDir}/message.json`,
-    empty: { text: "Hello" },
-    // The message changes one way: a replace of its text with a string. Anything else is refused
-    // (400) before delta applies it, and nothing changes; an empty write writes nothing.
-    accept: (op) => (op?.op === "replace" && op.path === "/text" && typeof op.value === "string") || "a message is a replace of /text with a string",
-  });
+  return registerDocs(ws, `${dataDir}/message.json`, schema, docs);
 }

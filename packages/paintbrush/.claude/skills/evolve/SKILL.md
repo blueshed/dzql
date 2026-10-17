@@ -1,6 +1,6 @@
 ---
 name: evolve
-description: "Grows this app from its stories: a new shared document, two documents on one page, keeping documents in SQLite (rows shared between documents, undo and history) or Postgres, a schema change on a database that holds data (a migration), sign-in by link with no passwords, HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for a change to a schema in use, for people signing in, for files, or for a build."
+description: "Grows this app from its stories: a new shared document, two documents on one page, documents over the same rows and undo, keeping documents in SQLite or Postgres, a schema change on a database that holds data (a migration), sign-in by link with no passwords, HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for a change to a schema in use, for people signing in, for files, or for a build."
 ---
 
 # Growing the app
@@ -9,7 +9,7 @@ description: "Grows this app from its stories: a new shared document, two docume
 
 **Think in documents, not entities.** Ask "what does someone need in front of them to do this?", not "what are the tables?" The tables follow from the documents.
 
-**Three stores, one page.** A JSON file, SQLite or Postgres keep the same documents, and the page stays the same on each. The only reason to move is ease or performance: the JSON file is the easiest; SQLite when documents share rows, or for undo and history; Postgres when servers share the data, or people should see only their own.
+**Three stores, one page.** A JSON file, SQLite or Postgres keep the same documents, and the page stays the same on each. Every document is a schema and a `defineDoc` from the start, so moving changes the import, never the definitions. The only reason to move is ease or performance: the JSON file is the easiest, and holds documents over the same rows, undo and history; SQLite when the file is too much to rewrite after every change, or the schema must change on data in use; Postgres when servers share the data, or people should see only their own.
 
 **This is the thick client**: the browser draws the page with railroad. The thin one is eta (`bun create dzql`), where the server draws it; an applet (a railroad component) works in either. Pick for ease or performance.
 
@@ -36,7 +36,7 @@ description: "Grows this app from its stories: a new shared document, two docume
 
 ## The types
 
-delta's are in `node_modules/@blueshed/delta/src/`: `server/server.ts` (`registerDoc`), `client/client.ts` (`openDoc`, `connectWs`), `core.ts` (`DeltaOp`), `schema.ts`, `server/changes.ts` (a migration's changes), `server/migrate.ts` (`Migration`), `server/auth-link.ts`, and a file per backend under `server/`. The app's: `startServer` in `src/routes.ts`, the page helpers in `tests/browser.ts` (railroad's `@blueshed/railroad/webview`, and `refuseWrites`). The `delta-doc` skill is delta's manual; `railroad` is the page's.
+delta's are in `node_modules/@blueshed/delta/src/`: `server/json.ts` (the JSON file), `server/server.ts` (`createWs`), `client/client.ts` (`openDoc`, `connectWs`), `core.ts` (`DeltaOp`), `schema.ts`, `server/changes.ts` (a migration's changes), `server/migrate.ts` (`Migration`), `server/auth-link.ts`, and a file per backend under `server/`. The app's: `startServer` in `src/routes.ts`, the page helpers in `tests/browser.ts` (railroad's `@blueshed/railroad/webview`, and `refuseWrites`). The `delta-doc` skill is delta's manual; `railroad` is the page's.
 
 ## References
 
@@ -45,7 +45,7 @@ Each leads with its example: code and tests, proven by applying them to a new ap
 - [references/document.md](references/document.md): a new shared document (notes: add and remove)
 - [references/testing.md](references/testing.md): the document in the browser: two windows, a refusal
 - [references/two-documents.md](references/two-documents.md): the catalogue and an order on one page
-- [references/sqlite.md](references/sqlite.md): documents that share rows (the kitchen), undo and history
+- [references/sqlite.md](references/sqlite.md): the move to SQLite, with the kitchen (documents over the same rows) and undo
 - [references/migrations.md](references/migrations.md): a schema that changes on a database holding data
 - [references/postgres.md](references/postgres.md): servers that share data; people who see only their own (dzql, delta's Postgres)
 - [references/auth.md](references/auth.md): sign-in with no passwords: a link is someone; in development, pick who you are
