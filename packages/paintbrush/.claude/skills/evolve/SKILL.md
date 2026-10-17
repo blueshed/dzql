@@ -25,7 +25,7 @@ description: "Grows this app from its stories: a new shared document, two docume
 ## Invariants
 
 - Anything people share is a document from the start, as `message` is. HTTP routes serve only what isn't communication: health, files, `status`.
-- A resource is `src/resources/<name>/`: `<name>-api.ts` (server side, and the type both sides share), `<name>.ts` (the document it opens, or what it fetches), `<name>-view.tsx`. Wire the server side in `src/server.ts`, the view as a route in `src/app.tsx`.
+- A resource is `src/resources/<name>/`: `<name>-api.ts` (server side, and the type both sides share), `<name>.ts` (the document it opens, or what it fetches), `<name>-view.tsx`. Wire the server side in `src/routes.ts`, the view as a route in `src/app.tsx`.
 - A document is never set in the page: `send` the change, and the change that comes back draws it, in this window too.
 - A row is addressed by its id, never its position.
 - The schema is the contract: a database may hold more than it declares, never less. Its tables are made by its migrations, from empty: every change to the schema is the next migration, written by `bunx @blueshed/delta migrations make`; one that has run is never edited.
@@ -34,7 +34,7 @@ description: "Grows this app from its stories: a new shared document, two docume
 
 ## The types
 
-delta's are in `node_modules/@blueshed/delta/src/`: `server/server.ts` (`registerDoc`), `client/client.ts` (`openDoc`, `connectWs`), `core.ts` (`DeltaOp`), `schema.ts`, `server/changes.ts` (a migration's changes), `server/migrate.ts` (`Migration`), `server/auth-link.ts`, and a file per backend under `server/`. The app's: `startServer` in `src/server.ts`, the page helpers in `tests/browser.ts`. The `delta-doc` skill is delta's manual; `railroad` is the page's.
+delta's are in `node_modules/@blueshed/delta/src/`: `server/server.ts` (`registerDoc`), `client/client.ts` (`openDoc`, `connectWs`), `core.ts` (`DeltaOp`), `schema.ts`, `server/changes.ts` (a migration's changes), `server/migrate.ts` (`Migration`), `server/auth-link.ts`, and a file per backend under `server/`. The app's: `startServer` in `src/routes.ts`, the page helpers in `tests/browser.ts`. The `delta-doc` skill is delta's manual; `railroad` is the page's.
 
 ## References
 

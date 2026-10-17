@@ -24,22 +24,22 @@ export function filesApi(s3: S3Client) {
 ```
 
 ```ts
-// src/server.ts: after import { statusApi } from "./resources/status/status-api";
+// src/routes.ts: after import { statusApi } from "./resources/status/status-api";
 import { filesApi } from "./resources/files/files-api";
 ```
 
 ```ts
-// src/server.ts: after dataDir = process.env.DATA_PATH
+// src/routes.ts: after dataDir = process.env.DATA_PATH
 s3 = Bun.s3,
 ```
 
 ```ts
-// src/server.ts: after const status = statusApi();
+// src/routes.ts: after const status = statusApi();
 const files = filesApi(s3);
 ```
 
 ```ts
-// src/server.ts: after "/api/status": { GET: status.get },
+// src/routes.ts: after "/api/status": { GET: status.get },
 "/api/files/:name": { GET: files.get, PUT: files.put },
 ```
 
@@ -51,7 +51,7 @@ import { test, expect, afterAll } from "bun:test";
 import { S3Client } from "bun";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { startServer } from "../src/server";
+import { startServer } from "../src/routes";
 
 // A stand-in bucket: PUT keeps an object, HEAD and GET answer it
 const objects = new Map<string, Blob>();
@@ -94,7 +94,7 @@ test("a file that is not there is a 404", async () => {
 ```
 
 - Any other route copies `status` (`src/resources/status/`): a handler returning a `Response`; a signal and a `load()` that fetches; a view that calls `load()` in its body, keeps a `failed` signal, and draws with `when()` once there is data.
-- `/health` is a route in `src/server.ts`.
+- `/health` is a route in `src/routes.ts`.
 - Validate what a client sends and answer 400 with `{ error }`. Test every route and method, a 400 included. The view says when a load fails.
 - Never install an AWS SDK. `Bun.s3` reads `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` (or their `AWS_` names) from `.env` or the environment when Bun starts, not from `process.env` later.
 - On Railway they are a bucket's variables, named in `.railway/railway.ts` with `preserve()`.

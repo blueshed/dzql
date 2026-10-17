@@ -74,7 +74,7 @@
   },
   "devDependencies": {
     "@blueshed/railroad": "^0.16.2",
-    "@types/bun": "latest",
+    "@types/bun": "^1.4.3",
     "@types/pg": "^8.20.0",
     "@blueshed/delta": "^1.2.0",
     "lucide": "^1.46.0"
@@ -84,7 +84,7 @@
     "@blueshed/railroad": "^0.16.2"
   },
   "engines": {
-    "bun": ">=1.0.0"
+    "bun": ">=1.4.3"
   },
   "peerDependenciesMeta": {
     "@blueshed/railroad": {

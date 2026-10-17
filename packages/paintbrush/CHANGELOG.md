@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The server is delta's** (`@blueshed/delta/serve`, so the next delta first). `src/server.ts` and
+  `src/main.ts` are one file, `src/routes.ts`: the routes and the documents, given to `serve`;
+  run as the entry (`bun dev`, `bun start`), `run` keeps the pid file and the signals. `bun run stop`
+  is `delta stop`. The evolve skill's references edit `src/routes.ts`; a build's entry is
+  `dist/routes.js`.
+- paintbrush lives in blueshed/dzql (`packages/paintbrush`); `bun create blueshed my-app` makes one.
+  Its ignores travel as `gitignore`, which setup dots.
+
 ### Added
 
 - **The Shed, run 2's record** (`evals/shed/runs/2026-10-17-opus-5.5.md`): every story true at

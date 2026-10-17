@@ -75,7 +75,7 @@ import { connectWs, openDoc } from "@blueshed/delta/client";
 import type { DeltaOp } from "@blueshed/delta/core";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { startServer } from "../src/server";
+import { startServer } from "../src/routes";
 import type { Line, Order } from "../src/resources/order/order-api";
 
 const dataDir = mkdtempSync(`${tmpdir()}/kitchen-`);

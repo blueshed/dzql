@@ -4,7 +4,7 @@
     {
       "name": "paintbrush",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["--hot", "src/main.ts"],
+      "runtimeArgs": ["--hot", "src/routes.ts"],
       "port": 3000
     }
   ]

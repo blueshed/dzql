@@ -48,9 +48,8 @@ React-style global `JSX` it must not clash with; and `react-app.tsx` under
 proves railroad declares no global `JSX`. It also compiles
 `tests/fixtures/readme/`, the README's files, under `tsconfig.server.json`:
 the README's `tsconfig.json` plus the `"types": ["bun"]` its server step adds.
-Each compiles under TypeScript 7 (`bun check`) and 5.9 (`tsc`, the only
-use of the `typescript` dev dependency): users compile railroad's source with
-their own TypeScript. The `tsc` half goes once 5.x users are gone (todo #1).
+Each compiles under `bun check` (TypeScript 7, built into Bun): there is no `tsc`,
+and no `typescript` dev dependency.
 
 Bun only: `bun`, `bunx`, `bun run`. Coverage has no enforced threshold; don't
 let lines a change touches go uncovered. CI installs with `--frozen-lockfile`,

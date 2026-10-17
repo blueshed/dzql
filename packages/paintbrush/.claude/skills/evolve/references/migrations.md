@@ -49,7 +49,7 @@ import { connectWs, openDoc } from "@blueshed/delta/client";
 import { defineSchema, fromFolder, importTables, migrate, migrationStatus } from "@blueshed/delta/sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { startServer } from "../src/server";
+import { startServer } from "../src/routes";
 import { catalogue, schema, type Order } from "../src/resources/order/order-api";
 
 const dataDir = mkdtempSync(`${tmpdir()}/order-migrate-`);

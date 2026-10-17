@@ -69,6 +69,16 @@ async function apply(app: string, name: string) {
   }
 }
 
+// DELTA_SPEC installs another delta in place of npm's: @blueshed/delta@<a candidate's tarball>. In
+// paintbrush's home (blueshed/dzql) the delta beside it is the candidate, packed once, since the
+// app's paintbrush may already need what that delta has and npm's does not.
+const delta = process.env.DELTA_SPEC ?? (existsSync(`${root}/../delta/package.json`) ? packDelta() : undefined);
+function packDelta(): string {
+  run(`${root}/../delta`, ["bun", "pm", "pack", "--destination", scratch, "--quiet"]);
+  const tarball = readdirSync(scratch).find((f) => f.endsWith(".tgz"))!;
+  return `@blueshed/delta@${join(scratch, tarball)}`;
+}
+
 /** A new app, as bun create makes one: the template's files, installed, then its setup. */
 function newApp(name: string) {
   const app = join(scratch, name.toLowerCase().replace(/[^a-z]+/g, "-"));
@@ -76,9 +86,7 @@ function newApp(name: string) {
   for (const path of listed.split("\n").filter(Boolean)) {
     if (existsSync(join(root, path))) cpSync(join(root, path), join(app, path));
   }
-  // DELTA_SPEC installs another delta in place of the locked one: @blueshed/delta@<a candidate's tarball>
-  const delta = process.env.DELTA_SPEC;
-  run(app, delta ? ["bun", "add", delta] : ["bun", "install", "--frozen-lockfile"]);
+  run(app, delta ? ["bun", "add", delta] : ["bun", "install"]);
   run(app, ["bun", "create/setup.ts"]);
   return app;
 }

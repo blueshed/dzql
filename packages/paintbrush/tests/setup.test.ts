@@ -25,7 +25,7 @@ test("setup turns the template into an app", async () => {
     "evals/evolve.json": "[]",
     ".github/workflows/ci.yml": "      - run: bun test\n\n      # The evolve skill's sections, each applied to a new app and run.\n      # setup deletes this step.\n      - run: bun run test:evolve\n",
     "src/index.html": "<title>Paintbrush</title>",
-    "package.json": '{\n  "name": "my-app",\n  "version": "0.5.0",\n  "private": true,\n  "scripts": {\n    "test": "bun test",\n    "test:evolve": "bun test ./tests/evolve.ts",\n    "start": "bun src/main.ts"\n  }\n}\n',
+    "package.json": '{\n  "name": "my-app",\n  "version": "0.5.0",\n  "private": true,\n  "scripts": {\n    "test": "bun test",\n    "test:evolve": "bun test ./tests/evolve.ts",\n    "start": "bun src/routes.ts"\n  }\n}\n',
     "CLAUDE.md": "# Paintbrush\n<!-- template -->\nNotes on developing the template.\n<!-- /template -->\nAbout the app.\n",
     ".claude/launch.json": '{ "name": "paintbrush" }',
     ".railway/railway.ts": 'project("paintbrush", {})',
@@ -48,7 +48,7 @@ test("setup turns the template into an app", async () => {
     }
     expect(await Bun.file(join(root, "README.md")).text()).toContain("# my-app");
     // the app's own version, and no script for the evolve skill's test; everything else in package.json as it was
-    expect(await Bun.file(join(root, "package.json")).text()).toBe('{\n  "name": "my-app",\n  "version": "0.0.0",\n  "private": true,\n  "scripts": {\n    "test": "bun test",\n    "start": "bun src/main.ts"\n  }\n}\n');
+    expect(await Bun.file(join(root, "package.json")).text()).toBe('{\n  "name": "my-app",\n  "version": "0.0.0",\n  "private": true,\n  "scripts": {\n    "test": "bun test",\n    "start": "bun src/routes.ts"\n  }\n}\n');
     expect(await Bun.file(join(root, ".github/workflows/ci.yml")).text()).toBe("      - run: bun test\n"); // no step for the evolve test
     expect(await Bun.file(join(root, "src/index.html")).text()).toBe("<title>my-app</title>");
     expect(await Bun.file(join(root, ".claude/launch.json")).text()).toBe('{ "name": "my-app" }');

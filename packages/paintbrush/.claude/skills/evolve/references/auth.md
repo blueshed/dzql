@@ -53,24 +53,24 @@ export const changes = [
 The server signs the socket in by its cookie, and serves the tap, sign out and, in development, the picker:
 
 ```ts
-// src/server.ts: after import { createWs } from "@blueshed/delta/server";
+// src/routes.ts: after import { createWs } from "@blueshed/delta/server";
 import { upgradeWithAuth } from "@blueshed/delta/auth";
 import { peopleDocs } from "./resources/people/people-api";
 ```
 
 ```ts
-// src/server.ts: after await messageDoc(ws, dataDir);
+// src/routes.ts: after await messageDoc(ws, dataDir);
 const auth = await peopleDocs(ws, dataDir); // who is at the socket
 ```
 
 ```ts
-// src/server.ts: after routes: {
+// src/routes.ts: after routes: {
   // Link sign-in: the tap, sign out, and in development "Who are you?"
   ...auth.routes,
 ```
 
 ```ts
-// src/server.ts: in place of "/ws": ws.upgrade,
+// src/routes.ts: in place of "/ws": ws.upgrade,
 "/ws": upgradeWithAuth(ws, auth), // signed in by the session cookie
 ```
 
@@ -112,7 +112,7 @@ db.close();
 ```
 
 ```ts
-// package.json: after "dev": "bun --hot src/main.ts",
+// package.json: after "dev": "bun --hot src/routes.ts",
 "link": "bun scripts/link.ts",
 ```
 
@@ -236,7 +236,7 @@ Tests: through the socket, nobody until signed in, and a link made by one person
 import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { startServer } from "../src/server";
+import { startServer } from "../src/routes";
 import { browser } from "./browser";
 
 setDefaultTimeout(60_000); // first browser start can be slow

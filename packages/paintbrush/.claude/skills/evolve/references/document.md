@@ -69,12 +69,12 @@ export function NotesView() {
 ```
 
 ```ts
-// src/server.ts: after import { statusApi } from "./resources/status/status-api";
+// src/routes.ts: after import { statusApi } from "./resources/status/status-api";
 import { notesDoc } from "./resources/notes/notes-api";
 ```
 
 ```ts
-// src/server.ts: after await messageDoc(ws, dataDir);
+// src/routes.ts: after await messageDoc(ws, dataDir);
 await notesDoc(ws, dataDir);
 ```
 

@@ -1,14 +1,14 @@
 # Build for production
 
-Optional. `bun run start` serves `src/main.ts` from source with `NODE_ENV=production`: hot reload off, the page bundled on its first request. Build only when a faster start or a single bundle is worth a step.
+Optional. `bun run start` serves `src/routes.ts` from source with `NODE_ENV=production`: hot reload off, the page bundled on its first request. Build only when a faster start or a single bundle is worth a step.
 
 ```jsonc
 // package.json: after "scripts": {
-"build": "bun build src/main.ts --target=bun --outdir=dist --production",
-"serve:dist": "NODE_ENV=production bun --cwd dist main.js",
+"build": "bun build src/routes.ts --target=bun --outdir=dist --production",
+"serve:dist": "NODE_ENV=production bun --cwd dist routes.js",
 ```
 
-Test it by building, starting `main.js` in `dist/`, and checking the page has no hot reload:
+Test it by building, starting `routes.js` in `dist/`, and checking the page has no hot reload:
 
 ```ts
 // tests/build.test.ts
@@ -22,7 +22,7 @@ test("the build serves the page, without hot reload", async () => {
   expect(Bun.spawnSync([process.execPath, "run", "build"], { cwd: root }).exitCode).toBe(0);
 
   const dataDir = mkdtempSync(`${tmpdir()}/build-`);
-  const proc = Bun.spawn([process.execPath, "main.js"], {
+  const proc = Bun.spawn([process.execPath, "routes.js"], {
     cwd: `${root}/dist`,
     env: { ...process.env, NODE_ENV: "production", PORT: "0", PID_FILE: `${dataDir}/.server.pid`, DATA_PATH: dataDir },
     stdout: "pipe",

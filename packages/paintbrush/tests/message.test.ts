@@ -3,7 +3,7 @@ import { connectWs, openDoc } from "@blueshed/delta/client";
 import type { DeltaOp } from "@blueshed/delta/core";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { startServer } from "../src/server";
+import { startServer } from "../src/routes";
 import type { Message } from "../src/resources/message/message-api";
 import { browser } from "./browser";
 

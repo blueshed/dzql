@@ -18,14 +18,14 @@ Open `http://localhost:3000` in two windows. You get a message, a shared documen
 
 ## Bun does the work
 
-- **Routes** are `Bun.serve()` routes, all written out in `src/server.ts`: the page, `GET /api/status`, `/ws` and `/health`.
+- **Routes** are `Bun.serve()` routes, all written out in `src/routes.ts` (delta serves them): the page, `GET /api/status`, `/ws` and `/health`.
 - **The page** is an imported `index.html`. Bun bundles the TypeScript, JSX and CSS it references, so there is no build step in development.
 - **Documents** ride one WebSocket, a route like any other. delta keeps each one (the message is a JSON file in the data folder) and tells every page holding it of every change.
 - **Tests** are `bun test`. Routes are tested with `fetch`, a document with a client in the test, and the page in a real browser with `Bun.WebView`. The run fails below 100% coverage.
 
 ## Routes, resources and documents
 
-- **Server routes** are in `src/server.ts`. HTTP routes serve what isn't communication: the health check, files, the server's status. Everything people share is a document on `/ws`.
+- **Server routes** are in `src/routes.ts`. HTTP routes serve what isn't communication: the health check, files, the server's status. Everything people share is a document on `/ws`.
 - **Client routes** are railroad's hash router, in `src/app.tsx`. A route draws a resource's view.
 - **A resource** is a folder with three files:
 
@@ -35,7 +35,7 @@ Open `http://localhost:3000` in two windows. You get a message, a shared documen
 | `<name>.ts` | The client: the document it opens, or what it fetches |
 | `<name>-view.tsx` | The view: a function component, reactive through signals |
 
-Every route and document is visible in the code. An AI, or a person, can read `server.ts` and `app.tsx` and know exactly what the app does.
+Every route and document is visible in the code. An AI, or a person, can read `routes.ts` and `app.tsx` and know exactly what the app does.
 
 ## How it grows
 
@@ -45,8 +45,7 @@ Think in documents, not entities: ask what someone needs in front of them to do 
 
 ```
 stories.md           what the app was asked to make true, a sentence each
-src/server.ts        Bun.serve(): the routes, and the documents on one WebSocket
-src/main.ts          the entry point: a pid file, so a server started in the background can be stopped
+src/routes.ts        the routes, and the documents on one WebSocket; served by delta's one server
 src/app.tsx          the socket every document rides, and railroad's routes
 src/index.html       the page; Bun bundles the TypeScript and CSS it references
 src/styles.css       the design, with its rules at the top

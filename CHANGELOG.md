@@ -46,6 +46,17 @@ what is open across them. Newest first.
   `test:paintbrush` (the fast tier), and `:slow` beside each that has one; `bun run test` is every
   package's fast tier.
 
+- **paintbrush is on delta's one server**: `src/server.ts` and `src/main.ts` became `src/routes.ts`,
+  the app's routes and documents (`startServer` gives them to `serve`; run as the entry, `run` is the
+  process). `bun run stop` is `delta stop`. The evolve skill's references and their test follow;
+  in its home the evolve test installs the delta beside it, packed, since paintbrush needs what npm's
+  delta does not have yet: **delta is released before create-blueshed**.
+- **Bun 1.4.3 and `bun check`**: every package.json says `engines.bun >=1.4.3` (railroad keeps its
+  1.3.14 floor, which its CI proves), `@types/bun ^1.4.3`, the root `packageManager: bun@1.4.3`; the
+  root's override of `@types/node` and railroad's `typescript` dev dependency are gone, and no
+  script runs `tsc` (railroad's consumer check is `bun check` alone). `@types/node` stays only as
+  what `bun-types` and `@types/pg` themselves depend on.
+
 ### Removed
 
 - `feedback.md`, on Peter's word: its findings are fixed and its tensions are in `todo.jsonl`.

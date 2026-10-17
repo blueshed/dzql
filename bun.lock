@@ -5,7 +5,7 @@
     "": {
       "name": "dzql-monorepo",
       "devDependencies": {
-        "@types/bun": "^1.4.2",
+        "@types/bun": "^1.4.3",
       },
     },
     "packages/create-blueshed": {
@@ -31,7 +31,7 @@
       "devDependencies": {
         "@blueshed/railroad": "^0.16.0",
         "@happy-dom/global-registrator": "^20.11.1",
-        "@types/bun": "^1.4.2",
+        "@types/bun": "^1.4.3",
       },
       "peerDependencies": {
         "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0 || ^0.16.0",
@@ -54,7 +54,7 @@
       "devDependencies": {
         "@blueshed/delta": "^1.2.0",
         "@blueshed/railroad": "^0.16.2",
-        "@types/bun": "latest",
+        "@types/bun": "^1.4.3",
         "@types/pg": "^8.20.0",
         "lucide": "^1.46.0",
       },
@@ -75,7 +75,7 @@
         "lucide": "^1.51.0",
       },
       "devDependencies": {
-        "@types/bun": "^1.4.2",
+        "@types/bun": "^1.4.3",
         "railway": "^3.12.0",
       },
     },
@@ -84,13 +84,9 @@
       "version": "0.16.2",
       "devDependencies": {
         "@happy-dom/global-registrator": "^20.11.1",
-        "@types/bun": "^1.4.2",
-        "typescript": "^5.9.3",
+        "@types/bun": "^1.4.3",
       },
     },
-  },
-  "overrides": {
-    "@types/node": "^25.5.0",
   },
   "packages": {
     "@blueshed/delta": ["@blueshed/delta@workspace:packages/delta"],
@@ -162,8 +158,6 @@
     "railway": ["railway@3.16.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "graphql": "^16.10.0" }, "bin": { "railway-iac-ts": "dist/iac/bin.js" } }, "sha512-//vKXubZpO07iJgNyoS+9Ee3pKk+3wE+0KAJPI28GuSKqXG30UeWT4xBkkd6TYuZ4HNh7QPvkVR72Swbmq5kXw=="],
 
     "split2": ["split2@4.2.0", "", {}, "sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg=="],
-
-    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "undici-types": ["undici-types@7.10.0", "", {}, "sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag=="],
 

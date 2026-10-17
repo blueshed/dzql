@@ -2,7 +2,7 @@ import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
 import { $ } from "bun";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { startServer } from "../src/server";
+import { startServer } from "../src/routes";
 import { browser } from "./browser";
 import iconPage from "./icon-page.html";
 
@@ -28,9 +28,8 @@ setDefaultTimeout(30_000); // first browser start can be slow
 const dataDir = mkdtempSync(`${tmpdir()}/site-`);
 // Spawned servers use this pid file, away from a running dev server's
 const pidFile = `${import.meta.dir}/out/.server.pid`;
-// The real `stop` script from package.json, run where that pid file lives
-const pkg = await Bun.file(`${import.meta.dir}/../package.json`).json();
-const stop = () => $`${{ raw: pkg.scripts.stop }}`.cwd(`${import.meta.dir}/out`).text();
+// The real `stop` script from package.json (delta's `delta stop`), told that pid file
+const stop = () => $`bun run stop`.cwd(`${import.meta.dir}/..`).env({ ...process.env, PID_FILE: pidFile }).text();
 
 const server = await startServer({ port: 0, dev: false, dataDir }); // random free port, no HMR
 const { view, open, waitFor, failFetch, close } = browser(() => server.url);
@@ -163,8 +162,8 @@ test("a page that is not found links home", async () => {
 
 // --- The entry point and the sandbox hook ---
 
-test("main.ts starts the server on $PORT", async () => {
-  const { proc, url } = await spawnServer([process.execPath, "src/main.ts"]);
+test("routes.ts, run, starts the server on $PORT", async () => {
+  const { proc, url } = await spawnServer([process.execPath, "src/routes.ts"]);
   try {
     expect((await fetch(new URL("/health", url))).status).toBe(200);
   } finally {
@@ -174,10 +173,10 @@ test("main.ts starts the server on $PORT", async () => {
 });
 
 test("pid file: a second start is refused, stop stops the server", async () => {
-  const { proc } = await spawnServer([process.execPath, "src/main.ts"]);
+  const { proc } = await spawnServer([process.execPath, "src/routes.ts"]);
   expect(Number(await Bun.file(pidFile).text())).toBe(proc.pid);
 
-  const second = Bun.spawn([process.execPath, "src/main.ts"], {
+  const second = Bun.spawn([process.execPath, "src/routes.ts"], {
     cwd: `${import.meta.dir}/..`,
     env: { ...process.env, PORT: "0", PID_FILE: pidFile, DATA_PATH: dataDir },
     stderr: "pipe",
@@ -193,7 +192,7 @@ test("pid file: a second start is refused, stop stops the server", async () => {
 
 test("pid file: an empty file doesn't block start, and stop removes it", async () => {
   await Bun.write(pidFile, "");
-  const { proc } = await spawnServer([process.execPath, "src/main.ts"]);
+  const { proc } = await spawnServer([process.execPath, "src/routes.ts"]);
   proc.kill();
   await proc.exited;
   expect(await Bun.file(pidFile).exists()).toBe(false); // removed on shutdown
@@ -214,7 +213,7 @@ test("the web sandbox hook does nothing anywhere else", async () => {
 });
 
 test("in production the page is served from source, without HMR", async () => {
-  const { proc, url } = await spawnServer([process.execPath, "src/main.ts"], { NODE_ENV: "production" });
+  const { proc, url } = await spawnServer([process.execPath, "src/routes.ts"], { NODE_ENV: "production" });
   try {
     const html = await (await fetch(url)).text();
     expect(html).toContain("<title>Paintbrush</title>");
@@ -226,15 +225,15 @@ test("in production the page is served from source, without HMR", async () => {
 });
 
 test("bun dev serves with hot reload, and a reload does not take its own pid file for another server", async () => {
-  const { proc, url } = await spawnServer([process.execPath, "--hot", "src/main.ts"]);
+  const { proc, url } = await spawnServer([process.execPath, "--hot", "src/routes.ts"]);
   try {
     expect(await (await fetch(url)).text()).toContain("data-bun-dev-server-script"); // hot reload in the page
     expect(Number(await Bun.file(pidFile).text())).toBe(proc.pid);
 
     // A save: the same text written again (a touch, which changes only the time, is not one to --hot)
-    const source = Bun.file(`${import.meta.dir}/../src/server.ts`);
+    const source = Bun.file(`${import.meta.dir}/../src/routes.ts`);
     await Bun.write(source, await source.text());
-    expect((await readUntil(proc, /Listening on (\S+)/))[1]).toBe(url); // main.ts ran again, in the same process
+    expect((await readUntil(proc, /Listening on (\S+)/))[1]).toBe(url); // routes.ts ran again, in the same process
 
     expect((await fetch(url)).status).toBe(200);
     expect(Number(await Bun.file(pidFile).text())).toBe(proc.pid);

@@ -56,7 +56,7 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
 ```
 
 ```ts
-// src/server.ts: in place of await orderDocs(ws, dataDir);
+// src/routes.ts: in place of await orderDocs(ws, dataDir);
 closing.push(await orderDocs(ws, dataDir));
 ```
 
@@ -68,7 +68,7 @@ import { test, expect, afterAll } from "bun:test";
 import { connectWs, openDoc } from "@blueshed/delta/client";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { startServer } from "../src/server";
+import { startServer } from "../src/routes";
 import type { Order } from "../src/resources/order/order-api";
 
 const scratch = mkdtempSync(`${tmpdir()}/order-pg-`);

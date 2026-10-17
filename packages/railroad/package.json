@@ -30,7 +30,7 @@
     ".claude/skills"
   ],
   "scripts": {
-    "check:consumer": "bun check -p tests/consumer-types/tsconfig.json && bun check -p tests/consumer-types/tsconfig.react.json && bunx tsc --noEmit -p tests/consumer-types/tsconfig.json && bunx tsc --noEmit -p tests/consumer-types/tsconfig.react.json && bun check -p tests/fixtures/readme/tsconfig.server.json && bunx tsc --noEmit -p tests/fixtures/readme/tsconfig.server.json",
+    "check:consumer": "bun check -p tests/consumer-types/tsconfig.json && bun check -p tests/consumer-types/tsconfig.react.json && bun check -p tests/fixtures/readme/tsconfig.server.json",
     "test": "bun test",
     "test:webview": "bun test ./tests/webview.test.ts",
     "test:fast": "bun check && bun test --path-ignore-patterns=tests/webview.test.ts",
@@ -38,8 +38,7 @@
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.11.1",
-    "@types/bun": "^1.4.2",
-    "typescript": "^5.9.3"
+    "@types/bun": "^1.4.3"
   },
   "author": "Peter Bunyan <peter@blueshed.co.uk> (https://blueshed.co.uk)",
   "license": "MIT",

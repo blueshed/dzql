@@ -7,7 +7,7 @@ Test what a person sees and clicks: a change in one window reaching another, and
 import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { startServer } from "../src/server";
+import { startServer } from "../src/routes";
 import { browser } from "./browser";
 
 setDefaultTimeout(30_000); // first browser start can be slow

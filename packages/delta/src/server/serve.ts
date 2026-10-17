@@ -12,12 +12,10 @@
 import { rmSync } from "node:fs";
 import type { WsServer } from "./server";
 
-type Route = Bun.Serve.BaseRouteValue | ((req: Bun.BunRequest, server: Bun.Server<any>) => Response | undefined | Promise<Response | undefined>);
-
 /** What an app is to the server: its routes and resources, never a server of its own. */
-export interface App {
-  /** The app's routes: its page ("/"), its HTTP resources. A route of its own on "/ws" wins over delta's. */
-  routes: Record<string, Route>;
+export interface App<R extends string = string> {
+  /** The app's routes, as Bun.serve takes them (typed params, a handler per method): its page ("/"), its HTTP resources. A route of its own on "/ws" wins over delta's. */
+  routes: Bun.Serve.RoutesWithUpgrade<any, R>;
   /** delta's socket (`createWs()`): served on its path, and told the server so a change reaches every page. */
   ws?: WsServer;
   /** A socket of the app's own instead (Bun's handler), its upgrade one of `routes`. */
@@ -46,7 +44,7 @@ export interface Served {
 }
 
 /** Serves `app`: its routes, delta's socket on its path, `/health` for a platform's check, and 404 for the rest. */
-export function serve(app: App, { port = Number(process.env.PORT ?? 3000), dev = process.env.NODE_ENV !== "production" }: ServeOptions = {}): Served {
+export function serve<R extends string>(app: App<R>, { port = Number(process.env.PORT ?? 3000), dev = process.env.NODE_ENV !== "production" }: ServeOptions = {}): Served {
   const { ws } = app;
   const server = Bun.serve({
     port,

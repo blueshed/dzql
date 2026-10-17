@@ -96,12 +96,12 @@ The reset takes a list's padding, so its bullets would hang outside the page: th
 ```
 
 ```ts
-// src/server.ts: after import { statusApi } from "./resources/status/status-api";
+// src/routes.ts: after import { statusApi } from "./resources/status/status-api";
 import { orderDocs } from "./resources/order/order-api";
 ```
 
 ```ts
-// src/server.ts: after await messageDoc(ws, dataDir);
+// src/routes.ts: after await messageDoc(ws, dataDir);
 await orderDocs(ws, dataDir);
 ```
 
@@ -122,7 +122,7 @@ Tested as in [testing.md](testing.md); the page passes it on SQLite and Postgres
 import { test, afterAll, setDefaultTimeout } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { startServer } from "../src/server";
+import { startServer } from "../src/routes";
 import { browser } from "./browser";
 
 setDefaultTimeout(30_000);

@@ -20,10 +20,10 @@
     "test:paintbrush:slow": "bun run --cwd packages/paintbrush test:slow"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2"
+    "@types/bun": "^1.4.3"
   },
   "engines": {
-    "bun": ">=1.0.0"
+    "bun": ">=1.4.3"
   },
   "repository": {
     "type": "git",
@@ -39,7 +39,5 @@
   ],
   "author": "Peter Bunyan",
   "license": "MIT",
-  "overrides": {
-    "@types/node": "^25.5.0"
-  }
+  "packageManager": "bun@1.4.3"
 }
