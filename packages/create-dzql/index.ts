@@ -1,8 +1,12 @@
 #!/usr/bin/env bun
 /**
- * `bun create dzql my-app`: a paintbrush app on dzql. People sign in by link, and share posts,
- * kept in Postgres: everyone's live, each person's own to change. Copies `template/`, puts the app's
- * name in it, and says what to run.
+ * `bun create dzql my-app`: eta's starter on dzql. The app is `src/`, begun as dzql's
+ * `examples/starter` (its page, no stories yet, no documents yet), served by delta's one server
+ * through dzql's `start.ts`. Copies `template/` (the app's package.json, tsconfig, README), then the
+ * starter into `src/`, puts the app's name in, and says what to run.
+ *
+ * The starter is dzql's own, copied in when this package is packed (`prepack`, as `starter/`); run
+ * from the repository it is read where it lives, so the two never differ.
  */
 import { cpSync, existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,36 +21,40 @@ if (existsSync(dest)) {
   console.error(`Error: "${name}" already exists`);
   process.exit(1);
 }
+const packed = join(import.meta.dir, "starter");
+const starter = existsSync(packed) ? packed : join(import.meta.dir, "../dzql/examples/starter");
 
 console.log(`Creating ${name}...`);
 cpSync(join(import.meta.dir, "template"), dest, { recursive: true });
+cpSync(starter, join(dest, "src"), { recursive: true });
 
 // npm leaves dotfiles of a package behind: they travel without their dot
 renameSync(join(dest, "gitignore"), join(dest, ".gitignore"));
-renameSync(join(dest, "env.example"), join(dest, ".env.example"));
 
-// The app's name in place of {{name}}, in every file
+// The starter's look imports the kernel's bento by a path inside dzql; in an app it is by name
+const styles = join(dest, "src/client/styles.css");
+writeFileSync(styles, readFileSync(styles, "utf8").replace(/@import "[^"]*src\/rendering\/bento\.css";/, '@import "dzql/rendering/bento.css";'));
+
+// The app's name in place of {{name}}, and of the starter's own, in every file
+const title = name.replace(/(^|-)(\w)/g, (_, dash: string, c: string) => (dash ? " " : "") + c.toUpperCase());
 const named = (dir: string): void => {
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) named(path);
     else {
       const text = readFileSync(path, "utf8");
-      if (text.includes("{{name}}")) writeFileSync(path, text.replaceAll("{{name}}", name));
+      const next = text.replaceAll("{{name}}", name).replaceAll("Starter", title).replace('name: "starter"', `name: "${name}"`);
+      if (next !== text) writeFileSync(path, next);
     }
   }
 };
 named(dest);
-cpSync(join(dest, ".env.example"), join(dest, ".env"));
 
 console.log(`
 Done. To start:
 
   cd ${name}
   bun install
-  bun run db:up            # a Postgres server in Docker (compose.yml)
-  bun run link "Your name" # you, and the link that signs you in
-  bun dev                  # http://localhost:3000: open the link, or pick your name
-
-  bun test           # the app's tests: Postgres in memory, two browsers
+  bun dev            # http://localhost:3000: the page, waiting for its first story
+  bun test           # the page is served and drawn, and every story passes
 `);

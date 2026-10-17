@@ -1,21 +1,32 @@
 {
   "name": "create-dzql",
   "version": "0.13.0",
-  "description": "Create a paintbrush app on dzql: sign-in and live posts, kept in Postgres",
+  "description": "Create an app on dzql: eta's starter, its stories first, served by delta's one server",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/blueshed/dzql.git",
     "directory": "packages/create-dzql"
   },
   "private": false,
+  "type": "module",
   "bin": {
     "create-dzql": "./index.ts"
   },
   "files": [
     "index.ts",
     "template",
+    "starter",
     "README.md"
   ],
+  "scripts": {
+    "prepack": "rm -rf starter && cp -R ../dzql/examples/starter starter",
+    "postpack": "rm -rf starter",
+    "test:fast": "bun test tests/"
+  },
+  "devDependencies": {
+    "dzql": "^0.13.0",
+    "@blueshed/delta": "^1.2.0"
+  },
   "engines": {
     "bun": ">=1.4.3"
   }

@@ -21,6 +21,10 @@
       "bin": {
         "create-dzql": "./index.ts",
       },
+      "devDependencies": {
+        "@blueshed/delta": "^1.2.0",
+        "dzql": "^0.13.0",
+      },
     },
     "packages/delta": {
       "name": "@blueshed/delta",

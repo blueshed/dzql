@@ -8,24 +8,19 @@
     "bun": ">=1.4.3"
   },
   "scripts": {
-    "db:up": "docker compose up -d --wait",
-    "db:down": "docker compose down -v",
-    "dev": "bun --hot src/main.ts",
-    "link": "bun scripts/link.ts",
-    "stop": "bun -e \"const f = Bun.file('.server.pid'); if (!(await f.exists())) console.log('not running'); else { const pid = Number(await f.text()); try { if (!(pid > 0)) throw 0; process.kill(pid, 'SIGTERM'); console.log('stopped ' + pid); } catch { await f.delete(); console.log('removed stale pid file'); } }\"",
+    "dev": "ETA_EXAMPLE=./src bun --hot node_modules/dzql/src/rendering/start.ts",
+    "start": "NODE_ENV=production ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/start.ts",
+    "stop": "delta stop",
+    "stories": "ETA_EXAMPLE=./src bun node_modules/dzql/src/modelling/stories-run.ts",
+    "cli": "ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/cli.ts",
     "typecheck": "bun check",
-    "test": "bun test",
-    "start": "NODE_ENV=production bun src/main.ts"
+    "test": "bun test"
   },
   "dependencies": {
     "@blueshed/delta": "^1.2.0",
-    "@blueshed/railroad": "^0.16.0",
-    "dzql": "^0.13.0",
-    "lucide": "^1.51.0",
-    "pg": "^8.22.0"
+    "dzql": "^0.13.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.3",
-    "@types/pg": "^8.15.0"
+    "@types/bun": "^1.4.3"
   }
 }

@@ -36,15 +36,16 @@ is in Workshop's `docs/postgres-split-plan.md`.
 
 ## Start
 
-`bun create dzql my-app` makes a paintbrush app on dzql: link sign-in, posts as two documents,
-and tests in two real browsers, on PGlite with no database server. `DATABASE_URL` names a
-Postgres server for production.
+`bun create dzql my-app` makes eta's starter: an app whose stories come first, its pages drawn by
+the server, its documents delta's, served by delta's one server. It begins with no stories and no
+documents; the first story says which document comes first.
 
 ```bash
 bun create dzql my-app
 cd my-app
+bun install
 bun test
-bun run dev
+bun dev
 ```
 
 From 0.13 dzql is only this step. The framework it was before delta (a `domain.ts` compiled to SQL,

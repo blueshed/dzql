@@ -12,7 +12,7 @@ Before working on this codebase, read:
 - `docs/dzql/philo.md` (at the root) - **what dzql is for now**: stories to documents to pages, and the compiled Postgres step
 - `docs/dzql/` (at the root): `modelling/stories.md` (what the stories are for), `rendering/` (eta.md: what it is, its measured costs; first-app.md; the bento), `postgres/` (delta on Postgres), `eta-history/` (eta's changelog and ledger)
 - `docs/dzql/postgres-split-plan.md` (at the root) - the plan that made dzql delta's Postgres step
-- `packages/create-dzql/README.md` - `bun create dzql`: a paintbrush app on dzql
+- `packages/create-dzql/README.md` - `bun create dzql`: eta's starter on dzql
 
 ## Where the Project Is
 
@@ -44,7 +44,7 @@ packages/
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
 │   ├── bench/           # delta's bench (bun run bench), todo #25
 │   └── tests/           # delta/ (delta's cases), delta-pg/ (delta's Postgres tests), compile/ (compiled, to the framework's recorded answers; the path grammar over modeling-dzql's 204 rules)
-└── create-dzql/         # bun create dzql: a paintbrush app on dzql (template/), its tests the end-to-end check
+└── create-dzql/         # bun create dzql: eta's starter (examples/starter) as an app, tests/ makes one and starts it
 ```
 
 ## dzql as delta's Postgres step
@@ -111,28 +111,23 @@ What a change to them must not break. How the pieces work is in the skills; the 
 
 **Test-Driven Development:** Write tests first. Add failing tests for new features or bugs, then implement until they pass. This ensures the feature works and prevents regressions.
 
-**End-to-End Verification:** Before publishing, always test in a real app. Unit tests passing does not guarantee the feature works end-to-end. The create-dzql template's tests are that check: two real browsers (`Bun.WebView`).
+**End-to-End Verification:** Before publishing, always test in a real app. Unit tests passing does not guarantee the feature works end-to-end. create-dzql's test is the first check: a fresh app type-checks, passes its tests and starts.
 
 ### Testing the create-dzql Template
 
-`create-dzql` makes a paintbrush app on dzql (`packages/create-dzql/template/`): sign in by
-link (`auth-link`), and posts as two documents, `posts:` (everyone's, read-only) and `mine:<id>` (one
-person's own, every write through it). Its own tests are the end-to-end check, in two real browsers
-(`Bun.WebView`), with Postgres in memory (PGlite). Before publishing `create-dzql` or `dzql`, make
-an app from the local template with the local dzql linked, and run them:
+`create-dzql` makes eta's starter an app: `template/` (its package.json, tsconfig, README) and
+`examples/starter` copied into `src/` (packed as `starter/` by `prepack`, read where it lives in
+the repository). `bun run --cwd packages/create-dzql test:fast` makes one in a temporary folder with
+the workspace's packages linked in, and checks it type-checks, passes its own tests, and starts on
+delta's one server (the page, drawn over the socket, and `/health`). By hand:
 
 ```bash
-cd packages/dzql && bun link                  # the local dzql, for the app to link
 cd "$(mktemp -d)"
 bun /Users/peterb/Workshop/blueshed/dzql/packages/create-dzql/index.ts dzql-test-app
 cd dzql-test-app
-sed -i '' 's|"dzql": "[^"]*"|"dzql": "link:dzql"|' package.json   # the local dzql, not npm's
-bun install
-bun check && bun test
+ln -s /Users/peterb/Workshop/blueshed/dzql/node_modules node_modules   # the workspace's dzql and delta, not npm's
+bun check && bun test && bun dev
 ```
-
-`node_modules/dzql` must be a link to the global one (`ls -la node_modules/dzql`): otherwise the
-tests ran npm's dzql. To see it by hand: `bun run db:up` (a Postgres server in Docker) and `bun dev`.
 
 Against a delta not yet on npm (the template names its next version), link it too: `bun link` in
 delta, and `"@blueshed/delta": "link:@blueshed/delta"` in the app. A linked delta brings its own

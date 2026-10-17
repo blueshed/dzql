@@ -14,6 +14,13 @@ what is open across them. Newest first.
   the eta-app skill's `compartment.md` is `resource.md`, everywhere in code, tests, docs and skills
   (not in changelogs or history). The modelling grammar's `resource` flag, a junction's fk to what
   a group is granted, is `reach`, so the word means one thing.
+- **`bun create dzql my-app` makes eta's starter** (17 October), no longer a paintbrush app on
+  Postgres: `src/` is dzql's `examples/starter` (its page, no stories or documents yet), run by
+  dzql's `start.ts` on delta's one server (`bun dev`, `bun run start`, `bun run stop` is `delta
+  stop`), so the app has no server or pid file of its own. Kept on SQLite once it has documents.
+  `packages/create-dzql/tests/create.test.ts` makes a fresh app, type-checks it, runs its tests and
+  starts it; CI's dzql-eta workflow runs it (`test:fast` in create-dzql, so `bun run affected` does
+  too). The starter is copied in when create-dzql is packed, so the two never differ.
 - **One repository: railroad, delta and dzql** (17 October). railroad and delta moved in as Bun
   workspaces with their history (`packages/railroad`, `packages/delta`); dzql and create-dzql moved
   to `packages/dzql` and `packages/create-dzql`. The repository keeps the name **blueshed/dzql**

@@ -1,6 +1,6 @@
 name: dzql-eta
 
-# dzql's modelling and rendering (eta), in a browser: when they, their examples, delta or railroad
+# dzql's modelling and rendering (eta), in a browser, and create-dzql's starter: when they, their examples, delta or railroad
 # (an island is a railroad component), or what every package shares changes.
 
 on:
@@ -14,6 +14,7 @@ on:
       - "packages/dzql/scripts/**"
       - "packages/dzql/bunfig.toml"
       - "packages/dzql/package.json"
+      - "packages/create-dzql/**"
       - "packages/delta/**"
       - "packages/railroad/**"
       - "package.json"
@@ -64,3 +65,5 @@ jobs:
       - run: bun run stories:all
         if: startsWith(github.ref, 'refs/tags/')
       - run: bun run costs --check
+      # a fresh app from `bun create dzql`: it type-checks, its tests pass, it starts
+      - run: bun run --cwd ../create-dzql test:fast

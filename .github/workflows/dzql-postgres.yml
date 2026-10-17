@@ -1,7 +1,7 @@
 name: dzql-postgres
 
 # dzql's compiled Postgres step, against a Postgres server: when the compiler, the backend, their
-# tests, delta (whose cases they answer), create-dzql, or what every package shares changes.
+# tests, delta (whose cases they answer), or what every package shares changes.
 
 on:
   push:
@@ -14,7 +14,6 @@ on:
       - "packages/dzql/tests/**"
       - "packages/dzql/examples/delta/**"
       - "packages/dzql/package.json"
-      - "packages/create-dzql/**"
       - "packages/delta/**"
       - "package.json"
       - "bun.lock"
