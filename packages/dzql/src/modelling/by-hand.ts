@@ -14,7 +14,10 @@ import type { Gesture, Post, Write } from "./stories";
 import { CENTRED, MOUSE, NAMED, urlFor, waitFor } from "../rendering/webview";
 
 /** A phone, held upright: the stories are pressed at the size most people hold them. */
-const PHONE = { width: 390, height: 844 };
+// A phone-sized tab. On Chrome (any platform but macOS, whose default is WebKit) a page left for
+// about:blank may wait in the back/forward cache, its socket still open, so the server would never
+// hear the tab close: the cache is off.
+const PHONE: Bun.WebView.ConstructorOptions = { width: 390, height: 844, ...(process.platform === "darwin" ? {} : { backend: { type: "chrome", argv: ["--disable-features=BackForwardCache"] } }) };
 
 /** How long a control may take to hold still and come clear, and a page to answer. */
 const PATIENCE = 2000;
