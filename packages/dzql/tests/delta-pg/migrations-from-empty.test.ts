@@ -30,7 +30,8 @@ const backend = (open: () => Promise<Pool>) => ({
   migrate: (pool: Pool, list: any[], options?: any) => migrate(pool, list, options),
   columns: async (pool: Pool, table: string) =>
     (await pool.query("SELECT column_name AS c FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1 ORDER BY ordinal_position", [table])).rows.map((r) => r.c),
-  query: async (pool: Pool, sql: string) => (await pool.query(sql)).rows,
+  // a BIGINT as a number, as PGlite gives it and the cases compare it (node-postgres gives a string)
+  query: async (pool: Pool, sql: string) => (await pool.query(sql)).rows.map((r) => (typeof r.id === "string" ? { ...r, id: Number(r.id) } : r)),
   makeTables: async (pool: Pool, schema: any) => {
     for (const [key, table] of Object.entries(schema.tables)) await pool.query(tableSql(key, table as any).join("\n"));
   },
