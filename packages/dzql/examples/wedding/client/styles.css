@@ -1,0 +1,284 @@
+/* The wedding's look, drawn to the bento (docs/bento/README.md): the same parts in
+   the same places, the wedding's own paper, ink and gold. A page is a box: a tray with compartments
+   cut into it, the trail above. A compartment grows into the window; the window is the rule for
+   everything opened. The trail floats top-left in it, the compartment's tools stand at the right
+   edge as stacks of square buttons, the page's tools are one more stack at the bottom right, and the
+   reading keeps clear of them. A figure in the reading opens the drawer: a panel at the right from
+   820px, a sheet from the foot below. One family of corners, one control height, three sizes of
+   type, every shadow toward the ink. */
+
+@import "../../../src/bento.css";
+
+/* ── tokens ── (each pair that must be read or seen is checked in contrast.test.ts: text 4.5:1, a mark
+   or an edge 3:1; one palette, light, whatever the reader prefers) */
+:root {
+  --paper: #F3EDE0; --tray: #E4DCC7; --card: #FBF9F4; --card-hover: #FFFFFF; --well: #EFE8D8;
+  --ink: #2B2B33; --navy: #1E3F8F; --royal: #2F63BF; --gold-soft: rgba(201, 162, 39, 0.45);
+  /* the gold is the save-the-date's: its frame, and the Open button's fill, with ink on it; a gold line
+     that is read or means something on the card (the ampersand, the pencil) is the deep gold */
+  --gold: #C9A227; --gold-deep: #8F7012;
+  --burgundy: #7B2F4B; --muted: #6B6B74;
+  /* the answer's colours: yes green, maybe amber, no red. Maybe's amber is bright, with ink on it, and
+     its deeper shade is the edge of a mark; the red is deeper for words */
+  --leaf: #527D2E; --amber: #D9A21B; --amber-deep: #A9760A; --red: #B5443B; --red-deep: #953530;
+  --ink-rgb: 30, 63, 143; /* the light: every shadow tints toward the ink */
+  --line: rgba(43, 43, 51, 0.14); --edge: rgba(43, 43, 51, 0.55);
+  --serif: "Cinzel", "Trajan Pro", "Times New Roman", serif;
+  --sans: "Josefin Sans", "Futura", "Avenir Next", "Helvetica Neue", sans-serif;
+  --script: "Pinyon Script", "Snell Roundhand", "Brush Script MT", cursive;
+  /* what src/bento.css reads: the accent is the navy, the pencil is gold, making and removing are burgundy */
+  --accent: var(--navy); --mark: var(--gold-deep); --add: var(--burgundy); --danger: var(--burgundy);
+}
+
+/* ── base ── */
+html { color-scheme: light; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.45; }
+main#app { box-sizing: border-box; position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
+a { color: var(--navy); }
+h2, h3 { margin: 0; font-size: 15px; font-weight: 600; }
+/* three sizes of type: the cap, the word, the note */
+.cap { font-weight: 600; }
+h3.cap { margin: var(--space-xl) 0 var(--space-sm); }
+p.note { margin: 0 0 var(--space-md); font-size: 14px; }
+.site { position: relative; z-index: 1; }
+:where(.site > *, .site > .ground > *) { margin: 0 0 var(--space-2xl); } /* :where, so a bento surface's own margin still wins */
+
+/* the flowers: the announcement's own, along the foot of every page behind everything, full on the welcome */
+.flowers {
+  position: fixed; left: 0; right: 0; bottom: 0; height: min(36vh, 360px); z-index: 0; pointer-events: none;
+  background: url(./pictures/flowers.webp) center bottom / cover no-repeat; opacity: 0.3;
+  -webkit-mask-image: linear-gradient(to top, #000 50%, transparent 100%); mask-image: linear-gradient(to top, #000 50%, transparent 100%);
+}
+.site.at-welcome ~ .flowers, .site.at-welcome + .flowers { opacity: 1; }
+main#app:has(.site.at-welcome) .flowers { opacity: 1; height: min(46vh, 520px); }
+
+/* ── controls: the welcome's own, over the bento's. Its code box and its buttons are the first thing anyone
+   touches, so they stand taller; every other control keeps the bento's heights (a rail's 32, a field's 40) ── */
+.enter-card :is(input, button) { min-height: 44px; }
+button.gold, button.ghost { padding: 0 16px; border-width: 1px; border-style: solid; border-radius: var(--radius-control); white-space: nowrap; }
+button.gold { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+button.ghost { background: transparent; color: var(--navy); border-color: var(--navy); }
+button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); }
+.entry { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ── the welcome ── */
+.hero { border: 2px solid var(--gold); border-radius: var(--radius-panel); padding: 40px 24px 36px; text-align: center; background: var(--paper); }
+.hero .kicker { font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink); margin: 0; }
+.hero .kicker + .kicker { font-size: 20px; letter-spacing: 0.28em; margin-top: 6px; }
+.hero .names { font-family: var(--serif); font-weight: 600; font-size: clamp(34px, 8vw, 56px); letter-spacing: 0.16em; line-height: 1.1; margin: 22px 0 0; background: linear-gradient(180deg, var(--royal) 0%, var(--navy) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero .amp { font-family: var(--script); font-size: clamp(56px, 12vw, 96px); line-height: 0.7; color: var(--gold-deep); margin: -8px 0 -14px; display: block; }
+.hero .when { font-size: 22px; letter-spacing: 0.22em; color: var(--ink); margin: 34px 0 0; }
+.hero .where { font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); margin: 6px 0 0; }
+.hero .message { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--navy); margin: 18px 0 0; }
+.hero .small { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); margin: 10px 0 0; }
+.card { background: var(--card); border: 1px solid var(--gold-soft); border-radius: var(--radius-panel); padding: 16px; margin: 0 0 12px; }
+.enter-card h2 { margin-top: 0; }
+.resend { margin-top: 14px; }
+.resend summary { cursor: pointer; color: var(--ink); }
+.photo-card .welcome-pic { display: block; width: 100%; height: auto; border-radius: var(--radius-panel); border: 2px solid var(--gold); background: var(--well); }
+
+/* ── the bento's surfaces (src/bento.css), where the wedding's differ: serif heads, the photo, the answer ── */
+.drawer-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); }
+dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy); }
+/* a chosen answer in its own colour; the kernel lights any other checked radio in the accent */
+.tool.yes[aria-checked="true"] { background: var(--leaf); border-color: var(--leaf); color: var(--card); }
+.tool.no[aria-checked="true"] { background: var(--burgundy); border-color: var(--burgundy); color: var(--card); }
+.prop-value > .pick { flex-wrap: wrap; } /* a choice of three wraps in a drawer's width rather than standing past its edge */
+.pair { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; }
+.pair .amp { font-family: var(--script); font-size: 28px; color: var(--gold-deep); line-height: 1; }
+.reading.photo { height: 100%; min-height: 320px; background: var(--well); border-radius: var(--radius-thumb); overflow: hidden; }
+.reading.photo.framed { border: 2px solid var(--gold); }
+.reading.photo > [data-applet] { height: 100%; } /* the mount takes the frame's height, so the whole photo fits in it */
+.reading.photo .photo { display: block; width: 100%; height: 100%; }
+.reading.photo + .note { margin-top: var(--space-md); }
+/* the household's page is its photo: the bubble over it, and the reading taking the rest of the window */
+.photo-page { display: flex; flex-direction: column; min-height: 100%; }
+.photo-page:has(> .reading.photo) { height: 100%; }
+.photo-page > .reading.photo { flex: 1 1 0; height: auto; min-height: 280px; }
+.photo-page > .rows { margin-top: var(--space-sm); }
+/* the households in runs by their answer: the answer said once, at the head of its run */
+.photo-page > .run { margin: var(--space-md) 0 0; }
+.photo-page > .run ~ .run { margin-top: var(--space-xl); }
+.run > .run-head { margin: 0 0 var(--space-xs); }
+/* the information a household reads and puts away: the gifts, the day, where to stay */
+.info-drawer .gift { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--space-md); padding: var(--space-md) 0; border-bottom: 1px solid var(--line); }
+.info-drawer .gift:first-child { padding-top: 0; }
+.info-drawer .gift:last-child { border-bottom: 0; }
+.info-drawer .gift img.pic { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); display: block; }
+.info-drawer .gift > .gift-words:first-child { grid-column: 1 / -1; }
+.gift-words h3 { font-size: 16px; }
+.gift-words .note { margin: 2px 0 0; }
+.gift-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-sm); font-size: 13px; }
+.gift-foot > .tool { margin-left: auto; } /* the one thing to do with it stays at the right, whether or not a state stands before it */
+.info-drawer .when-where { margin: 0 0 var(--space-md); font-family: var(--serif); color: var(--navy); line-height: 1.5; }
+/* a family's drawer, and the lists the couple keep: a line each -- the words, the state, the one
+   control -- and a new one named in place at the foot */
+.lines { display: flex; flex-direction: column; }
+.line { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--line); }
+.line:last-child { border-bottom: 0; }
+.line .words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.line .what { font-weight: 600; }
+.line .note { font-size: 13px; }
+.line .answer-word { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.add-here { margin: var(--space-md) 0 var(--space-lg); }
+/* in a drawer's narrow width the words keep theirs and the state goes under them, wrapping: a long one
+   ("shared · claimed by OKAFOR, BEN") never squeezes the words or runs past the drawer's edge */
+.drawer .row:has(> .state) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "lead words mark" "lead state mark"; column-gap: var(--space-md); row-gap: 2px; }
+.drawer .row:has(> .state):not(:has(> .lead)) { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "words mark" "state mark"; }
+.drawer .row:has(> .state) > .lead { grid-area: lead; align-self: center; }
+.drawer .row:has(> .state) > .words { grid-area: words; }
+.drawer .row:has(> .state) > .state { grid-area: state; white-space: normal; text-align: left; }
+.drawer .row:has(> .state) > .mark { grid-area: mark; align-self: center; }
+.add-here .field { flex: 1 1 auto; min-width: 0; }
+.family-drawer .bubble { max-width: none; margin: 0 0 var(--space-md); box-shadow: none; border: 1px solid var(--line); }
+.family-drawer .bubble::after { display: none; }
+.row .lead img.pic { width: 56px; height: 56px; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); display: block; }
+.row .lead .when { display: inline-block; min-width: 4rem; color: var(--navy); font-weight: 600; font-size: 14px; }
+.row .state a { color: var(--navy); }
+/* the answer as a word with its colour: yes green, maybe amber, no red, none a dashed ring */
+.answer-word { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.answer-word .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.answer-word .dot.yes { background: var(--leaf); } .answer-word .dot.maybe { background: var(--amber); box-shadow: inset 0 0 0 1.5px var(--amber-deep); } .answer-word .dot.no { background: var(--red); }
+.answer-word .dot.none { border: 1.5px dashed var(--muted); }
+.state-yes { color: var(--leaf); } .state-no { color: var(--red-deep); }
+/* ── the speech bubble: a thing in place above the tray -- what the household says, the couple's welcome ── */
+.bubble { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-md); max-width: min(88%, 440px); margin: 0 0 var(--space-xl); padding: var(--space-md) var(--space-lg); background: var(--card); border-radius: var(--radius-panel); box-shadow: 0 6px 24px rgba(var(--ink-rgb), 0.16); }
+.bubble::after { content: ""; position: absolute; left: 26px; bottom: -12px; border: 12px solid transparent; border-top-color: var(--card); border-bottom: 0; }
+.bubble.theirs { grid-template-columns: auto minmax(0, 1fr); }
+.bubble.couple { grid-template-columns: minmax(0, 1fr) auto; }
+.bubble.thing { width: 100%; text-align: start; cursor: pointer; } /* a button: as wide as the words may be, and read from the start */
+.bubble-words { font-size: 16px; line-height: 1.35; display: flex; flex-direction: column; gap: 2px; }
+.bubble-words.empty { color: var(--muted); }
+.face-mark { border-radius: 50%; display: grid; place-items: center; color: #fff; flex: 0 0 auto; }
+.face-mark.yes { background: var(--leaf); } .face-mark.maybe { background: var(--amber); color: var(--ink); } .face-mark.no { background: var(--red); }
+.face-mark.none { border: 2px dashed var(--muted); color: var(--muted); font-size: 20px; }
+.drawer-pic img.pic { display: block; width: 100%; max-height: 40vh; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); }
+.props .pair { padding: var(--space-xs) 0; }
+.hint { margin: var(--space-sm) 0 var(--space-md); font-size: 13px; color: var(--muted); }
+.figure-box { position: sticky; top: 0; z-index: 2; background: var(--card); padding: var(--space-md) 0 4px; }
+/* ── the answer's drawer: every option whole, a face, its colour, its sentence ── */
+.answer-options { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-sm) 0 var(--space-md); }
+.answer-option { display: flex; align-items: center; gap: var(--space-md); min-height: 56px; padding: var(--space-xs) var(--space-md); border: 1px solid var(--edge); border-radius: var(--radius-thumb); background: var(--card); text-align: left; font-size: 16px; width: 100%; }
+.answer-option.on { border: 2px solid var(--navy); font-weight: 600; }
+.pic-field { display: inline-flex; align-items: center; gap: var(--space-sm); }
+.pic-field img.pic { width: 44px; height: 44px; object-fit: cover; border-radius: var(--radius-thumb); }
+.pic-field .note { margin: 0; }
+
+
+/* ── the drawings: the dressing sheet, the menu, the figures and their attitudes ── */
+/* ── the guest's drawer: the sheet of parts, then the menu ── */
+.dress { --unit: 1.26px; position: relative; display: grid; grid-template-columns: calc(100 * var(--unit)) 54px minmax(0, 1fr); column-gap: 4px; align-items: start; min-height: calc(140 * var(--unit)); }
+.dress .dress-figure { width: calc(100 * var(--unit)); height: calc(140 * var(--unit)); display: block; overflow: visible; }
+/* held still: the attitude is its rest pose here, the name is on the chest from the first frame */
+.dress .fig .body, .dress .fig .head, .dress .fig .swing, .dress .fig .glasses, .dress .fig .leg, .dress .print { animation: none !important; }
+.dress .lead { stroke: var(--gold); stroke-width: 0.8; }
+.dress .lead-dot { fill: var(--gold); stroke: var(--card); stroke-width: 0.8; }
+.dress .lead.on { stroke: var(--navy); stroke-width: 1.2; }
+.dress .lead-dot.on { fill: var(--navy); }
+.dress .hit { fill: transparent; cursor: pointer; outline: none; }
+.dress .hit.on, .dress .hit:focus-visible { stroke: var(--navy); stroke-width: 1.2; stroke-dasharray: 2.5 2; }
+.dress .hit:hover { fill: rgba(var(--ink-rgb), 0.06); }
+.dress .callouts { position: relative; height: calc(140 * var(--unit)); }
+.dress .callout { position: absolute; left: 0; top: calc(var(--y, 0) * var(--unit)); transform: translateY(-50%); min-height: 0; padding: 5px; border: 0; border-radius: 6px; background: transparent; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.dress .callout:hover { background: rgba(var(--ink-rgb), 0.06); }
+.dress .callout.on { color: var(--navy); background: var(--card); box-shadow: 0 0 0 1.5px var(--navy); }
+.dress .options { min-width: 0; }
+.pop { position: relative; background: var(--card); border-radius: var(--radius-thumb); padding: 8px; box-shadow: 0 6px 24px rgba(var(--ink-rgb),0.2); display: flex; flex-direction: column; gap: 8px; animation: pop-in 140ms ease-out; }
+@keyframes pop-in { from { transform: translateX(-4px); opacity: 0; } to { transform: none; opacity: 1; } }
+.pop .dots, .pop .icons { display: flex; flex-wrap: wrap; gap: 6px; }
+.pop .dot { width: 32px; height: 32px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid var(--edge); } /* a swatch the colour of the card is still seen */
+.pop .dot.on { border-color: var(--card); box-shadow: 0 0 0 2px var(--navy); }
+.pop .icon { min-height: 0; padding: 1px; border: 2px solid transparent; border-radius: var(--radius-thumb); background: var(--well); display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.pop .icon.on { border-color: var(--navy); }
+.pop .icon svg { display: block; width: 34px; height: 37px; overflow: hidden; }
+.pop .icon.tall svg { width: 32px; height: 45px; overflow: visible; }
+.pop .icons:not(.attitudes) .fig .body, .pop .icons:not(.attitudes) .fig .head, .pop .icons:not(.attitudes) .fig .swing, .pop .icons:not(.attitudes) .fig .glasses { animation: none !important; }
+.pop .icon-name { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+.menu { background: var(--card); border-radius: var(--radius-thumb); padding: 12px 14px 4px; box-shadow: 0 6px 24px rgba(var(--ink-rgb),0.16); }
+.menu .cap { margin: 0 0 2px; }
+.menu .note { margin: 8px 0 12px; }
+.menu-row { border-bottom: 1px solid var(--gold-soft); }
+.menu-row:last-child { border-bottom: 0; }
+.menu-head { width: 100%; display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: baseline; text-align: left; min-height: 44px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; }
+.menu-head .when { color: var(--navy); font-weight: 600; font-size: 14px; }
+.menu-head .chosen { font-weight: 600; }
+.menu-head .unchosen { color: var(--muted); }
+.menu-pills { display: flex; flex-direction: column; gap: 8px; padding: 0 0 12px; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice { min-height: 40px; padding: 0 14px; border-radius: var(--radius-inner); border: 1px solid var(--edge); background: var(--paper); }
+.choice.drink { border-style: dashed; }
+.choice.on { background: var(--navy); color: var(--paper); border-color: var(--navy); border-style: solid; }
+
+/* ── the photo ── */
+.photo .slot[role="button"] { cursor: pointer; }
+.photo .slot:focus-visible { outline: 2px solid var(--navy); }
+/* a chosen figure rings, while its drawer is open */
+svg .ring { fill: none; stroke: var(--navy); stroke-width: 2.5; }
+svg .mark { stroke-width: 1.2; }
+svg .mark-yes { fill: var(--leaf); stroke: var(--leaf); } svg .mark-maybe { fill: var(--amber); stroke: var(--amber-deep); } svg .mark-no { fill: var(--red); stroke: var(--red-deep); }
+svg .mark-none { fill: none; stroke: var(--muted); stroke-dasharray: 2 1.5; }
+svg .count circle { fill: var(--navy); stroke: var(--card); stroke-width: 1.5; }
+svg .count text { fill: var(--paper); font-family: var(--sans); font-size: 10px; font-weight: 700; }
+/* a fade is find's alone: whether someone is coming is the mark at their feet */
+/* a ghost: a waiting ask in the family, a maybe in the photo. Still, dashed at every edge */
+svg .fig.ghost .body, svg .fig.ghost .head, svg .fig.ghost .swing { animation: none !important; }
+svg .fig.ghost .torso, svg .fig.ghost .leg, svg .fig.ghost .head > rect, svg .fig.ghost .swing rect, svg .fig.ghost .swing circle { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
+/* not coming: still */
+.fig.out .body, .fig.out .head, .fig.out .swing, .fig.out .glasses, .fig.out .leg { animation: none !important; }
+/* the print is simply there; only the reveal, the day's, once, makes it come down from the top */
+.print { font-family: var(--sans); font-weight: 600; letter-spacing: 0.02em; }
+.print.descend { transform-box: view-box; transform-origin: 50px 73px; animation: descend 2.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 0.5s); }
+@keyframes descend { from { transform: translateY(var(--drop, -300px)) scale(2.2); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(0) scale(1); opacity: 1; } }
+
+/* ── the attitudes: rest poses are transform attributes on .tilt and .arm; the animations live on
+   .body, .head and .swing, which carry no attribute, so CSS and SVG never fight ── */
+.fig .body, .fig .head, .fig .swing { transform-box: view-box; }
+.fig .body { transform-origin: 50px 140px; }
+.fig .head { transform-origin: 50px 46px; }
+.fig .arm-l .swing { transform-origin: 30px 54px; }
+.fig .arm-r .swing { transform-origin: 70px 54px; }
+.fig.att-waving .arm-r .swing { animation: wave 0.7s ease-in-out infinite alternate; }
+@keyframes wave { from { transform: rotate(-14deg); } to { transform: rotate(16deg); } }
+.fig.att-nodding .head { animation: nod 2.6s ease-in-out infinite alternate; }
+.fig.att-nodding .body { animation: breathe 2.6s ease-in-out infinite alternate; }
+@keyframes nod { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+@keyframes breathe { from { transform: translateY(0); } to { transform: translateY(-1.5px); } }
+.fig.att-laughing .body { animation: laugh 0.34s ease-in-out infinite alternate; }
+.fig.att-laughing .arm-l .swing { animation: flap-l 0.34s ease-in-out infinite alternate; }
+.fig.att-laughing .arm-r .swing { animation: flap-r 0.34s ease-in-out infinite alternate; }
+.fig.att-laughing .head { animation: throw-back 0.68s ease-in-out infinite alternate; }
+@keyframes laugh { from { transform: translateY(0) rotate(-1.5deg); } to { transform: translateY(-5px) rotate(1.5deg); } }
+@keyframes flap-l { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
+@keyframes flap-r { from { transform: rotate(8deg); } to { transform: rotate(-10deg); } }
+@keyframes throw-back { from { transform: rotate(0deg); } to { transform: rotate(-7deg); } }
+.fig.att-cool .body { animation: lean 3.2s ease-in-out infinite alternate; }
+.fig.att-cool .head { animation: slow-nod 1.6s ease-in-out infinite alternate; }
+.fig.att-cool .glasses { animation: drop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-box: view-box; transform-origin: 50px 25px; }
+@keyframes lean { from { transform: rotate(-5deg); } to { transform: rotate(-2deg); } }
+@keyframes slow-nod { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
+@keyframes drop { from { transform: translateY(-16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+/* photo-bombing: a lunge in from the edge, a hold with a whoop, a pull back, and again */
+.fig.att-photo-bombing .body { animation: lunge-r 2.6s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
+.fig.att-photo-bombing.from-left .body { animation-name: lunge-l; }
+.fig.att-photo-bombing.from-below .body { animation-name: lunge-up; }
+.fig.att-photo-bombing .head { animation: whoop 2.6s ease-in-out infinite; }
+@keyframes lunge-r { 0% { transform: translateX(var(--lunge-from, 78px)) rotate(4deg); } 22% { transform: translateX(0) rotate(0deg); } 30% { transform: translateX(-4px) rotate(-2deg); } 70% { transform: translateX(0) rotate(0deg); } 88%, 100% { transform: translateX(var(--lunge-from, 78px)) rotate(4deg); } }
+@keyframes lunge-l { 0% { transform: translateX(var(--lunge-from, -78px)) rotate(-4deg); } 22% { transform: translateX(0) rotate(0deg); } 30% { transform: translateX(4px) rotate(2deg); } 70% { transform: translateX(0) rotate(0deg); } 88%, 100% { transform: translateX(var(--lunge-from, -78px)) rotate(-4deg); } }
+@keyframes lunge-up { 0% { transform: translateY(var(--lunge-from, 150px)); } 22% { transform: translateY(0); } 30% { transform: translateY(-6px); } 70% { transform: translateY(0); } 88%, 100% { transform: translateY(var(--lunge-from, 150px)); } }
+@keyframes whoop { 0%, 20% { transform: rotate(0deg); } 30% { transform: rotate(12deg); } 45% { transform: rotate(-6deg); } 60% { transform: rotate(8deg); } 75%, 100% { transform: rotate(0deg); } }
+/* arriving in the photo: a walk in from the nearest side at your row's depth, then your attitude takes over */
+.slot .walk { animation: walk-in 1.7s ease-in-out both; transform-box: view-box; }
+@keyframes walk-in { from { transform: translateX(var(--walk-from, -240px)); } to { transform: translateX(0); } }
+.fig.walking .body, .fig.walking .head, .fig.walking .swing, .fig.walking .glasses { animation: none; }
+.fig.walking .leg { transform-box: view-box; animation: step 0.38s ease-in-out infinite alternate; }
+.fig.walking .leg-l { transform-origin: 37px 105px; }
+.fig.walking .leg-r { transform-origin: 63px 105px; animation-direction: alternate-reverse; }
+.fig.walking .arm-l .swing { animation: stride 0.38s ease-in-out infinite alternate-reverse; }
+.fig.walking .arm-r .swing { animation: stride 0.38s ease-in-out infinite alternate; }
+.fig.walking .body { animation: bob 0.38s ease-in-out infinite alternate; }
+@keyframes step { from { transform: rotate(-20deg); } to { transform: rotate(20deg); } }
+@keyframes stride { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) {
+  .fig .body, .fig .head, .fig .swing, .fig .glasses, .fig .leg, .slot .walk, .print, .pop, .flowers { animation: none !important; transition: none; }
+}

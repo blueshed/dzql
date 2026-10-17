@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A card's pins</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2f5fb3}a:hover{color:#1f4690}
+.cap{font-size:11.5px;line-height:16px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700}
+.row{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid rgba(29,39,51,0.1)}
+.kind{width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.words{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.what{font-weight:600;font-size:15px;color:#1d2733;border:0;background:none;padding:0;font-family:inherit;text-align:left;cursor:pointer}
+.line{font-size:13px;color:#5d6877}
+.pin{display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px;border:1px solid rgba(29,39,51,0.2);border-radius:999px;background:#fff;color:#1d2733;font:inherit;font-size:12.5px;cursor:pointer}
+.pin[aria-expanded="true"]{background:#2f5fb3;border-color:#2f5fb3;color:#fff}
+.move{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:#b4471f;width:80px;text-align:right}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; padding: 28px 36px; background: #f5f6f8; color: #1d2733; font-family: 'IBM Plex Sans', system-ui, sans-serif; position: relative">
+  <nav class="cap" aria-label="Where you are" style="display: flex; align-items: center; gap: 6px; color: #5d6877"><a href="#" style="text-decoration: none">The family</a><span aria-hidden="true">›</span><span aria-current="page">Japan</span></nav>
+  <h1 style="margin: 6px 0 18px; font-size: 32px; font-weight: 600">Japan</h1>
+
+  <section aria-label="What's asked" style="width: 760px; background: #fff; border-radius: 20px; padding: 10px 22px; box-shadow: 0 12px 30px rgba(29,39,51,0.12)">
+    <div class="row">
+      <span class="kind" style="background: #e7e3f6; color: #5a3fa8" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"></circle><path d="M3 20a6 6 0 0 1 12 0"></path></svg></span>
+      <span class="words"><button class="what">Land at Haneda</button><span class="line">Everyone · 5 going</span></span>
+      <button class="pin" aria-expanded="false">Sun 8 Nov</button><button class="pin" aria-expanded="false">Tokyo</button><span class="move" style="color: #5d6877">on</span>
+    </div>
+    <div class="row" style="background: #f7f9fd; border-radius: 10px">
+      <span class="kind" style="background: #f3e8d8; color: #9a5b12" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"></path></svg></span>
+      <span class="words"><button class="what">Book the ryokan in Hakone</button><span class="line">Peter asks you · before Hakone</span></span>
+      <button class="pin" aria-expanded="false">Fri 30 Oct</button><button class="pin" aria-expanded="true" aria-label="Where: Hakone, open"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Hakone</button><span class="move">your move</span>
+    </div>
+    <div class="row">
+      <span class="kind" style="background: #f3e8d8; color: #9a5b12" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-4 0v5"></path></svg></span>
+      <span class="words"><button class="what">Book teamLab tickets</button><span class="line">Daisy said yes</span></span>
+      <button class="pin" aria-expanded="false">Mon 9 Nov</button><button class="pin" aria-expanded="false">Toyosu</button><span class="move" style="color: #5d6877">waiting</span>
+    </div>
+    <div class="row" style="border-bottom: 0">
+      <span class="kind" style="background: #e7e3f6; color: #5a3fa8" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"></circle><path d="M3 20a6 6 0 0 1 12 0"></path></svg></span>
+      <span class="words"><button class="what">Can we do a konbini crawl?</button><span class="line">Ann asks everyone · 2 of 5 have said</span></span>
+      <button class="pin" aria-expanded="false">an idea</button><button class="pin" aria-expanded="false">Tokyo</button><span class="move">your say</span>
+    </div>
+  </section>
+
+  <div role="dialog" aria-label="Where: Hakone" style="position: absolute; left: 820px; top: 196px; width: 340px; background: #fff; border-radius: 20px; box-shadow: 0 20px 50px rgba(29,39,51,0.25); border: 1px solid rgba(29,39,51,0.14); overflow: hidden">
+    <div style="height: 180px; background: #e6edf3; position: relative">
+      <div style="position: absolute; left: 10%; top: 8%; width: 86%; height: 92%; background: #f2efe6; border-radius: 44% 52% 30% 48%"></div>
+      <div style="position: absolute; left: 22%; top: 30%; width: 30%; height: 22%; background: #dfe9d6; border-radius: 50%"></div>
+      <div style="position: absolute; left: 47%; top: 38%; display: flex; flex-direction: column; align-items: center; gap: 3px"><span style="width: 14px; height: 14px; border-radius: 50%; background: #b4471f; box-shadow: 0 0 0 4px #fff, 0 2px 6px rgba(0,0,0,0.3)"></span><span style="font-size: 12px; font-weight: 700; background: #fff; padding: 1px 6px; border-radius: 4px">Hakone</span></div>
+    </div>
+    <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">Hakone</span><span style="font-size: 13px; color: #5d6877">12–14 Nov · 2 nights · after Tokyo</span></div>
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <a href="#" style="font-size: 13.5px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px">Open the map<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></a>
+        <button aria-label="Close" style="width: 32px; height: 32px; border: 0; background: none; color: #5d6877; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+      </div>
+    </div>
+  </div>
+  <svg aria-hidden="true" width="40" height="20" style="position: absolute; left: 790px; top: 238px"><path d="M0 10 L40 10" stroke="rgba(29,39,51,0.25)" stroke-width="1.5" stroke-dasharray="3 3"></path></svg>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Make in a modal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2f5fb3}a:hover{color:#1f4690}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label,.legend{font-size:12px;color:#5d6877;font-weight:600}
+.field input{font:inherit;font-size:16px;color:#1d2733;border:1px solid rgba(29,39,51,0.52);border-radius:6px;padding:9px 10px;background:#fff}
+.chip{height:36px;padding:0 12px;border-radius:999px;border:1px solid rgba(29,39,51,0.3);background:#fff;font:inherit;font-size:14px;color:#1d2733;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-checked="true"]{background:#2f5fb3;border-color:#2f5fb3;color:#fff}
+.btn{height:40px;padding:0 18px;border-radius:6px;font:inherit;font-weight:600;font-size:14px;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; position: relative; background: #f5f6f8; color: #1d2733; font-family: 'IBM Plex Sans', system-ui, sans-serif; overflow: hidden">
+  <div aria-hidden="true" style="position: absolute; inset: 0; padding: 28px 36px">
+    <div style="font-size: 32px; font-weight: 600; margin-top: 22px">Japan</div>
+    <div style="margin-top: 20px; height: 600px; background: #dde2ea; border-radius: 28px"></div>
+  </div>
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(29,39,51,0.42)"></div>
+
+  <section role="dialog" aria-modal="true" aria-labelledby="ask-title" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 480px; background: #fff; border-radius: 20px; box-shadow: 0 20px 50px rgba(29,39,51,0.3); padding: 22px 24px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h2 id="ask-title" style="margin: 0; font-size: 20px; font-weight: 600">Can you…?</h2>
+      <button aria-label="Close" style="width: 32px; height: 32px; border: 0; background: none; color: #5d6877; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+    </div>
+    <div class="field"><label for="what">What</label><input id="what" value="Pick up the rail passes"></div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="legend" id="who">Who</span>
+      <div role="radiogroup" aria-labelledby="who" style="display: flex; flex-wrap: wrap; gap: 8px">
+        <button class="chip" role="radio" aria-checked="false">Ann</button>
+        <button class="chip" role="radio" aria-checked="true">Sam</button>
+        <button class="chip" role="radio" aria-checked="false">Daisy</button>
+        <button class="chip" role="radio" aria-checked="false">Willem</button>
+        <button class="chip" role="radio" aria-checked="false">Myself</button>
+      </div>
+    </div>
+    <div class="field"><label for="by">By</label><input id="by" value="Thu 5 Nov"></div>
+    <p style="margin: 0; font-size: 14px; color: #5d6877">In Japan · before Land at Haneda · <a href="#">Change</a></p>
+    <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 4px">
+      <button class="btn" style="border: 1px solid rgba(29,39,51,0.52); background: #fff; color: #1d2733">Never mind</button>
+      <button class="btn" style="border: 0; background: #2f5fb3; color: #fff">Ask Sam</button>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

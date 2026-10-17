@@ -1,0 +1,57 @@
+/* Chat's look: the kernel's bento surfaces (src/bento.css) in green ink on paper, the monospace
+   the room has always had, light and dark -- then the door, the rooms, and a room's faces and conversation. */
+
+@import "../../../src/bento.css";
+
+/* ── tokens ── */
+:root {
+  color-scheme: light dark;
+  --paper: #f4faf4; --tray: #d9e8d9; --card: #ffffff; --card-hover: #fbfdfb; --well: #eaf3ea;
+  --ink: #0b3d0b; --accent: #2f7d32; --muted: #5f6f5f; --line: rgba(11, 61, 11, 0.14); --edge: rgba(11, 61, 11, 0.55);
+  --mine: #dff0df; --ink-rgb: 11, 61, 11;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0b0f0b; --tray: #1c2a1c; --card: #121b12; --card-hover: #17231a; --well: #0e160e;
+    --ink: #d8f5d8; --accent: #8fdc8f; --muted: #93a893; --line: rgba(216, 245, 216, 0.16); --edge: rgba(216, 245, 216, 0.4);
+    --mine: #1a3a1a; --ink-rgb: 0, 0, 0;
+  }
+}
+
+/* ── base ── */
+body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.45; }
+main#app { box-sizing: border-box; position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
+a { color: var(--accent); }
+h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
+p.note { margin: 0 0 var(--space-md); }
+
+/* ── a page is a collection: its rows or its bubbles scroll, and the one form that adds to it
+   stays at the foot. The form already stops short of the page's tools at the right, so the page
+   needs none of the clear a long list keeps beneath it. ── */
+.full { display: flex; flex-direction: column; padding-bottom: var(--space-lg); }
+.list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.row .what { font-weight: 700; }
+
+/* ── who is here, across the head of the conversation ── */
+.people { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: var(--space-md); list-style: none; margin: 0 0 var(--space-md); padding: 0 0 var(--space-md); border-bottom: 1px solid var(--line); }
+.people .who { display: inline-flex; align-items: center; gap: var(--space-xs); }
+.face { display: inline-grid; place-items: center; width: var(--control); height: var(--control); border-radius: 50%; border: 1px solid var(--edge); background: var(--well); font-size: 14px; font-weight: 700; flex: 0 0 auto; }
+.face.me { background: var(--mine); border-color: var(--accent); color: var(--ink); } /* you, among who is here: your colour and the accent's ring, not your name */
+.face-gap { width: var(--control); flex: 0 0 auto; } /* a run's later messages keep the face's place */
+
+/* ── the conversation: bubbles, then the one form that says something ── */
+.messages { list-style: none; margin: 0; padding: 0; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-sm); }
+.messages > li:first-child { margin-top: auto; } /* a short transcript sits at the foot, where the newest is */
+.messages li { display: flex; align-items: flex-end; gap: var(--space-sm); max-width: 75%; }
+.messages li.mine { align-self: flex-end; }
+.messages .body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.messages .name { font-size: 12px; color: var(--muted); padding-left: var(--space-xs); }
+.messages .bubble { border: 1px solid var(--line); border-radius: var(--radius-thumb) var(--radius-thumb) var(--radius-thumb) var(--radius-inner); padding: var(--space-sm) var(--space-md); line-height: 1.4; background: var(--well); overflow-wrap: anywhere; }
+.messages li.mine .bubble { border-radius: var(--radius-thumb) var(--radius-thumb) var(--radius-inner) var(--radius-thumb); background: var(--mine); }
+.say { flex: 0 0 auto; display: flex; gap: var(--space-sm); margin-top: var(--space-md); }
+.say input { flex: 1; min-width: 0; }
+/* reading back: "Earlier" at the head of the fifty, and at the foot "Latest", in place of the form */
+.messages li.earlier { align-self: center; }
+.foot { flex: 0 0 auto; display: flex; flex-direction: column; }
+.foot > .tool { align-self: center; margin-top: var(--space-md); }

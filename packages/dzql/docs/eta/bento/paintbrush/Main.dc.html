@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Corner Café</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1a1a1a}a:hover{color:#555}
+.btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;padding:0 12px;min-height:32px;border:1px solid #ccc;border-radius:4px;background:#fff;color:#1a1a1a;cursor:pointer}
+.btn:hover{background:#f0f0f0}
+.primary{background:#1a1a1a;border-color:#1a1a1a;color:#fff}
+.primary:hover{background:#333}
+.icon-btn{width:32px;padding:0;justify-content:center}
+.cell{background:#fff;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.cell-name{margin:0;font-size:13px;font-weight:600;color:#1a1a1a}
+.run{font-size:12px;color:#555;margin-top:6px}
+.row{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid #eee}
+.item{border:0;background:none;padding:0;font:inherit;font-size:14px;color:#1a1a1a;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-align:left}
+.muted{color:#555;font-size:13px}
+.pin{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:12px;min-height:28px;padding:0 8px;border:1px solid #ddd;border-radius:4px;background:#fff;color:#1a1a1a;cursor:pointer}
+@media (pointer: coarse){.btn,.pin{min-height:44px}.icon-btn{width:44px}}
+@media (max-width: 720px){.tray{grid-template-columns:1fr !important}.tray > *{grid-column:auto !important;grid-row:auto !important}}
+</style>
+</helmet>
+<div style="min-height: 800px; box-sizing: border-box; padding: 32px 16px; position: relative; background: #f8f9fa; color: #1a1a1a; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5">
+  <div style="max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px">
+    <nav aria-label="Where you are" style="display: flex; gap: 6px; font-size: 13px; color: #555"><a href="#">Cafés</a><span aria-hidden="true">›</span><span aria-current="page">Corner Café</span></nav>
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+      <img src="logo.png" alt="" width="32" height="32" style="display: block">
+      <h1 style="margin: 0 auto 0 0; font-size: 20px; font-weight: 600">Corner Café</h1>
+      <button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Add to the menu</button>
+      <button class="btn icon-btn" aria-label="Undo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg></button>
+    </div>
+
+    <section class="tray" aria-label="Corner Café" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #ddd; border: 1px solid #ccc; border-radius: 4px; overflow: hidden">
+      <div class="cell" style="grid-column: span 2; grid-row: span 2">
+        <h2 class="cell-name">Menu</h2>
+        <div class="run">Coffee</div>
+        <div class="row"><button class="item">Flat white<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" aria-label="Change it" role="img"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg></button><span class="muted" style="margin-left: auto">£3.20</span><button class="btn">Add</button></div>
+        <div class="row"><button class="item">Cortado<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" aria-label="Change it" role="img"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg></button><span class="muted" style="margin-left: auto">£3.00</span><button class="btn">Add</button></div>
+        <div class="row"><button class="item">Oat latte<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" aria-label="Change it" role="img"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg></button><span class="muted" style="margin-left: auto">£3.60</span><button class="btn">Add</button></div>
+        <div class="run">Food</div>
+        <div class="row"><button class="item">Banana bread<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" aria-label="Change it" role="img"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg></button><span class="muted" style="margin-left: auto">£3.50</span><button class="btn">Add</button></div>
+        <div class="row"><button class="item">Cheese toastie<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" aria-label="Change it" role="img"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg></button><span class="muted" style="margin-left: auto">£6.50</span><button class="btn">Add</button></div>
+        <div class="row"><button class="item">Soup of the day<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" aria-label="Change it" role="img"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg></button><span class="muted" style="margin-left: auto">sold out</span></div>
+      </div>
+
+      <div class="cell">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px"><h2 class="cell-name">Your order</h2><button class="pin" aria-label="Where: Table 4"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg>Table 4</button></div>
+        <div class="row" style="border-top: 0"><span style="font-size: 14px">2 Flat white</span><span class="muted" style="margin-left: auto">£6.40</span></div>
+        <div class="row"><span style="font-size: 14px">Banana bread</span><span class="muted" style="margin-left: auto">£3.50</span></div>
+        <div class="row" style="font-weight: 600; font-size: 14px"><span>Total</span><span style="margin-left: auto">£9.90</span></div>
+        <button class="btn primary" style="justify-content: center; margin-top: 4px">Send to the kitchen</button>
+      </div>
+
+      <div class="cell">
+        <h2 class="cell-name"><a href="Orders.dc.html" style="text-decoration: none">The kitchen ›</a></h2>
+        <p style="margin: 0; font-size: 14px">5 open, the oldest 12 min</p>
+        <div aria-hidden="true" style="display: flex; gap: 4px"><span style="flex: 1; height: 6px; border-radius: 2px; background: #1a1a1a"></span><span style="flex: 1; height: 6px; border-radius: 2px; background: #1a1a1a"></span><span style="flex: 1; height: 6px; border-radius: 2px; background: #1a1a1a"></span><span style="flex: 1; height: 6px; border-radius: 2px; background: #ddd"></span><span style="flex: 1; height: 6px; border-radius: 2px; background: #ddd"></span></div>
+        <p class="muted" style="margin: 0">3 being made · 2 ready</p>
+      </div>
+
+      <div class="cell" style="grid-column: span 3; flex-direction: row; align-items: center; gap: 12px; flex-wrap: wrap">
+        <h2 class="cell-name">Today</h2>
+        <button class="pin"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>Open till 17:00</button>
+        <span class="muted">6 of 12 tables free</span>
+      </div>
+    </section>
+  </div>
+
+  <div role="status" style="position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1a1a1a; color: #fff; font-size: 13px; padding: 8px 16px; border-radius: 4px; white-space: nowrap">Banana bread added to your order</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

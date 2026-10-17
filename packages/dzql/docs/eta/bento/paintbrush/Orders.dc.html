@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Open orders</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#1a1a1a}a:hover{color:#555}
+.btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;padding:0 12px;min-height:32px;border:1px solid #ccc;border-radius:4px;background:#fff;color:#1a1a1a;cursor:pointer}
+.btn:hover{background:#f0f0f0}
+.look{font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:0;background:#fff;color:#1a1a1a;cursor:pointer}
+.look[aria-checked="true"]{background:#1a1a1a;color:#fff}
+.run{font-size:12px;color:#555;padding:12px 16px 4px}
+.row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid #eee;flex-wrap:wrap}
+.item{border:0;background:none;padding:0;font:inherit;font-size:14px;color:#1a1a1a;cursor:pointer;text-align:left;flex:1 1 220px;min-width:0}
+.pin{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:12px;min-height:28px;padding:0 8px;border:1px solid #ddd;border-radius:4px;background:#fff;color:#1a1a1a;cursor:pointer}
+.late{color:#a14d00}
+@media (pointer: coarse){.btn,.pin,.look{min-height:44px}}
+</style>
+</helmet>
+<div style="min-height: 800px; box-sizing: border-box; padding: 32px 16px; position: relative; background: #f8f9fa; color: #1a1a1a; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5">
+  <div style="max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px">
+    <nav aria-label="Where you are" style="display: flex; gap: 6px; font-size: 13px; color: #555"><a href="#">Cafés</a><span aria-hidden="true">›</span><a href="Main.dc.html">Corner Café</a><span aria-hidden="true">›</span><span aria-current="page">The kitchen</span></nav>
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+      <img src="logo.png" alt="" width="32" height="32" style="display: block">
+      <h1 style="margin: 0 auto 0 0; font-size: 20px; font-weight: 600">The kitchen</h1>
+      <div role="radiogroup" aria-label="Read as" style="display: inline-flex; border: 1px solid #ccc; border-radius: 4px; overflow: hidden">
+        <button class="look" role="radio" aria-checked="true">List</button><button class="look" role="radio" aria-checked="false" style="border-left: 1px solid #ccc">Floor</button>
+      </div>
+      <label style="display: inline-flex; align-items: center; gap: 6px; border: 1px solid #ddd; border-radius: 4px; background: #fff; padding: 0 8px; min-height: 32px; color: #555"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input aria-label="Find an order" placeholder="Find" style="border: 0; outline: 0; font: inherit; font-size: 13px; width: 120px; background: none"></label>
+    </div>
+
+    <section aria-label="Open orders" style="background: #fff; border: 1px solid #ccc; border-radius: 4px; padding-bottom: 4px">
+      <div class="run">Being made</div>
+      <div class="row" style="border-top: 0">
+        <button class="item">2 Flat white, Banana bread</button>
+        <button class="pin"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg>Table 4</button>
+        <button class="pin late"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>12 min</button>
+        <button class="btn">Ready</button>
+      </div>
+      <div class="row">
+        <button class="item">Cheese toastie, Cortado</button>
+        <button class="pin"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg>Table 9</button>
+        <button class="pin"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>6 min</button>
+        <button class="btn">Ready</button>
+      </div>
+      <div class="row">
+        <button class="item">Oat latte</button>
+        <span style="font-size: 12px; color: #555; padding: 0 8px">to take away</span>
+        <button class="pin"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>3 min</button>
+        <button class="btn">Ready</button>
+      </div>
+
+      <div class="run">Ready to collect</div>
+      <div class="row" style="border-top: 0">
+        <button class="item">2 Cortado</button>
+        <button class="pin"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg>Table 2</button>
+        <button class="btn">Collected</button>
+      </div>
+      <div class="row">
+        <button class="item">Flat white</button>
+        <span style="font-size: 12px; color: #555; padding: 0 8px">to take away</span>
+        <button class="btn">Collected</button>
+      </div>
+    </section>
+  </div>
+
+  <div role="status" style="position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1a1a1a; color: #fff; font-size: 13px; padding: 8px 16px; border-radius: 4px; white-space: nowrap; display: flex; align-items: center; gap: 12px">Table 2's Cortados are ready<button style="border: 0; background: none; color: #fff; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 0">Undo</button></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

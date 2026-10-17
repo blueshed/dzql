@@ -1,0 +1,39 @@
+import { refuseOrigin } from "@blueshed/delta/server";
+import { serverWrite } from "../../src/documents";
+import { tell } from "../../src/refusal";
+import { sessionCookie } from "../../src/server";
+import { db } from "./delta";
+
+// Signing in: an email and a password, posted from the sign-in page as a plain form -- so the
+// password goes to this route alone and never crosses the socket, the op log or the ledger. A good
+// one starts a fresh session (never the visit's own id, which a stranger could have planted) with
+// who it is written in, and the browser goes home with its cookie. A wrong one is told on the
+// page it came from, and says no more than that the two do not match. The CLI signs in the same
+// way, and keeps the cookie it is given (./cli.ts says how).
+
+/** A hash to check a password against when the email is unknown, so a wrong email takes as long as a wrong password. */
+const NOBODY = Bun.password.hashSync(crypto.randomUUID());
+
+const loginOf = db.query<{ person_id: string; hash: string; name: string }, [string]>("SELECT l.person_id, l.hash, p.name FROM mdl_logins l JOIN mdl_people p ON p.id = l.person_id WHERE l.id = ?");
+
+export async function signIn(req: Request): Promise<Response> {
+  if (req.method !== "POST") return new Response(null, { status: 303, headers: { Location: "/" } }); // the page signs in
+  const refused = refuseOrigin(req);
+  if (refused) return refused;
+  const form = await req.formData();
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const login = loginOf.get(email);
+  const matches = await Bun.password.verify(String(form.get("password") ?? ""), login?.hash ?? NOBODY);
+  const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/", ...(cookie ? { "Set-Cookie": cookie } : {}) } });
+  if (!login || !matches) {
+    const visit = /(?:^|;\s*)session_id=([^;]+)/.exec(req.headers.get("cookie") ?? "")?.[1];
+    if (visit) await tell(visit, { doc: "session", path: "/login", reason: "That email and password do not match." });
+    return home();
+  }
+  const sessionId = crypto.randomUUID();
+  await serverWrite(`session:${sessionId}`, [
+    { op: "replace", path: "/sessions/person_id", value: login.person_id },
+    { op: "replace", path: "/sessions/name", value: login.name },
+  ]);
+  return home(sessionCookie(sessionId));
+}

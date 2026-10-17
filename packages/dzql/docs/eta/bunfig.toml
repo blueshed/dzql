@@ -1,0 +1,24 @@
+[test]
+# coverage is always on, and 100% is a gate, not an aim: the run fails below it. The table holds
+# only what a test loads in its own process, so three kinds of file are outside it, by design.
+# A script that only runs as one: src/start.ts, src/cli.ts and src/stories-run.ts, thin over tested
+# code; each example's scripts/measure-render-cost.ts, which src/costs.ts runs whole, each in a
+# process of its own, whenever `bun test` checks the README; and the loader's commands, run by hand too (examples/modeling/loader/check.ts and
+# load.ts), whose logic is in the files their tests load.
+# Code that only runs in a browser: src/client/, src/applets.ts, src/island.ts, each example's
+# client/main.ts and its applets' mountings (`*-applet.ts*`, the wedding's picture-field.ts). The
+# preload holds it to the same bar: what the WebView tests' pages ran, read from Chrome
+# (src/client-coverage.ts), and the run fails at its end on a line no page ran. And a file of types alone (src/example.ts, src/connection.ts,
+# src/compartments/compartment.ts), with nothing to run. Anything else is loaded by a test: even
+# src/costs.ts, a script, is taken in hand by its own
+coverage = true
+preload = ["./src/client-coverage.ts"]
+coverageThreshold = 1.0
+# delta's source, in node_modules, is delta's to cover, not eta's. The loader's model/ is a copy of
+# hjeli's model and predicates (hjeli: the modeller before eta's), covered by its own tests (its README.md).
+# An example's stories.ts is a declaration `bun run stories:all` runs whole; a test that imports
+# one to run a story or two would otherwise count the rest as uncovered
+# create/setup.ts is bun create's postinstall, and create/eta.ts and create/update.ts are eta:update's: their
+# test runs each whole, as bun create and a project do, on a scratch copy of eta, in a process of its own,
+# then the new project's own gate.
+coveragePathIgnorePatterns = ["**/node_modules/**", "examples/modeling/loader/model/**", "examples/*/stories.ts", "examples/modeling/loader/londons/stories.ts", "create/setup.ts", "create/eta.ts", "create/update.ts"]

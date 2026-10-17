@@ -1,0 +1,11 @@
+node_modules
+server.pid
+server.log
+.env
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.eta-session*
+.DS_Store
+.claude/worktrees/
+
