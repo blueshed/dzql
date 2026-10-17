@@ -1,3 +1,4 @@
+import { joinPath } from "@blueshed/delta/core";
 import type { PatchOp, Test } from "../rendering/json-patch";
 
 // A story is told in the wire's own words: a session, a `{doc, ops}` message, and who then sees
@@ -195,7 +196,7 @@ export const goTo =
     const ops: PatchOp[] = [{ op: "replace", path: "/page", value: page }];
     for (const pair of rest ? rest.split(", ") : []) {
       const [key, value] = pair.split("=") as [string, string];
-      ops.push({ op: "replace", path: `/${key.split(".").join("/")}`, value });
+      ops.push({ op: "replace", path: joinPath(...key.split(".")), value });
     }
     return { doc, ops };
   };

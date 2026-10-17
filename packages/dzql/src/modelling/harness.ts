@@ -15,6 +15,7 @@ import { shownTo } from "../rendering/reading";
 import type { Resource, Kind } from "../rendering/resources/resource";
 import { prefixDoc, splitDoc } from "../rendering/names";
 import { size, sum, tap } from "./costs";
+import { escapeSegment, splitPath } from "@blueshed/delta/core";
 
 // Runs an example's stories against it, over real sockets, and reports by story name: what each
 // step checks is docs/dzql/modelling/stories.md, "The harness". Canon 1 compares every member's page, drawn from
@@ -493,21 +494,34 @@ export function hear(page: string, message: Heard): string {
 export function pathsIn(value: unknown, at = ""): string[] {
   if (typeof value !== "object" || value === null) return [at];
   if (Array.isArray(value)) return [at, ...value.flatMap((v, i) => pathsIn(v, `${at}/${i}`)), `${at}/-`];
-  return [at, ...Object.entries(value).flatMap(([key, v]) => pathsIn(v, `${at}/${key.replaceAll("~", "~0").replaceAll("/", "~1")}`))];
+  return [at, ...Object.entries(value).flatMap(([key, v]) => pathsIn(v, `${at}/${escapeSegment(key)}`))];
+}
+
+/** A JSON Pointer's keys, as delta reads them (`splitPath`); undefined for one that is no pointer. */
+function keysOf(path: string): string[] | undefined {
+  try {
+    return splitPath(path);
+  } catch {
+    return undefined;
+  }
 }
 
 /** What is at a JSON Pointer in a document, if anything; at an array's end (`-`), its first member, the shape an append takes. */
 export function valueAt(value: unknown, path: string): unknown {
-  for (const key of path.split("/").slice(1)) {
+  const keys = keysOf(path);
+  if (!keys) return undefined;
+  for (const key of keys) {
     if (typeof value !== "object" || value === null) return undefined;
-    value = Array.isArray(value) && key === "-" ? value[0] : (value as Record<string, unknown>)[key.replaceAll("~1", "/").replaceAll("~0", "~")];
+    value = Array.isArray(value) && key === "-" ? value[0] : (value as Record<string, unknown>)[key];
   }
   return value;
 }
 
 /** Does a document hold something at a JSON Pointer: each step a key of what is there, an array's by its index? */
 export function holds(value: unknown, path: string): boolean {
-  for (const key of path.split("/").slice(1).map((k) => k.replaceAll("~1", "/").replaceAll("~0", "~"))) {
+  const keys = keysOf(path);
+  if (!keys) return false;
+  for (const key of keys) {
     if (typeof value !== "object" || value === null || !Object.hasOwn(value, key) || (Array.isArray(value) && !/^(0|[1-9]\d*)$/.test(key))) return false;
     value = (value as Record<string, unknown>)[key];
   }
@@ -516,9 +530,6 @@ export function holds(value: unknown, path: string): boolean {
 
 // The wire, checked: a control the server will not take leaves its page still, with no
 // word why. So every control on every page drawn is held to what the server asks of its write.
-
-/** A JSON Pointer: "", or each step a "/" and its key, a "~" only as "~0" or "~1". */
-const POINTER = /^(\/([^/~]|~[01])*)*$/;
 
 /** What a control writes, the value it is drawn with (a button's with its type; a field's text; "" for none), and a short name for it. */
 type Writing = { doc: string; op: string; path: string; value: unknown; control: string };
@@ -854,7 +865,7 @@ export async function run(
   /** Why the server would refuse what a control writes from the page `ws` holds, if it would: its op, its path, a document the page did not read, or a replace of nothing. */
   async function miswritten(ws: ReturnType<typeof allOpenSockets>[number], w: Writing): Promise<string | undefined> {
     if (!isVerb(w.op) && w.op !== "test") return `${w.op} is not add, replace, remove or test`;
-    if (!POINTER.test(w.path)) return `${w.path} is not a JSON Pointer`;
+    if (!keysOf(w.path)) return `${w.path} is not a JSON Pointer`;
     const target = await settled(documents, () => resolveName(byDocType, w.doc, ws));
     if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return `the page did not read ${w.doc}`;
     if (w.op !== "replace") return undefined;

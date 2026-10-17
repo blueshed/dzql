@@ -1,3 +1,4 @@
+import { joinPath } from "@blueshed/delta/core";
 import { allOpenSockets } from "dzql/rendering/resources/audience";
 import { activeDocuments, read, serverWrite, settled } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
@@ -8,8 +9,6 @@ import * as sessionDoc from "./documents/session";
 // from what is -- the open connections, and each one's session -- computed whole each time
 // something moves, not nudged by increments that could drift. A room is there while someone is
 // in it or something has been said in it.
-
-const pointer = (key: string): string => key.replaceAll("~", "~0").replaceAll("/", "~1");
 
 /** Rooms this server has written presence into, so an emptied one is emptied. */
 const kept = new Set<string>();
@@ -34,8 +33,8 @@ async function keys(doc: string, field: string): Promise<string[]> {
 /** The ops that make `have` into `want`: the gone taken out, the new added at the end. */
 function between(field: string, have: string[], want: Set<string>): PatchOp[] {
   return [
-    ...have.filter((k) => !want.has(k)).map((k): PatchOp => ({ op: "remove", path: `/${field}/${pointer(k)}` })),
-    ...[...want].filter((k) => !have.includes(k)).map((k): PatchOp => ({ op: "add", path: `/${field}/${pointer(k)}`, value: true })),
+    ...have.filter((k) => !want.has(k)).map((k): PatchOp => ({ op: "remove", path: joinPath(field, k) })),
+    ...[...want].filter((k) => !have.includes(k)).map((k): PatchOp => ({ op: "add", path: joinPath(field, k), value: true })),
   ];
 }
 
