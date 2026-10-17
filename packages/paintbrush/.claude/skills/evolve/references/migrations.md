@@ -39,7 +39,7 @@ export function up(db: Database) {
 }
 ```
 
-A row an `up` adds takes its id from `nextId`, the collection's serial, never from `_delta_sequences`: `export async function up(db: Database, { nextId }: MigrationTools) { const id = await nextId("items"); db.run("INSERT INTO items (id, name, price, valid_from) VALUES (?, 'Scone', 2, datetime('now'))", [id]); }`. A row that names another (a kit's parts, the tool they belong to) finds it by its id, never its name.
+A row an `up` adds takes its id from `nextId`, the collection's serial, never from `_delta_sequences`: `export async function up(db: Database, { nextId }: MigrationTools) { const id = await nextId("items"); db.run("INSERT INTO items (id, name, price, valid_from) VALUES (?, 'Scone', 2, datetime('now'))", [id]); }`. Rows that become parts of another (the toast and tea that become a breakfast's) move under it in an `up`: each inserted as a part with the whole's id as its parent key, and removed from where it was, so nothing can name it alone; a line that named one names the whole. Find a row by its id, never its name.
 
 Its story:
 

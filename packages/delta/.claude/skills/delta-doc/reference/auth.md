@@ -7,7 +7,7 @@ Server and client: the four places auth is wired, and the sign-in `ConnectOption
 // server: auth is a DeltaAuth (@blueshed/delta/auth)
 wireAuth(ws, auth);                                  // auth.actions → "call" handlers
 ws.upgrade = upgradeWithAuth(ws, auth);              // onUpgrade: cookie / Authorization
-registerDocs(ws, db, schema, docs, customDocs, { auth, owns });   // SQLite or the JSON file
+registerDocs(ws, db, schema, docs, customDocs, { auth });   // each doc says who has it: its owns path
 
 // client: sign in on EVERY connect, before any document opens or re-opens
 provide(WS, connectWs("/ws", {
@@ -36,7 +36,7 @@ cookie the socket is signed in by (`src/server/auth-link.ts`; `tests/auth-link.t
 const auth = linkAuth({ store: sqliteLinkStore(db), personOf, people });   // personOf(id), people(): the app's
 wireAuth(ws, auth);                                                         // me, link
 serve({ ws, routes: { ...auth.routes, "/ws": upgradeWithAuth(ws, auth), "/": page } });   // delta's one server; its own "/ws" wins
-registerDocs(ws, db, schema, docs, [], { auth, owns: (me, name) => name === `mine:${me.id}` });
+registerDocs(ws, db, schema, [defineDoc("mine:", { root: "people", include: ["notes"], owns: "@id" })], [], { auth });
 
 // page: take a link before the socket connects (the cookie rides on the upgrade)
 await takeLink();                                   // opened at <site>/#/in/<token>: signed in

@@ -51,8 +51,8 @@ entities; the tables follow.
 - The schema is the contract: delta sends and writes only declared columns. A database may
   hold more, never less. Its tables are made by its migrations, from empty: change the schema,
   then `delta migrations make` writes the next one; `migrate` runs them at start-up.
-- With `auth`, every document says who may have it: `owns` (a path from its row to the person)
-  or `shared: true`. A name is its broadcast channel: whoever holds it hears every write through it.
+- With `auth`, every document says who may have it: `owns`, a path from its row to the person
+  (a function only where no path can say it), or `shared: true`. A name is its broadcast channel: whoever holds it hears every write through it.
 - Tokens never in the socket URL. Sign in with `connectWs(url, { onConnect })`.
 - No Redux, REST, `fetch` of state or React patterns. `doc.data` is a signal.
 

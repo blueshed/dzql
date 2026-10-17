@@ -18,7 +18,7 @@ export const listDoc = defineDoc("list:", { root: "lists", include: ["todos"], i
 const db = new Database("app.db");
 createTables(db, schema);                  // before the first open
 const ws = createWs();
-registerDocs(ws, db, schema, [listDoc]);   // , customDocs?, { ledger, auth, owns, shared, who }
+registerDocs(ws, db, schema, [listDoc]);   // , customDocs?, { ledger, auth, shared, who }
 ```
 
 Options: `RegisterOptions` in `src/server/sqlite.ts`. It returns `{ evict }` (the JSON file's
@@ -39,11 +39,11 @@ also `persisted()`, resolving once every change so far is in the file).
   written through: live fan-out across processes is Postgres's, the next step (`postgres.md`).
 - `bun:sqlite` is synchronous: waiting for another process's lock blocks the event loop. Keep
   writes short on a shared file; a write from another process drops every cached copy here.
-- **Auth by the name.** `{ auth, owns }` (or `shared: true`) covers every document of the call:
-  one `owns`, switch on the name's prefix. Nothing filters what a document reads: the name is the
-  whole check, so scope per-user documents by owner (`scope: { owner_id: ":id" }`) and have
-  `owns` match the id. A custom doc's `query`, `matches`, `recompute` must check rows themselves.
-- Two registrations on one database (a public set with `shared`, a private set with `owns`)
+- **With `auth`, each document says who may have it**: `owns` as a path in its definition
+  (`ownership.md`), or `shared: true` in the options for every document of the call. Nothing
+  filters what a document reads: the document's root and parent chain decide what it holds. A
+  custom doc's `query`, `matches`, `recompute` must check rows themselves.
+- Two registrations on one database (a public set with `shared`, a private set with paths)
   share the ledger and the fan-out: a write through either is told to every document open on
   that handle. A name goes to the longest matching prefix; a prefix already held is refused.
 - The JSON file's registrations of one file on one server share one database.

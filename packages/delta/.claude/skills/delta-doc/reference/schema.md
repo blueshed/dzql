@@ -39,9 +39,13 @@ The contract is `TableDef`, `ColumnDef`, `ColumnShorthand` and `DocDef` in `src/
   ["returned"] }` holds it only among rows where `returned` is null: a tool on one open loan at a
   time. A table that keeps versions holds it among its current rows. A migration adds it with
   `addUnique` (`migrations.md`).
-- **A line or a part is a row under its parent** (`loan_tools` with `parent: "loans"`), never a
+- **A line or a part is a row under its parent** (`lines` with `parent: "orders"`), never a
   JSON column of ids or a link column on the other row: a document includes its rows, and every
-  holder is told each one that arrives or leaves.
+  holder is told each one that arrives or leaves. **A part goes where its whole goes**: a write
+  names the whole (an order's line names the set, not its dishes), and its parts come with it.
+  Rows of one kind tied by a column (`part_of`) are each still a whole of their own, so any
+  write can take one alone; that a set is ordered together is then held by the page, not the
+  server. Rows that become parts of another move under it (a migration's `up`, `migrations.md`).
 - **A fact that comes from other rows is worked out, never stored**: whether a tool is out, from
   its open loans. A recompute document reads it (`custom-docs.md`); a column written beside each
   loan is a second copy the app must keep honest.
