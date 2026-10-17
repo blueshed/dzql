@@ -7,7 +7,7 @@ import { collectionsWrite } from "dzql/rendering/bento";
 import { keepEveryone } from "../everyone";
 
 // A visit (`session:<id>`): who this session is (a code) and where it is on the site. This is the
-// session (change-request.md item 10) -- the ground the household and board compartments sit on, not
+// session (docs/dzql/rendering/change-request.md item 10) -- the ground the household and board compartments sit on, not
 // a place of its own on the page: it has no `render`. It takes the writes that move around the
 // page -- a code, a page, a drawer, a reading -- and, as a first page opens, makes sure `everyone`
 // (../everyone.ts) says who stands in the photo.

@@ -2,7 +2,7 @@
 // what was typed above one that merely contains it -- which a native datalist cannot do. Pure
 // functions, tested here without a browser; the mounting that reads the server-rendered <option>s
 // at mount and turns a choice into a write is city-picker-applet.ts, imported only by
-// client/main.ts (change-request.md item 4).
+// client/main.ts (docs/dzql/rendering/change-request.md item 4).
 
 export interface Zone {
   tz: string;

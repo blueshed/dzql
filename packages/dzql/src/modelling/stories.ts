@@ -1,7 +1,7 @@
 import type { PatchOp, Test } from "../rendering/json-patch";
 
 // A story is told in the wire's own words: a session, a `{doc, ops}` message, and who then sees
-// it, where. See docs/stories.md. `src/harness.ts` runs stories against a live example;
+// it, where. See docs/dzql/modelling/stories.md. `src/harness.ts` runs stories against a live example;
 // this is the shape it takes as its input.
 
 /** One message, exactly as the browser or the CLI would send it. The harness gives each an id of its own, as a page does, so what answers it -- its echo, or its refusal -- is its own. */

@@ -17,7 +17,7 @@ import { prefixDoc, splitDoc } from "../rendering/names";
 import { size, sum, tap } from "./costs";
 
 // Runs an example's stories against it, over real sockets, and reports by story name: what each
-// step checks is docs/stories.md, "The harness". Canon 1 compares every member's page, drawn from
+// step checks is docs/dzql/modelling/stories.md, "The harness". Canon 1 compares every member's page, drawn from
 // the server's copy, before and after; Canon 2 holds each open page, kept as the client keeps it,
 // to a fresh render from delta's tables; by hand (src/by-hand.ts) a story is done in a browser the
 // size of a phone; and what each step hands each page is counted (src/costs.ts `tap`) and held to

@@ -4,7 +4,7 @@
 // or its label and that part's choices appear beside it: heads for the hairs and the faces, dots
 // for the colours, small moving figures for the attitudes. The drawing is a string, so it's
 // tested here without a browser; the mounting that touches a part and turns a tap into a write is
-// dress-applet.ts, imported only by client/main.ts (see change-request.md item 4).
+// dress-applet.ts, imported only by client/main.ts (see docs/dzql/rendering/change-request.md item 4).
 
 import { ATTITUDES, FACES, HAIRS, PALETTE, type Attitude, type LookField } from "../looks";
 import { esc } from "../views/html";

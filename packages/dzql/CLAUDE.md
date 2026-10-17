@@ -9,10 +9,9 @@ part they do not import: `@blueshed/railroad` is an optional peer that only an i
 ## Read the Documentation First
 
 Before working on this codebase, read:
-- `philo.md` - **what dzql is for now**: stories to documents to pages, and the compiled Postgres step
-- `docs/eta/` - eta's docs: `stories.md` (what it is for), `eta.md` (what it is, its measured costs), the bento
+- `docs/dzql/philo.md` (at the root) - **what dzql is for now**: stories to documents to pages, and the compiled Postgres step
+- `docs/dzql/` (at the root): `modelling/stories.md` (what the stories are for), `rendering/` (eta.md: what it is, its measured costs; first-app.md; the bento), `postgres/` (delta on Postgres), `eta-history/` (eta's changelog and ledger)
 - Workshop's `docs/postgres-split-plan.md` - the plan that made dzql delta's Postgres step
-- `packages/dzql/docs/delta/` - delta on Postgres: setting up, the stored functions, row-level security
 - `packages/create-dzql/README.md` - `bun create dzql`: a paintbrush app on dzql
 
 ## Where the Project Is
@@ -40,8 +39,6 @@ packages/
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
 │   ├── src/compile/     # the compiler from delta's definitions, a module per kind of function (generateSql runs them all)
-│   ├── docs/delta/      # delta on Postgres: postgres.md, sql.md, rls.md
-│   ├── docs/eta/        # eta's docs, its CHANGELOG.md and todo.jsonl until folded into dzql's
 │   ├── .claude/skills/  # modelling (someone telling the stories), eta-app (building an app on dzql/rendering)
 │   ├── src/postgres/cli.ts  # dzql sql | init | migrate | link (src/cli/index.ts, the bin, runs it)
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
@@ -66,7 +63,7 @@ packages/
   (`bun test --update-snapshots`, whole files: a `-t` filter drops the snapshots it did not run)
   only with the change that explains it. One `generateSql` per database: one app's definitions.
 - **Permissions are a document's** (`owns` as a path), **migrations are delta's**: no table rules,
-  no upgrade scheme of dzql's own (philo.md).
+  no upgrade scheme of dzql's own (docs/dzql/philo.md).
 - **The Postgres step imports nothing of modelling or rendering**, and they nothing of it: an app on
   SQLite uses `dzql/rendering` with no Postgres, and one on Postgres uses `dzql/postgres` with no page.
   What dzql was before delta (its own client and runtime) is in CHANGELOG.md; nothing of it comes back.
@@ -79,7 +76,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
 - Someone telling you the stories, there to answer: the **modelling** skill. Building or extending an
   app or an example, or touching the `Compartment` contract, an app's `delta.ts`, the applet
   registry or the wire: the **eta-app** skill. Documents: delta's **delta-doc** skill.
-- **Stories first.** `docs/eta/stories.md` is what it is for. An app's `stories.ts` says who does
+- **Stories first.** `docs/dzql/modelling/stories.md` is what it is for. An app's `stories.ts` says who does
   what and who then sees it; everything else follows. Start a feature with its story, watch it fail,
   build the least that makes it pass. Build nothing no story needs.
 - **The shape.** `src/rendering` and `src/modelling` never import from `examples/` (their tests
@@ -96,7 +93,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
   the client morphs, never replaces `innerHTML`, never descends into a `[data-applet]`. After a
   write each page that read the document gets only its changed parts. Every change is told from
   delta's one stream. A change to what the wire carries bumps `WIRE`.
-- **Pages.** A page's shape comes from its stories; the bento (`docs/eta/bento/README.md`) is how to
+- **Pages.** A page's shape comes from its stories; the bento (`docs/dzql/rendering/bento/README.md`) is how to
   check it. Say a thing once.
 - Verify every bug fix by reverting it, watching its test fail, then restoring it.
 

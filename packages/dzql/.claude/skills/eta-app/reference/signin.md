@@ -3,7 +3,7 @@
 A session is anonymous until the app says who it is. A route answering a plain form signs in, so a
 password never crosses the socket. The `Example` it hangs on is [example.md](example.md); leave's
 `examples/leave/signin.ts` is a whole one (passwords, a CLI token, a trusted proxy, slowing guesses);
-OAuth2 and LDAP, not built, are sketched in `docs/eta-app-notes.md`.
+OAuth2 and LDAP, not built, are sketched in `docs/dzql/rendering/eta-app-notes.md`.
 
 ```ts
 // examples/leave/signin.ts (trimmed)

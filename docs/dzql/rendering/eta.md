@@ -2,7 +2,7 @@
 
 **Live apps for a few people at once, told as stories and checked by them.**
 
-![A wedding site built on eta: one household's guests as Lego figures, dressed live](docs/images/wedding.jpg)
+![A wedding site built on eta: one household's guests as Lego figures, dressed live](images/wedding.jpg)
 
 People use more than one screen. Ann asks for a day off on her phone, and her manager sees it
 waiting on the calendar a moment later, with no refresh. Ben changes his note on his laptop, and
@@ -111,9 +111,9 @@ explains every setting.
 
 ## Learn more
 
-- [docs/first-app.md](docs/first-app.md): a first app, step by step.
-- [docs/stories.md](docs/stories.md): what eta is for, and how stories drive it.
-- [docs/bento/README.md](docs/bento/README.md): a guide to pages where people know where they are
+- [docs/dzql/rendering/first-app.md](first-app.md): a first app, step by step.
+- [docs/dzql/modelling/stories.md](../modelling/stories.md): what eta is for, and how stories drive it.
+- [docs/dzql/rendering/bento/README.md](bento/README.md): a guide to pages where people know where they are
   and what they can do.
-- [docs/least-resistance.md](docs/least-resistance.md): why eta suits an AI that builds apps.
+- [docs/dzql/rendering/least-resistance.md](least-resistance.md): why eta suits an AI that builds apps.
 - `CHANGELOG.md`: what changed, and how to move an app across a change.

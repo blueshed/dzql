@@ -61,6 +61,12 @@ what is open across them. Newest first.
   paintbrush and create-dzql's template stand alone, since a new app leaves the repository. No
   shared `bunfig.toml`: Bun reads only the one where a command runs, and each package's differs
   (dzql's and paintbrush's coverage gates, railroad's happy-dom; delta has none).
+- **One `docs/` at the root**, by package: `docs/railroad/` (why-railroad), `docs/dzql/` (philo.md;
+  `modelling/stories.md`; `rendering/`, eta's docs and the bento; `postgres/`, delta on Postgres;
+  `eta-history/`, eta's changelog and ledger), and across them `monorepo-plan.md` (moved in from
+  Workshop/docs, a pointer left there) and `stories-as-code.md`. Each package's README, CHANGELOG,
+  CLAUDE.md and skills stay where npm and `install-skills` find them; dzql no longer publishes
+  `docs/delta`, and its README links to the docs on GitHub. `docs/README.md` is the index.
 
 ### Removed
 

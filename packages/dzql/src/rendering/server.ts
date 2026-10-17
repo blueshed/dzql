@@ -356,7 +356,7 @@ export function createServer(example: Example, port: number | string = process.e
     routes: {
       ...example.routes,
       "/": example.index,
-      // A page an example puts in the URL (change-request.md item 3) is a path the server has
+      // A page an example puts in the URL (docs/dzql/rendering/change-request.md item 3) is a path the server has
       // never heard of -- it doesn't resolve one, it just hands back the same shell for any path
       // that isn't an exact route above, and the client reads the URL itself once it connects.
       "/*": example.index,

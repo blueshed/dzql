@@ -28,7 +28,7 @@ export type Measured = {
 export type Run = { found: Map<string, string>; near: Map<string, number[]> };
 
 const root = `${import.meta.dir}/../..`;
-const README = `${root}/docs/eta/eta.md`;
+const README = `${root}/../../docs/dzql/rendering/eta.md`;
 const MARK = /<!-- measured:([\w-]+) -->([\s\S]*?)<!-- \/measured -->/g;
 const WIDTH = 100;
 /** How far a size that moves a little from run to run may be from what the README says of it, as a share of the run's. */

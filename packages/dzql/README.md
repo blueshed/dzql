@@ -12,7 +12,7 @@
 An app built on [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps its definitions
 (`defineSchema`, `defineDoc`), its client and its wire. On Postgres, dzql keeps its documents and
 compiles those definitions to SQL, each piece held equal to delta's own cases. Why, and where it
-is going: [philo.md](https://github.com/blueshed/dzql/blob/main/packages/dzql/philo.md).
+is going: [philo.md](https://github.com/blueshed/dzql/blob/main/docs/dzql/philo.md).
 
 ## delta's Postgres step
 
@@ -31,7 +31,7 @@ Its tests run delta's own cases (`@blueshed/delta/testing`) against it. `generat
 SQL for each of your documents and collections, compiled from their definitions (opening a
 document, reading its name, who holds a row, a write's scope and rows, what each document is told,
 the fan-out, the ledger's reads): nothing interprets a definition at run time. Apply it after the
-framework, every time, one app per database (`docs/delta/postgres.md`, "Compiled SQL"). The plan
+framework, every time, one app per database (`docs/dzql/postgres/postgres.md` in blueshed/dzql, "Compiled SQL"). The plan
 is in Workshop's `docs/postgres-split-plan.md`.
 
 ## Start
@@ -52,8 +52,8 @@ a typed client, Pinia stores) is retired; its story is in the [changelog](https:
 
 ## Documentation
 
-- [delta on Postgres](./docs/delta/postgres.md): setting up, and what is compiled
-- [Stored functions](./docs/delta/sql.md) and [row-level security](./docs/delta/rls.md)
+- [delta on Postgres](https://github.com/blueshed/dzql/blob/main/docs/dzql/postgres/postgres.md): setting up, and what is compiled
+- [Stored functions](https://github.com/blueshed/dzql/blob/main/docs/dzql/postgres/sql.md) and [row-level security](https://github.com/blueshed/dzql/blob/main/docs/dzql/postgres/rls.md)
 - `owns` as a path, and every other definition: delta's `delta-doc` skill
 
 ## License

@@ -14,7 +14,7 @@ import { page } from "../views/page";
 // on each page takes the ops itself (Applet.patch), and a page is sent only the parts of it that
 // show a price. The feed runs only while someone is connected: the market moves while
 // it is watched, and a test suite that never opens a socket never starts it. "Everyone" is the
-// kernel's own open-connection registry (change-request.md item 1), not a set this module keeps
+// kernel's own open-connection registry (docs/dzql/rendering/change-request.md item 1), not a set this module keeps
 // itself -- `resolveDoc` below names the one market for any socket, so every connection sees it
 // and audienceFor("ticker", MARKET) already answers "who's open" for free.
 

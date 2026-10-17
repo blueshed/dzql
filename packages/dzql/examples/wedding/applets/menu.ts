@@ -2,7 +2,7 @@
 // on it; tap a row and its dishes and drinks are pills -- tap one to choose it, tap it again to
 // let it go. The drawing is a string, tested here without a browser; the mounting that opens a
 // row and turns a tap into a write is menu-applet.ts, imported only by client/main.ts
-// (change-request.md item 4).
+// (docs/dzql/rendering/change-request.md item 4).
 
 import { esc } from "../views/html";
 

@@ -199,7 +199,7 @@ const hooks: MorphHooks = {
   pressed: (el) => el === boxPressed,
 };
 
-// Where a tab is (docs/change-request.md item 3): an example may mark some element within #app with
+// Where a tab is (docs/dzql/rendering/change-request.md item 3): an example may mark some element within #app with
 // `data-page` (the session's own idea of the page) and `data-page-write` (the write that sets
 // it) -- the kernel knows nothing about what a "page" means, only that this pair, when present,
 // should be mirrored into the URL so the back button and a shared link work. `knownPage` is
@@ -242,7 +242,7 @@ window.addEventListener("popstate", () => {
   if (pageWrite) write(pageWrite, page);
 });
 
-// Opening goes nowhere (docs/bento-request.md, K1): a render may mark one element `data-moving="<name>"`. When
+// Opening goes nowhere (docs/dzql/rendering/bento-request.md, K1): a render may mark one element `data-moving="<name>"`. When
 // the page as it is and the page as rendered both carry an element with the same value, that
 // element -- and only that one -- grows into the window instead of the page going anywhere.
 // `movingElement` parses the incoming HTML (a `<template>`, same technique `applyFragments` uses
@@ -274,7 +274,7 @@ function ownTag(el: Element): string {
   return tag.outerHTML;
 }
 
-// The reading moves, the window does not (docs/bento-request.md, K2): after a full render's morph, an element newly carrying
+// The reading moves, the window does not (docs/dzql/rendering/bento-request.md, K2): after a full render's morph, an element newly carrying
 // `data-reveal` (or carrying it for the first time on a different element than before) scrolls
 // into view -- the window itself never moves, only the reading beside it. `previous` is captured
 // before the morph runs, since the morph is what may add, move, or remove the attribute. It comes
@@ -658,7 +658,7 @@ document.addEventListener("keydown", (event) => {
 // what was rendered into it (`held` and `rendered`, form-value.ts): not a dirty flag, so a field an
 // unrelated render touched doesn't look changed just because it exists. No reset follows: an
 // editing field's value is the document's own, not something to hand back or clear. "input"
-// (docs/bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
+// (docs/dzql/rendering/bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
 // anywhere in the form so a burst of typing becomes one message, not one per key; a `focusout`
 // inside such a form flushes any pending write at once, same as leaving the field would for
 // "blur". Whatever the trigger, a commit identical to the last one *this form* sent is dropped
@@ -721,7 +721,7 @@ const INPUT_DEBOUNCE_MS = 150;
 const inputTimers = new WeakMap<HTMLFormElement, ReturnType<typeof setTimeout>>();
 // The ops of the last message *this form* actually sent, until a write lands, so retyping back to
 // an already-sent value doesn't repeat it -- keyed by form, not by field, since a commit is
-// every changed field in one message (docs/bento-request.md K3).
+// every changed field in one message (docs/dzql/rendering/bento-request.md K3).
 let lastEditSent = new WeakMap<HTMLFormElement, string>();
 /** The socket went: the next page sent whole is drawn afresh, and the editing forms then say what it does not show. */
 let afresh = false;
@@ -795,7 +795,7 @@ function reloadForWire(): boolean {
 // What the connection is doing, said in a status region beside the page, not in it: the page is
 // inert while the socket is gone, and what is inert is not read out. Only this is said. A change
 // from someone else is drawn in silently: a change speaks to the person who made it
-// (docs/bento/README.md), and a page that read out everyone's writes would never be quiet.
+// (docs/dzql/rendering/bento/README.md), and a page that read out everyone's writes would never be quiet.
 app.insertAdjacentHTML("afterend", `<p role="status" class="connection"></p>`);
 const connection = app.nextElementSibling!;
 

@@ -1,4 +1,4 @@
-// The wedding, told as stories: who does what, and who then sees it, where. See docs/stories.md at the
+// The wedding, told as stories: who does what, and who then sees it, where. See docs/dzql/modelling/stories.md at the
 // root. Ids are the seed's (seed.sql): the Okafors are household 1 with guests 1
 // (Ada) and 2 (Femi), one plus-one still to name, and one open ask (1, Kemi); Ben is household 2
 // with guest 3 and no plus-one; gifts are 1 (casserole), 2 (the honeymoon fund, shared) and 3

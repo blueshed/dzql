@@ -17,7 +17,7 @@ export function render(sessionId: string): string {
 }
 ```
 
-`docs/bento/README.md` says what a page is for: where am I, what can I do. `bento()` (`src/rendering/bento.ts`)
+`docs/dzql/rendering/bento/README.md` says what a page is for: where am I, what can I do. `bento()` (`src/rendering/bento.ts`)
 binds the app's icons, its session's docType and the last tool, once. These are defaults, not rules.
 
 - A page is a **box** (`boxPage`: cells in a tray, one may grow into the window; laid out by

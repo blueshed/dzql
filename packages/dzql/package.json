@@ -26,7 +26,6 @@
     "src",
     "!src/**/*.test.*",
     ".claude/skills",
-    "docs/delta",
     "README.md"
   ],
   "scripts": {

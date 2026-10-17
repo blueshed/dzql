@@ -330,7 +330,7 @@ story("Ann opens the clock, and its drawer offers the city", { as: "ann", does: 
 
 ## After
 
-When the wedding honours all eighteen rules, `docs/bento.md` points at the wedding for
+When the wedding honours all eighteen rules, `docs/dzql/rendering/bento/README.md` points at the wedding for
 each rule instead of at its own CSS, and the design canvas is regenerated from the wedding's pages
 rather than the mock-up. Whether the mock-up then stays as a picture or goes is Peter's call, not
 this request's.
