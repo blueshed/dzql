@@ -39,7 +39,7 @@ Bun only: never `npm`, `npx` or `node`.
 | **The gate** | **`bun run ci`**: `bun check` (and kanban's) → `bun test tests/` |
 | Release | the monorepo's `/publish` (the root's `.claude/commands/publish.md`); this package's part is `.claude/commands/publish.md` |
 
-delta lives in the bluetools monorepo (`packages/delta`), beside railroad and dzql, as Bun
+delta lives in the bluetools monorepo, the blueshed/dzql repository (`packages/delta`), beside railroad and dzql, as Bun
 workspaces: its `@blueshed/railroad` is `packages/railroad`'s source, not npm's. GitHub Actions
 (the root's `.github/workflows/delta.yml`, when delta or railroad changes; `publish.yml` on a
 pushed tag `delta@x.y.z`) runs the same steps.

@@ -41,10 +41,10 @@
   },
   "author": "Peter Bunyan <peter@blueshed.co.uk> (https://blueshed.co.uk)",
   "license": "MIT",
-  "homepage": "https://github.com/blueshed/railroad",
+  "homepage": "https://github.com/blueshed/dzql/tree/main/packages/railroad",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/blueshed/bluetools.git",
+    "url": "git+https://github.com/blueshed/dzql.git",
     "directory": "packages/railroad"
   },
   "keywords": [

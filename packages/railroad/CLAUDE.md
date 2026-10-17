@@ -17,7 +17,7 @@ why: [README.md](README.md). How to use it: the `railroad` skill.
   in CI (the root's `.github/workflows/publish.yml`) on a pushed tag
   `railroad@x.y.z`; never publish by hand.
 
-railroad lives in the bluetools monorepo (`packages/railroad`), beside delta
+railroad lives in the bluetools monorepo, the blueshed/dzql repository (`packages/railroad`), beside delta
 and dzql as Bun workspaces: they use this source, not npm's. Run its commands
 here; `bun install` runs at the root.
 

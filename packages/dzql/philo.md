@@ -4,7 +4,7 @@
 Building real-time apps at scale using just CRUD and subscriptions allows for too much variance. Manually writing event handlers for every interaction leads to unmaintainable N² complexity. Asking AI to generate this code results in subtle bugs and non-repeatable outcomes because the abstraction level is too low (it's "assembly language").
 
 ## Where dzql Stands: delta's Compiled Step
-The design path is **stories → documents → entities**. A story is something a person wants to do; a document is what they need in front of them to do it; the tables follow from the documents. [@blueshed/delta](https://github.com/blueshed/delta) keeps the documents and their storage grows along one path: a JSON file, SQLite, Postgres in the process, a Postgres server. **dzql is the last step: compiled Postgres.**
+The design path is **stories → documents → entities**. A story is something a person wants to do; a document is what they need in front of them to do it; the tables follow from the documents. [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents and their storage grows along one path: a JSON file, SQLite, Postgres in the process, a Postgres server. **dzql is the last step: compiled Postgres.**
 
 - **The input is the app's own definitions.** dzql reads delta's `defineSchema` and `defineDoc`, the same ones the app had on SQLite, so moving to dzql changes where the truth lives, never the app.
 - **The wire is delta's.** A client talks to a dzql server exactly as to a SQLite one, so dzql may be as large and as opinionated as it likes behind it.

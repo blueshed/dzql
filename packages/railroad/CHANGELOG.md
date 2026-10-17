@@ -8,7 +8,7 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
-- **railroad lives in the bluetools monorepo** (`packages/railroad`, with its history), beside
+- **railroad lives in the bluetools monorepo, the blueshed/dzql repository** (`packages/railroad`, with its history), beside
   delta and dzql as Bun workspaces: they run against this source, not npm's. Releases are tagged
   `railroad@x.y.z` (was `v<x.y.z>`) and published from the root's `publish.yml` on the tag; CI is
   the root's `railroad.yml`, run when railroad changes. Nothing changes for an app that installs it.

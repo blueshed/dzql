@@ -112,7 +112,7 @@ Each of these is a page of the skill's [reference](.claude/skills/delta-doc/refe
 
 ## What it pairs with
 
-- **[railroad](https://github.com/blueshed/railroad)** draws a page in the browser: `openDoc`
+- **[railroad](https://github.com/blueshed/dzql/tree/main/packages/railroad)** draws a page in the browser: `openDoc`
   gives a document as a railroad signal, and `list()` renders its rows keyed.
 - **[dzql](https://github.com/blueshed/dzql)** is the Postgres step: the same definitions,
   compiled to stored functions, answering delta's cases.

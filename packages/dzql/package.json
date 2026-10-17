@@ -4,7 +4,7 @@
   "description": "delta's compiled Postgres step: an app's delta definitions compiled to SQL",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/blueshed/bluetools.git",
+    "url": "git+https://github.com/blueshed/dzql.git",
     "directory": "packages/dzql"
   },
   "type": "module",

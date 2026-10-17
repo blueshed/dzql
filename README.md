@@ -1,6 +1,6 @@
 # bluetools
 
-blueshed's packages in one repository, as Bun workspaces. A change that crosses them lands, and is
+blueshed's packages in one repository ([blueshed/dzql](https://github.com/blueshed/dzql)), as Bun workspaces. A change that crosses them lands, and is
 tested, in one commit, and they are released together.
 
 | Package | npm | What it is |

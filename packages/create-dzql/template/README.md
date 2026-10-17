@@ -5,9 +5,9 @@ is someone, and tapping it signs them in. Every post is a live document, so a po
 window arrives in every other as it is written, and changes and deletions follow it. Each person
 changes only their own.
 
-[delta](https://github.com/blueshed/delta) keeps the documents and signs people in by link,
+[delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents and signs people in by link,
 [dzql](https://github.com/blueshed/dzql) keeps them in Postgres, compiled from their definitions, and
-[railroad](https://github.com/blueshed/railroad) draws the page. It is a
+[railroad](https://github.com/blueshed/dzql/tree/main/packages/railroad) draws the page. It is a
 [paintbrush](https://github.com/blueshed/paintbrush) app at its Postgres step.
 
 ```sh

@@ -2,14 +2,14 @@
 
 **delta's compiled Postgres step.**
 
-An app built on [@blueshed/delta](https://github.com/blueshed/delta) keeps its definitions
+An app built on [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps its definitions
 (`defineSchema`, `defineDoc`), its client and its wire. On Postgres, dzql keeps its documents and
 compiles those definitions to SQL, each piece held equal to delta's own cases. Why, and where it
 is going: [philo.md](https://github.com/blueshed/dzql/blob/main/philo.md).
 
 ## delta's Postgres step
 
-dzql is the Postgres step for apps built on [@blueshed/delta](https://github.com/blueshed/delta):
+dzql is the Postgres step for apps built on [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta):
 a delta app grows from a JSON file to SQLite to Postgres, and on Postgres its documents are kept by
 dzql. Since 0.8.0 dzql carries delta's Postgres backend, with the same names, so moving is an
 import change:
