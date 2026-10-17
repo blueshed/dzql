@@ -121,6 +121,10 @@ what is open across them. Newest first.
   adds them (`bun add dzql pg @electric-sql/pglite`).
 - eta's whole test run says each line of an example's client no page ran, without holding it to
   every line (the kernel's are held), as the CI design asked.
+- **paintbrush's last two trims** (Peter: do both): setup installs the skills with delta's
+  `install-skills --skip bun-route` (a new `--skip`), not copies of its own; the evolve skill's
+  references link to delta-doc where they restated delta (fan-out, the ledger, migrations, sign-in,
+  ownership, Postgres) and keep what is the app's own: the code `test:evolve` applies and runs.
 
 ### Fixed
 

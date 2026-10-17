@@ -10,7 +10,7 @@
 // .claude/skills, so a session starts knowing how railroad's JSX behaves and how a document
 // is kept and changed.
 
-import { cpSync, existsSync, renameSync, rmSync } from "node:fs";
+import { existsSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 // The files that carry the app's name, as "Paintbrush" (the page title, which the
@@ -26,11 +26,6 @@ export const NAMED = [
 // What is about the template, not the app: deleted from a new app (a folder whole)
 export const DELETED = ["todo.jsonl", "CHANGELOG.md", "logo.png", "create", "tests/setup.test.ts", "tests/evolve.ts", "evals"];
 
-// The skills a new app starts with, from the packages that ship them
-const SKILLS = [
-  ["@blueshed/railroad", "railroad"],
-  ["@blueshed/delta", "delta-doc"],
-] as const;
 
 // The template's own clone is the one place this must never run: it deletes things
 function isTemplateClone(root: string) {
@@ -95,17 +90,12 @@ export async function setup(root: string) {
     await Bun.write(file, text);
   }
 
-  // railroad's skill and delta's. railroad's bun-route skill is not copied: it scaffolds a bare
-  // project with `bun init`, and this app grows through its own evolve skill instead.
-  for (const [pkg, name] of SKILLS) {
-    const skill = join(root, `node_modules/${pkg}/.claude/skills/${name}`);
-    if (existsSync(skill)) {
-      cpSync(skill, join(root, ".claude/skills", name), { recursive: true });
-      console.log(`  copied ${pkg}'s ${name} skill into .claude/skills`);
-    } else {
-      console.warn(`  ${pkg}'s ${name} skill not found: after \`bun install\`, copy node_modules/${pkg}/.claude/skills/${name} into .claude/skills`);
-    }
-  }
+  // The skills the app's packages ship (railroad's, delta's), by delta's install-skills. railroad's
+  // bun-route is left out: it scaffolds a bare project with `bun init`, and this app grows through its
+  // own evolve skill instead.
+  const cli = join(root, "node_modules/@blueshed/delta/cli.ts");
+  const installed = existsSync(cli) && Bun.spawnSync([process.execPath, cli, "install-skills", "--skip", "bun-route"], { cwd: root, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
+  if (!installed) console.warn("  the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route`");
 
   await commitEverything(root);
 

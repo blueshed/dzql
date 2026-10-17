@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DELETED, NAMED, setup } from "../create/setup";
@@ -29,10 +29,10 @@ test("setup turns the template into an app", async () => {
     "CLAUDE.md": "# Paintbrush\n<!-- template -->\nNotes on developing the template.\n<!-- /template -->\nAbout the app.\n",
     ".claude/launch.json": '{ "name": "paintbrush" }',
     ".railway/railway.ts": 'project("paintbrush", {})',
-    "node_modules/@blueshed/railroad/.claude/skills/railroad/SKILL.md": "the railroad skill",
-    "node_modules/@blueshed/railroad/.claude/skills/bun-route/SKILL.md": "the bun-route skill",
-    "node_modules/@blueshed/delta/.claude/skills/delta-doc/SKILL.md": "the delta-doc skill",
   });
+  // delta, as bun install leaves it: setup runs its install-skills, which finds railroad's skills beside it
+  mkdirSync(join(root, "node_modules/@blueshed"), { recursive: true });
+  symlinkSync(join(import.meta.dir, "../../delta"), join(root, "node_modules/@blueshed/delta"));
   try {
     await setup(root);
 
@@ -54,8 +54,8 @@ test("setup turns the template into an app", async () => {
     expect(await Bun.file(join(root, ".claude/launch.json")).text()).toBe('{ "name": "my-app" }');
     expect(await Bun.file(join(root, ".railway/railway.ts")).text()).toBe('project("my-app", {})');
     expect(await Bun.file(join(root, "CLAUDE.md")).text()).toBe("# my-app\nAbout the app.\n");
-    expect(await Bun.file(join(root, ".claude/skills/railroad/SKILL.md")).text()).toBe("the railroad skill");
-    expect(await Bun.file(join(root, ".claude/skills/delta-doc/SKILL.md")).text()).toBe("the delta-doc skill");
+    expect(await Bun.file(join(root, ".claude/skills/railroad/SKILL.md")).text()).toContain("name: railroad");
+    expect(await Bun.file(join(root, ".claude/skills/delta-doc/SKILL.md")).text()).toContain("name: delta-doc");
     expect(existsSync(join(root, ".claude/skills/bun-route"))).toBe(false); // it contradicts CLAUDE.md
   } finally {
     done();
@@ -99,15 +99,14 @@ test("setup refuses to run in a clone of the template, and touches nothing", asy
   }
 });
 
-test("setup says so when a skill is not installed, and skips files that are not there", async () => {
+test("setup says so when the skills are not installed (no delta yet), and skips files that are not there", async () => {
   const { root, done } = await scratchTemplate({});
   const warnings: string[] = [];
   const warn = console.warn;
   console.warn = (...args) => void warnings.push(args.join(" "));
   try {
     await setup(root);
-    expect(warnings.join("\n")).toContain("@blueshed/railroad's railroad skill not found");
-    expect(warnings.join("\n")).toContain("@blueshed/delta's delta-doc skill not found");
+    expect(warnings.join("\n")).toContain("the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route`");
     expect(existsSync(join(root, ".claude/skills"))).toBe(false);
   } finally {
     console.warn = warn;

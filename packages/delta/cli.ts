@@ -18,7 +18,7 @@ const PKG_VERSION = (() => {
 
 const USAGE =
     `Usage:\n` +
-    `  delta install-skills [--user] [--dry-run]\n` +
+    `  delta install-skills [--user] [--dry-run] [--skip <name,...>]   copy the packages' skills in, but those named\n` +
     `  delta stop                             stop the server run() started here (.server.pid, or $PID_FILE)\n` +
     `  delta migrate <database> [--app <name>] [--dir <migrations>] [--status]   run (or list) an app's migrations\n` +
     `        <database>: a SQLite file; --dir defaults to ./migrations (Postgres: dzql migrate)\n` +
@@ -481,8 +481,9 @@ function cmdInstallSkills(values: Record<string, unknown>): void {
     ? join(homedir(), ".claude/skills")
     : resolve(process.cwd(), ".claude/skills");
 
-  const sources = discoverSkillSources();
-  if (sources.length === 0) {
+  const skip = new Set(String(values.skip ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+  const sources = discoverSkillSources().filter((s) => !skip.has(s.name));
+  if (sources.length === 0 && skip.size === 0) {
     process.stderr.write(
       `install-skills: no skills found (expected delta-doc bundled with this package).\n`,
     );
@@ -661,6 +662,7 @@ async function main() {
       name: { type: "string" },
       export: { type: "string" },
       opens: { type: "string" },
+      skip: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
     allowPositionals: true,

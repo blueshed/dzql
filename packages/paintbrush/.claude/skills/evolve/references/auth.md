@@ -315,9 +315,6 @@ test("on the page: pick who you are, add someone new, and their link signs them 
 });
 ```
 
-- **A link is someone,** used once, for 7 days; its token is after `#`, so no server ever logs it. The tap is the page's POST from the site, so a chat's preview of the link uses nothing.
-- **A session is a cookie** (HttpOnly), for a year, renewed as it is used. Sign out ends it.
-- **Anyone signed in makes anyone's link** (`call("link", { person })`). Narrow it with `linkAuth`'s `mayLink`.
-- **A document says who may open it** once there is sign-in: `shared: true` (everyone signed in) or `owns` (the identity's own); delta-doc's `reference/ownership.md`. Documents registered without `auth`, like `message`, stay open to anyone.
+- How a link, a session and `mayLink` work: delta-doc's `reference/auth.md`. Who may open a document once there is sign-in (`shared: true`, or `owns`): its `reference/ownership.md`. Documents registered without `auth`, like `message`, stay open to anyone.
 - **In production** nobody is listed: set `ORIGIN` (the site's address, which links name; Railway sets `RAILWAY_PUBLIC_DOMAIN`), and give the first person their link with `bun run link <name>` on the server.
 - On Postgres, the links and sessions are dzql's: `postgresLinkStore` from `dzql/auth-link`, and `bunx dzql link`.

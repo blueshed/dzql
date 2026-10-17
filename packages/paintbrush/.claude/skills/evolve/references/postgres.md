@@ -101,9 +101,8 @@ test("started on a data folder not there yet, stopped and started again, the ord
 - Unclosed, Postgres recovers the folder as after a crash and skips the 32 ids it set aside: the second line is 34, not 2.
 - Each server registers its own documents with its listener (`types`): two servers in one process each answer for theirs.
 - Rows come across with `exportTables` from SQLite and `importTables` here.
-- **Deploy a Postgres server, never PGlite**: PGlite is Postgres compiled to WebAssembly, and needs far more memory than a small server has. On Railway, a Postgres service, its `DATABASE_URL` set on the app. Its documents hear every process's writes: the step to more than one replica.
-- **One app to a database**: `generateSql` writes one app's documents. Two apps on one server each have a database of their own.
+- **Deploy a Postgres server, never PGlite** (it needs far more memory than a small server has): on Railway a Postgres service, its `DATABASE_URL` set on the app. One app to a database.
 - **The history moves with the app**: the migrations that made the SQLite tables make Postgres's. An `up` is the backend's SQL (`await tx.query(...)` here): [migrations.md](migrations.md).
-- Who may open what (`auth`, `owns`, row-level security): delta-doc's `reference/ownership.md` (per-user isolation), and dzql's `docs/delta/postgres.md` and `docs/delta/rls.md`.
+- Who may open what (`auth`, `owns`, row-level security): delta-doc's `reference/ownership.md`, and dzql's Postgres docs (https://github.com/blueshed/dzql/tree/main/docs/dzql/postgres): one app to a database, deploying a server, never PGlite.
 - Sign-in, with no passwords: [auth.md](auth.md); on Postgres its links and sessions are dzql's (`postgresLinkStore` from `dzql/auth-link`).
 - From a shell: `bunx dzql migrate <database> --app order --dir src/resources/order/migrations` runs the history, `bunx dzql link <database> <person>` prints someone's sign-in link.

@@ -62,6 +62,7 @@ bunx @blueshed/delta link app.db 1   # a link to sign in as person 1: the first 
 bunx @blueshed/delta install-skills              # → ./.claude/skills/
 bunx @blueshed/delta install-skills --user       # → ~/.claude/skills/
 bunx @blueshed/delta install-skills --dry-run    # say what it would do
+bunx @blueshed/delta install-skills --skip bun-route   # all but the skills named
 ```
 
 - Copies this package's skill and those of `@blueshed/*` packages in `node_modules` (railroad

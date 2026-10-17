@@ -62,6 +62,13 @@ describe("install-skills", () => {
     expect(res.stderr).toContain("@blueshed/delta");
   });
 
+  test("--skip leaves out the skills it names", async () => {
+    const res = await runInstall(dir, "--skip", "delta-doc, railroad");
+    expect(res.code).toBe(0);
+    expect(existsSync(join(dir, ".claude/skills/delta-doc"))).toBe(false);
+    expect(existsSync(join(dir, ".claude/skills/railroad"))).toBe(false);
+  });
+
   test("dry-run reports what would happen without touching disk", async () => {
     const res = await runInstall(dir, "--dry-run");
     expect(res.code).toBe(0);

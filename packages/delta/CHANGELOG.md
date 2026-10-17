@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`delta install-skills --skip <name,...>`** installs all but the skills named (paintbrush's setup
+  leaves out railroad's `bun-route`).
 - **`registerDoc` takes `accept`**: asked of each op before any is applied, `true` takes it, `false`
   or a reason refuses the whole write with 400 and that reason. A write whose `ops` is not a list is
   refused (400, "ops must be an array"), and an empty one is answered and writes nothing, tells nobody.

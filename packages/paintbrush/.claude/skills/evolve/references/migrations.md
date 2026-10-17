@@ -104,8 +104,5 @@ test("a migration runs once: started again, the order is as it was and nothing i
 The kitchen's test, on a new data folder, shows the other side: a new database runs the whole history, `001-order` then `002-quantity`, and ends as an upgraded one does.
 
 - **Change the schema, then `make`.** Never write a migration's changes by hand, and never edit one that has run anywhere, nor rename its file: write the next one.
-- **What `make` cannot know it says** as `// By hand:` lines: a column gone and one new (if it is a rename, make it `renameColumn`, or the values are lost), a changed type, a table's parent or versions. Data is an `up`, beside the changes.
-- An `up` is the backend's SQL: on SQLite `db.run`, on Postgres (dzql) `await tx.query`. A history meant for both keeps its `up`s to the changes it can say, or names its backend.
-- Each migration runs once, in order, in its own transaction, recorded in `delta_migrations` under its `app` (here the resource's name). A failure rolls that one back, changes and all, and throws naming it.
-- Undo stops at a migration: what was written before it is not undoable. Expand and contract (two versions on one database), and `bunx @blueshed/delta migrate <database> --app order --dir src/resources/order/migrations --status`: delta-doc's `reference/migrations.md`.
+- What `make` cannot know it says as `// By hand:` lines (a rename, a changed type); data is an `up`, the backend's SQL. How a history runs (once, in order, each in its own transaction, under its `app`), where undo stops, expand and contract, and `bunx @blueshed/delta migrate ... --status`: delta-doc's `reference/migrations.md`.
 - The JSON file has no migrations: it is for documents you can reset.

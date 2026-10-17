@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Setup installs the skills with delta's `install-skills --skip bun-route`**, not copies of its own;
+  without delta installed it says what to run. The evolve skill's references link to delta-doc where
+  they restated delta, and keep the app's own code.
 - **Stories as code**: `stories.md` is `stories.ts` (`story("...")` from `dzql/modelling/stories`),
   each test that makes one true is named from it, and `tests/stories.test.ts` fails a story no test
   tells. paintbrush depends on dzql for it (so the next dzql first); dzql's database packages are
