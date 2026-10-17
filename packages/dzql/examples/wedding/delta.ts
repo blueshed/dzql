@@ -2,6 +2,7 @@ import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolde
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { db } from "dzql/rendering/db";
+import { sessionRows } from "dzql/rendering/sessions";
 import type { Declared } from "dzql/rendering/derive";
 
 // The wedding's documents, in delta (`@blueshed/delta`). One set of tables, seen as
@@ -15,6 +16,7 @@ import type { Declared } from "dzql/rendering/derive";
 // - `everyone:<wedding>` -- live, kept by the server (../everyone.ts): who stands in the photo, and
 //   how many have claimed each gift. What households see of each other, and no more.
 // - `session:<id>` -- a visit: who the session is (a code) and where it is. Kept, never on the ledger.
+//   A visit is a numbered row; its cookie is a random token whose hash the row keeps (`visit:`).
 //
 // A write to one reaches the others that share its rows (delta's fan-out): the couple's reply
 // reaches the household's own document, and a household's answer reaches the board. The couple's
@@ -51,8 +53,8 @@ export const schema = defineSchema({
     },
     temporal: false,
   },
-  asks: { table: "wedding_asks", parent: "households", columns: { name: "text", asked_at: "text", reply: "text?", guest_id: "text?" }, temporal: false },
-  claims: { table: "wedding_claims", parent: "households", columns: { gift_id: "text", claimed_at: "text" }, temporal: false },
+  asks: { table: "wedding_asks", parent: "households", columns: { name: "text", asked_at: "text", reply: "text?", guest_id: "integer?" }, temporal: false },
+  claims: { table: "wedding_claims", parent: "households", columns: { gift_id: "integer", claimed_at: "text" }, temporal: false },
   courses: { table: "wedding_courses", parent: "weddings", columns: { name: "text", seq: "integer" }, temporal: false },
   dishes: { table: "wedding_dishes", parent: "courses", columns: { name: "text", dietary: "text?", seq: "integer" }, temporal: false },
   drinks: { table: "wedding_drinks", parent: "courses", columns: { name: "text", seq: "integer" }, temporal: false },
@@ -68,7 +70,7 @@ export const schema = defineSchema({
   venues: { table: "wedding_venues", parent: "weddings", columns: { name: "text", notes: "text?", picture_key: "text?" }, temporal: false },
   visits: {
     table: "wedding_visits",
-    columns: { code: "text?", page: "text?", reading: "json?", filter: "json?", hide: "json?", note: "text?" },
+    columns: { code: "text?", page: "text?", reading: "json?", filter: "json?", hide: "json?", note: "text?", cookie: "text?" },
     temporal: false,
   },
 });
@@ -115,8 +117,15 @@ registerDocs(
   { ledger: true },
 );
 
-// A visit, with no ledger: which page a tab is on is not the wedding's history.
-registerDocs(delta.server, db, schema, [defineDoc("session:", { root: "visits", include: [], implied: true })]);
+// A visit, with no ledger: which page a tab is on is not the wedding's history. A visit is a numbered
+// row, found by its cookie's hash through `visit:` (dzql/rendering/sessions), which `session:` never holds.
+registerDocs(delta.server, db, schema, [
+  defineDoc("session:", { root: "visits", include: [], implied: true, columns: { visits: ["code", "page", "reading", "filter", "hide", "note"] } }),
+  defineDoc("visit:", { root: "visits", scope: { cookie: ":cookie" }, include: [] }),
+]);
+
+/** The visits, a row each, named by the cookie a browser carries. */
+export const sessions = sessionRows(delta, "visits");
 
 /** Who stands in the photo, and how many have claimed each gift: `everyone:<wedding>`. */
 registerMemory(delta.server, { prefix: "everyone:", empty: () => ({ figures: {}, taken: {} }) });

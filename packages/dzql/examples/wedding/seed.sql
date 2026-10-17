@@ -1,64 +1,64 @@
 -- Demo data: Nick & Nora's wedding, two households, the courses, a waiting ask, the gifts
 -- (with their drawings), the day, where to stay and the venues they chose between. The couple's code is NICK; the households'
--- are OKAFOR and BEN. Run once, into empty tables (../delta.ts). Ids are text, as delta keeps them.
+-- are OKAFOR and BEN. Run once, into empty tables (../delta.ts). Ids are numbers, as delta's serials name them.
 INSERT INTO wedding_weddings (id, day, deadline, name1, name2, venue, message, picture_key) VALUES
-  ('1', '2027-04-02', NULL, 'Nick', 'Nora', 'The Mount Without, Bristol', 'We can''t wait to celebrate with you.', NULL);
+  (1, '2027-04-02', NULL, 'Nick', 'Nora', 'The Mount Without, Bristol', 'We can''t wait to celebrate with you.', NULL);
 
 -- the couple's code, kept apart from the wedding's row, which every household reads
-INSERT INTO wedding_couples (id, weddings_id, code) VALUES ('1', '1', 'NICK');
+INSERT INTO wedding_couples (id, weddings_id, code) VALUES (1, 1, 'NICK');
 
 INSERT INTO wedding_households (id, weddings_id, code, email, plus_ones, answer, message) VALUES
-  ('1', '1', 'OKAFOR', 'ada@example.com', 1, 'yes', 'Cannot wait.'),
-  ('2', '1', 'BEN',    'ben@example.com', 0, NULL, NULL);
+  (1, 1, 'OKAFOR', 'ada@example.com', 1, 'yes', 'Cannot wait.'),
+  (2, 1, 'BEN',    'ben@example.com', 0, NULL, NULL);
 
 -- every guest wears a blank minifigure (the columns' defaults) until built; guest 2's is built
 INSERT INTO wedding_guests (id, households_id, name, named_by, coming) VALUES
-  ('1', '1', 'Ada Okafor', 'couple', 1), ('2', '1', 'Femi Okafor', 'couple', 1), ('3', '2', 'Ben Achterberg', 'couple', NULL);
+  (1, 1, 'Ada Okafor', 'couple', 1), (2, 1, 'Femi Okafor', 'couple', 1), (3, 2, 'Ben Achterberg', 'couple', NULL);
 
 UPDATE wedding_guests SET
   skin = '#E0A97A', hair = 'short', hair_color = '#2B2B33', top = '#1E3F8F', legs = '#2B2B33',
   face = 'grin', attitude = 'cool', built_at = '2026-09-01T09:00:00Z'
-  WHERE id = '2';
-UPDATE wedding_guests SET top = '#7FAE4E' WHERE id = '3'; -- Ben, not yet built, in green
+  WHERE id = 2;
+UPDATE wedding_guests SET top = '#7FAE4E' WHERE id = 3; -- Ben, not yet built, in green
 
 INSERT INTO wedding_courses (id, weddings_id, name, seq) VALUES
-  ('1', '1', 'Starter', 1), ('2', '1', 'Main', 2), ('3', '1', 'Dessert', 3), ('4', '1', 'The toast', 4);
+  (1, 1, 'Starter', 1), (2, 1, 'Main', 2), (3, 1, 'Dessert', 3), (4, 1, 'The toast', 4);
 
 INSERT INTO wedding_dishes (id, courses_id, name, dietary, seq) VALUES
-  ('1', '1', 'Pea and mint soup', 'v', 1),
-  ('2', '1', 'Burrata', 'v, gf', 2),
-  ('3', '1', 'Devon crab', NULL, 3),
-  ('4', '2', 'Roast beef', 'gf', 1),
-  ('5', '2', 'Sea bass', 'gf', 2),
-  ('6', '2', 'Wild mushroom risotto', 'v, gf', 3),
-  ('7', '3', 'Lemon tart', 'v', 1),
-  ('8', '3', 'Chocolate torte', NULL, 2);
+  (1, 1, 'Pea and mint soup', 'v', 1),
+  (2, 1, 'Burrata', 'v, gf', 2),
+  (3, 1, 'Devon crab', NULL, 3),
+  (4, 2, 'Roast beef', 'gf', 1),
+  (5, 2, 'Sea bass', 'gf', 2),
+  (6, 2, 'Wild mushroom risotto', 'v, gf', 3),
+  (7, 3, 'Lemon tart', 'v', 1),
+  (8, 3, 'Chocolate torte', NULL, 2);
 
 INSERT INTO wedding_drinks (id, courses_id, name, seq) VALUES
-  ('1', '1', 'Prosecco', 1), ('2', '1', 'Elderflower', 2),
-  ('3', '2', 'Rioja', 1), ('4', '2', 'Picpoul', 2), ('5', '2', 'Water', 3),
-  ('6', '4', 'Champagne', 1), ('7', '4', 'A cocktail', 2), ('8', '4', 'Something soft', 3);
+  (1, 1, 'Prosecco', 1), (2, 1, 'Elderflower', 2),
+  (3, 2, 'Rioja', 1), (4, 2, 'Picpoul', 2), (5, 2, 'Water', 3),
+  (6, 4, 'Champagne', 1), (7, 4, 'A cocktail', 2), (8, 4, 'Something soft', 3);
 
 INSERT INTO wedding_asks (id, households_id, name, asked_at, reply) VALUES
-  ('1', '1', 'Kemi Okafor', '2026-09-01T08:00:00Z', NULL);
+  (1, 1, 'Kemi Okafor', '2026-09-01T08:00:00Z', NULL);
 
 INSERT INTO wedding_gifts (id, weddings_id, name, description, link, picture_key, seq, shared) VALUES
-  ('1', '1', 'Le Creuset casserole', 'The big red one.', NULL, 'seed/casserole.svg', 1, 0),
-  ('2', '1', 'Honeymoon fund', 'Towards the trip to Kerala. Any amount, from anyone.', NULL, 'seed/honeymoon.svg', 2, 1),
-  ('3', '1', 'A set of good knives', 'Sharp, please.', NULL, 'seed/knives.svg', 3, 0);
+  (1, 1, 'Le Creuset casserole', 'The big red one.', NULL, 'seed/casserole.svg', 1, 0),
+  (2, 1, 'Honeymoon fund', 'Towards the trip to Kerala. Any amount, from anyone.', NULL, 'seed/honeymoon.svg', 2, 1),
+  (3, 1, 'A set of good knives', 'Sharp, please.', NULL, 'seed/knives.svg', 3, 0);
 
 INSERT INTO wedding_events (id, weddings_id, name, when_at, where_at, notes, seq) VALUES
-  ('1', '1', 'Ceremony', '2027-04-02T13:00', 'The Mount Without', NULL, 1),
-  ('2', '1', 'Wedding breakfast', '2027-04-02T14:30', 'The Mount Without', NULL, 2),
-  ('3', '1', 'Evening party', '2027-04-02T19:00', 'The Mount Without', NULL, 3);
+  (1, 1, 'Ceremony', '2027-04-02T13:00', 'The Mount Without', NULL, 1),
+  (2, 1, 'Wedding breakfast', '2027-04-02T14:30', 'The Mount Without', NULL, 2),
+  (3, 1, 'Evening party', '2027-04-02T19:00', 'The Mount Without', NULL, 3);
 
 INSERT INTO wedding_places (id, weddings_id, name, notes, link, picture_key, seq) VALUES
-  ('1', '1', 'The Mount Without rooms', 'A few rooms on site, first come first served.', NULL, 'seed/mount-without.svg', 1),
-  ('2', '1', 'Brooks Guesthouse', '10 minutes'' walk.', NULL, 'seed/guesthouse.svg', 2);
+  (1, 1, 'The Mount Without rooms', 'A few rooms on site, first come first served.', NULL, 'seed/mount-without.svg', 1),
+  (2, 1, 'Brooks Guesthouse', '10 minutes'' walk.', NULL, 'seed/guesthouse.svg', 2);
 
 INSERT INTO wedding_venues (id, weddings_id, name, notes, picture_key) VALUES
-  ('1', '1', 'The Mount Without', 'Booked for the day.', NULL),
-  ('2', '1', 'Clifton Observatory', 'Too small for the party.', NULL);
+  (1, 1, 'The Mount Without', 'Booked for the day.', NULL),
+  (2, 1, 'Clifton Observatory', 'Too small for the party.', NULL);
 
 -- The seed's own drawings, in the same store the couple's uploads go to.
 INSERT INTO wedding_pictures (key, type, bytes, created_at) VALUES

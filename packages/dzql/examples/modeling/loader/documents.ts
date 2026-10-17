@@ -97,8 +97,10 @@ export function documentsIn(src: string, session: string | null): { name: string
   const documents: ReturnType<typeof documentsIn> = [];
   src.split(/registerDocs\(/).forEach((call, i) => {
     const kind = i === 0 ? "defined" : /ledger: true/.test(call.split("registerMemory(")[0]!) ? "written" : "written, no ledger";
-    for (const m of call.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)", include: (\[[^\]]*\]|\w+)/g))
-      documents.push({ name: m[1]!, root: m[2]!, include: names(m[3]!), kind, note: m[1] === session ? "the session: who you are and where" : "" });
+    // a document scoped by a column (`scope: { room: ":room" }`) is listed like any other; the one
+    // scoped by `cookie` is how a cookie finds its session (dzql/rendering/sessions), the kernel's, not the app's
+    for (const m of call.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)",(?: scope: \{ (\w+): [^}]*\},)? include: (\[[^\]]*\]|\w+)/g))
+      if (m[3] !== "cookie") documents.push({ name: m[1]!, root: m[2]!, include: names(m[4]!), kind, note: m[1] === session ? "the session: who you are and where" : "" });
   });
   for (const m of src.matchAll(/registerMemory\([^,]*,\s*\{\s*prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "live", note: "kept by the server, in memory" });
   for (const m of src.matchAll(/defineCustomDoc(?:<[^>]*>)?\("(\w+):", \{\s*watch: (\[[^\]]*\]|\w+)/g))

@@ -36,6 +36,33 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **A session is a numbered row, and its cookie a random token** (eta, todo #11 at the root). A
+  visit's first socket inserts its session's row, so delta's serial names it (one row per visit;
+  delta's id rule is unchanged); the row keeps the cookie's SHA-256 in a `cookie` column, never the
+  cookie, and is found again through a `visit:` list document scoped by it
+  (`dzql/rendering/sessions`: `sessionRows(delta, collection)`, `of(cookie)`, `start(value)` for
+  a sign-in). An example gives `Example.session(cookie)`; without it the cookie is the session, as
+  before. The session's own document leaves `cookie` out (`columns`), so the hash is never drawn
+  or told. `wireName` no longer refuses a document keyed like a session: a session's own goes by its
+  type alone, any other by its whole name.
+- **Every example names its rows by number.** Chat keeps no rooms table: a room is a name its
+  messages carry (`room:` is scoped by it), and a room's name may not hold a colon. Ticker's quotes
+  are numbered and keep their symbol (`quote:<n>`); its watchlist and clock are columns of one desk
+  row a visit makes (`watchlist:`, `clock:`, `desk:` are column cuts of it). Leave's and modeling's
+  logins keep the email, and leave's tokens the hash, as columns; `person_id` and `answered_by`
+  are integers (leave's `004-numbered` upgrade moves an existing database). Wedding's claims are
+  rows added at `/claims/-` and given back by their number; `gift_id` and an ask's `guest_id` are
+  integers. Modeling's documents name the stories they serve by number. The modeling loader reads
+  a document scoped by a column, and leaves out the `visit:` lookup.
+- The story harness tells a new session nothing at first (each story is rolled back, so a session's
+  number comes round again, and what a session is told is kept in memory), and `anyOne` reads a list
+  document's one table as a table, not a row (`/messages/*/text`, not `/*`).
+- Not changed: wedding's `newId()` (a clock-based number for a row the same write refers to)
+  stays until delta lets a write refer to a row it makes at `-`.
+- Not yet run here: the browser tier and Postgres (a cloud container); leave's "drag across days"
+  browser test fails on this container's Chromium before and after (its date format), not on the
+  change.
+
 - **`pg`, `@electric-sql/pglite` and `jose` are optional peers**, no longer dependencies: an app
   that models or renders pulls none of them. At the Postgres step, add them: `bun add pg` for a
   server, `@electric-sql/pglite` for `dzql/pglite`, `jose` for `dzql/auth-jwt`.

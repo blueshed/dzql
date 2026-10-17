@@ -1,7 +1,7 @@
 import type { Example } from "dzql/rendering/example";
 import * as sessionDoc from "./documents/session";
 import * as weddingDoc from "./documents/wedding";
-import { delta } from "./delta";
+import { delta, sessions } from "./delta";
 import { welcome } from "./views/welcome";
 import { toldAt } from "dzql/rendering/refusal";
 import { board, everyone, renderBoard, wedding, welcome as welcomeDoc } from "./resources/board";
@@ -25,4 +25,5 @@ export const example: Example = {
   index,
   routes,
   delta, // the documents are delta's (./delta.ts)
+  session: sessions.of, // a visit is a numbered row, named by its cookie
 };

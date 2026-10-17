@@ -250,7 +250,7 @@ registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
     const closes = facts.stories.find((s) => s.kind === "closesTab")!;
     expect(closes).toMatchObject({ doc: null, ops: [], session: false });
     expect(closes.sequence[0]!.heard.find((h) => h.member === "ada")!.messages.length).toBeGreaterThan(0);
-    expect(facts.tables.find((t) => t.name === "messages")!.parent).toBe("rooms");
+    expect(facts.tables.find((t) => t.name === "messages")!.parent).toBeNull(); // a room is a name its messages carry, not a row
     // the documents, as the same run read them: the picture's grid and each story's changes
     expect(facts.read.ran).toBe(true);
     expect(facts.read.stories.find((s) => s.name === say.name)!.changes.map((c) => c.doc)).toEqual(["room:general"]);

@@ -4,7 +4,7 @@ import { session as sessionOf } from "./model";
 import { render } from "./page";
 import { signIn } from "./signin";
 import index from "./client/index.html";
-import { delta } from "./delta";
+import { delta, sessions } from "./delta";
 
 // modeling: a description of an application, kept by two people as they talk -- Peter tells the
 // stories, Claude writes them down and describes the documents they need, from the CLI -- and
@@ -21,4 +21,5 @@ export const example: Example = {
   index,
   routes: { "/login": signIn },
   delta, // the documents are delta's (./delta.ts)
+  session: sessions.of, // a session is a numbered row, named by its cookie
 };

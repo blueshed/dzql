@@ -208,14 +208,14 @@ describe("the model's rules", () => {
 
   test("a document: described with its root and a story it serves; renamed, held, its own, for other stories, taken out", () => {
     expect(shape(m, [{ op: "add", path: "/documents/-", value: { name: " calendar ", root: "requests", stories: ["1", "8", 3], held_by: ["ann", " "], own: true, fields: [{ name: "starts", type: "date" }] } }])).toEqual([
-      { op: "add", path: "/documents/-", value: { name: "calendar", root: "requests", own: 1, stories: ["1", "3"], holds: { requests: { parent: null, fields: [{ name: "starts", type: "date" }] } }, held_by: ["ann"] } },
+      { op: "add", path: "/documents/-", value: { name: "calendar", root: "requests", own: 1, stories: [1, 3], holds: { requests: { parent: null, fields: [{ name: "starts", type: "date" }] } }, held_by: ["ann"] } },
     ]);
     expect(refusal({ op: "add", path: "/documents/-", value: { name: "notes", root: "notes", stories: ["8"] } })).toBe("A document is for a story: name the one it serves.");
     expect(refusal({ op: "add", path: "/documents/-", value: { root: "notes", stories: ["1"] } })).toBe("A document needs a name.");
     expect(refusal({ op: "add", path: "/documents/-", value: { name: "notes", stories: ["1"] } })).toBe("A document holds something: name its root.");
     expect(shape(m, [{ op: "replace", path: "/documents/1/name", value: " staff " }])).toEqual([{ op: "replace", path: "/documents/1/name", value: "staff" }]);
     expect(shape(m, [{ op: "replace", path: "/documents/1/held_by", value: "ann" }])).toEqual([{ op: "replace", path: "/documents/1/held_by", value: [] }]);
-    expect(shape(m, [{ op: "replace", path: "/documents/1/stories", value: ["2"] }])).toEqual([{ op: "replace", path: "/documents/1/stories", value: ["2"] }]);
+    expect(shape(m, [{ op: "replace", path: "/documents/1/stories", value: ["2"] }])).toEqual([{ op: "replace", path: "/documents/1/stories", value: [2] }]);
     expect(shape(m, [{ op: "replace", path: "/documents/1/own", value: 0 }])).toEqual([{ op: "replace", path: "/documents/1/own", value: 0 }]);
     expect(shape(m, [{ op: "replace", path: "/documents/1/own", value: true }])).toEqual([{ op: "replace", path: "/documents/1/own", value: 1 }]);
     expect(shape(m, [{ op: "remove", path: "/documents/2" }])).toEqual([{ op: "remove", path: "/documents/2" }]);

@@ -429,7 +429,7 @@ describe("a household", () => {
     expect((await household(code)).claims).toContain(3);
 
     let h = await send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "remove", path: `/claims/3-${hid}` }] });
+    expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "remove", path: expect.stringMatching(/^\/claims\/\d+$/) }] });
     expect((await household(code)).claims).not.toContain(3);
     const said = (words: string) => `<div data-eta-part="undo-said" class="undo-said"><p class="said" role="status">${esc(words)}</p></div>`; // over the page, where Undo is
     expect(h.page).toContain(said("Undone: claiming “A set of good knives”."));
@@ -884,8 +884,9 @@ describe("a permit allows what a page offers, and nothing more", () => {
   type W = [PatchOp["op"], string];
   /** A session that has entered `who`'s code, and what a resource permits it. */
   async function as(who: string) {
-    const sessionId = crypto.randomUUID();
-    const ws = await enter(who, `session_id=${sessionId}`);
+    const cookie = crypto.randomUUID();
+    const ws = await enter(who, `session_id=${cookie}`);
+    const sessionId = await example.session!(cookie);
     const may = (docType: string, [op, path]: W) => {
       const c = example.resources.find((x) => x.docType === docType) as Resource;
       return c.permit!({ data: { sessionId } } as never, op === "remove" ? { op, path } : { op, path, value: "x" }, "1");

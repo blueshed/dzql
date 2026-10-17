@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createDocuments, setActiveDocuments } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import { delta } from "../delta";
+import { db, delta } from "../delta";
 import { held, read, shape, totals } from "./board";
 import type { HouseholdDocument } from "./household";
 
@@ -34,11 +34,12 @@ describe("the board", () => {
 
   test("a gift's claimants are the households' codes, in the order they claimed", async () => {
     const claim = (hid: string, at: string) =>
-      documents.write(`household:${hid}`, [{ op: "add", path: `/claims/2-${hid}`, value: { gift_id: "2", claimed_at: at } }], { identity: "test", cursor: "board-test" });
+      documents.write(`household:${hid}`, [{ op: "add", path: "/claims/-", value: { gift_id: 2, claimed_at: at } }], { identity: "test", cursor: "board-test" });
     await claim("1", "2026-01-02");
     await claim("2", "2026-01-01");
     expect(read()!.gifts.find((g) => g.id === 2)).toMatchObject({ taken: 2, claimants: ["BEN", "OKAFOR"] });
-    for (const hid of ["1", "2"]) await documents.write(`household:${hid}`, [{ op: "remove", path: `/claims/2-${hid}` }], { identity: "test", cursor: "board-test" });
+    for (const { id, hid } of db.query<{ id: number; hid: number }, []>("SELECT id, households_id AS hid FROM wedding_claims WHERE gift_id = 2").all())
+      await documents.write(`household:${hid}`, [{ op: "remove", path: `/claims/${id}` }], { identity: "test", cursor: "board-test" });
     expect(read()!.gifts.find((g) => g.id === 2)!.claimants).toEqual([]);
   });
 
@@ -121,7 +122,7 @@ describe("what a couple's write becomes", () => {
     expect(yes).toEqual([
       { op: "replace", path: "/asks/1/reply", value: "yes" },
       { op: "add", path: `/guests/${gid}`, value: { households_id: 1, name: "Kemi Okafor", named_by: "ask", coming: 1 } },
-      { op: "replace", path: "/asks/1/guest_id", value: gid },
+      { op: "replace", path: "/asks/1/guest_id", value: Number(gid) },
     ]);
     // the same message, the yes and then the no: the guest made, then taken out, and the ask let go of them
     const [, made, , ...no] = shaped({ op: "replace", path: "/households/1/asks/1/reply", value: "yes" }, { op: "replace", path: "/households/1/asks/1/reply", value: "no" });
@@ -160,11 +161,11 @@ describe("what a couple's write becomes", () => {
   test("what hangs on a row goes with it: a gift's claims, and every choice of a course, a dish or a drink", () => {
     const b = held();
     const doc = structuredClone(b);
-    doc.claims = { "1-1": { id: "1-1", households_id: "1", gift_id: "1" }, "3-2": { id: "3-2", households_id: "2", gift_id: "3" } };
+    doc.claims = { "1": { id: 1, households_id: 1, gift_id: 1 }, "2": { id: 2, households_id: 2, gift_id: 3 } } as never; // numbered, as delta keeps them
     for (const g of Object.values(doc.guests!)) g.choices = {}; // what other tests chose is not this one's
     doc.guests!["1"]!.choices = { "1": { dish: 2, drink: 1 }, "2": { dish: 5, drink: null } };
     const now = "2026-09-24T12:00:00Z";
-    expect(shape(doc, [{ op: "remove", path: "/gifts/1" }], now)).toEqual([{ op: "remove", path: "/claims/1-1" }, { op: "remove", path: "/gifts/1" }]);
+    expect(shape(doc, [{ op: "remove", path: "/gifts/1" }], now)).toEqual([{ op: "remove", path: "/claims/1" }, { op: "remove", path: "/gifts/1" }]);
     expect(shape(doc, [{ op: "remove", path: "/courses/1/dishes/2" }], now)).toEqual([
       { op: "replace", path: "/guests/1/choices", value: { "1": { dish: null, drink: 1 }, "2": { dish: 5, drink: null } } },
       { op: "remove", path: "/dishes/2" },

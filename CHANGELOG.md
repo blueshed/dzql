@@ -8,6 +8,13 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **eta's examples are on numbered ids** (17 October, todo #11), so they can move onto dzql's
+  Postgres. Every row is named by its table's serial; no example names a row with text. Breaking
+  for a dev database made before this: delete it (`data/` or `DB_PATH`), and the seed makes it
+  again; leave's own upgrade (`examples/leave/upgrade/004-numbered.ts`) carries its tables across.
+  Detail in `packages/dzql/CHANGELOG.md`. Run only the fast tier and the stories here (a cloud
+  container, no Docker, no Chrome of its own): **the browser and Postgres tiers still need a run on
+  Peter's Mac** (`bun run affected --slow`).
 - **What the Shed's run 2 tripped on is fixed at its source** (17 October). delta: a unique
   constraint in the schema, on every backend (#81); a migration's `up` takes `nextId`, so no app
   writes `_delta_sequences`; whether a tool is out is worked out by a recompute document, never
@@ -17,7 +24,6 @@ what is open across them. Newest first.
   from rows is worked out, "one at a time" is `unique`, and show an `owns` path through
   memberships. Run on PGlite here; dzql's Postgres server suite and paintbrush's `test:evolve` want
   Peter's Mac. (packages/delta, packages/dzql, packages/paintbrush CHANGELOG.md)
-
 - **eta's compartment is now a resource** (Peter's word, the concept review): the server side of a
   resource, as paintbrush's resources are. `Compartment` is `Resource`, `src/rendering/compartments/`
   is `src/rendering/resources/` (`resource.ts`), each example's `compartments` is its `resources`,

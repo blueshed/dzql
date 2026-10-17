@@ -1,14 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createDocuments, setActiveDocuments } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import { delta } from "../delta";
+import { db, delta } from "../delta";
 import { householdFrom, read, shape, whatItDid, type HouseholdDocument } from "./household";
 import * as weddingDoc from "./wedding";
 
 let offer: Parameters<typeof shape>[1];
+let documents: ReturnType<typeof createDocuments>;
 
 beforeAll(async () => {
-  const documents = createDocuments(delta);
+  documents = createDocuments(delta);
   setActiveDocuments(documents);
   for (const doc of ["household:1", "household:nope", "wedding:1", "everyone:1"]) await documents.load(doc);
   offer = { courses: weddingDoc.courses(), gifts: weddingDoc.gifts().map(({ id, shared }) => ({ id, shared })) };
@@ -31,8 +32,8 @@ describe("a household", () => {
   });
 
   test("its claims come in the order they were made, whichever gift", () => {
-    const claim = (gift: string, at: string) => ({ id: `${gift}-1`, households_id: "1", gift_id: gift, claimed_at: at });
-    const h = householdFrom({ id: "1", code: "X", email: "x@y", plus_ones: 0 }, { claims: { "3-1": claim("3", "2026-02-01"), "1-1": claim("1", "2026-01-01"), "2-9": { ...claim("2", "2025-01-01"), households_id: "9" } } });
+    const claim = (id: number, gift: number, at: string) => ({ id, households_id: 1, gift_id: gift, claimed_at: at });
+    const h = householdFrom({ id: 1, code: "X", email: "x@y", plus_ones: 0 } as never, { claims: { "1": claim(1, 3, "2026-02-01"), "2": claim(2, 1, "2026-01-01"), "3": { ...claim(3, 2, "2025-01-01"), households_id: 9 } } as never });
     expect(h.claims).toEqual([1, 3]);
   });
 });
@@ -102,12 +103,18 @@ describe("what a household's write becomes", () => {
     ).toEqual([]);
   });
 
-  test("a claim: a gift there, not already theirs, and not taken unless shared; given back only if theirs", () => {
+  test("a claim: a gift there, not already theirs, and not taken unless shared, a row the store numbers; given back only if theirs, by its row's number", async () => {
     expect(shaped(okafors(), { op: "add", path: "/claims/-", value: "1" }, { op: "add", path: "/claims/-", value: 1 })).toEqual([
-      { op: "add", path: "/claims/1-1", value: { gift_id: "1", claimed_at: NOW } },
+      { op: "add", path: "/claims/-", value: { gift_id: 1, claimed_at: NOW } },
     ]);
     expect(shaped(okafors(), { op: "add", path: "/claims/-", value: 99 }, { op: "replace", path: "/claims/-", value: 1 }, { op: "remove", path: "/claims/1" }, { op: "remove", path: "/claims/1/x" })).toEqual([]);
-    expect(shaped({ ...okafors(), claims: [2] }, { op: "remove", path: "/claims/2" })).toEqual([{ op: "remove", path: "/claims/2-1" }]);
+    const as = { identity: "test", cursor: "household-test" };
+    await documents.write("household:1", [{ op: "add", path: "/claims/-", value: { gift_id: 2, claimed_at: NOW } }], as);
+    const { id } = db.query<{ id: number }, []>("SELECT id FROM wedding_claims WHERE households_id = 1 AND gift_id = 2").get()!;
+    const giveBack = shaped(okafors(), { op: "remove", path: "/claims/2" });
+    expect(giveBack).toEqual([{ op: "remove", path: `/claims/${id}` }]);
+    await documents.write("household:1", giveBack as never, as);
+    expect(okafors().claims).toEqual([]);
   });
 });
 
@@ -126,6 +133,7 @@ describe("what a household's write did, for Undo to say it took it back and Redo
     expect(said([row("/guests/2", { ...femi, top: "#7FAE4E" })], [row("/guests/2", femi)])).toEqual(["Femi Okafor's look"]);
     expect(said([{ op: "add", path: "/guests/9", value: { name: "Tolu Adebayo", named_by: "household" } }])).toEqual(["bringing Tolu Adebayo"]);
     expect(said([{ op: "add", path: "/asks/4", value: { name: "Ngozi Okafor", reply: null } }])).toEqual(["asking for Ngozi Okafor"]);
-    expect(said([{ op: "add", path: "/claims/1-1", value: { gift_id: "1" } }, { op: "remove", path: "/claims/1-1" }])).toEqual(["claiming “Le Creuset casserole”", "giving back “Le Creuset casserole”"]);
+    expect(said([{ op: "add", path: "/claims/5", value: { gift_id: 1 } }])).toEqual(["claiming “Le Creuset casserole”"]);
+    expect(said([{ op: "remove", path: "/claims/5" }], [row("/claims/5", { gift_id: 1 })])).toEqual(["giving back “Le Creuset casserole”"]);
   });
 });

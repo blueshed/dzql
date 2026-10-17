@@ -55,8 +55,8 @@ const fieldsOf = (value: unknown): Field[] =>
 const kindOf = (value: unknown): string => (value === "cannot" ? "cannot" : "does");
 
 /** The stories a document is for: ids the model has, at least one. */
-function storiesOf(m: Model, value: unknown): string[] {
-  const ids = names(value).filter((id) => m.stories.some((s) => s.id === id));
+function storiesOf(m: Model, value: unknown): number[] {
+  const ids = names(value).filter((id) => m.stories.some((s) => s.id === id)).map(Number);
   if (ids.length === 0) throw refuse("A document is for a story: name the one it serves.");
   return ids;
 }

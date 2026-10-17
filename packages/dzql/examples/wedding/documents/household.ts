@@ -87,10 +87,9 @@ let minted = 0;
  */
 export const newId = (): string => String((minted = Math.max(Date.now() * 1000, minted + 1)));
 
-/** A claim's own key: the gift and the household, so the one gift may be claimed by many (when shared). */
-export const claimKey = (giftId: number, householdId: number): string => `${giftId}-${householdId}`;
-
-const claimedStmt = db.query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM wedding_claims WHERE gift_id = ?");
+const claimedStmt = db.query<{ n: number }, [number]>("SELECT COUNT(*) AS n FROM wedding_claims WHERE gift_id = ?");
+/** A household's claim of a gift: the row's own number, which a giving back removes. */
+const claimOf = db.query<{ id: number }, [number, number]>("SELECT id FROM wedding_claims WHERE households_id = ? AND gift_id = ?");
 
 /** What a household may choose from and claim: the courses, and the gifts that are there and shared or not yet taken. */
 export type Offer = { courses: Course[]; gifts: { id: number; shared: boolean }[] };
@@ -169,13 +168,14 @@ export function shape(h: HouseholdDocument, offer: Offer, ops: PatchOp[], now = 
       out.push({ op: "add", path: "/asks/-", value: { name, asked_at: now, reply: null, guest_id: null } });
     } else if (head === "claims" && second === "-") {
       const gift = offer.gifts.find((g) => g.id === (op.op === "add" ? integer(op.value) : undefined));
-      if (!gift || claims.has(gift.id) || (!gift.shared && claimedStmt.get(String(gift.id))!.n > 0)) continue;
+      if (!gift || claims.has(gift.id) || (!gift.shared && claimedStmt.get(gift.id)!.n > 0)) continue;
       claims.add(gift.id);
-      out.push({ op: "add", path: `/claims/${claimKey(gift.id, h.id)}`, value: { gift_id: String(gift.id), claimed_at: now } });
+      out.push({ op: "add", path: "/claims/-", value: { gift_id: gift.id, claimed_at: now } });
     } else if (head === "claims" && removing && third === undefined) {
       const giftId = integer(second);
       if (giftId === undefined || !claims.delete(giftId)) continue;
-      out.push({ op: "remove", path: `/claims/${claimKey(giftId, h.id)}` });
+      const claim = claimOf.get(h.id, giftId);
+      if (claim) out.push({ op: "remove", path: `/claims/${claim.id}` });
     }
   }
 
@@ -205,7 +205,7 @@ export function whatItDid(left: PatchOp[], was: PatchOp[], h: HouseholdDocument,
       return [changed("coming") ? `whether ${name} is coming` : changed("choices") ? `${name}'s choices` : `${name}'s look`];
     }
     if (table === "asks") return [`asking for ${row.name}`];
-    const gift = gifts.find((g) => claimKey(g.id, h.id) === id)!.name; // a claim
+    const gift = gifts.find((g) => g.id === Number(row.gift_id ?? before.gift_id))!.name; // a claim
     return [op.op === "add" ? `claiming “${gift}”` : `giving back “${gift}”`];
   });
 }

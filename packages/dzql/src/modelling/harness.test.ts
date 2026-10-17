@@ -611,10 +611,10 @@ describe("stories harness", () => {
     const watch = { doc: "watchlist", ops: [{ op: "add" as const, path: "/symbols/-", value: "CHRL" }] };
     const watches = { cast: { ann: [desk("board")] }, goTo: desk, stories: [{ name: "Ann, on her board, watches Charlie Metals", as: "ann", from: "board?new", does: watch, seen: { ann: "board" } }] };
     expect((await run(ticker, watches)).failed).toBe(0);
-    // Ann's desk row is lost when she watches: the copy keeps the desk, off the ledger, the tables do
-    // not. (Not as the desk is written: delta reads back each row it writes, and a desk it cannot
-    // find refuses the write.)
-    db.run("CREATE TEMP TRIGGER lost AFTER INSERT ON ticker_watchlists BEGIN DELETE FROM ticker_desks WHERE id = NEW.id; END");
+    // The market's row is lost when Ann watches: her open page keeps the market, the tables do not.
+    // (Not her desk, the row she writes: delta reads back each row it writes, and a row it cannot
+    // find refuses the write. The market is a row her write does not touch, so nobody is told.)
+    db.run("CREATE TEMP TRIGGER lost AFTER UPDATE OF symbols ON ticker_desks BEGIN DELETE FROM ticker_markets; END");
     try {
       const failures = (await run(ticker, watches)).outcomes.flatMap((o) => o.failures);
       expect(failures).toContain("after the story, ann's open page is not what a fresh render shows");
@@ -671,7 +671,7 @@ describe("stories harness", () => {
   test("a write that is not on the ledger fails, unless its resource keeps it off; a resource that says so and is on it fails too", async () => {
     // chat's documents left off the ledger by mistake: no undo could ever work
     const bare = createLocal();
-    registerDocs(bare.server, db, schema, [defineDoc("session:", { root: "sessions", include: [], implied: true }), defineDoc("room:", { root: "rooms", include: ["messages"], implied: true })], []);
+    registerDocs(bare.server, db, schema, [defineDoc("session:", { root: "sessions", include: [], implied: true, columns: { sessions: ["name", "room", "before"] } }), defineDoc("room:", { root: "messages", scope: { room: ":room" }, include: [] })], []);
     registerMemory(bare.server, { prefix: "here:", empty: () => ({ people: {} }) });
     registerMemory(bare.server, { prefix: "lobby:", empty: () => ({ rooms: {} }) });
     const forgot = await failuresOf({ ...example, delta: bare }, only("Ada says hello"));
@@ -974,8 +974,8 @@ describe("a hidden verb: a write the server takes that no story tells and no pag
     const report = await run(loose, stories);
     expect(report.failed).toBe(0);
     const says = (doc: string) => report.warnings!.filter((w) => w.story === `${doc}: a write no story tells and no page offers`).map((w) => w.says);
-    expect(says("room:general")).toEqual(["ada, bob and dee may remove the document, remove /rooms, remove /rooms/id, remove /messages, remove /messages/-", "bob and dee may remove /messages/any"]);
-    expect(says("room:kitchen")).toEqual(["cy may remove the document, remove /rooms, remove /rooms/id, remove /messages, remove /messages/-, remove /messages/any"]); // each room as its readers met it
+    expect(says("room:general")).toEqual(["ada, bob and dee may remove the document, remove /messages, remove /messages/-", "bob and dee may remove /messages/any"]);
+    expect(says("room:kitchen")).toEqual(["cy may remove the document, remove /messages, remove /messages/-, remove /messages/any"]); // each room as its readers met it
     // a permit that refuses by throwing refuses, as on the wire: chat's shape would take an add to a name as its replace
     const throwing = withOwn("session", (session) => ({ permit: (ws, op, id) => (op.op === "add" ? (() => { throw refuse("No."); })() : session.permit!(ws, op, id)) }));
     expect((await run(throwing, stories)).warnings).toBeUndefined();
@@ -998,6 +998,10 @@ describe("a hidden verb: a write the server takes that no story tells and no pag
     expect(anyOne("/me/room/id", doc)).toBe("/me/room/id");
     expect(anyOne("/nowhere/12", doc)).toBe("/nowhere/*"); // past the document, an id is still any one
     expect(anyOne("", doc)).toBe("");
+    // a list document is its one table, its rows by number: the table is itself, each row any one (wrong before: the table read as a row)
+    const list = { messages: { "1": { text: "hi" }, "2": { text: "yo" } } };
+    expect(anyOne("/messages/2/text", list)).toBe("/messages/*/text");
+    expect(anyOne("/messages", { messages: {} })).toBe("/messages");
     // every path, escaped as a pointer is, and what is at each: an array's end holds its first member's shape
     expect(pathsIn(doc)).toEqual(["", "/quotes", "/quotes/ALPH", "/quotes/ALPH/price", "/quotes/BRVO", "/quotes/BRVO/price", "/guests", "/guests/0", "/guests/0/name", "/guests/-", "/me", "/me/name", "/me/room", "/me/room/id", "/a~1b~0"]);
     expect(valueAt(doc, "/a~1b~0")).toBe(3);

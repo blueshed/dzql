@@ -213,7 +213,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
           // A yes makes a guest (the wedding's brief), remembered on the ask so a change of mind takes them out again.
           const gid = newId(); // the ask names them
           addGuest(h.id, { name: ask.name, named_by: "ask", coming: 1 }, gid);
-          emit({ op: "replace", path: `/asks/${ask.id}/guest_id`, value: gid });
+          emit({ op: "replace", path: `/asks/${ask.id}/guest_id`, value: Number(gid) });
         } else if (value !== "yes" && ask.guest_id != null && d.guests[String(ask.guest_id)]) {
           removeGuest(String(ask.guest_id));
         }

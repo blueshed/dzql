@@ -2,6 +2,7 @@ import type { Example } from "dzql/rendering/example";
 import * as sessionDoc from "./documents/session";
 import { picture, putPicture } from "./documents/wedding";
 import { activeDocuments, settled } from "dzql/rendering/documents";
+import { sessions } from "./delta";
 
 // The two plain HTTP routes the site needs beside the kernel's: a picture by its key, and the
 // couple putting one in. Neither is a document write: the key that lands on a row is written by
@@ -19,7 +20,8 @@ export const routes: NonNullable<Example["routes"]> = {
   },
   "/api/picture": async (req) => {
     if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
-    const sessionId = req.cookies.get("session_id");
+    const cookie = req.cookies.get("session_id");
+    const sessionId = cookie ? await sessions.of(cookie) : undefined;
     if (!sessionId || (await settled(activeDocuments(), () => sessionDoc.read(sessionId))).kind !== "couple") return Response.json({ error: "only the couple keep pictures" }, { status: 403 });
     let form: FormData;
     try {

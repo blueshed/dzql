@@ -7,7 +7,7 @@ import { isTest, isVerb, applyPatch, type PatchOp, type Test, type WriteId } fro
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "../rendering/documents";
 import { onFailure } from "../rendering/failed";
 import { comparable, decoded, ownProps, splitTag } from "../rendering/parts";
-import { toldNothing, toldTo, type Line } from "../rendering/refusal";
+import { tell as tellSession, toldNothing, toldTo, type Line } from "../rendering/refusal";
 import { esc } from "../rendering/html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets, resolveName, sees } from "../rendering/resources/audience";
@@ -583,7 +583,8 @@ export function anyOne(path: string, doc?: unknown): string {
     .map((key, i) => {
       if (i === 0) return key;
       const shapes = typeof at === "object" && at !== null && !Array.isArray(at) ? Object.values(at).map((v) => (typeof v === "object" && v !== null && !Array.isArray(v) ? Object.keys(v).sort().join() : undefined)) : [];
-      const rows = shapes.length > 0 && shapes.every((s) => s !== undefined && s === shapes[0]); // every member an object of the same fields
+      // every member an object of the same fields; fields, not ids: a list document's one table, its rows by number, is a table, not a row
+      const rows = shapes.length > 0 && shapes.every((s) => s !== undefined && s === shapes[0]) && shapes[0]!.split(",").some((f) => f !== "" && !/^\d+$/.test(f));
       at = valueAt(at, `/${key}`);
       return key !== "-" && (rows || /^\d+$/.test(key)) ? "*" : key; // the end of a list is where an append goes, not a member
     })
@@ -729,8 +730,16 @@ export async function run(
   const postForm = (how: Post, cookie?: string): Promise<Response> =>
     fetch(new URL(how.path, server.url), { method: "POST", body: new URLSearchParams(how.form), redirect: "manual", headers: { Origin: server.url.origin, ...(cookie && { Cookie: `session_id=${cookie}` }) } });
 
-  /** The session a cookie names, as the server finds it (`Example.session`). */
-  const sessionOf = (cookie: string): Promise<string> => example.session?.(cookie) ?? Promise.resolve(cookie);
+  /**
+   * The session a new cookie names, as the server finds it (`Example.session`), told nothing yet.
+   * Each story is rolled back, so a session's number comes round again in the next; what a
+   * session is told is kept in memory, off the tables, and would otherwise be the last story's.
+   */
+  const sessionOf = async (cookie: string): Promise<string> => {
+    const sessionId = await (example.session?.(cookie) ?? cookie);
+    await tellSession(sessionId);
+    return sessionId;
+  };
 
   /** The cookie an answer sets, if it sets one. */
   const cookieOf = (res: Response): string | undefined => /(?:^|;\s*|,\s*)session_id=([^;,\s]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
@@ -797,8 +806,8 @@ export async function run(
     if (res.status >= 300) {
       await closeTab(who);
       await server.idle();
-      who.cookie = cookieOf(res) ?? who.cookie;
-      who.sessionId = await sessionOf(who.cookie);
+      const cookie = cookieOf(res);
+      if (cookie) Object.assign(who, { cookie, sessionId: await sessionOf(cookie) });
       from.set(who, who.inbox.length);
       await open(who);
       await settle(cast);
