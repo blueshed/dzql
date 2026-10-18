@@ -25,6 +25,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **What cafe-d found, built by Gemini from the skills alone** (18 October, `cafe-d/feedback.md`).
+  A write the store refuses with 401 (the guards know nobody) is refused on the page with its
+  reason, as a 403 is, not "delta applied nothing"; the store failing (5xx) is reported. The guards
+  answer `may` without writing, and the stories harness asks it before it calls a write no story
+  tells a hidden verb, so a `permit` narrowed to what the page sends and guards that say who no
+  longer warn. The CLI's refusal names its server (a quoted `${server}` was printed as it is).
+  `model:check --against-page` reads a `defineDoc`'s options in any order and the definitions a
+  `delta.ts` passes from the model's `types.ts`, and lets each person's own document keep
+  fields beside the told ones (the session's). The modelling reference says how `Example.who`
+  and `actorOf` fit. Not done: cells behind an open window keep their bodies, since dropping them
+  would unmount the live applets there (the ticker's clock).
+
 - **cafe-c's second round** (18 October, `cafe-c/feedback.md`). `bun run stories` really runs on a
   throwaway database: the harness is imported after `DB_PATH` is set (a hoisted import opened the
   app's own `db.sqlite`). The generated proof sets up a state with the one story that presupposes

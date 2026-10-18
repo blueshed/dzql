@@ -19,6 +19,7 @@ import {
   formatHistory,
   formatInspection,
   loadOrCreateSessionCookie,
+  refusedLine,
   savedServer,
   serverOfLink,
   parseCommand,
@@ -166,6 +167,11 @@ describe("loadOrCreateSessionCookie", () => {
 
     rmSync(dir, { recursive: true });
   });
+});
+
+test("a refusal says its reason, or, with none, which server the session may be signed out of (cafe-d's feedback)", () => {
+  expect(refusedLine("A story needs words.", "ws://localhost:3000/model")).toBe("refused: A story needs words.");
+  expect(refusedLine(undefined, "ws://localhost:3000/model")).toBe("refused: nothing this session can see was written; is it still signed in to ws://localhost:3000/model? (login <your link>)");
 });
 
 describe("the server a sign-in link came from", () => {

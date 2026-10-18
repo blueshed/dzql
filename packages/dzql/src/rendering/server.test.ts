@@ -510,11 +510,13 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("a write the store refuses (403: the model's guards) is refused on the page with the store's reason", async () => {
+  test("a write the store refuses (403: the model's guards; 401: nobody they know) is refused on the page with the store's reason; another error is reported", async () => {
     // an app of its own: the store's refusal stands in front of it, as the model's guards do (dzql/modelling/guards)
     const guarded = createLocal();
     guarded.server.on("delta", (msg, _client, respond) => {
       if (JSON.stringify(msg.ops ?? []).includes('"forbidden"')) respond({ error: { code: 403, message: "The store says no." } });
+      if (JSON.stringify(msg.ops ?? []).includes('"anonymous"')) respond({ error: { code: 401, message: "Sign in to write to note." } });
+      if (JSON.stringify(msg.ops ?? []).includes('"clashing"')) respond({ error: { code: 500, message: "The disk is full." } });
     });
     const store = new Database(":memory:");
     createTables(store, schema);
@@ -524,6 +526,20 @@ describe("createServer, generically (no example from the examples directory invo
       const ws = await open(app);
       const id = write(ws, "note", [{ op: "replace", path: "/text", value: "forbidden" }]);
       expect(await expectMessage(ws, "refused")).toEqual({ type: "refused", id, reason: "The store says no." });
+      // the next refusal, past what the last one told the page
+      const refusal = async () => {
+        for (let m = await nextMessage(ws); ; m = await nextMessage(ws)) if (m.type === "refused") return m;
+      };
+      // a 401 is a refusal too, saying why (cafe-d's feedback: it was "delta applied nothing")
+      const unsigned = write(ws, "note", [{ op: "replace", path: "/text", value: "anonymous" }]);
+      expect(await refusal()).toEqual({ type: "refused", id: unsigned, reason: "Sign in to write to note." });
+      // the store failing is reported, and the write refused
+      const heard: string[] = [];
+      const stop = onFailure((what, err) => heard.push(`${what}: ${(err as Error).message}`));
+      const clash = write(ws, "note", [{ op: "replace", path: "/text", value: "clashing" }]);
+      expect(await refusal()).toMatchObject({ type: "refused", id: clash });
+      stop();
+      expect(heard).toEqual(["writing note: 500: The disk is full."]);
       ws.close();
     } finally {
       app.stop(true);

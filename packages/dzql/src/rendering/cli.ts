@@ -10,6 +10,7 @@ import {
   runCommand,
   watch,
   type Aliases,
+  refusedLine,
   savedServer,
   serverOfLink,
   signIn,
@@ -67,7 +68,7 @@ if (command.kind === "watch") {
 } else {
   const inspection = await runCommand(ws, command, limit);
   // a refusal with no reason is a write to nothing this session sees: most often, it is signed out
-  if (inspection.refused) console.error(`refused: ${inspection.refused.reason ?? "nothing this session can see was written; is it still signed in to ${server}? (login <your link>)"}`);
+  if (inspection.refused) console.error(refusedLine(inspection.refused.reason, server));
   console.log(formatInspection(inspection));
   ws.close();
   if (inspection.refused) process.exitCode = 1;

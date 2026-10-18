@@ -8,7 +8,7 @@ import { isPost, writeOf, type Stories, type Story } from "dzql/modelling/storie
 import type { Example } from "dzql/rendering/example";
 import { splitPath } from "@blueshed/delta/core";
 import { run } from "dzql/modelling/harness";
-import { documentsIn, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
+import { documentsIn, importedDocs, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
 import { heartOf, inSql } from "./facts";
 
 type Column = { type: string; nullable?: boolean };
@@ -51,7 +51,8 @@ export async function extract(at: string) {
   }));
   const tables = schema.map(({ sql: _, ...t }) => t);
 
-  const documents = documentsIn(await Bun.file(`${dir}/delta.ts`).text(), session);
+  const src = await Bun.file(`${dir}/delta.ts`).text();
+  const documents = documentsIn(src, session, await importedDocs(dir, src));
 
   // ── permits: each resource's RULES, as written ──
   const permits: Permit[] = [];

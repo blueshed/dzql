@@ -976,6 +976,16 @@ describe("a hidden verb: a write the server takes that no story tells and no pag
     const says = (doc: string) => report.warnings!.filter((w) => w.story === `${doc}: a write no story tells and no page offers`).map((w) => w.says);
     expect(says("room:general")).toEqual(["ada, bob and dee may remove the document, remove /messages, remove /messages/-", "bob and dee may remove /messages/any"]);
     expect(says("room:kitchen")).toEqual(["cy may remove the document, remove /messages, remove /messages/-, remove /messages/any"]); // each room as its readers met it
+    // what stands in front of the store (the model's guards, `may`) refusing them, they are not hidden: no page's permit is asked alone (cafe-d's feedback)
+    let guarding = true;
+    example.delta.server.on("may", (msg, _client, respond) => {
+      if (guarding && String(msg.doc).startsWith("room:") && (msg.ops as { op: string }[]).some((op) => op.op === "remove")) respond({ error: { code: 403, message: "Only the story's teller." } });
+    });
+    try {
+      expect((await run(loose, stories)).warnings).toBeUndefined();
+    } finally {
+      guarding = false;
+    }
     // a permit that refuses by throwing refuses, as on the wire: chat's shape would take an add to a name as its replace
     const throwing = withOwn("session", (session) => ({ permit: (ws, op, id) => (op.op === "add" ? (() => { throw refuse("No."); })() : session.permit!(ws, op, id)) }));
     expect((await run(throwing, stories)).warnings).toBeUndefined();

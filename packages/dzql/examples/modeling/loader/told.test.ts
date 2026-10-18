@@ -58,6 +58,11 @@ describe("the model as told, against the model as built", () => {
     expect(gaps(told(moved), built(app))).toContain(`team is rooted at people as told, at teams as built: which is it?`);
     expect(gaps(told({ models: { name: "Empty" } }), built({ stories: [], documents: [{ ...app.documents[1]!, serves: [] }], skipped: [] }))).toEqual([`board the app has, and it was never told: was it meant?`]);
     expect(gaps(told({ models: { name: "Empty" }, documents: { "1": { id: 1, name: "board", root: "boards", holds: { boards: { parent: null, fields: [] } } } } }), built({ stories: [], documents: [{ ...app.documents[1]!, own: true, serves: [] }], skipped: [] }))).toEqual([`board is shared as told, each person's own as built: which is it?`]);
+    // each person's own is the app's session: what it keeps beside the told fields is the app's, and only a told field missing is a gap (cafe-d's feedback)
+    const seat = (fields: string[]) => built({ stories: [], documents: [{ name: "seat", root: "sessions", own: true, held_by: [], serves: [], fields: fields.map((n) => field(n)), holds: [] }], skipped: [] });
+    const told_ = told({ models: { name: "Cafe" }, documents: { "1": { id: 1, name: "seat", root: "sessions", own: 1, holds: { sessions: { parent: null, fields: [field("table")] } } } } });
+    expect(gaps(told_, seat(["table", "role", "page"]))).toEqual([]);
+    expect(gaps(told_, seat(["role"]))).toEqual(["seat's sessions has table as told, role as built: which fields?"]);
   });
 
   test("an app story that names the model story it tells (`model: 2`) matches it though the words and the teller differ; one that names none goes by its words", () => {

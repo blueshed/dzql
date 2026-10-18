@@ -125,11 +125,16 @@ How the app uses them:
   with the story's words. A resource's `permit` need not say the rules again. `rowsIn(db,
   schema)` (`dzql/modelling/guards`) is the `rowOf` for SQLite, its booleans read as booleans.
   The server's own writes (`serverWrite`) are no person's, and go by.
+  `actorOf` is given the identity the app's `Example.who` returns (the session's id when it has
+  none): either look the teller up from the session there, or have `who` return the teller and
+  `actorOf` take it as it is, never both. A guard's 401 (nobody it knows) and 403 are refused on
+  the page with their reason.
   How they decide: the first `does` rule for the writer whose requirements hold lets the write
   through; else a `cannot` for the writer refuses it, in its words. A requirement is read from the
   written row and the rows it hangs under, on each write of the story that reaches it. Each op of a
   write is checked on its own. Narrow each resource's `permit` to what the page sends, and let
-  the guards say who.
+  the guards say who: `bun run stories` asks them too (`may`, never written) before it calls a write
+  no story tells a hidden verb.
 - **Whose copy:** a document a role holds whose root is one of many (a table, a bill) is advice
   in actor closure until the model says how each person comes to hold theirs (a story that gives
   it them, or their own document holding a field that names it, `table`): ask the teller.

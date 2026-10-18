@@ -171,17 +171,25 @@ type On = { on(action: string, handler: (msg: any, client: any, respond: (r: any
  * - `rowOf` reads a row as the store holds it, for `exists` and `requires`.
  */
 export function guardWrites(ws: On, guards: Guards, opts: { actorOf: (identity: unknown, client: unknown) => string | undefined; rowOf: RowOf }): void {
-  ws.on("delta", async (msg, client, respond) => {
+  /** The guards' answer to a write, or none when they let it by. */
+  const refusal = async (msg: any, client: any): Promise<{ error: { code: number; message: string } } | undefined> => {
     const [doc = "", docId] = String(msg?.doc ?? "").split(":");
     if (!guards.documents.includes(doc) || !Array.isArray(msg.ops)) return; // not the model's, or the store's 400
     if (client?.data?.local && client.data.identity === undefined) return; // the server's own write (dzql's serverWrite), no person's
     const actor = opts.actorOf(client?.data?.identity, client);
-    if (actor === undefined) return respond({ error: { code: 401, message: `Sign in to write to ${msg.doc}` } });
+    if (actor === undefined) return { error: { code: 401, message: `Sign in to write to ${msg.doc}` } };
     for (const op of msg.ops as Op[]) {
       const verdict = await check(guards, { actor, doc, docId, op, rowOf: opts.rowOf });
-      if (!verdict.ok) return respond({ error: { code: 403, message: verdict.reason } });
+      if (!verdict.ok) return { error: { code: 403, message: verdict.reason } };
     }
+  };
+  ws.on("delta", async (msg, client, respond) => {
+    const refused = await refusal(msg, client);
+    if (refused) respond(refused);
   });
+  // asked, never written: would the guards let this write by? (the stories harness asks before it
+  // calls a write no story tells a hidden verb)
+  ws.on("may", async (msg, client, respond) => respond((await refusal(msg, client)) ?? { result: { ok: true } }));
 }
 
 /**

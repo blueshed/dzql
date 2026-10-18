@@ -5,7 +5,7 @@ import { serverWrite } from "dzql/rendering/documents";
 import type { Example } from "dzql/rendering/example";
 import { bornInto, toldNotAsked, touches } from "./facts";
 import { controlsOn, type Heard, type Trace } from "dzql/modelling/harness";
-import { attempt, documentsIn, documentsOf, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
+import { attempt, documentsIn, documentsOf, importedDocs, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
 import { example as chat } from "../../chat/index";
 import { stories as chatStories } from "../../chat/stories";
 import { stories as londons } from "./londons/stories";
@@ -162,6 +162,25 @@ describe("from a run", () => {
     const r = read(chatStories, chat, { traces: [], controls: new Set(), allowed: new Map() }, defined);
     expect(r.docs).toContainEqual({ name: "archive", kind: "no resource" });
     expect(r.unneeded).toContain("archive");
+  });
+
+  test("a definition's options in any order, and the model's own passed from its types.ts (cafe-d's feedback)", async () => {
+    const { mkdtempSync, mkdirSync, rmSync, writeFileSync } = await import("node:fs");
+    const dir = mkdtempSync(`${import.meta.dir}/.app-`);
+    try {
+      mkdirSync(`${dir}/src`);
+      mkdirSync(`${dir}/model`);
+      writeFileSync(`${dir}/model/types.ts`, 'export const docs = [\n  defineDoc("table:", { root: "tables", include: ["invoices", "items"], implied: true }),\n  defineDoc("menu:", { implied: true, include: [], root: "menu_items" }),\n];\n');
+      const src = 'import { docs as model } from "../model/types";\nregisterDocs(delta.server, db, schema, [\n  defineDoc("visit:", { root: "sessions", scope: { cookie: ":cookie" }, include: [] }),\n  defineDoc("session:", { root: "sessions", include: [], columns: { sessions: ["table"] }, implied: true }),\n]);\nregisterDocs(delta.server, db, schema, model, [], { ledger: true });\n';
+      const imported = await importedDocs(`${dir}/src`, src);
+      expect(documentsIn(src, "session", imported).map((d) => [d.name, d.root, d.include, d.kind])).toEqual([
+        ["session", "sessions", [], "stored, no ledger"],
+        ["table", "tables", ["invoices", "items"], "stored"],
+        ["menu", "menu_items", [], "stored"],
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test("what the run cannot say from the stories: a document nobody needs, a write with nothing in front of its author, a document the example lacks, a write that tells nobody", async () => {

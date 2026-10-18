@@ -91,7 +91,32 @@ const partKey = (target: string) => target.match(/data-eta-part="([^"]+)"/)?.[1]
  * (on whatever server), and each `defineCustomDoc`, worked out by the server from the tables it
  * `watch`es.
  */
-export function documentsIn(src: string, session: string | null): { name: string; root: string | null; include: string[]; kind: string; note: string; watch?: string[] }[] {
+/** Each `defineDoc("<name>:", { ... })` in `text`, its options in any order: its name, root, the column it is scoped by, and what it includes. */
+function defineDocsIn(text: string): { name: string; root: string; scope?: string; include: string }[] {
+  return [...text.matchAll(/defineDoc\("(\w+):",\s*\{([^]*?)\}\s*\)/g)].flatMap((m) => {
+    const root = /root:\s*"(\w+)"/.exec(m[2]!)?.[1];
+    const include = /include:\s*(\[[^\]]*\]|\w+)/.exec(m[2]!)?.[1] ?? "[]";
+    return root ? [{ name: m[1]!, root, scope: /scope:\s*\{\s*(\w+):/.exec(m[2]!)?.[1], include }] : [];
+  });
+}
+
+/**
+ * The definitions a `delta.ts` takes from the model (`import { docs } from "../model/types"`), by
+ * the name it imports them as: the model's `types.ts`, which `documentsIn` reads where a
+ * `registerDocs` passes them.
+ */
+export async function importedDocs(dir: string, src: string): Promise<Record<string, string>> {
+  const imported: Record<string, string> = {};
+  for (const m of src.matchAll(/import \{([^}]*)\} from "([^"]*model\/types)(?:\.ts)?"/g)) {
+    const file = Bun.file(`${dir}/${m[2]}.ts`);
+    if (!(await file.exists())) continue;
+    const text = await file.text();
+    for (const name of m[1]!.split(",").map((n) => n.trim().split(/\s+as\s+/).at(-1)!)) if (name) imported[name] = text;
+  }
+  return imported;
+}
+
+export function documentsIn(src: string, session: string | null, imported: Record<string, string> = {}): { name: string; root: string | null; include: string[]; kind: string; note: string; watch?: string[] }[] {
   const lists = new Map<string, string[]>();
   for (const m of src.matchAll(/const (\w+) = \[([^\]]*)\]/g)) lists.set(m[1]!, [...m[2]!.matchAll(/"(\w+)"/g)].map((x) => x[1]!));
   const names = (raw: string) =>
@@ -103,8 +128,11 @@ export function documentsIn(src: string, session: string | null): { name: string
     const kind = i === 0 ? "defined" : /ledger: true/.test(call.split("registerMemory(")[0]!) ? "stored" : "stored, no ledger";
     // a document scoped by a column (`scope: { room: ":room" }`) is listed like any other; the one
     // scoped by `cookie` is how a cookie finds its session (dzql/rendering/sessions), the kernel's, not the app's
-    for (const m of call.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)",(?: scope: \{ (\w+): [^}]*\},)? include: (\[[^\]]*\]|\w+)/g))
-      if (m[3] !== "cookie") documents.push({ name: m[1]!, root: m[2]!, include: names(m[4]!), kind, note: m[1] === session ? "the session: who you are and where" : "" });
+    // the call's own definitions, and any it passes from the model's types (`docs`, `docs.filter(...)`)
+    const own = call.split(/registerMemory\(|defineCustomDoc/)[0]!;
+    const from = i === 0 ? [] : Object.entries(imported).filter(([name]) => new RegExp(`\\b${name}\\b`).test(own)).map(([, text]) => text);
+    for (const d of [call, ...from].flatMap(defineDocsIn))
+      if (d.scope !== "cookie" && !documents.some((x) => x.name === d.name)) documents.push({ name: d.name, root: d.root, include: names(d.include), kind, note: d.name === session ? "the session: who you are and where" : "" });
   });
   for (const m of src.matchAll(/registerMemory\([^,]*,\s*\{\s*prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "memory", note: "kept by the server, in memory" });
   for (const m of src.matchAll(/defineCustomDoc(?:<[^>]*>)?\("(\w+):", \{\s*watch: (\[[^\]]*\]|\w+)/g))
@@ -340,7 +368,8 @@ export async function documentsOf(at: string): Promise<Reading> {
   const { example } = (await import(`${dir}/index.ts`)) as { example: Example };
   const watched = watch(example);
   await run(example, stories, watched.observe, { everywhere: watched.everywhere });
-  const defined = documentsIn(await Bun.file(`${dir}/delta.ts`).text(), null);
+  const src = await Bun.file(`${dir}/delta.ts`).text();
+  const defined = documentsIn(src, null, await importedDocs(dir, src));
   const { schema } = (await import(`${dir}/delta.ts`)) as { schema?: { tables: Record<string, unknown> } };
   const reading = read(stories, example, watched, defined.map((d) => d.name));
   return { ...reading, unreached: schema ? unreachedIn(Object.keys(schema.tables), defined) : [] };

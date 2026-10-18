@@ -64,6 +64,10 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     await mo.call("open", { doc: "team:1" });
 
     expect((await write(ann, { op: "add", path: "/teams/-", value: { name: "Ann's" } })).error).toEqual({ code: 403, message: "Ann cannot start a team (story 7)" });
+    // asked, never written: `may` answers as the write would be (the stories harness asks it)
+    expect((await ann.call("may", { doc: "team:1", ops: [{ op: "add", path: "/teams/-", value: { name: "Ann's" } }] })).error).toEqual({ code: 403, message: "Ann cannot start a team (story 7)" });
+    expect((await mo.call("may", { doc: "team:1", ops: [{ op: "add", path: "/teams/1", value: { name: "Desk", open: "no" } }] })).result).toEqual({ ok: true });
+    expect(db.query("SELECT count(*) AS n FROM teams").get()).toEqual({ n: 0 });
     expect((await write(mo, { op: "add", path: "/teams/1", value: { name: "Desk", open: "no" } })).result).toEqual({ ack: true });
     // the team is closed: Ann's request presupposes it open, a row above the one she adds
     expect((await write(ann, { op: "add", path: "/requests/-", value: { teams_id: 1, starts: "2026-11-02", status: "waiting" } })).error).toEqual({

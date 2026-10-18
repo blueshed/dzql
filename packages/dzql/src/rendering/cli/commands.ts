@@ -69,6 +69,10 @@ export function extractFlag(argv: string[], flag: string): { value: string | und
 export const serverOfLink = (link: string): string => link.replace(/^http/, "ws").replace(/\/in\/[^/]*$/, "");
 export const savedServer = (sessionFile: string): string | undefined => (existsSync(`${sessionFile}.url`) ? readFileSync(`${sessionFile}.url`, "utf8").trim() || undefined : undefined);
 
+/** What the CLI prints for a refused write: its reason, or, with none, that the session may be signed out of `server`. */
+export const refusedLine = (reason: string | undefined, server: string): string =>
+  `refused: ${reason ?? `nothing this session can see was written; is it still signed in to ${server}? (login <your link>)`}`;
+
 /** `--session <file>`, defaulting to the shared session file. */
 export function extractSessionFile(argv: string[]): { sessionFile: string; rest: string[] } {
   const { value, rest } = extractFlag(argv, "--session");

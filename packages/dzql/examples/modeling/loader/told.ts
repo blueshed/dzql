@@ -106,7 +106,9 @@ export function gaps(t: Model, b: Model): string[] {
       if (!there) out.push(`${name} holds ${e} as told, and the app does not: still wanted?`);
       else {
         if (h.under !== there.under) out.push(`${name}'s ${e} hangs under ${h.under} as told, under ${there.under} as built: which is it?`);
-        if (!same(h.fields, there.fields)) out.push(`${name}'s ${e} has ${list(h.fields)} as told, ${list(there.fields)} as built: which fields?`);
+        // each person's own is the app's session too: what it keeps beside the told fields (who signed in, where) is the app's
+        const differ = d.own ? h.fields.some((f) => !there.fields.includes(f)) : !same(h.fields, there.fields);
+        if (differ) out.push(`${name}'s ${e} has ${list(h.fields)} as told, ${list(there.fields)} as built: which fields?`);
       }
     }
     for (const e of as.holds.keys()) if (!d.holds.has(e)) out.push(`${name} holds ${e} as built, and it was never told: was it meant?`);

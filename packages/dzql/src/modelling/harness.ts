@@ -1501,8 +1501,17 @@ async function refuser(r: Run, owner: Resource, ws: ReturnType<typeof allOpenSoc
   }
 }
 
-/** Would the server take `op` to `docId` from `ws`: permitted, and shaped to something? */
-const takes = async (r: Run, owner: Resource, ws: ReturnType<typeof allOpenSockets>[number], op: PatchOp, docId: string): Promise<boolean> => (await refuser(r, owner, ws, [op], docId)) === undefined;
+/**
+ * Would the server take `op` to `docId` from `ws`: permitted, shaped to something, and let by
+ * whatever stands in front of the store (the model's guards answer `may`; with none, nothing does).
+ */
+async function takes(r: Run, owner: Resource, ws: ReturnType<typeof allOpenSockets>[number], op: PatchOp, docId: string): Promise<boolean> {
+  if ((await refuser(r, owner, ws, [op], docId)) !== undefined) return false;
+  const shaped = owner.shape ? await settled(r.documents, () => owner.shape!(ws, docId, [op])) : [op];
+  const identity = r.example.who ? r.example.who(ws.data.sessionId) : ws.data.sessionId;
+  const asked = await r.example.delta.as(identity).call("may", { doc: prefixDoc(owner.docType, docId), ops: shaped.map((o) => ({ ...o, path: (owner.under ?? "") + o.path })) });
+  return ![401, 403].includes(asked.error?.code ?? 0);
+}
 
 /**
  * Which check refused `write` from `m`'s page, asked again as the server asks (src/server.ts
