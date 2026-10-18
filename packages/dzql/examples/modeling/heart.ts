@@ -14,6 +14,7 @@
 //               only such documents hold: needed by no story.
 
 import { esc } from "dzql/rendering/html";
+import { readingOf } from "dzql/modelling/reading";
 
 export type Field = { name: string; type: string };
 /** What a story writes, as hjeli said it: an entity, the verb, the field it sets and the value it sets it to. */
@@ -26,7 +27,7 @@ export type Held = { parent: string | null; fields: Field[] };
 export type Raw = {
   models: { name: string };
   stories?: Record<string, { id: string | number; text: string; actor: string; kind: string; post?: string | null; touches?: string[]; writes?: StoryWrite[] | null; requires?: Requires[] | null }>;
-  documents?: Record<string, { id: string | number; name: string; root: string; own?: number | boolean; holds?: Record<string, Held>; held_by?: string[]; stories?: (string | number)[] }>;
+  documents?: Record<string, { id: string | number; name: string; root: string; own?: number | boolean; list?: number | boolean; holds?: Record<string, Held>; held_by?: string[]; stories?: (string | number)[] }>;
 };
 
 /** A word's one: requests, request; people, person (as the modeller says a document's id). */
@@ -67,17 +68,8 @@ export function heartOf(raw: Raw) {
   const told = new Set(rows.map((s) => String(s.id)));
   const needless = new Set(docs.filter((d) => !d.serves.some((id) => told.has(id))).map((d) => d.name));
 
-  const entities = new Map<string, { name: string; parent: string | null; columns: string[]; documents: string[] }>();
-  const entity = (name: string) => entities.get(name) ?? entities.set(name, { name, parent: null, columns: [], documents: [] }).get(name)!;
-  for (const d of docs) {
-    for (const [name, h] of Object.entries(d.holds)) {
-      const e = entity(name);
-      e.parent ??= name === d.root ? null : (h.parent ?? d.root);
-      for (const f of h.fields ?? []) if (!e.columns.includes(f.name)) e.columns.push(f.name);
-      e.documents.push(d.name);
-    }
-  }
-  for (const s of rows) for (const t of touched(s)) entity(t);
+  // the entities as the checks, the proof and the guards have them (dzql/modelling/reading)
+  const entities = [...readingOf(raw).entities.values()].map((e) => ({ name: e.name, parent: e.parent, columns: [...e.fields.keys()], documents: e.documents }));
 
   return {
     example: raw.models.name,
@@ -94,11 +86,11 @@ export function heartOf(raw: Raw) {
       name: d.name,
       for: d.held_by.join(", ") || "nobody yet",
       reach: [d.root, ...Object.keys(d.holds).filter((e) => e !== d.root)],
-      shape: shape(d.own ? d.name : `${d.name}:<${singular(d.root)}>`, d.root, d.holds),
+      shape: shape(d.own || d.list ? `${d.name}${d.list ? ":" : ""}` : `${d.name}:<${singular(d.root)}>`, d.root, d.holds),
       held: d.held_by.length,
       needless: needless.has(d.name),
     })),
-    entities: [...entities.values()].map((e) => ({
+    entities: entities.map((e) => ({
       ...e,
       red: e.documents.length > 0 && e.documents.every((d) => needless.has(d)),
       looked: e.documents.length === 0,

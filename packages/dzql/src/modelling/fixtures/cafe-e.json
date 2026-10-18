@@ -1,0 +1,534 @@
+{
+ "tables": {
+  "models": [
+   {
+    "id": 1,
+    "name": "cafe-e"
+   }
+  ],
+  "stories": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "text": "The manager says what tables there are",
+    "actor": "manager",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "tables",
+      "op": "add",
+      "path": "seated",
+      "to": "false"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 2,
+    "models_id": 1,
+    "text": "The cook says what is on the menu",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "add"
+     },
+     {
+      "entity": "items",
+      "op": "remove"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 3,
+    "models_id": 1,
+    "text": "A customer scans the code on their table",
+    "actor": "customer",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "visits",
+      "op": "replace",
+      "path": "table"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 4,
+    "models_id": 1,
+    "text": "The manager seats a customer at a table and opens an invoice for it",
+    "actor": "manager",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "invoices",
+      "op": "add",
+      "path": "paid",
+      "to": "false"
+     },
+     {
+      "entity": "tables",
+      "op": "replace",
+      "path": "seated",
+      "to": "true"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "tables",
+      "path": "seated",
+      "value": "false"
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "models_id": 1,
+    "text": "The manager cannot open an invoice on a table that already has an unpaid one",
+    "actor": "manager",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "invoices",
+      "op": "add"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "tables",
+      "path": "seated",
+      "value": "true"
+     }
+    ]
+   },
+   {
+    "id": 6,
+    "models_id": 1,
+    "text": "The customer orders items from the menu onto their invoice",
+    "actor": "customer",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "orders",
+      "op": "add",
+      "path": "status",
+      "to": "ordered"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "invoices",
+      "path": "paid",
+      "value": "false"
+     }
+    ]
+   },
+   {
+    "id": 7,
+    "models_id": 1,
+    "text": "The cook sees the orders and says when items are ready",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "orders",
+      "op": "replace",
+      "path": "status",
+      "to": "ready"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "orders",
+      "path": "status",
+      "value": "ordered"
+     }
+    ]
+   },
+   {
+    "id": 8,
+    "models_id": 1,
+    "text": "The manager takes ready items to the table and marks them placed",
+    "actor": "manager",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "orders",
+      "op": "replace",
+      "path": "status",
+      "to": "placed"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "orders",
+      "path": "status",
+      "value": "ready"
+     }
+    ]
+   },
+   {
+    "id": 9,
+    "models_id": 1,
+    "text": "The customer pays their invoice, and the manager sees it paid. That frees the table.",
+    "actor": "customer",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "invoices",
+      "op": "replace",
+      "path": "paid",
+      "to": "true"
+     },
+     {
+      "entity": "tables",
+      "op": "replace",
+      "path": "seated",
+      "to": "false"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "invoices",
+      "path": "paid",
+      "value": "false"
+     }
+    ]
+   },
+   {
+    "id": 10,
+    "models_id": 1,
+    "text": "A customer cannot add to a paid invoice",
+    "actor": "customer",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "orders",
+      "op": "add"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "invoices",
+      "path": "paid",
+      "value": "true"
+     }
+    ]
+   },
+   {
+    "id": 11,
+    "models_id": 1,
+    "text": "The manager cannot order, pay or say an item is ready: that is the customer's and the cook's job",
+    "actor": "manager",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "orders",
+      "op": "add"
+     },
+     {
+      "entity": "invoices",
+      "op": "replace",
+      "path": "paid"
+     },
+     {
+      "entity": "orders",
+      "op": "replace",
+      "path": "status",
+      "to": "ready"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 12,
+    "models_id": 1,
+    "text": "The cook cannot say what tables there are, seat, open invoices, mark items placed, order or pay: that is the manager's and the customer's job",
+    "actor": "cook",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "tables",
+      "op": "add"
+     },
+     {
+      "entity": "tables",
+      "op": "replace",
+      "path": "seated"
+     },
+     {
+      "entity": "invoices",
+      "op": "add"
+     },
+     {
+      "entity": "orders",
+      "op": "replace",
+      "path": "status",
+      "to": "placed"
+     },
+     {
+      "entity": "orders",
+      "op": "add"
+     },
+     {
+      "entity": "invoices",
+      "op": "replace",
+      "path": "paid"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 13,
+    "models_id": 1,
+    "text": "The customer cannot change the menu, say what tables there are, seat, open invoices, or say items are ready or placed: that is the cook's and the manager's job",
+    "actor": "customer",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "add"
+     },
+     {
+      "entity": "items",
+      "op": "remove"
+     },
+     {
+      "entity": "tables",
+      "op": "add"
+     },
+     {
+      "entity": "tables",
+      "op": "replace",
+      "path": "seated",
+      "to": "true"
+     },
+     {
+      "entity": "invoices",
+      "op": "add"
+     },
+     {
+      "entity": "orders",
+      "op": "replace",
+      "path": "status"
+     }
+    ],
+    "requires": null
+   }
+  ],
+  "documents": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "name": "floor",
+    "root": "cafes",
+    "own": 0,
+    "holds": {
+     "cafes": {
+      "parent": null,
+      "fields": []
+     },
+     "tables": {
+      "parent": "cafes",
+      "fields": [
+       {
+        "name": "name",
+        "type": "text"
+       },
+       {
+        "name": "seated",
+        "type": "boolean"
+       }
+      ]
+     },
+     "invoices": {
+      "parent": "tables",
+      "fields": [
+       {
+        "name": "paid",
+        "type": "boolean"
+       }
+      ]
+     },
+     "orders": {
+      "parent": "invoices",
+      "fields": [
+       {
+        "name": "item",
+        "type": "text"
+       },
+       {
+        "name": "price",
+        "type": "real"
+       },
+       {
+        "name": "status",
+        "type": "text"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "manager",
+     "cook"
+    ],
+    "stories": [
+     1,
+     4,
+     5,
+     7,
+     8,
+     9,
+     11,
+     12
+    ]
+   },
+   {
+    "id": 2,
+    "models_id": 1,
+    "name": "menu",
+    "root": "cafes",
+    "own": 0,
+    "holds": {
+     "cafes": {
+      "parent": null,
+      "fields": []
+     },
+     "items": {
+      "parent": "cafes",
+      "fields": [
+       {
+        "name": "name",
+        "type": "text"
+       },
+       {
+        "name": "price",
+        "type": "real"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "cook",
+     "customer"
+    ],
+    "stories": [
+     2,
+     6,
+     13
+    ]
+   },
+   {
+    "id": 3,
+    "models_id": 1,
+    "name": "visit",
+    "root": "visits",
+    "own": 1,
+    "holds": {
+     "visits": {
+      "parent": null,
+      "fields": [
+       {
+        "name": "table",
+        "type": "text"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "customer"
+    ],
+    "stories": [
+     3
+    ]
+   },
+   {
+    "id": 4,
+    "models_id": 1,
+    "name": "table",
+    "root": "tables",
+    "own": 0,
+    "holds": {
+     "tables": {
+      "parent": null,
+      "fields": [
+       {
+        "name": "name",
+        "type": "text"
+       },
+       {
+        "name": "seated",
+        "type": "boolean"
+       }
+      ]
+     },
+     "invoices": {
+      "parent": "tables",
+      "fields": [
+       {
+        "name": "paid",
+        "type": "boolean"
+       }
+      ]
+     },
+     "orders": {
+      "parent": "invoices",
+      "fields": [
+       {
+        "name": "item",
+        "type": "text"
+       },
+       {
+        "name": "price",
+        "type": "real"
+       },
+       {
+        "name": "status",
+        "type": "text"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "customer"
+    ],
+    "stories": [
+     4,
+     6,
+     9,
+     10,
+     13
+    ]
+   }
+  ]
+ }
+}

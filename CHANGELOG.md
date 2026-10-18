@@ -15,6 +15,11 @@ what is open across them. Newest first.
 
 ### Added
 
+- **dzql's tools agree** (18 October): one reading of a model (`dzql/modelling/reading`) taken by
+  the checks, the proof, the guards and the read-back, and a conformance test that runs the proof
+  through the guards over fixture models; a document can list every row of its root (`menu:`); a
+  guard's refusal is the story's words alone; the newest migration is rewritten in place until it
+  is committed (packages/dzql/CHANGELOG.md).
 - **Sign-in by link everywhere** (18 October): dzql's `signInLinks` (`dzql/rendering/links`) is
   how any app's people come in, the model's page included; the eta-app skill, first-app.md and
   create-dzql's starter say so, passwords only when a story asks (packages/dzql/CHANGELOG.md).

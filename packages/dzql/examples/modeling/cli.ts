@@ -26,6 +26,7 @@ import { plain } from "./heart";
 //   bun run cli unsay 2                                   a story taken back
 //   bun run cli document team teams 2 4 5                 a document: its name, its root, the stories it serves
 //   bun run cli own 2                                     each person's own (a session), not shared
+//   bun run cli list 3                                    every row of its root (`menu:`), not one (`menu:1`)
 //   bun run cli holds 1 requests under teams starts:date ends:date status
 //   bun run cli unhold 1 requests
 //   bun run cli heldby 1 ann bo mo
@@ -78,6 +79,7 @@ export const aliases: Aliases = {
   unsay: ([id]) => model({ op: "remove", path: `/stories/${id}` }),
   document: ([name, root, ...stories]) => model({ op: "add", path: "/documents/-", value: { name, root, stories } }),
   own: ([id]) => model({ op: "replace", path: `/documents/${id}/own`, value: true }),
+  list: ([id]) => model({ op: "replace", path: `/documents/${id}/list`, value: true }),
   root: ([id, entity]) => model({ op: "replace", path: `/documents/${id}/root`, value: entity }),
   holds: ([id, entity, ...rest]) => {
     const under = rest[0] === "under" ? rest[1] : undefined;

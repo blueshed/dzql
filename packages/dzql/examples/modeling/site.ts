@@ -52,7 +52,7 @@ export function siteOf(raw: Raw, made = new Date().toISOString().slice(0, 10)): 
   const carded = new Set<string>(); // a document in front of two people is drawn for each; the chips link to the first
   const docCard = (d: (typeof docs)[number]) => {
     const kids = Object.keys(d.holds ?? {}).filter((e) => e !== d.root);
-    const what = `${d.own ? `Your own ${one(d.root)}` : `One ${one(d.root)}`}${kids.length ? `, with its ${list(kids.map(words))}` : ""}.`;
+    const what = `${d.own ? `Your own ${one(d.root)}` : d.list ? `Every ${one(d.root)}` : `One ${one(d.root)}`}${kids.length ? `, with its ${list(kids.map(words))}` : ""}.`;
     const tree = docOf.get(d.name)!.shape.slice(1).map((l) => {
       const fields = (d.holds?.[l.text]?.fields ?? []).map((f) => f.name);
       return `<li style="margin-left:${l.pad}px"><b>${esc(words(l.text))}</b>${fields.length ? ` <span class="muted">${esc(fields.map(words).join(", "))}</span>` : ""}</li>`;

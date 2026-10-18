@@ -41,7 +41,7 @@ numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by n
 | A story taken back | `unsay <n>` |
 | A document | `document <name> <root> <story>...`: at least one story it serves; entities are plural (`invoices`) |
 | What it holds | `holds <doc> <entity> [under <parent>] <field[:type]>...`: the fields it holds, the whole list each time; types `text` (the default), `integer`, `real`, `boolean` |
-| Who holds it | `heldby <doc> <actor>...`; `own <doc>` for one each person has alone (a session) |
+| Who holds it | `heldby <doc> <actor>...`; `own <doc>` for one each person has alone (a session); `list <doc>` for every row of its root (`menu:`, the whole menu), not one (`menu:1`) |
 | Which stories it serves | `serves <doc> <story>...` |
 | Renamed, taken out | `rename <doc> <name>`, `drop <doc>`, `unhold <doc> <entity>` (never its root); `root <doc> <entity>` for a new root, the old one held under it, its number kept |
 | A slip | `undo`, `redo` |
@@ -58,8 +58,10 @@ the model refuses a second.
 A document is what a person needs in front of them to act; whoever else must see a change to it
 holds it too: a team's calendar, a room, my week. Its root is the row it is about; it holds
 entities under that root (`under`), each with only the fields a story reads. Each person's own
-document (who you are, where you are) is `own`. Every holder is told every write, so cut
-documents by who must be told, not by table.
+document (who you are, where you are) is `own`. A document of every row of its root, the same
+for everyone who holds it (the menu, the floor's tables), is `list`; without it a document is one
+row (a table, a bill). Every holder is told every write, so cut documents by who must be told, not
+by table.
 
 ## The gaps
 
@@ -100,9 +102,11 @@ While no check is open, `dzql model` writes into a folder of its own (`model/`, 
 `src/`, so the app neither reloads nor loses a file of its own): `types.ts`, delta's two definitions (a
 `defineSchema` of its entities, each with the fields documents give it, hanging from its parent,
 and a `defineDoc` for each document, saying in a comment which stories it is for) with a row type
-per table and each document's shape; `guards.ts`, the guarded write layer; `migrations/`, the next
-step each time the schema says more (a step a diff cannot make -- a parent changed -- is written
-once with `// By hand:` lines to finish); and `model.test.ts`, the proof on SQLite. It writes no
+per table and each document's shape; `guards.ts`, the guarded write layer; `migrations/`, the newest step
+rewritten in place while it is not yet committed, and a new step once it is (a step a diff cannot
+make -- a parent changed -- is written once with `// By hand:` lines to finish); and
+`model.test.ts`, the proof on SQLite: each story's write lands where its tellers see it, made
+through the guards as its teller, and each `cannot` story is refused in its own words. It writes no
 stories: the app's stories are the app's, in its words, each naming its model story (`model: n`).
 A file in `model/` a person wrote is kept, and the model's goes beside it (`types.model.ts`).
 
@@ -138,7 +142,8 @@ How the app uses them:
   write is checked on its own. Narrow each resource's `permit` to what the page sends, and let
   the guards say who: `bun run stories` asks them too (`may`, never written) before it calls a write
   no story tells a hidden verb.
-- **Whose copy:** a document a role holds whose root is one of many (a table, a bill) is advice
+- **Whose copy:** a document a role holds whose root is one of many (a table, a bill), and that
+  is not a `list`, is advice
   in actor closure until the model says how each person comes to hold theirs (a story that gives
   it them, or their own document holding a field that names it, `table`): ask the teller.
 Every store takes the definitions: delta's JSON file and SQLite, and dzql's Postgres. In code, `definitionsOf(model)` (`dzql/modelling/definitions`) does the

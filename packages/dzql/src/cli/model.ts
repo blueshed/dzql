@@ -10,8 +10,9 @@
 // `model.test.ts` (the proof). The app's stories are the app's: each says its model story's number.
 // `dzql model site|guards|mcp` are ./model-tools.ts's.
 // `dzql model check` does that once, and exits 1 while a check is open.
-import { existsSync, mkdirSync, readFileSync, readdirSync, watch, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
+import type { Change } from "@blueshed/delta/migrations";
 import { nextMigrationOf, testsOf, typesOf, type Model } from "../modelling/definitions";
 import { extractSessionFile, savedServer } from "../rendering/cli/commands";
 
@@ -31,9 +32,10 @@ export function modelIn(file: string): Model & { name: string } {
 
 /**
  * The checks over the model in `file`, then, while none is open, what it makes in `out`: the
- * snapshot (types.ts), the guards (guards.ts), the proof (model.test.ts) and, when the schema says more than
- * the migrations there, the next one -- so the migrations are the model's trajectory, each step a
- * model the checks passed, and never behind it (model.test.ts folds them and compares). Nothing is
+ * snapshot (types.ts), the guards (guards.ts), the proof (model.test.ts, through the guards) and, when the
+ * schema says more than the migrations there, the next one -- or the newest again, while it is not yet
+ * committed -- so the migrations are the model's trajectory, each committed step a model the checks
+ * passed, and never behind it (model.test.ts folds them and compares). Nothing is
  * written while a check is open. Returns what to print, and whether every check passed.
  */
 export async function make(file: string, out: string, options: { drops?: boolean } = {}): Promise<{ ok: boolean; said: string }> {
@@ -54,12 +56,16 @@ async function making(file: string, out: string, { drops = false }: { drops?: bo
   if (Object.keys(model.stories ?? {}).length === 0) return { ok: true, said: "No stories yet: nothing made." };
   const dir = join(out, "migrations");
   mkdirSync(dir, { recursive: true });
-  const { fromFolder } = await import("@blueshed/delta/sqlite");
-  const history = await fromFolder(resolve(dir));
-  const steps = () => readdirSync(dir).filter((f) => f.endsWith(".ts")).sort();
+  const steps = () => readdirSync(dir).filter((f) => f.endsWith(".ts") && !/\.(d|test)\.ts$/.test(f)).sort();
+  // while modelling, the newest step not yet committed is rewritten in place, not followed by another
+  // (cafe-e: six steps in one afternoon, each undoing some of the last); once committed it is history
+  const newest = steps().at(-1);
+  const open = newest && !committed(join(dir, newest)) ? newest : undefined;
+  const kept = steps().filter((f) => f !== open);
+  const history = await Promise.all(kept.map((f) => stepIn(join(dir, f))));
   // a step only a person can finish (a parent changed, a type) is written once, for them to finish:
   // a By hand: line an earlier step already carries is owed there, not again
-  const before = steps().map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
+  const before = kept.map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
   const proposed = nextMigrationOf(history, model, (line) => before.includes(line));
   // a step that drops a column or a table loses data: the page never writes one on its own (an undo,
   // a field list said again, might be a slip); `dzql model check` writes it, said so
@@ -80,14 +86,32 @@ async function making(file: string, out: string, { drops = false }: { drops?: bo
     return as;
   };
   const types = put("types.ts", () => typesOf(model));
-  put("model.test.ts", () => testsOf(model, basename(resolve(out)), `./${types.replace(/\.ts$/, "")}`));
-  if (next) writeFileSync(join(dir, `${next.name}.ts`), next.source);
-  // hjeli's guarded write layer, once a story says what it writes (./model-tools.ts, ../modelling/guards.ts)
+  // hjeli's guarded write layer, once a story says what it writes (./model-tools.ts, ../modelling/guards.ts); the proof makes its writes through it
   const { guardsOf, guardSource } = await import("../modelling/guards");
   const guards = guardsOf({ models: { name: model.name }, ...model } as Parameters<typeof guardsOf>[0]);
-  if (guards.rules.length) put("guards.ts", () => guardSource(guards, basename(file)));
+  const guarded = guards.rules.length ? put("guards.ts", () => guardSource(guards, basename(file))) : undefined;
+  put("model.test.ts", () => testsOf(model, basename(resolve(out)), `./${types.replace(/\.ts$/, "")}`, guarded && `./${guarded.replace(/\.ts$/, "")}`));
+  // the open step, as the model now says it: rewritten, or gone when the model is back at the committed steps
+  if (open && (next || !proposed)) rmSync(join(dir, open));
+  if (next) writeFileSync(join(dir, `${next.name}.ts`), next.source);
   const waiting = held ? `\nA step that drops data is waiting, not written: ${dropped.join(", ")}. If that is meant, \`dzql model check --drops\` writes it; if not, say the model again.` : "";
-  return { ok: true, said: `${checks}\n\nmodel: ${made.join(", ")}; migrations ${steps().map((f) => f.replace(/\.ts$/, "")).join(", ") || "none"}${next ? ` (${next.name} new)` : ""}${waiting}` };
+  return { ok: true, said: `${checks}\n\nmodel: ${made.join(", ")}; migrations ${steps().map((f) => f.replace(/\.ts$/, "")).join(", ") || "none"}${next ? ` (${next.name} ${open ? "rewritten: not yet committed" : "new"})` : open && !proposed ? ` (${open.replace(/\.ts$/, "")} gone: the model is back at the committed steps)` : ""}${waiting}` };
+}
+
+/**
+ * Is a step committed: in git, as git has it at HEAD? Outside a repository every step is its own,
+ * as before there was this rule.
+ */
+function committed(file: string): boolean {
+  const git = (...args: string[]) => Bun.spawnSync(["git", ...args], { cwd: dirname(file), stdout: "ignore", stderr: "ignore" }).exitCode;
+  if (git("rev-parse", "--is-inside-work-tree") !== 0) return true;
+  return git("ls-files", "--error-unmatch", basename(file)) === 0 && git("diff", "--quiet", "HEAD", "--", basename(file)) === 0;
+}
+
+/** A step as it is now: one rewritten in place is read again, not from the import cache. */
+async function stepIn(file: string): Promise<{ id: string; changes?: Change[] }> {
+  const mod = await import(`${resolve(file)}?v=${statSync(file).mtimeMs}`);
+  return { id: basename(file, ".ts"), ...(Array.isArray(mod.changes) && { changes: mod.changes }) };
 }
 
 /** A project's own model is named for the project -- not the example's seeded one. */

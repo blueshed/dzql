@@ -88,7 +88,7 @@ function storiesOf(m: Model, value: unknown): number[] {
   return ids;
 }
 
-type Said = { text?: unknown; actor?: unknown; kind?: unknown; post?: unknown; touches?: unknown; name?: unknown; root?: unknown; stories?: unknown; held_by?: unknown; own?: unknown; under?: unknown; fields?: unknown };
+type Said = { text?: unknown; actor?: unknown; kind?: unknown; post?: unknown; touches?: unknown; name?: unknown; root?: unknown; stories?: unknown; held_by?: unknown; own?: unknown; list?: unknown; under?: unknown; fields?: unknown };
 
 /**
  * A write to the model as it takes it. A story: written down with its words, who tells it, and
@@ -96,7 +96,7 @@ type Said = { text?: unknown; actor?: unknown; kind?: unknown; post?: unknown; t
  * had them, what it writes and the states it presupposes); reworded,
  * retold, taken back -- never without words, nor on more than one line. A document: described with its name, its root and
  * the stories it serves (one at least); what it holds, an entity at a time with what it hangs under
- * and its fields; who holds it; whether it is each person's own; taken out. Its root stays.
+ * and its fields; who holds it; whether it is each person's own, or lists every row of its root; taken out. Its root stays.
  */
 export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
   return ops.flatMap((op): PatchOp[] => {
@@ -119,14 +119,14 @@ export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
     if (op.op === "add") {
       const name = words(said.name, "A document needs a name.");
       const root = words(said.root, "A document holds something: name its root.");
-      return [{ op: "add", path: "/documents/-", value: { name, root, own: said.own ? 1 : 0, stories: storiesOf(m, said.stories), holds: { [root]: { parent: null, fields: fieldsOf(said.fields) } }, held_by: names(said.held_by) } }];
+      return [{ op: "add", path: "/documents/-", value: { name, root, own: said.own ? 1 : 0, list: said.list ? 1 : 0, stories: storiesOf(m, said.stories), holds: { [root]: { parent: null, fields: fieldsOf(said.fields) } }, held_by: names(said.held_by) } }];
     }
     if (op.op === "remove" && field === undefined) return [op];
     const doc = m.documents.find((d) => d.id === id)!;
     if (field === "name") return [{ op: "replace", path: op.path, value: words(op.value, "A document needs a name.") }];
     if (field === "held_by") return [{ op: "replace", path: op.path, value: names(op.value) }];
     if (field === "stories") return [{ op: "replace", path: op.path, value: storiesOf(m, op.value) }];
-    if (field === "own") return [{ op: "replace", path: op.path, value: op.value ? 1 : 0 }];
+    if (field === "own" || field === "list") return [{ op: "replace", path: op.path, value: op.value ? 1 : 0 }];
     // a new root, the document's number kept: the old root stays held, hanging under it
     if (field === "root") {
       const root = words(op.value, "A document holds something: name its root.");
@@ -149,7 +149,7 @@ export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
 }
 
 const STORY_FIELDS = new Set(["text", "actor", "kind", "touches", "writes", "requires"]);
-const DOCUMENT_FIELDS = new Set(["name", "root", "held_by", "stories", "own"]);
+const DOCUMENT_FIELDS = new Set(["name", "root", "held_by", "stories", "own", "list"]);
 
 /** May this op be written at all: a story or a document the model has (or a new one), and only their own fields. */
 export function may(m: Model, op: PatchOp): boolean {

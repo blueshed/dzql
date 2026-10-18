@@ -233,7 +233,7 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
       await Bun.write(join(app, "migrations", `${first.name}.ts`), first.source);
       const tests = testsOf(menu, "menu");
       expect(tests).toContain('"path":"/items/1/price","value":1'); // an integer, not null
-      expect(tests).toContain('{"doc":"floor:1","ops":[{"op":"add","path":"/tables/-"'); // on the page of tables, not the table's own
+      expect(tests).toContain('{"as":"manager","doc":"floor:1","ops":[{"op":"add","path":"/tables/-"'); // on the page of tables, not the table's own, as its teller
       await Bun.write(join(app, "model.test.ts"), tests);
       const run = Bun.spawnSync(["bun", "test", "model.test.ts"], { cwd: app, env: { ...process.env, LOG_LEVEL: "silent" } });
       expect(run.stderr.toString()).toContain(" 0 fail");

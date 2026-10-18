@@ -63,7 +63,7 @@ describe("dzql model site: the model read back for a customer", () => {
     expect(open).toContain("<h2>Everyone’s own</h2>");
     expect(open).toContain("<p>Your own session.</p>");
     expect(open).toContain("Nothing is in front of jo yet.");
-    expect(open).toContain("erDiagram\n  rotas");
+    expect(open).toContain("erDiagram\n  sessions\n  rotas"); // a document that says nothing of what it holds holds its root
     expect(siteOf({ models: { name: "x" } })).toContain("0 stories, told by 0 people, and the 0 pages they need.");
     expect(siteOf({ models: { name: "x" }, documents: { "1": { id: 1, name: "d", root: "t", held_by: ["a"], stories: [] } } })).toContain("2 questions are still open");
   });

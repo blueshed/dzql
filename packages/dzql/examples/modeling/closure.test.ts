@@ -128,8 +128,10 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
   });
 
   test("dzql model check: the checks over the model's file, exit 1 and nothing made while one is open; then the app's files", async () => {
-    const { mkdtempSync, rmSync, existsSync, readdirSync } = await import("node:fs");
-    const dir = mkdtempSync(`${import.meta.dir}/.check-`);
+    const { mkdtempSync, rmSync, existsSync, readdirSync, symlinkSync } = await import("node:fs");
+    // outside any repository, every step is its own (inside one, the newest is rewritten until committed: below)
+    const dir = mkdtempSync(`${(await import("node:os")).tmpdir()}/dzql-check-`);
+    symlinkSync(`${import.meta.dir}/../../../../node_modules`, `${dir}/node_modules`);
     const file = `${dir}/model.json`;
     const story = { id: 1, models_id: 1, text: "Ann asks", actor: "ann", kind: "does", post: null, touches: [], writes: [{ entity: "requests", op: "add" }], requires: null };
     const write = (documents: unknown[], more: unknown[] = []) => Bun.write(file, JSON.stringify({ tables: { models: [{ id: 1, name: "Team" }], stories: [story, ...more], documents } }));
@@ -321,6 +323,39 @@ describe("a name the app cannot take is caught before anything is made (cafe-c's
   });
 });
 
+test("while modelling, the newest step not yet committed is rewritten in place; once committed, a change is the next step", async () => {
+  const { mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { make } = await import("../../src/cli/model");
+  const dir = mkdtempSync(`${tmpdir()}/dzql-steps-`);
+  const git = (...args: string[]) => Bun.spawnSync(["git", "-c", "user.email=t@example.com", "-c", "user.name=t", ...args], { cwd: dir });
+  const model = (...fields: string[]) => {
+    const story = { id: 1, models_id: 1, text: "Ann sits", actor: "ann", kind: "does", post: null, touches: [], writes: [{ entity: "tables", op: "add" }], requires: null };
+    const doc = { id: 1, models_id: 1, name: "floor", root: "cafes", own: 0, holds: { cafes: { parent: null, fields: [] }, tables: { parent: "cafes", fields: fields.map((name) => ({ name })) } }, held_by: ["ann"], stories: [1] };
+    writeFileSync(`${dir}/model.json`, JSON.stringify({ tables: { models: [{ id: 1, name: "Cafe" }], stories: [story], documents: [doc] } }));
+    return make(`${dir}/model.json`, `${dir}/model`);
+  };
+  const steps = () => readdirSync(`${dir}/model/migrations`).sort();
+  symlinkSync(`${import.meta.dir}/../../../../node_modules`, `${dir}/node_modules`); // a step imports delta, as an app's does
+  try {
+    git("init", "-q");
+    writeFileSync(`${dir}/.gitignore`, "node_modules\n");
+    expect((await model("name")).said).toContain("(001-cafes-tables new)");
+    expect((await model("name", "seats")).said).toContain("(001-cafes-tables rewritten: not yet committed)");
+    expect(steps()).toEqual(["001-cafes-tables.ts"]);
+    expect(readFileSync(`${dir}/model/migrations/001-cafes-tables.ts`, "utf8")).toContain("seats");
+    expect((await model("name")).said).toContain("rewritten"); // a field taken back while the step is open is never added, so never dropped
+    expect(readFileSync(`${dir}/model/migrations/001-cafes-tables.ts`, "utf8")).not.toContain("seats");
+    git("add", "-A");
+    git("commit", "-qm", "the model");
+    expect((await model("name", "seats")).said).toContain("(002-tables new)");
+    expect((await model("name")).said).toContain("(002-tables gone: the model is back at the committed steps)");
+    expect(steps()).toEqual(["001-cafes-tables.ts"]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 30_000);
+
 describe("a model with little said is not shown as fine (the second cafe's feedback)", () => {
   test("a story that says nothing it writes or reads, and a teller with nothing in front of them", () => {
     const r = closureOf({
@@ -367,6 +402,16 @@ test("advice: a write another person's document holds, which that document does 
     { kind: "unserved-holder", where: "story 4 (manager) · table", detail: "add invoices.paid=false changes what table holds, held by customer, and table does not serve it: are they told? (serves 2 ... 4)" },
   ]);
   expect(of(cafe([4]), "subscription-closure").advice).toEqual([]);
+});
+
+test("advice: whose copy is never asked of a list, every row of its root the same for everyone who holds it", () => {
+  const menu = (list: boolean) => closureOf({
+    models: { name: "Cafe" },
+    stories: { "1": { id: 1, text: "The cook adds a dish", actor: "cook", kind: "does", writes: [{ entity: "items", op: "add" }] } },
+    documents: { "1": { id: 1, name: "menu", root: "items", list, holds: { items: { parent: null, fields: [field("name")] } }, held_by: ["cook", "customer"], stories: [1] } },
+  });
+  expect(of(menu(false), "actor-closure").advice!.map((a) => a.where)).toEqual(["menu (customer)"]);
+  expect(of(menu(true), "actor-closure").advice).toEqual([]);
 });
 
 test("advice: whose copy goes quiet once their own document names it, or a row it hangs under", () => {

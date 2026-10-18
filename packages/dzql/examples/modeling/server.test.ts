@@ -211,7 +211,7 @@ describe("the model's rules", () => {
 
   test("a document: described with its root and a story it serves; renamed, held, its own, for other stories, taken out", () => {
     expect(shape(m, [{ op: "add", path: "/documents/-", value: { name: " calendar ", root: "requests", stories: ["1", "8", 3], held_by: ["ann", " "], own: true, fields: [{ name: "starts", type: "date" }] } }])).toEqual([
-      { op: "add", path: "/documents/-", value: { name: "calendar", root: "requests", own: 1, stories: [1, 3], holds: { requests: { parent: null, fields: [{ name: "starts", type: "date" }] } }, held_by: ["ann"] } },
+      { op: "add", path: "/documents/-", value: { name: "calendar", root: "requests", own: 1, list: 0, stories: [1, 3], holds: { requests: { parent: null, fields: [{ name: "starts", type: "date" }] } }, held_by: ["ann"] } },
     ]);
     expect(refusal({ op: "add", path: "/documents/-", value: { name: "notes", root: "notes", stories: ["8"] } })).toBe("A document is for a story: name the one it serves.");
     expect(refusal({ op: "add", path: "/documents/-", value: { root: "notes", stories: ["1"] } })).toBe("A document needs a name.");
@@ -221,6 +221,9 @@ describe("the model's rules", () => {
     expect(shape(m, [{ op: "replace", path: "/documents/1/stories", value: ["2"] }])).toEqual([{ op: "replace", path: "/documents/1/stories", value: [2] }]);
     expect(shape(m, [{ op: "replace", path: "/documents/1/own", value: 0 }])).toEqual([{ op: "replace", path: "/documents/1/own", value: 0 }]);
     expect(shape(m, [{ op: "replace", path: "/documents/1/own", value: true }])).toEqual([{ op: "replace", path: "/documents/1/own", value: 1 }]);
+    // every row of its root (`menu:`), or one of them (`menu:1`)
+    expect(shape(m, [{ op: "replace", path: "/documents/1/list", value: true }])).toEqual([{ op: "replace", path: "/documents/1/list", value: 1 }]);
+    expect(shape(m, [{ op: "add", path: "/documents/-", value: { name: "menu", root: "items", stories: ["1"], list: true } }])[0]!.value).toMatchObject({ list: 1 });
     // a new root, the number kept: the old root still held, under it (cafe-c's feedback)
     const [root, holds] = shape(m, [{ op: "replace", path: "/documents/1/root", value: " requests " }]);
     expect(root).toEqual({ op: "replace", path: "/documents/1/root", value: "requests" });
@@ -251,7 +254,7 @@ describe("the model's rules", () => {
       { op: "remove", path: "/documents/2" },
       { op: "replace", path: "/documents/2/holds/sessions" },
       { op: "remove", path: "/documents/2/holds/sessions" },
-      ...["name", "held_by", "stories", "own"].map((f) => ({ op: "replace" as const, path: `/documents/2/${f}` })),
+      ...["name", "held_by", "stories", "own", "list"].map((f) => ({ op: "replace" as const, path: `/documents/2/${f}` })),
     ];
     const no: PatchOp[] = [
       { op: "replace", path: "/stories/-" },
@@ -287,6 +290,7 @@ describe("the model's rules", () => {
     expect(op("unsay", "2")).toEqual({ op: "remove", path: "/stories/2" });
     expect(op("document", "team", "teams", "2", "4")).toEqual({ op: "add", path: "/documents/-", value: { name: "team", root: "teams", stories: ["2", "4"] } });
     expect(op("own", "2")).toEqual({ op: "replace", path: "/documents/2/own", value: true });
+    expect(op("list", "2")).toEqual({ op: "replace", path: "/documents/2/list", value: true });
     expect(op("holds", "1", "requests", "under", "teams", "starts:date", "status")).toEqual({ op: "replace", path: "/documents/1/holds/requests", value: { under: "teams", fields: [field("starts", "date"), field("status")] } });
     expect(op("holds", "1", "teams", "name")).toEqual({ op: "replace", path: "/documents/1/holds/teams", value: { under: undefined, fields: [field("name")] } });
     expect(op("unhold", "1", "requests")).toEqual({ op: "remove", path: "/documents/1/holds/requests" });

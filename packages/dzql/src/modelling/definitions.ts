@@ -1,5 +1,6 @@
 import { defineDoc, defineSchema, type ColumnShorthand, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { diff, stateOf, writeMigration, type Change } from "@blueshed/delta/migrations";
+import { readingOf, typeOf, valueOf, type AnyModel, type Document, type Entity, type Reading, type Story, type StoryWrite } from "./reading";
 
 // From the model to the app: the stories, the documents they need and what each holds, as the
 // model's page keeps them, made into delta's two definitions -- a schema (`defineSchema`, the
@@ -15,67 +16,21 @@ import { diff, stateOf, writeMigration, type Change } from "@blueshed/delta/migr
 // What a model does not say is left out, never guessed: who owns a document that is each
 // person's own (`own`) is a path from its row to the person, given with sign-in (delta's `owns`).
 
-/** A field as a document holds it: its name, and its type as the modeller said it ("text" unless said). */
-export type ModelField = { name: string; type?: string };
+export { knownType, parentIn, type ModelDocument, type ModelField, type ModelStory } from "./reading";
 /** The model as the model's page keeps it (`model:1`): its stories and documents, each a row by its id; a list does as well. */
-export type Model = {
-  stories?: Record<string, ModelStory> | ModelStory[];
-  documents?: Record<string, ModelDocument> | ModelDocument[];
-};
-export type ModelStory = { id: string | number; text: string; actor: string; kind?: string };
-export type ModelDocument = {
-  id: string | number;
-  name: string;
-  root: string;
-  own?: number | boolean;
-  holds?: Record<string, { parent: string | null; fields?: ModelField[] }>;
-  held_by?: string[];
-  stories?: (string | number)[];
-};
-
-/** delta's column type for a modeller's word: its own types as they are, a day as its text, a number as a real; else text. */
-const TYPES: Record<string, ColumnShorthand> = {
-  text: "text?", integer: "integer?", int: "integer?", real: "real?", number: "real?", boolean: "boolean?", bool: "boolean?",
-  json: "json?", timestamptz: "timestamptz?", timestamp: "timestamptz?", time: "timestamptz?", date: "text?",
-};
-/** A type the modeller may say: each maps to one of delta's, and any other is a gap (referential closure), never guessed as text. */
-export const knownType = (type = "text"): boolean => type.trim().toLowerCase() in TYPES;
-const columnType = (type = "text"): ColumnShorthand => TYPES[type.trim().toLowerCase()] ?? "text?";
-
-/** Where an entity hangs, as one document says it: from nothing when it is that document's root, else under its parent (or the root). */
-export const parentIn = (d: Pick<ModelDocument, "root">, name: string, held: { parent: string | null }): string | null => (name === d.root ? null : (held.parent ?? d.root));
+export type Model = AnyModel;
 
 const rows = <T extends { id: string | number }>(of: Record<string, T> | T[] | undefined): T[] =>
   Object.values(of ?? {}).sort((a, b) => Number(a.id) - Number(b.id));
 
-type Entity = { parent: string | null; columns: Record<string, ColumnShorthand> };
-
-/** The entities, worked out from the documents in the order they were described. */
-function entitiesOf(documents: ModelDocument[]): Map<string, Entity> {
-  const entities = new Map<string, Entity>();
-  for (const d of documents) {
-    for (const [name, held] of Object.entries(d.holds ?? { [d.root]: { parent: null } })) {
-      const e = entities.get(name) ?? entities.set(name, { parent: null, columns: {} }).get(name)!;
-      e.parent ??= parentIn(d, name, held); // a document's root says nothing of its parent: the first that gives one wins
-      for (const f of held.fields ?? []) {
-        if (f.name === "id" || (e.parent && f.name === `${e.parent}_id`)) continue; // delta's own: the row's id, and the key to its parent
-        e.columns[f.name] ??= columnType(f.type);
-      }
-    }
-  }
-  return entities;
-}
-
 /** The model as delta's definitions: the schema of its entities, and its documents over them. */
 export function definitionsOf(model: Model): { schema: Schema; docs: DocDef[] } {
-  const documents = rows(model.documents);
-  const entities = entitiesOf(documents);
-  const schema = defineSchema(
-    Object.fromEntries([...entities].map(([name, e]) => [name, { columns: e.columns, temporal: false, ...(e.parent ? { parent: e.parent } : {}) }])),
-  );
-  const docs = documents.map((d) =>
-    defineDoc(`${d.name}:`, { root: d.root, include: Object.keys(d.holds ?? {}).filter((e) => e !== d.root), ...(entities.get(d.root)!.parent ? {} : { implied: true }) }),
-  );
+  const m = readingOf(model);
+  // the entities a document holds, each with its fields as columns -- but delta's own: the row's id, and the key to its parent
+  const held = [...m.entities.values()].filter((e) => e.documents.length > 0);
+  const columnsOf = (e: Entity) => Object.fromEntries([...e.fields].filter(([f]) => f !== "id" && !(e.parent && f === `${e.parent}_id`)).map(([f, type]) => [f, `${typeOf(type)}?` as ColumnShorthand]));
+  const schema = defineSchema(Object.fromEntries(held.map((e) => [e.name, { columns: columnsOf(e), temporal: false, ...(e.parent ? { parent: e.parent } : {}) }])));
+  const docs = m.documents.map((d) => defineDoc(`${d.name}:`, { root: d.root, include: Object.keys(d.holds).filter((e) => e !== d.root), ...(d.implied ? { implied: true } : {}) }));
   return { schema, docs };
 }
 
@@ -85,8 +40,7 @@ export function definitionsOf(model: Model): { schema: Schema; docs: DocDef[] } 
  */
 export function sourceOf(model: Model, from = "@blueshed/delta/json"): string {
   const { schema, docs } = definitionsOf(model);
-  const stories = new Map(rows(model.stories).map((s) => [String(s.id), s]));
-  const documents = rows(model.documents);
+  const m = readingOf(model);
   const json = (v: unknown): string =>
     Array.isArray(v) ? `[${v.map(json).join(", ")}]`
     : v !== null && typeof v === "object" ? (Object.keys(v).length ? `{ ${Object.entries(v).map(([k, x]) => `${k}: ${json(x)}`).join(", ")} }` : "{}")
@@ -96,11 +50,12 @@ export function sourceOf(model: Model, from = "@blueshed/delta/json"): string {
     return `  ${t.docKey}: ${json({ columns, temporal: false, ...(t.parent ? { parent: t.parent.collection } : {}) })},`;
   });
   const defs = docs.flatMap((def, i) => {
-    const d = documents[i]!;
-    const serves = (d.stories ?? []).flatMap((id) => stories.get(String(id)) ?? []).map((s) => `  // for: ${s.text}`);
+    const d = m.documents[i]!;
+    const serves = m.stories.filter((s) => d.serves.includes(s.id)).map((s) => `  // for: ${s.text}`);
     const own = d.own ? ["  // each person's own: say whose with `owns` (a path to the person) once people sign in"] : [];
+    const list = d.list ? [`  // every ${d.root}: opened as ${JSON.stringify(def.prefix)}`] : [];
     const opts = { root: def.root, include: def.include, ...(def.implied ? { implied: true } : {}) };
-    return [...serves, ...own, `  defineDoc(${JSON.stringify(def.prefix)}, ${json(opts)}),`];
+    return [...serves, ...own, ...list, `  defineDoc(${JSON.stringify(def.prefix)}, ${json(opts)}),`];
   });
   return [
     "// The model, as delta's definitions: written by `dzql model` from the model's page.",
@@ -151,9 +106,12 @@ export function typesOf(model: Model, from = "@blueshed/delta/json"): string {
     ];
     return `export type ${pascal(t.docKey)}Row = { ${fields.join(" ")} };`;
   });
+  const listed = new Set(readingOf(model).documents.filter((d) => d.list).map((d) => `${d.name}:`));
   const shapes = docs.map((d) => {
     const name = pascal(d.prefix.replace(/:$/, ""));
-    const parts = [`${d.root}: ${pascal(d.root)}Row;`, ...d.include.map((c) => `${c}: Record<string, ${pascal(c)}Row>;`)];
+    // one row is its root; a list is every row of it, by id
+    const root = listed.has(d.prefix) ? `Record<string, ${pascal(d.root)}Row>` : `${pascal(d.root)}Row`;
+    const parts = [`${d.root}: ${root};`, ...d.include.map((c) => `${c}: Record<string, ${pascal(c)}Row>;`)];
     return `export type ${name}Doc = { ${parts.join(" ")} };`;
   });
   return [
@@ -180,80 +138,69 @@ export function nextMigrationOf(history: { changes?: Change[] }[], model: Model,
   return { name: `${String(history.length + 1).padStart(3, "0")}-${keys}`, source: writeMigration(changes, byHand) };
 }
 
-type Said = { entity: string; op: "add" | "replace" | "remove"; path?: string; to?: string };
-type Story = ModelStory & { post?: string | null; writes?: Said[] | null; requires?: { entity: string; path: string; value: string }[] | null };
-
-type Write = { doc: string; ops: Record<string, unknown>[] };
+/** A write as the proof makes it: who makes it (a story's teller), on which document, and its ops. */
+type Write = { as: string; doc: string; ops: Record<string, unknown>[] };
 /** One story as the tests tell it: its writes, each on a document that holds what it writes, the writes it needs first (in order), and the documents it is born into. */
-type Planned = { s: Story; writes: Write[]; premise: Write[]; serving: ModelDocument[] };
+type Planned = { s: Story; writes: Write[]; premise: Write[]; serving: Document[] };
 
 /**
  * Each story, planned: its writes on the documents it is born into -- one that holds every entity
- * it writes if there is one, else each write on one that holds its entity -- at row 1 of what it
- * changes and under row 1 of the parent it adds under; and its premise, the stories it needs --
- * whoever adds the row it changes or adds under, or sets the state it requires -- each after what
- * it needs in turn. A value is of its field's type ("false" is false on a boolean).
+ * it writes if there is one, else each write on one that holds its entity, one its teller may write
+ * on first -- at row 1 of what it changes and under row 1 of the parent it adds under, each a write
+ * of its own, made in turn, as a page makes them; and its premise, the stories it needs -- whoever
+ * adds the row it changes or adds under, or sets the state it requires -- each after what it needs
+ * in turn. A value is of its field's type ("false" is false on a boolean).
  */
-function planOf(model: Model): { plans: Planned[]; typed: (entity: string, field: string | undefined, v: string | undefined) => unknown } {
-  const { schema } = definitionsOf(model);
-  const documents = rows(model.documents);
-  const stories = rows(model.stories as Record<string, Story> | Story[] | undefined);
-  const parentOf = (e: string) => schema.tables[e]?.parent?.collection;
-  const serving = (s: Story) => documents.filter((d) => (d.stories ?? []).map(String).includes(String(s.id)));
-  const holding = (s: Story, entities: string[]) => serving(s).filter((d) => entities.every((e) => e in (d.holds ?? {})));
+function planOf(m: Reading): Planned[] {
+  const typed = (w: StoryWrite) => valueOf(m.typeOf(w.entity, w.path), w.to);
+  const holding = (s: Story, entities: string[]) => m.serving(s).filter((d) => entities.every((e) => e in d.holds));
   // where a write is made: a page of rows rather than the row's own document (a table is added on
-  // the floor), then one the teller holds
-  const best = (s: Story, docs: ModelDocument[], entity: string) =>
-    [...docs].sort((x, y) => (x.root === entity ? 2 : 0) + ((x.held_by ?? []).includes(s.actor) ? 0 : 1) - ((y.root === entity ? 2 : 0) + ((y.held_by ?? []).includes(s.actor) ? 0 : 1)))[0];
-  const typed = (entity: string, field: string | undefined, v: string | undefined): unknown => {
-    const type = field ? schema.tables[entity]?.columns[field]?.type : undefined;
-    if (v === undefined) return type === "integer" || type === "real" ? 1 : type === "boolean" ? true : type === "json" ? {} : "changed"; // none said: one of its type
-    if (type === "boolean") return v === "true" || v === "yes" || v === "1";
-    if ((type === "integer" || type === "real") && v.trim() !== "" && !Number.isNaN(Number(v))) return Number(v);
-    return v;
+  // the floor), then one the teller may write on (the guards' `where`)
+  const best = (s: Story, docs: Document[], entity: string) => {
+    const cost = (d: Document) => (d.root === entity && !d.list ? 2 : 0) + (m.writable(s.actor, entity).includes(d) ? 0 : 1);
+    return [...docs].sort((x, y) => cost(x) - cost(y))[0];
   };
   // the row's own document addresses it by its id (delta: /<root>/<id>), a page of rows by /<collection>/<id>
-  const opOf = (d: ModelDocument, w: Said) => {
-    const parent = parentOf(w.entity);
-    const fields = { ...(parent ? { [`${parent}_id`]: 1 } : {}), ...(w.path ? { [w.path]: typed(w.entity, w.path, w.to) } : {}) };
+  const opOf = (d: Document, w: StoryWrite) => {
+    const parent = m.parentOf(w.entity);
+    const fields = { ...(parent ? { [`${parent}_id`]: 1 } : {}), ...(w.path ? { [w.path]: typed(w) } : {}) };
     // the document's own root is there once the document is open (made by the store, or by the proof
     // for one under a parent), so adding it is setting the field it says, if it says one
-    if (w.op === "add" && w.entity === d.root) return w.path ? { op: "replace", path: `/${w.entity}/1/${w.path}`, value: typed(w.entity, w.path, w.to) } : undefined;
+    if (w.op === "add" && w.entity === d.root && !d.list) return w.path ? { op: "replace", path: `/${w.entity}/1/${w.path}`, value: typed(w) } : undefined;
     if (w.op === "add") return { op: "add", path: `/${w.entity}/-`, value: fields };
     const row = `/${w.entity}/1`;
-    return w.op === "remove" ? { op: "remove", path: `${row}${w.path ? `/${w.path}` : ""}` } : { op: "replace", path: `${row}/${w.path}`, value: typed(w.entity, w.path, w.to) };
+    return w.op === "remove" ? { op: "remove", path: `${row}${w.path ? `/${w.path}` : ""}` } : { op: "replace", path: `${row}/${w.path}`, value: typed(w) };
   };
   // a story's writes; as setup for another (`setup`), only what makes and sets, never what it takes
   // away: a premise that removes a row would take the one the later story stands on (cafe-e's feedback)
   const writesOf = (s: Story, setup = false): Write[] => {
-    const ws = (s.writes ?? []).filter((w) => !setup || w.op !== "remove");
+    const ws = s.writes.filter((w) => !setup || w.op !== "remove");
     if (!ws.length || s.post) return [];
     const all = best(s, holding(s, [...new Set(ws.map((w) => w.entity))]), ws[0]!.entity);
-    const groups = new Map<ModelDocument, Said[]>();
-    for (const w of ws) {
+    return ws.flatMap((w) => {
       const d = all ?? best(s, holding(s, [w.entity]), w.entity);
-      if (d) groups.set(d, [...(groups.get(d) ?? []), w]);
-    }
-    return [...groups].map(([d, said]) => ({ doc: `${d.name}:1`, ops: said.flatMap((w) => opOf(d, w) ?? []) })).filter((w) => w.ops.length > 0);
+      const op = d && opOf(d, w);
+      return op ? [{ as: s.actor, doc: m.nameOf(d), ops: [op] }] : [];
+    });
   };
   // whoever a story needs first: the stories that add the rows it changes or adds under, or set the state it requires
   // a state is set up by one story, the one that presupposes least (a table added free, not one
   // paid and freed: cafe-c's feedback), so a premise never needs what it is setting up
-  const presupposes = (o: Story) => (o.writes ?? []).filter((w) => w.op !== "add").length + (o.requires ?? []).length;
+  const presupposes = (o: Story) => o.writes.filter((w) => w.op !== "add").length + o.requires.length;
   const direct = (s: Story): Story[] => {
     const rows = new Set<string>();
-    for (const w of s.writes ?? []) {
+    for (const w of s.writes) {
       if (w.op !== "add") rows.add(w.entity);
-      const p = parentOf(w.entity);
+      const p = m.parentOf(w.entity);
       if (w.op === "add" && p) rows.add(p);
     }
-    const doing = stories.filter((o) => o !== s && o.kind !== "cannot");
-    const adders = doing.filter((o) => (o.writes ?? []).some((w) => w.op === "add" && rows.has(w.entity)));
-    const setters = (s.requires ?? []).flatMap((r) => {
-      const by = doing.filter((o) => (o.writes ?? []).some((w) => `${w.entity}.${w.path}=${w.to}` === `${r.entity}.${r.path}=${r.value}`));
+    const doing = m.doing.filter((o) => o !== s);
+    const adders = doing.filter((o) => o.writes.some((w) => w.op === "add" && rows.has(w.entity)));
+    const setters = s.requires.flatMap((r) => {
+      const by = doing.filter((o) => o.writes.some((w) => `${w.entity}.${w.path}=${w.to}` === `${r.entity}.${r.path}=${r.value}`));
       return by.length ? [by.reduce((best, o) => (presupposes(o) < presupposes(best) ? o : best))] : [];
     });
-    return stories.filter((o) => adders.includes(o) || setters.includes(o)); // in the order told
+    return m.stories.filter((o) => adders.includes(o) || setters.includes(o)); // in the order told
   };
   // each with what it needs before it, depth first, each once
   const needs = (s: Story): Story[] => {
@@ -268,10 +215,13 @@ function planOf(model: Model): { plans: Planned[]; typed: (entity: string, field
     direct(s).forEach(visit);
     return out;
   };
-  return { plans: stories.map((s) => ({ s, writes: writesOf(s), premise: needs(s).flatMap((o) => writesOf(o, true)), serving: serving(s) })), typed };
+  return m.stories.map((s) => ({ s, writes: writesOf(s), premise: needs(s).flatMap((o) => writesOf(o, true)), serving: m.serving(s) }));
 }
 
 const lit = (v: unknown) => JSON.stringify(v);
+
+/** The rows the proof makes before any story: row 1 of each document's root that hangs from another, and each above it -- but none a story adds. */
+const made = (m: Reading): string[] => [...new Set(m.documents.flatMap((d) => (m.parentOf(d.root) && !d.list ? m.above(d.root).reverse() : [])))].filter((e) => !m.added.has(e));
 
 /**
  * The model, proved on a store: `model.test.ts`. The migrations, run from empty on SQLite, are the
@@ -280,20 +230,20 @@ const lit = (v: unknown) => JSON.stringify(v);
  * needed: it is the model's definitions under delta, as an app keeps them. The app's own stories,
  * each saying its model story's number, are told against its pages.
  */
-export function testsOf(model: Model, app = "model", types = "./types"): string {
-  const holds = (d: ModelDocument, w: Said) => w.entity in (d.holds ?? {}) && (!w.path || (d.holds![w.entity]!.fields ?? []).some((f) => f.name === w.path));
-  const { plans, typed } = planOf(model);
-  const cases = plans.flatMap(({ s, writes, premise, serving }) => {
-    if (!writes.length || s.kind === "cannot") return [];
-    const told = [...new Set([s.actor, ...serving.flatMap((d) => d.held_by ?? [])])];
-    // what is there after the whole write: an entity the same write removes is checked as nothing more
-    const removed = new Set((s.writes ?? []).filter((w) => w.op === "remove" && !w.path).map((w) => w.entity));
-    const checks = (s.writes ?? []).filter((w) => !removed.has(w.entity)).flatMap((w) =>
+export function testsOf(model: Model, app = "model", types = "./types", guards?: string): string {
+  const m = readingOf(model);
+  const holds = (d: Document, w: StoryWrite) => w.entity in d.holds && (!w.path || d.holds[w.entity]!.fields.some((f) => f.name === w.path));
+  const cases = planOf(m).flatMap(({ s, writes, premise, serving }) => {
+    if (!writes.length || (s.kind === "cannot" && !guards)) return [];
+    const told = [...new Set([s.actor, ...serving.flatMap((d) => d.held_by)])];
+    // what is there after the whole story: an entity it removes is checked as nothing more
+    const removed = new Set(s.writes.filter((w) => w.op === "remove" && !w.path).map((w) => w.entity));
+    const checks = (s.kind === "cannot" ? [] : s.writes).filter((w) => !removed.has(w.entity)).flatMap((w) =>
       told.flatMap((who) =>
-        serving.filter((d) => (d.held_by ?? []).includes(who) && holds(d, w)).map((d) => ({ who, doc: `${d.name}:1`, entity: w.entity, ...(w.path ? { path: w.path, to: typed(w.entity, w.path, w.to) } : {}), root: d.root === w.entity })),
+        serving.filter((d) => d.held_by.includes(who) && holds(d, w)).map((d) => ({ who, doc: m.nameOf(d), entity: w.entity, ...(w.path ? { path: w.path, to: valueOf(m.typeOf(w.entity, w.path), w.to) } : {}), root: d.root === w.entity && !d.list })),
       ),
     );
-    return [`  [${lit(s.text)}, ${lit(premise)}, ${lit(writes)}, ${lit(checks)}],`];
+    return [`  [${lit(s.text)}, ${lit(s.kind === "cannot")}, ${lit(premise)}, ${lit(writes)}, ${lit(checks)}],`];
   });
   return [
     "// The model, proved on a store: written by `dzql model` from the model's page; never edited by hand.",
@@ -301,7 +251,8 @@ export function testsOf(model: Model, app = "model", types = "./types"): string 
     'import { describe, expect, test } from "bun:test";',
     'import { createLocal } from "@blueshed/delta/local";',
     'import { diff, stateOf } from "@blueshed/delta/migrations";',
-    'import { fromFolder, migrate, registerDocs } from "@blueshed/delta/sqlite";',
+    `import { fromFolder, migrate, registerDocs } from "@blueshed/delta/sqlite";`,
+    ...(guards ? ['import { guardWrites, rowsIn } from "dzql/modelling/guards";', `import { guards } from ${lit(guards)};`] : []),
     `import { docs, schema } from ${lit(types)};`,
     "",
     "const migrations = await fromFolder(`${import.meta.dir}/migrations`);",
@@ -310,13 +261,14 @@ export function testsOf(model: Model, app = "model", types = "./types"): string 
     "async function store() {",
     '  const db = new Database(":memory:");',
     `  await migrate(db, migrations, { app: ${lit(app)}, schema });`,
-    "  // a document whose root hangs from another is opened at a row that is there: row 1, and each above it",
-    "  for (const d of docs) {",
-    "    const chain = [];",
-    "    for (let t: (typeof schema.tables)[string] | undefined = schema.tables[d.root]; t; t = t.parent ? schema.tables[t.parent.collection] : undefined) chain.unshift(t);",
-    "    if (chain.length > 1) for (const t of chain) db.run(`INSERT OR IGNORE INTO \"${t.name}\" (id${t.parent ? `, \"${t.parent.fkColumn}\"` : \"\"}) VALUES (1${t.parent ? \", 1\" : \"\"})`);",
+    "  // a document whose root hangs from another is opened at a row that is there: row 1, and each above it,",
+    "  // but a row a story adds is that story's, made by the premise of whatever needs it",
+    `  for (const e of ${lit(made(m))}) {`,
+    "    const t = schema.tables[e]!;",
+    "    db.run(`INSERT OR IGNORE INTO \"${t.name}\" (id${t.parent ? `, \"${t.parent.fkColumn}\"` : \"\"}) VALUES (1${t.parent ? \", 1\" : \"\"})`);",
     "  }",
     "  const local = createLocal();",
+    ...(guards ? ["  // the guards stand in front of the store, as in the app: each write is made as its story's teller", "  guardWrites(local.server, guards, { actorOf: (who) => (who as { actor?: string } | undefined)?.actor, rowOf: rowsIn(db, schema) });"] : []),
     "  registerDocs(local.server, db, schema, docs);",
     "  return { local };",
     "}",
@@ -326,23 +278,26 @@ export function testsOf(model: Model, app = "model", types = "./types"): string 
     "  expect({ changes, byHand: byHand.filter((b) => !owed.includes(`// By hand: ${b}`)) }).toEqual({ changes: [], byHand: [] });",
     "});",
     "",
-    "type Write = { doc: string; ops: unknown[] };",
+    "type Write = { as: string; doc: string; ops: unknown[] };",
     "type Check = { who: string; doc: string; entity: string; path?: string; to?: unknown; root: boolean };",
-    "const cases: [string, Write[], Write[], Check[]][] = [",
+    "// each story: its words, whether it is refused, the writes it needs first, its own, and who then sees what",
+    "const cases: [string, boolean, Write[], Write[], Check[]][] = [",
     ...cases,
     "];",
     "",
-    'describe("each story, on the store", () => {',
-    "  for (const [name, premise, does, checks] of cases)",
+    `describe(${lit(guards ? "each story, on the store, each guarded" : "each story, on the store")}, () => {`,
+    "  for (const [name, refused, premise, does, checks] of cases)",
     "    test(name, async () => {",
     "      const { local } = await store();",
     "      // a write goes to a document its writer has open, as on a page",
-    "      const write = async (w: Write) => {",
-    '        expect((await local.call("open", { doc: w.doc })).error, `open ${w.doc}`).toBeUndefined();',
-    '        return local.call("delta", w);',
+    "      const write = async ({ as, ...w }: Write) => {",
+    "        const writer = local.as({ actor: as });",
+    '        expect((await writer.call("open", { doc: w.doc })).error, `open ${w.doc}`).toBeUndefined();',
+    '        return writer.call("delta", w);',
     "      };",
     "      for (const w of premise) expect(await write(w), `the premise: ${JSON.stringify(w)}`).toEqual({ result: { ack: true } });",
-    "      for (const w of does) expect(await write(w), JSON.stringify(w)).toEqual({ result: { ack: true } });",
+    "      // a story someone cannot do is refused, in its own words",
+    "      for (const w of does) expect(await write(w), JSON.stringify(w)).toMatchObject(refused ? { error: { code: 403, message: name } } : { result: { ack: true } });",
     "      for (const c of checks) {",
     '        const doc = (await local.call("open", { doc: c.doc })).result as Record<string, any>;',
     "        const rows = c.root ? [doc[c.entity]] : Object.values(doc[c.entity] ?? {});",

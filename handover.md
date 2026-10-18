@@ -40,51 +40,32 @@ starter's `routes.ts` and the template's CLAUDE.md say the same. delta-doc's `au
 delta's own (for a page that is delta's client); signin.md says which is which. Next: decisions 2
 to 4 below.
 
-## Peter's decisions not yet built
+## Peter's decisions: built (18 October, evening; Peter: "don't wait for me, fix it all")
 
-1. ~~Sign-in by link~~: done (above).
-2. **Refusals on the page are the story's words only.** The guards' reason drops "(story N)"; keep
-   the number for logs and the harness.
-3. **Migrations while modelling:** rewrite the newest unreleased migration in place until it is
-   committed, then start the next (six piled up in one afternoon in cafe-e).
-4. **Documents that list all of them** (`menu:`, the floor) as well as one of them (`menu:1`): the
-   model can say it, and the proof, the whose-copy advice and the types follow (cafe-d items 2, 7).
+1. Sign-in by link (above).
+2. A guard's refusal is the story's words alone; the number rides as `error.story`.
+3. The newest migration is rewritten in place while git says it is not committed (`make`,
+   `src/cli/model.ts`); outside a repository every step is its own.
+4. A document can be a `list` (`menu:`): the page, `list <doc>`, the proof, the types, the advice.
 
-Earlier and still open: the `ref` field type (one row pointing at another, beside copied fields:
-cafe-c/cafe-d item 10) -- Peter asked "are you describing fkeys?"; answered (a parent is
-containment, a ref is association), no decision yet.
+Still open, Peter's to decide: the `ref` field type (one row pointing at another, beside copied
+fields: cafe-c/cafe-d item 10); a parent is containment, a ref association.
 
-## The two problems Peter named, and what would solve them
+## The two problems Peter named
 
-Peter, on cafe-e's report: "How do the tools disagree with each other? This is a disaster and the
-learning was large up front ... this is sloppy -- how can we improve our library if we do not pay
-attention to the detail?"
+Peter, on cafe-e's report: "How do the tools disagree with each other? ... how can we improve our
+library if we do not pay attention to the detail?"
 
-**The tools disagree.** Each part re-implements the model's meaning:
-- the checks (`examples/modeling/closure.ts`) said closed, and the generated proof
-  (`src/modelling/definitions.ts`, `testsOf`) failed (a premise replaying a remove; a premise that
-  needed its own setup);
-- the guards (`src/modelling/guards.ts`) enforced a requirement on writes the checks never asked
-  about, and refused what coverage called decided;
-- the read-back (`examples/modeling/loader/told.ts`) compared roles with cast names and missed an
-  own document the reference told the app to build;
-- the harness's hidden-verb warning ignored the guards until today's `may`.
-Each was fixed one at a time; nothing stops the next. The fix is structural: one reading of a
-model (who writes what, on which document, presupposing what, reaching whom) that the checks, the
-proof, the guards and the read-back all take, and a conformance test that holds them to each other:
-for every model in a fixture set (the reviewer models, cafe-e's `model.json`, the cafe built as
-the worked example), *checks closed* implies *the generated proof passes* implies *the guards let
-each does story's write and refuse each cannot*. Run in dzql's fast tier.
+**The tools disagree: built.** `src/modelling/reading.ts` is one reading of a model, which the
+checks, the heart, the definitions, the proof, the guards and the read-back take. The proof
+(`model.test.ts`) makes every write through the guards as its story's teller and expects each
+`cannot` refused in its words; `src/modelling/conformance.test.ts` runs `make` and that proof over
+`src/modelling/fixtures/` (leave, cafe-e, menu) in the fast tier. A model that breaks one of them
+is a fixture to add. It found four disagreements (dzql's CHANGELOG says which), each fixed.
 
-**Too much to learn up front.** cafe-e's words: six checks, `holds … under`, `perSession`,
-`toldAt`, addresses, `serverWrite`, and the step from model to app in prose with no worked example
-(its item 3, the most time lost). Proposed: build the cafe from a model as a worked example in the
-new layout (guards, the model's migrations beside the app's, the own document as the session, link
-sign-in), make it the conformance fixture too, and have the skills point at it instead of prose;
-then cut the skills to one path, each word introduced where it is first needed.
-
-Bring the plan to Peter before building it: it changes API shape (one shared model reading) and
-adds an example, both his to approve.
+**Too much to learn up front.** The worked example: the cafe built from a model in the routes and
+resources layout, made a conformance fixture, the skills pointing at it instead of prose; then the
+skills cut to one path. See below for where it stands.
 
 ## How to check
 

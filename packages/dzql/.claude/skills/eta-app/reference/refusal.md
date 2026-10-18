@@ -43,7 +43,8 @@ async afterWalk(ws, id, { way, ops, inverse }) {
   control's doc and path on the page they are on, even when the page no longer offers the control
   (a paid bill still draws the line for the add it refused).
 - A refusal from the store -- the model's guards (`guardWrites`), a document's permission -- reaches
-  the page as one from `refuse` does, its words the story's.
+  the page as one from `refuse` does, its words the story's alone: the guards' answer carries the
+  story's number beside them (`error.story`), for logs and the proof, never on the page.
 
 ## Undo is checked before it runs
 

@@ -39,6 +39,7 @@ export const tools: Tool[] = [
   tool("unsay", "Take a story back.", { story }, ["story"], (a) => ["model", "unsay", a.story]),
   tool("document", "Describe a document: its name, its root, the stories it serves.", { name: { type: "string" }, root: { type: "string" }, stories: strings("Story numbers.") }, ["name", "root"], (a) => ["model", "document", a.name, a.root, ...(a.stories ?? [])]),
   tool("own", "Make a document each person's own (a session), not shared.", { document: doc }, ["document"], (a) => ["model", "own", a.document]),
+  tool("list", "Make a document list every row of its root (`menu:`, the whole menu), not one of them (`menu:1`).", { document: doc }, ["document"], (a) => ["model", "list", a.document]),
   tool("holds", "What a document holds: an entity, what it hangs under, its fields (`name` or `name:type`).", { document: doc, entity: { type: "string" }, under: { type: "string" }, fields: strings('e.g. "starts:date", "status".') }, ["document", "entity"], (a) => ["model", "holds", a.document, a.entity, ...(a.under ? ["under", a.under] : []), ...(a.fields ?? [])]),
   tool("unhold", "Take an entity out of a document.", { document: doc, entity: { type: "string" } }, ["document", "entity"], (a) => ["model", "unhold", a.document, a.entity]),
   tool("heldby", "Who holds a document.", { document: doc, people: strings("Actors, as the stories name them.") }, ["document", "people"], (a) => ["model", "heldby", a.document, ...a.people]),

@@ -10,7 +10,8 @@
 //   state    a story's `requires`: the row written, or a row it hangs under, holds the value
 //            (`requires requests.status=waiting`)
 //
-// A `cannot` story that names a write is the reason it is refused. A write that no story says is
+// A `cannot` story that names a write is the reason it is refused, in its words alone: the page
+// shows them, and the story's number goes beside them (`story`) for logs and the harness. A write that no story says is
 // refused, never let through: the model is what may happen. A requirement on a row that is neither
 // the one written nor one above it cannot be checked from the write, so its story is refused with
 // that said (hjeli's custom operation, left to a person to finish) -- never half-guarded.
@@ -21,15 +22,11 @@
 // a write it refuses is answered 403 with the reason; one it lets by goes on to the store. Each op
 // of a write is checked against the rows as they stand before it.
 
-/** A write a story says: an entity and a verb, and for a replace the field and the value it sets. */
-export type StoryWrite = { entity: string; op: "add" | "replace" | "remove"; path?: string; to?: string };
-/** A state a story presupposes: an entity's field holding a value. */
-export type Requires = { entity: string; path: string; value: string };
+import { readingOf, says as saysWord, type AnyModel, type StoryWrite } from "./reading";
 
-type Story = { id: string | number; text: string; actor: string; kind?: string; post?: string | null; writes?: StoryWrite[] | null; requires?: Requires[] | null };
-type Document = { id: string | number; name: string; root: string; own?: number | boolean; holds?: Record<string, { parent: string | null }>; held_by?: string[] };
+export type { Requires, StoryWrite } from "./reading";
 /** The model as the model's page keeps it: its stories and documents, each a row by its id; a list does as well. */
-export type GuardModel = { stories?: Record<string, Story> | Story[]; documents?: Record<string, Document> | Document[] };
+export type GuardModel = AnyModel;
 
 /** One write one story says, and what it takes. */
 export type Rule = {
@@ -42,55 +39,53 @@ export type Rule = {
   op: StoryWrite["op"];
   field?: string;
   to?: string;
+  /** The field's type, as the model says it: a value is compared as that type has it ("false" on a boolean is false). */
+  type?: string;
   /** The documents the teller holds that show the entity: the write must be to one of them. */
   docs: string[];
   /** What it presupposes, each with the rows climbed to reach it from the one written: `[]` is that row. */
-  requires: { entity: string; field: string; value: string; via: string[] }[];
+  requires: { entity: string; field: string; value: string; via: string[]; type?: string }[];
   /** Why it cannot be checked from the write: then it is refused, saying so. */
   custom?: string;
 };
 /** The guards: the documents they stand in front of, and each write's rule. */
-export type Guards = { documents: string[]; rules: Rule[]; /** Each document's root, by its name: its row is addressed as `/<root>/<field>` too (delta's). */ roots?: Record<string, string> };
+export type Guards = {
+  documents: string[];
+  rules: Rule[];
+  /** Each document's root, by its name: its row is addressed as `/<root>/<field>` too (delta's). */
+  roots?: Record<string, string>;
+  /** The entities whose row is there before any story adds it (an implied document's root): delta makes it on the first write. */
+  there?: string[];
+};
 
 export type Op = { op: string; path: string; value?: unknown };
 export type Row = Record<string, unknown>;
 export type RowOf = (entity: string, id: string) => Row | undefined | null | Promise<Row | undefined | null>;
-export type Verdict = { ok: true; story: string | number } | { ok: false; reason: string };
+export type Verdict = { ok: true; story: string | number } | { ok: false; reason: string; story?: string | number };
 
 const rows = <T extends { id: string | number }>(of: Record<string, T> | T[] | undefined): T[] =>
   Object.values(of ?? {}).sort((a, b) => Number(a.id) - Number(b.id));
 
 /** The guards the model's stories say, over the documents it describes. */
 export function guardsOf(model: GuardModel): Guards {
-  const documents = rows(model.documents);
-  const parents = new Map<string, string | null>();
-  for (const d of documents) {
-    for (const [name, held] of Object.entries(d.holds ?? { [d.root]: { parent: null } })) {
-      if (!parents.has(name)) parents.set(name, name === d.root ? null : (held.parent ?? d.root));
-    }
-  }
-  const above = (entity: string): string[] => {
-    const chain: string[] = [];
-    for (let e = parents.get(entity); e && !chain.includes(e); e = parents.get(e)) chain.push(e);
-    return chain;
-  };
+  const m = readingOf(model);
   const rules: Rule[] = [];
-  for (const s of rows(model.stories)) {
+  for (const s of m.stories) {
     if (s.post) continue; // a form posted to a route: the route's, not a document's
     // a requirement is checked on each write that can reach it (its row, or one it hangs under);
     // one that none of the story's writes reaches cannot be checked at all (cafe-c's feedback)
-    const reaches = (w: { entity: string }, r: { entity: string }) => [w.entity, ...above(w.entity)].includes(r.entity);
-    for (const w of s.writes ?? []) {
-      const chain = [w.entity, ...above(w.entity)];
+    const reaches = (w: StoryWrite, r: { entity: string }) => m.above(w.entity).includes(r.entity);
+    for (const w of s.writes) {
+      const chain = m.above(w.entity);
       const requires: Rule["requires"] = [];
       let custom: string | undefined;
-      for (const r of s.requires ?? []) {
+      for (const r of s.requires) {
         const at = chain.indexOf(r.entity);
-        if (at >= 0) requires.push({ entity: r.entity, field: r.path, value: r.value, via: chain.slice(1, at + 1) });
-        else if (!(s.writes ?? []).some((x) => reaches(x, r))) custom ??= `it presupposes ${r.entity}.${r.path}=${r.value}, which none of its writes reaches (a row it writes, or one that hangs above it)`;
+        if (at >= 0) requires.push({ entity: r.entity, field: r.path, value: r.value, via: chain.slice(1, at + 1), ...typed(m.typeOf(r.entity, r.path)) });
+        else if (!s.writes.some((x) => reaches(x, r))) custom ??= `it presupposes ${r.entity}.${r.path}=${r.value}, which none of its writes reaches (a row it writes, or one that hangs above it)`;
       }
       rules.push({
-        story: s.id,
+        story: Number(s.id),
         text: s.text,
         actor: s.actor,
         allow: s.kind !== "cannot",
@@ -98,15 +93,20 @@ export function guardsOf(model: GuardModel): Guards {
         op: w.op,
         ...(w.path && { field: w.path }),
         ...(w.to !== undefined && { to: w.to }),
-        docs: documents.filter((d) => w.entity in (d.holds ?? { [d.root]: 0 }) && (!!d.own || (d.held_by ?? []).includes(s.actor))).map((d) => d.name),
+        ...(w.to !== undefined && typed(m.typeOf(w.entity, w.path))),
+        docs: m.writable(s.actor, w.entity).map((d) => d.name),
         requires,
         ...(custom && { custom }),
       });
     }
   }
   // each person's own document is the app's session, kept by the app (a perSession resource): not guarded here
-  return { documents: [...new Set(documents.filter((d) => !d.own).map((d) => d.name))], rules, roots: Object.fromEntries(documents.map((d) => [d.name, d.root])) };
+  const there = [...new Set(m.documents.filter((d) => d.implied).map((d) => d.root))];
+  return { documents: [...new Set(m.documents.filter((d) => !d.own).map((d) => d.name))], rules, roots: Object.fromEntries(m.documents.map((d) => [d.name, d.root])), ...(there.length && { there }) };
 }
+
+/** A type worth saying: any but text, which is how a value is compared when none is said. */
+const typed = (type: string | undefined) => (type && type !== "text" ? { type } : {});
 
 /** A write's path, as delta's: `/<entity>/<id>[/<field>]`, each segment unescaped (RFC 6901). */
 const segments = (path: string) => path.split("/").slice(1).map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~"));
@@ -115,7 +115,7 @@ const said = (op: Op, entity: string, field?: string) => `${op.op} ${entity}${fi
 /** Does this rule say this op: the same entity and verb, and for a replace the field and value it sets? */
 function says(rule: Rule, op: Op, entity: string, field: string | undefined): boolean {
   if (rule.entity !== entity || rule.op !== op.op) return false;
-  const sets = (v: unknown) => rule.to === undefined || String(v) === rule.to;
+  const sets = (v: unknown) => rule.to === undefined || saysWord(rule.type, v, rule.to);
   if (field !== undefined) return rule.op === "replace" && (!rule.field || (field === rule.field && sets(op.value)));
   if (rule.op === "remove" || !rule.field) return true;
   // an add, or a replace of the row whole: the field the story sets is in it, with its value
@@ -133,27 +133,29 @@ export async function check(guards: Guards, write: { actor: string; doc: string;
   const saying = guards.rules.filter((r) => says(r, op, entity, field));
   const why: string[] = [];
   for (const rule of saying.filter((r) => r.allow && r.actor === actor)) {
-    const failed = await unmet(rule, { doc, op, entity, id, rowOf });
+    const failed = await unmet(guards, rule, { doc, op, entity, id, rowOf });
     if (!failed) return { ok: true, story: rule.story };
     why.push(`story ${rule.story} ("${rule.text}") ${failed}`);
   }
   const cannot = saying.find((r) => !r.allow && r.actor === actor);
-  if (cannot) return { ok: false, reason: `${cannot.text} (story ${cannot.story})` };
+  if (cannot) return { ok: false, reason: cannot.text, story: cannot.story };
   if (why.length) return { ok: false, reason: why[0]! };
   return { ok: false, reason: `No story says ${actor} may ${said(op, entity, field)}` };
 }
 
 /** What a rule needs that this write does not have, or nothing. */
-async function unmet(rule: Rule, at: { doc: string; op: Op; entity: string; id: string; rowOf: RowOf }): Promise<string | undefined> {
+async function unmet(guards: Guards, rule: Rule, at: { doc: string; op: Op; entity: string; id: string; rowOf: RowOf }): Promise<string | undefined> {
   if (rule.custom) return `cannot be checked from the write: ${rule.custom}`;
   if (!rule.docs.includes(at.doc)) return `is told on ${rule.docs.join(", ") || "no document its teller holds"}, not ${at.doc}`;
   let row: Row | undefined | null = at.op.op === "add" ? (at.op.value as Row | undefined) : await at.rowOf(at.entity, at.id);
+  // an implied document's root is there before its row: delta makes it on the first write
+  if (!row && at.op.op !== "add" && guards.there?.includes(at.entity)) row = { id: at.id };
   if (!row) return `needs the ${at.entity} row ${at.id}, and there is none`;
   const start = row;
   for (const r of rule.requires) {
     row = start;
     for (const up of r.via) row = row && row[`${up}_id`] != null ? await at.rowOf(up, String(row[`${up}_id`])) : undefined;
-    if (!row || String(row[r.field]) !== r.value) return `presupposes ${r.entity}.${r.field}=${r.value}${row ? `, and it is ${JSON.stringify(row[r.field] ?? null)}` : ", and there is no such row"}`;
+    if (!row || !saysWord(r.type, row[r.field], r.value)) return `presupposes ${r.entity}.${r.field}=${r.value}${row ? `, and it is ${JSON.stringify(row[r.field] ?? null)}` : ", and there is no such row"}`;
   }
   return undefined;
 }
@@ -180,7 +182,7 @@ export function guardWrites(ws: On, guards: Guards, opts: { actorOf: (identity: 
     if (actor === undefined) return { error: { code: 401, message: `Sign in to write to ${msg.doc}` } };
     for (const op of msg.ops as Op[]) {
       const verdict = await check(guards, { actor, doc, docId, op, rowOf: opts.rowOf });
-      if (!verdict.ok) return { error: { code: 403, message: verdict.reason } };
+      if (!verdict.ok) return { error: { code: 403, message: verdict.reason, ...(verdict.story !== undefined && { story: verdict.story }) } };
     }
   };
   ws.on("delta", async (msg, client, respond) => {

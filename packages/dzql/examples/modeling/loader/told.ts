@@ -1,6 +1,7 @@
 import { connectCli } from "dzql/rendering/cli/commands";
 import { cookieNameForUrl } from "dzql/rendering/scope";
 import { decoded } from "dzql/rendering/parts";
+import { readingOf } from "dzql/modelling/reading";
 import { list as and, type Raw } from "../heart";
 import { MODEL } from "../model";
 import type { Load } from "./writes";
@@ -23,19 +24,19 @@ const wordsOf = (text: string): string => text.toLowerCase().replace(/\s+/g, " "
 
 /** The model as told: the page's document. */
 export function told(raw: Raw): Model {
-  const rows = Object.values(raw.stories ?? {});
-  const byId = new Map(rows.map((s) => [String(s.id), wordsOf(s.text)]));
-  const documents = Object.values(raw.documents ?? {}).map((d): [string, Doc] => [
+  const m = readingOf(raw); // as the checks, the proof and the guards read it
+  const byId = new Map(m.stories.map((s) => [s.id, wordsOf(s.text)]));
+  const documents = m.documents.map((d): [string, Doc] => [
     d.name,
     {
       root: d.root,
-      own: !!d.own,
-      held_by: d.held_by ?? [],
-      holds: new Map(Object.entries(d.holds ?? {}).map(([e, h]) => [e, { under: h.parent, fields: h.fields.map((f) => f.name) }])),
-      serves: (d.stories ?? []).flatMap((id) => byId.get(String(id)) ?? []),
+      own: d.own,
+      held_by: d.held_by,
+      holds: new Map(Object.entries(d.holds).map(([e, h]) => [e, { under: h.parent, fields: h.fields.map((f) => f.name) }])),
+      serves: d.serves.flatMap((id) => byId.get(id) ?? []),
     },
   ]);
-  return { stories: new Map(rows.map((s) => [wordsOf(s.text), s])), documents: new Map(documents) };
+  return { stories: new Map(m.stories.map((s) => [wordsOf(s.text), s])), documents: new Map(documents) };
 }
 
 /** The model as built: what a load of the app would write. */

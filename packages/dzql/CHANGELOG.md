@@ -160,6 +160,38 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **The tools agree: one reading of a model, and a test that holds them to it** (18 October, Peter
+  on cafe-e's report: "How do the tools disagree with each other?"). `dzql/modelling/reading`
+  works a model out once -- its entities and where each hangs, which roots are there before a row
+  (an implied document's), what the stories add, where a person may write, a word as its field's
+  type has it -- and the checks, the heart, the definitions, the proof, the guards and the
+  read-back all take it. The proof `dzql model` writes (`model.test.ts`) now makes every write
+  through the guards as its story's teller, and expects each `cannot` story refused in its own
+  words; `src/modelling/conformance.test.ts` runs `make` and that proof over fixture models
+  (leave's, cafe-e's, a menu) in the fast tier: closed, then proved, then guarded. It found four
+  disagreements, each fixed: the guards refused a write to an implied document's root row delta
+  makes on its first write; the proof made a story's writes as one write, which the guards
+  checked against the rows before it (each is now its own write, as a page makes them); the proof
+  pre-made row 1 of a root a story adds, so a premise's row was row 2; and a refusal carried its
+  story's number. A document that says nothing of what it holds now holds its root, as the
+  definitions always had it.
+- **A document can list every row of its root** (Peter's decision after the cafe runs, cafe-d's
+  items 2 and 7): `list <doc>` on the page, the CLI and the MCP tools (`mdl_documents.list`), for
+  `menu:` -- the whole menu, the same for everyone who holds it -- beside one row (`menu:1`). The
+  proof adds and changes rows on it, the types give its root by id, the guards and the checks do
+  not treat its root as there before a row, and whose-copy advice is never asked of it.
+
+### Changed
+
+- **A guard's refusal is the story's words alone** (Peter's decision, cafe-e's item 4): the page
+  draws the `cannot` story's text; its number rides beside it as the store's `error.story`
+  (`Verdict.story`), for logs and the proof.
+- **While modelling, the newest migration is rewritten in place until it is committed** (Peter's
+  decision: cafe-e piled up six in one afternoon): `dzql model` rewrites the newest step while git
+  says it is not committed, and removes it when the model returns to the committed steps; a
+  committed step is history, and the next change is the next step. Outside a repository every
+  step is its own, as before.
+
 - **Sign-in by link, for any app's people** (18 October, Peter's decision after the cafe runs:
   cafe-e's doorway page). `dzql/rendering/links`' `signInLinks(key, sessions, people, at)` makes a
   link per person as the server starts: `say(origin)` prints them, `ways()` is each person's name

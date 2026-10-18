@@ -16,7 +16,7 @@
 // A register that the model cannot answer says so, and is never counted as passed.
 
 import { esc } from "dzql/rendering/html";
-import { knownType, parentIn } from "dzql/modelling/definitions";
+import { knownType, readingOf } from "dzql/modelling/reading";
 import { saidWrite, singular, touched, type Raw, type StoryWrite } from "./heart";
 
 export type Register = {
@@ -36,12 +36,10 @@ const byId = (a: { id: string | number }, b: { id: string | number }) => Number(
 
 /** The six registers over the model document as delta keeps it. */
 export function closureOf(raw: Raw): Register[] {
-  const stories = Object.values(raw.stories ?? {}).sort(byId);
-  const docs = Object.values(raw.documents ?? {})
-    .sort(byId)
-    .map((d) => ({ ...d, holds: d.holds ?? {}, held_by: d.held_by ?? [], serves: (d.stories ?? []).map(String) }));
+  // the model read once, as the proof and the guards read it (dzql/modelling/reading)
+  const m = readingOf(raw);
+  const { stories, documents: docs, parentOf, above, heldIn } = m;
   const tellers = new Set(stories.map((s) => s.actor));
-  const heldIn = (entity: string) => docs.filter((d) => entity in d.holds);
   const someoneHolds = (d: (typeof docs)[number]) => d.held_by.length > 0 || !!d.own;
   const doing = stories.filter((s) => s.kind !== "cannot" && !s.post);
   const writes = doing.flatMap((s) => touched(s).map((entity) => ({ s, entity })));
@@ -49,28 +47,14 @@ export function closureOf(raw: Raw): Register[] {
   const story = (s: (typeof stories)[number]) => `story ${s.id} (${s.actor})`;
 
   const entities = new Set([...docs.flatMap((d) => Object.keys(d.holds)), ...stories.flatMap((s) => touched(s))]);
-  // where each entity hangs, as each document says it (a root says nothing): one table has one parent
-  const parents = new Map<string, Map<string, string[]>>();
-  for (const d of docs)
-    for (const [e, h] of Object.entries(d.holds)) {
-      const p = parentIn(d, e, h);
-      if (p) parents.set(e, (parents.get(e) ?? new Map()).set(p, [...(parents.get(e)?.get(p) ?? []), d.name]));
-    }
-  const parentOf = (e: string) => [...(parents.get(e)?.keys() ?? [])][0];
-  /** An entity and every row it hangs under. */
-  const above = (e: string): string[] => {
-    const chain: string[] = [];
-    for (let x: string | undefined = e; x && !chain.includes(x); x = parentOf(x)) chain.push(x);
-    return chain;
-  };
   const fieldsOf = (e: string) => new Set(heldIn(e).flatMap((d) => (d.holds[e]?.fields ?? []).map((f) => f.name)));
   // whose copy a role holds is said when their own document holds a field naming it, or a row it
   // hangs under: a seat's `table` says which table's invoice is theirs (cafe-c's feedback)
   const ownSays = (who: string, root: string): boolean => {
     const names = new Set(above(root).flatMap((e) => [e, singular(e)].flatMap((n) => [n, `${n}_id`])));
-    return docs.some((o) => o.own && o.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who) && Object.values(o.holds).some((h) => (h.fields ?? []).some((f) => names.has(f.name))));
+    return m.inFront(who).some((o) => o.own && Object.values(o.holds).some((h) => h.fields.some((f) => names.has(f.name))));
   };
-  const impliedRoots = new Set(docs.filter((d) => !parentOf(d.root)).map((d) => d.root));
+  const impliedRoots = new Set(docs.filter((d) => d.implied).map((d) => d.root));
 
   const reachability: Register = {
     predicate: "reachability",
@@ -123,19 +107,19 @@ export function closureOf(raw: Raw): Register[] {
       ),
       // hjeli's: every actor has something in front of them -- a teller who holds no document acts blind
       ...[...new Set(doing.map((s) => s.actor))]
-        .filter((who) => !docs.some((d) => d.held_by.includes(who) || (d.own && d.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who))))
+        .filter((who) => m.inFront(who).length === 0)
         .map((who) => ({ kind: "nothing-in-front", where: who, detail: `${who} tells a story and holds no document: what do they need in front of them? (heldby <document's number> ${who})` })),
     ],
     // a document held by a role, whose root is one of many (a story adds them): which one is each person's?
+    // a list is every row of its root, the same for everyone who holds it: nobody's copy to say
     advice: docs.flatMap((d) =>
-      d.own || !said.some(({ w }) => w.op === "add" && w.entity === d.root)
+      d.own || d.list || !said.some(({ w }) => w.op === "add" && w.entity === d.root)
         ? []
         : d.held_by.filter((who) => !said.some(({ s, w }) => s.actor === who && w.op === "add" && w.entity === d.root) && !ownSays(who, d.root)).map((who) => ({ kind: "whose-copy", where: `${d.name} (${who})`, detail: `there are many ${d.root}: which one is ${who}'s, and how do they come to hold it? (a story that gives it them, or a document of their own that says)` })),
     ),
   };
 
-  const byVisit = new Set(docs.filter((d) => d.own).map((d) => d.root));
-  const added = new Set(said.filter(({ w }) => w.op === "add").map(({ w }) => w.entity));
+  const { added, there } = m;
   const produced = new Set(said.filter(({ w }) => w.path && w.to !== undefined).map(({ w }) => `${w.entity}.${w.path}=${w.to}`));
   const asked = said.length > 0 || stories.some((s) => (s.requires ?? []).length > 0);
   const precondition: Register = {
@@ -145,11 +129,11 @@ export function closureOf(raw: Raw): Register[] {
     gaps: [
       ...said
         // an implied root's row is made by its first write, as a visit makes an own document's
-        .filter(({ w }) => w.op !== "add" && !added.has(w.entity) && !byVisit.has(w.entity) && !impliedRoots.has(w.entity))
+        .filter(({ w }) => w.op !== "add" && !added.has(w.entity) && !there(w.entity))
         .map(({ s, w }: { s: (typeof stories)[number]; w: StoryWrite }) => ({ kind: "unestablished-row", where: story(s), detail: `${saidWrite(w)} presupposes a ${w.entity} row, but no story adds one` })),
       // a row added under a parent presupposes the parent's row: added by a story, made by the visit, or a document's implied root
       ...said
-        .filter(({ w }) => w.op === "add" && parentOf(w.entity) && !added.has(parentOf(w.entity)!) && !byVisit.has(parentOf(w.entity)!) && !impliedRoots.has(parentOf(w.entity)!))
+        .filter(({ w }) => w.op === "add" && parentOf(w.entity) && !added.has(parentOf(w.entity)!) && !there(parentOf(w.entity)!))
         .map(({ s, w }) => ({ kind: "unestablished-parent", where: story(s), detail: `${saidWrite(w)} adds under a ${parentOf(w.entity)} row, but no story adds one` })),
       ...stories.flatMap((s) =>
         (s.requires ?? [])
@@ -186,9 +170,7 @@ export function closureOf(raw: Raw): Register[] {
         ),
       ),
       ...docs.filter((d) => (seen.has(d.name) ? true : (seen.add(d.name), false))).map((d) => ({ kind: "duplicate-name", where: d.name, detail: `more than one document is named ${d.name}` })),
-      ...[...parents]
-        .filter(([, by]) => by.size > 1)
-        .map(([e, by]) => ({ kind: "parent-clash", where: e, detail: `one table hangs from one parent, but ${[...by].map(([p, ds]) => `${ds.join(", ")} put${ds.length === 1 ? "s" : ""} ${e} under ${p}`).join(" and ")}` })),
+      ...m.clashes.map(([e, by]) => ({ kind: "parent-clash", where: e, detail: `one table hangs from one parent, but ${[...by].map(([p, ds]) => `${ds.join(", ")} put${ds.length === 1 ? "s" : ""} ${e} under ${p}`).join(" and ")}` })),
       ...docs.flatMap((d) =>
         Object.entries(d.holds).flatMap(([e, h]) =>
           (h.fields ?? []).filter((f) => !knownType(f.type)).map((f) => ({ kind: "unknown-type", where: `${d.name}: ${e}.${f.name}`, detail: `${JSON.stringify(f.type)} is not a type the model knows (text, integer, real, boolean, json, timestamptz, date)` })),
@@ -201,7 +183,7 @@ export function closureOf(raw: Raw): Register[] {
     predicate: "authorization-closure",
     asks: "every write is the writer's to make: what a story touches, its teller holds (you may write what you may read)",
     gaps: writes
-      .filter(({ s, entity }) => heldIn(entity).length > 0 && !heldIn(entity).some((d) => d.held_by.includes(s.actor) || !!d.own))
+      .filter(({ s, entity }) => heldIn(entity).length > 0 && m.writable(s.actor, entity).length === 0)
       .map(({ s, entity }) => ({ kind: "unscoped-write", where: story(s), detail: `${s.actor} touches ${entity}, held by no document ${s.actor} holds` })),
   };
 
@@ -241,8 +223,7 @@ export function closureOf(raw: Raw): Register[] {
   // Playability (rights' derive-ux.ts): can each person take their turn? A turn is a state a story
   // waits on; a wait is a state a person makes that someone else's story waits on.
   // what is in front of someone: what they hold, and their own document where it serves a story of theirs
-  const inFront = (d: (typeof docs)[number], who: string) => d.held_by.includes(who) || (!!d.own && d.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who));
-  const shows = (who: string, entity: string, path: string) => docs.some((d) => inFront(d, who) && (d.holds[entity]?.fields ?? []).some((f) => f.name === path));
+  const shows = (who: string, entity: string, path: string) => m.inFront(who).some((d) => (d.holds[entity]?.fields ?? []).some((f) => f.name === path));
   const consumers = (k: string) => stories.filter((s) => s.kind !== "cannot" && (s.requires ?? []).some((r) => `${r.entity}.${r.path}=${r.value}` === k));
   const playability: Register = {
     predicate: "playability",

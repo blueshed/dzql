@@ -1,0 +1,124 @@
+{
+ "tables": {
+  "models": [
+   {
+    "id": 1,
+    "name": "menu"
+   }
+  ],
+  "stories": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "text": "The cook adds a dish to the menu",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "add",
+      "path": "name",
+      "to": "Soup"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 2,
+    "models_id": 1,
+    "text": "The cook changes a dish's price",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "replace",
+      "path": "price",
+      "to": "4"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 3,
+    "models_id": 1,
+    "text": "The cook takes a dish off the menu",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "remove"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 4,
+    "models_id": 1,
+    "text": "A customer cannot change the menu",
+    "actor": "customer",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "add"
+     },
+     {
+      "entity": "items",
+      "op": "replace",
+      "path": "price"
+     },
+     {
+      "entity": "items",
+      "op": "remove"
+     }
+    ],
+    "requires": null
+   }
+  ],
+  "documents": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "name": "menu",
+    "root": "items",
+    "own": 0,
+    "list": 1,
+    "holds": {
+     "items": {
+      "parent": null,
+      "fields": [
+       {
+        "name": "name",
+        "type": "text"
+       },
+       {
+        "name": "price",
+        "type": "integer"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "cook",
+     "customer"
+    ],
+    "stories": [
+     1,
+     2,
+     3,
+     4
+    ]
+   }
+  ]
+ }
+}

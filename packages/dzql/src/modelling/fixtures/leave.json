@@ -1,0 +1,255 @@
+{
+ "tables": {
+  "models": [
+   {
+    "id": 1,
+    "name": "leave"
+   }
+  ],
+  "stories": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "text": "Mo starts a team",
+    "actor": "mo",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "teams",
+      "op": "add"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 2,
+    "models_id": 1,
+    "text": "Mo opens the team to requests",
+    "actor": "mo",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "teams",
+      "op": "replace",
+      "path": "open",
+      "to": "yes"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 3,
+    "models_id": 1,
+    "text": "Ann asks for a week off",
+    "actor": "ann",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "requests",
+      "op": "add",
+      "path": "status",
+      "to": "waiting"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "teams",
+      "path": "open",
+      "value": "yes"
+     }
+    ]
+   },
+   {
+    "id": 4,
+    "models_id": 1,
+    "text": "Mo approves a request that is waiting",
+    "actor": "mo",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "requests",
+      "op": "replace",
+      "path": "status",
+      "to": "approved"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "requests",
+      "path": "status",
+      "value": "waiting"
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "models_id": 1,
+    "text": "Ann cannot approve her own request",
+    "actor": "ann",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "requests",
+      "op": "replace",
+      "path": "status",
+      "to": "approved"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 6,
+    "models_id": 1,
+    "text": "Ann takes back a request still waiting",
+    "actor": "ann",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "requests",
+      "op": "remove"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "requests",
+      "path": "status",
+      "value": "waiting"
+     }
+    ]
+   },
+   {
+    "id": 7,
+    "models_id": 1,
+    "text": "Ann cannot start a team",
+    "actor": "ann",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "teams",
+      "op": "add"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 8,
+    "models_id": 1,
+    "text": "Ann cannot open the team",
+    "actor": "ann",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "teams",
+      "op": "replace",
+      "path": "open",
+      "to": "yes"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 9,
+    "models_id": 1,
+    "text": "Mo cannot ask for leave",
+    "actor": "mo",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "requests",
+      "op": "add",
+      "path": "status",
+      "to": "waiting"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 10,
+    "models_id": 1,
+    "text": "Mo cannot take back Ann's request",
+    "actor": "mo",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "requests",
+      "op": "remove"
+     }
+    ],
+    "requires": null
+   }
+  ],
+  "documents": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "name": "team",
+    "root": "teams",
+    "own": 0,
+    "holds": {
+     "teams": {
+      "parent": null,
+      "fields": [
+       {
+        "name": "name",
+        "type": "text"
+       },
+       {
+        "name": "open",
+        "type": "text"
+       }
+      ]
+     },
+     "requests": {
+      "parent": "teams",
+      "fields": [
+       {
+        "name": "starts",
+        "type": "date"
+       },
+       {
+        "name": "status",
+        "type": "text"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "ann",
+     "mo"
+    ],
+    "stories": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ]
+   }
+  ]
+ }
+}

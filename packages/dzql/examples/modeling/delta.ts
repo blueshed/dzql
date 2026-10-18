@@ -11,7 +11,7 @@ import { sessionRows } from "dzql/rendering/sessions";
 // refused, a route it posts to, the entities it touches, and, as hjeli had them, what it writes and
 // the states it presupposes -- and the documents they need -- each
 // with its root, what it holds (an entity at a time: what it hangs under, its fields), who holds
-// it, whether it is each person's own, and which stories it serves. The entities are worked out
+// it, whether it is each person's own or lists every row of its root, and which stories it serves. The entities are worked out
 // from those (./heart.ts), never kept. A session is who you are; it is signed in by the sign-in
 // page (./signin.ts) and kept off the ledger. How someone signs in is a table no document
 // includes, so no hash crosses the wire. The tables are modeling's own (`mdl_`).
@@ -19,7 +19,7 @@ import { sessionRows } from "dzql/rendering/sessions";
 export const schema = defineSchema({
   models: { table: "mdl_models", columns: { name: "text" }, temporal: false },
   stories: { table: "mdl_stories", parent: "models", columns: { text: "text", actor: "text", kind: "text", post: "text?", touches: "json", writes: "json?", requires: "json?" }, temporal: false },
-  documents: { table: "mdl_documents", parent: "models", columns: { name: "text", root: "text", own: "integer", holds: "json", held_by: "json", stories: "json" }, temporal: false },
+  documents: { table: "mdl_documents", parent: "models", columns: { name: "text", root: "text", own: "integer", list: "integer?", holds: "json", held_by: "json", stories: "json" }, temporal: false },
   people: { table: "mdl_people", columns: { name: "text" }, temporal: false },
   sessions: { table: "mdl_sessions", columns: { person_id: "integer?", name: "text?", cookie: "text?" }, temporal: false },
   logins: { table: "mdl_logins", columns: { person_id: "integer", email: "text", hash: "text" }, temporal: false },

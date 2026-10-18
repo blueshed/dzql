@@ -63,9 +63,9 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     const write = (who: typeof ann, ...ops: { op: string; path: string; value?: unknown }[]) => who.call("delta", { doc: "team:1", ops });
     await mo.call("open", { doc: "team:1" });
 
-    expect((await write(ann, { op: "add", path: "/teams/-", value: { name: "Ann's" } })).error).toEqual({ code: 403, message: "Ann cannot start a team (story 7)" });
+    expect((await write(ann, { op: "add", path: "/teams/-", value: { name: "Ann's" } })).error).toEqual({ code: 403, message: "Ann cannot start a team", story: 7 } as never);
     // asked, never written: `may` answers as the write would be (the stories harness asks it)
-    expect((await ann.call("may", { doc: "team:1", ops: [{ op: "add", path: "/teams/-", value: { name: "Ann's" } }] })).error).toEqual({ code: 403, message: "Ann cannot start a team (story 7)" });
+    expect((await ann.call("may", { doc: "team:1", ops: [{ op: "add", path: "/teams/-", value: { name: "Ann's" } }] })).error).toEqual({ code: 403, message: "Ann cannot start a team", story: 7 } as never);
     expect((await mo.call("may", { doc: "team:1", ops: [{ op: "add", path: "/teams/1", value: { name: "Desk", open: "no" } }] })).result).toEqual({ ok: true });
     expect(db.query("SELECT count(*) AS n FROM teams").get()).toEqual({ n: 0 });
     expect((await write(mo, { op: "add", path: "/teams/1", value: { name: "Desk", open: "no" } })).result).toEqual({ ack: true });
@@ -80,7 +80,7 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     expect((await write(ann, { op: "add", path: "/requests/-", value: { teams_id: 1, starts: "2026-11-02", status: "approved" } })).error!.message).toBe("No story says ann may add requests");
     expect((await write(ann, { op: "add", path: "/requests/-", value: { teams_id: 1, starts: "2026-11-02", status: "waiting" } })).result).toEqual({ ack: true });
     // a cannot story is the reason
-    expect((await write(ann, { op: "replace", path: "/requests/1/status", value: "approved" })).error).toEqual({ code: 403, message: "Ann cannot approve her own request (story 5)" });
+    expect((await write(ann, { op: "replace", path: "/requests/1/status", value: "approved" })).error).toEqual({ code: 403, message: "Ann cannot approve her own request", story: 5 } as never);
     expect((await write(mo, { op: "replace", path: "/requests/1/status", value: "approved" })).result).toEqual({ ack: true });
     // approved, it is no longer waiting: neither another approval nor taking it back
     expect((await write(mo, { op: "replace", path: "/requests/1/status", value: "approved" })).error!.message).toBe('story 4 ("Mo approves a request that is waiting") presupposes requests.status=waiting, and it is "approved"');
