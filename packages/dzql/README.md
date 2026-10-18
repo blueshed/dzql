@@ -8,18 +8,20 @@ Three things you can say, each standing alone. Each file below is run as written
 ### Install dzql and use rendering: the server draws the page
 
 A page is drawn on the server from the documents it reads, and redrawn on every page that holds a
-document when anyone changes it; the browser only morphs what it is sent. One file, `index.ts`:
+document when anyone changes it; the browser only morphs what it is sent. One file, `routes.ts`:
 
 ```ts
+import { run, serve } from "@blueshed/delta/serve";
 import { createLocal } from "@blueshed/delta/local";
 import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/json";
 import type { Example } from "dzql/rendering/example";
 import { read } from "dzql/rendering/documents";
 import { esc, write } from "dzql/rendering/html";
+import { appOf } from "dzql/rendering/server";
 import index from "./index.html";
 
-// One shared message, kept in a JSON file. The server draws the page, redraws every page that
-// holds the message when anyone saves, and Undo comes with the ledger.
+// One shared message, kept in a JSON file: the app's routes and its one resource. The server draws
+// the page, redraws every page that holds the message when anyone saves, and Undo comes with the ledger.
 const schema = defineSchema({ messages: { columns: { text: { type: "text", default: "Hello" } }, temporal: false } });
 const delta = createLocal();
 registerDocs(delta.server, `${process.env.DATA_PATH ?? "data"}/message.json`, schema, [
@@ -28,7 +30,7 @@ registerDocs(delta.server, `${process.env.DATA_PATH ?? "data"}/message.json`, sc
 
 const text = () => read<{ messages: { text: string } }>("message:1").messages.text;
 
-export const example: Example = {
+export const app: Example = {
   name: "message",
   resources: [{ docType: "message", resolveDoc: () => "1", permit: (_ws, op) => op.op === "replace" && op.path === "/messages/1/text" }],
   render: () => `<h1>${esc(text())}</h1><form${write("message", "replace", "/messages/1/text")}><input name="text" aria-label="Message"><button>Save</button></form>`,
@@ -36,6 +38,9 @@ export const example: Example = {
   index,
   delta,
 };
+
+// delta's one server: the page at "/", its socket at "/ws", /health; `bun routes.ts`
+if (import.meta.main) await run(() => serve(appOf(app)));
 ```
 
 with the page it is drawn into, `index.html`:
@@ -59,7 +64,7 @@ import "dzql/rendering/client/app";
 
 ```sh
 bun add dzql @blueshed/delta
-bunx dzql serve .
+bun routes.ts
 ```
 
 Two windows on http://localhost:3000 show the same message; a save in one shows in both, and it is
@@ -90,8 +95,8 @@ bunx dzql model check
 The model's page is http://localhost:3001/model, watched live as the stories land; the model is
 `model.json`, which the page edits, signed in by the link each keeper gets as it starts. What it
 makes goes in a folder of its own, `model/`: `types.ts` (below), `guards.ts`, the migrations from
-empty and `model.test.ts`, the proof. Beside an app, `dzql serve --model` mounts the model at `/model`
-(the starter's `bun dev` passes it); without it the model is never registered. `model/types.ts`:
+empty and `model.test.ts`, the proof. Beside an app, its `routes.ts` composes `modelRoute()` (`dzql/model`) at `/model`
+in development (the starter's `bun dev`); without it the model is never registered. `model/types.ts`:
 
 ```ts
 // The model, now: delta's definitions, a row type per table and each document's shape. Written by `dzql model` from the model's page; never edited by hand.

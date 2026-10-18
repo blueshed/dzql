@@ -73,7 +73,7 @@ async function socket(url: URL, path = "/ws") {
 }
 
 test("the README's files are these files, byte for byte", () => {
-  for (const name of ["rendering/index.ts", "rendering/main.ts", "types.ts", "server.ts"]) expect(readme).toContain("```ts\n" + file(name) + "```");
+  for (const name of ["rendering/routes.ts", "rendering/main.ts", "types.ts", "server.ts"]) expect(readme).toContain("```ts\n" + file(name) + "```");
   expect(readme).toContain("```html\n" + file("rendering/index.html") + "```");
   expect(blocks.map((b) => b.length)).toEqual([1, 11, 2]);
 });
@@ -81,7 +81,7 @@ test("the README's files are these files, byte for byte", () => {
 describe("Install dzql and use rendering", () => {
   let dir: string, url: URL;
   beforeAll(async () => {
-    dir = app(["rendering/index.ts", "index.ts"], ["rendering/index.html", "index.html"], ["rendering/main.ts", "main.ts"]);
+    dir = app(["rendering/routes.ts", "routes.ts"], ["rendering/index.html", "index.html"], ["rendering/main.ts", "main.ts"]);
     url = await serving(blocks[0]![0]!, dir);
   });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));

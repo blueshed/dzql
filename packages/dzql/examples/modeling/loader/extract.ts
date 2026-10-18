@@ -5,10 +5,10 @@
 // stories alone: no run, so nothing of who was told.
 
 import { isPost, writeOf, type Stories, type Story } from "dzql/modelling/stories";
-import type { Example } from "dzql/rendering/example";
+import { appIn } from "dzql/rendering/names";
 import { splitPath } from "@blueshed/delta/core";
 import { run } from "dzql/modelling/harness";
-import { documentsIn, importedDocs, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
+import { documentSources, documentsIn, importedDocs, resourceText, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
 import { heartOf, inSql } from "./facts";
 
 type Column = { type: string; nullable?: boolean };
@@ -25,7 +25,7 @@ export function rulesIn(src: string): { path: RegExp; ops: string[]; dated?: boo
 export async function extract(at: string) {
   const { dir, name } = exampleAt(at);
   const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
-  const deltaMod = await import(`${dir}/delta.ts`);
+  const sources = await documentSources(dir);
   const session = stories.goTo?.("").doc ?? null;
 
   // ── tables: delta.ts's schema ──
@@ -35,14 +35,14 @@ export async function extract(at: string) {
   // table's name in one is a path or a word, never a read.
   const files: { path: string; lines: string[] }[] = [];
   for await (const f of new Bun.Glob("**/*.{ts,sql}").scan(dir)) {
-    if (f.includes(".test.") || f === "delta.ts" || f === "stories.ts" || f.startsWith("node_modules/")) continue;
+    if (f.includes(".test.") || f === "delta.ts" || f.endsWith("-api.ts") || f === "stories.ts" || f.startsWith("node_modules/")) continue;
     files.push({ path: f, lines: (await Bun.file(`${dir}/${f}`).text()).split("\n") });
   }
   const touches = (sqlName: string) =>
     files.flatMap(({ path, lines }) =>
       lines.flatMap((line, i) => (inSql(line, sqlName) ? [{ at: `${path}:${i + 1}`, seed: path.endsWith(".sql"), line: line.trim().slice(0, 140) }] : [])),
     );
-  const schema = Object.entries(deltaMod.schema.tables as Record<string, { name: string; parent?: { collection: string }; columns: Record<string, Column> }>).map(([key, t]) => ({
+  const schema = Object.entries(sources.tables as Record<string, { name: string; parent?: { collection: string }; columns: Record<string, Column> }>).map(([key, t]) => ({
     name: key,
     parent: t.parent?.collection ?? null,
     columns: Object.entries(t.columns).map(([c, def]) => ({ name: c, type: def.type + (def.nullable ? "?" : "") })),
@@ -51,14 +51,13 @@ export async function extract(at: string) {
   }));
   const tables = schema.map(({ sql: _, ...t }) => t);
 
-  const src = await Bun.file(`${dir}/delta.ts`).text();
-  const documents = documentsIn(src, session, await importedDocs(dir, src));
+  const documents = documentsIn(sources.src, session, await importedDocs(dir, sources.src));
 
   // ── permits: each resource's RULES, as written ──
   const permits: Permit[] = [];
   for (const { name: doc } of documents) {
-    const file = Bun.file(`${dir}/resources/${doc}.ts`);
-    if (await file.exists()) for (const r of rulesIn(await file.text())) permits.push({ doc, path: r.path.source, ops: r.ops, dated: !!r.dated });
+    const text = await resourceText(dir, doc);
+    if (text) for (const r of rulesIn(text)) permits.push({ doc, path: r.path.source, ops: r.ops, dated: !!r.dated });
   }
   const ruled = new Set(permits.map((p) => p.doc));
   /** Whether a rule allows it; unknown (null) where the document's permit is code, not a list of rules. */
@@ -81,8 +80,7 @@ export async function extract(at: string) {
 
   // Every write the run makes, as the wire carried it: for a sequence drawn from a real run. None
   // where there is no app to run.
-  const app = await Bun.file(`${dir}/index.ts`).exists();
-  const example = app ? ((await import(`${dir}/index.ts`)) as { example: Example }).example : undefined;
+  const example = await appIn(dir);
   const watched = example && watch(example);
   const report = example && (await run(example, stories, watched!.observe, { everywhere: watched!.everywhere }));
   const traces = Map.groupBy(watched?.traces ?? [], (t) => t.story);

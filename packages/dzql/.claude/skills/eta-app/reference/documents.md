@@ -1,7 +1,8 @@
-# Documents (`delta.ts`, `documents/<thing>.ts`)
+# Documents (`resources/<name>/<name>-api.ts`; in the examples, `delta.ts` and `documents/<thing>.ts`)
 
-An app's documents are delta's: `delta.ts` says the tables and the documents, `documents/<thing>.ts`
-reads them for the page. Who may write them is [resource.md](resource.md).
+An app's documents are delta's: each resource's `<name>-api.ts` says its tables and its document,
+registers it on the app's `delta` and reads it for the page (the examples keep these in `delta.ts`
+and `documents/<thing>.ts`). Who may write them is [resource.md](resource.md).
 
 ```ts
 // examples/chat/delta.ts

@@ -18,11 +18,11 @@ beforeAll(async () => {
 afterAll(() => rmSync(parent, { recursive: true, force: true }));
 
 test("the app is eta's starter in src/, named, its dotfiles dotted", () => {
-  for (const file of ["src/index.ts", "src/stories.ts", "src/delta.ts", "src/page.ts", "src/client/index.html", ".gitignore", "README.md", "CLAUDE.md"]) expect(existsSync(join(app, file))).toBe(true);
+  for (const file of ["src/routes.ts", "src/stories.ts", "src/page.ts", "src/index.html", ".gitignore", "README.md", "CLAUDE.md"]) expect(existsSync(join(app, file))).toBe(true);
   expect(JSON.parse(readFileSync(join(app, "package.json"), "utf8")).name).toBe("my-app");
-  expect(readFileSync(join(app, "src/index.ts"), "utf8")).toContain('name: "my-app"');
+  expect(readFileSync(join(app, "src/routes.ts"), "utf8")).toContain('name: "my-app"');
   expect(readFileSync(join(app, "src/page.ts"), "utf8")).toContain("My App");
-  expect(readFileSync(join(app, "src/client/styles.css"), "utf8")).toContain('@import "dzql/rendering/bento.css";');
+  expect(readFileSync(join(app, "src/styles.css"), "utf8")).toContain('@import "dzql/rendering/bento.css";');
   expect(readFileSync(join(app, "README.md"), "utf8")).not.toContain("{{name}}");
 });
 

@@ -8,7 +8,7 @@
 // harness (and the database under it) is imported after it (cafe-c's feedback).
 process.env.DB_PATH ??= ":memory:";
 import type { Stories } from "./stories";
-import { appDir } from "../rendering/names";
+import { appDir, appIn } from "../rendering/names";
 const { print, run } = await import("./harness");
 
 const dir = appDir(process.env.ETA_EXAMPLE);
@@ -19,11 +19,11 @@ if (!(await Bun.file(`${dir}/stories.ts`).exists())) {
   process.exit(1);
 }
 const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
-if (!(await Bun.file(`${dir}/index.ts`).exists())) {
-  console.log(`${at} has ${stories.stories.length} stories and no app yet (no index.ts): build the least that makes the first one pass -- the eta-app skill says how.`);
+const example = await appIn(dir);
+if (!example) {
+  console.log(`${at} has ${stories.stories.length} stories and no app yet (no routes.ts): build the least that makes the first one pass -- the eta-app skill says how.`);
   process.exit(1);
 }
-const { example } = await import(`${dir}/index.ts`);
 
 // STORY_BY_HAND=1 does by hand too, in a browser the size of a phone (src/by-hand.ts), each write a
 // page sends and each refusal a control of it sends; a story that says its gesture, whenever it is told.

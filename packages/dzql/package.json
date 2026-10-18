@@ -14,6 +14,7 @@
   "exports": {
     "./modelling": "./src/modelling/index.ts",
     "./modelling/*": "./src/modelling/*.ts",
+    "./model": "./src/cli/model.ts",
     "./rendering": "./src/rendering/index.ts",
     "./rendering/bento.css": "./src/rendering/bento.css",
     "./rendering/*": "./src/rendering/*.ts",

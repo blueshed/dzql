@@ -20,6 +20,7 @@ import type { PatchOp } from "dzql/rendering/json-patch";
 import { controlsOn, run, type Control, type Heard, type Trace } from "dzql/modelling/harness";
 import { allOpenSockets } from "dzql/rendering/resources/audience";
 import { activeDocuments } from "dzql/rendering/documents";
+import { appIn } from "dzql/rendering/names";
 
 /** One actor's dealings with one document, counted in stories: held (in front of them), written, refused, told of a change. */
 export type Cell = { held: number; written: number; refused: number; told: number };
@@ -360,19 +361,39 @@ export function exampleAt(arg: string): { dir: string; name: string } {
   return { dir, name: basename(dir) };
 }
 
+/**
+ * Where an app says its documents: an example's `delta.ts`, or, laid out as routes and resources,
+ * each resource's `resources/<name>/<name>-api.ts` -- their text, joined, and their schemas' tables.
+ */
+export async function documentSources(dir: string): Promise<{ src: string; tables: Record<string, unknown> }> {
+  const files = [...(await Bun.file(`${dir}/delta.ts`).exists() ? ["delta.ts"] : []), ...[...new Bun.Glob("resources/*/*-api.ts").scanSync(dir)].sort()];
+  let src = "";
+  const tables: Record<string, unknown> = {};
+  for (const f of files) {
+    src += `${await Bun.file(`${dir}/${f}`).text()}\n`;
+    Object.assign(tables, ((await import(`${dir}/${f}`)) as { schema?: { tables: Record<string, unknown> } }).schema?.tables ?? {});
+  }
+  return { src, tables };
+}
+
+/** A resource's own file: `resources/<doc>.ts` in an example, `resources/<doc>/<doc>.ts` laid out as routes and resources. */
+export async function resourceText(dir: string, doc: string): Promise<string | undefined> {
+  for (const f of [`${dir}/resources/${doc}.ts`, `${dir}/resources/${doc}/${doc}.ts`]) if (await Bun.file(f).exists()) return Bun.file(f).text();
+  return undefined;
+}
+
 /** The documents of an example (`exampleAt`): from a run of its stories when it has an app, else from the stories alone. */
 export async function documentsOf(at: string): Promise<Reading> {
   const { dir } = exampleAt(at);
   const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
-  if (!(await Bun.file(`${dir}/index.ts`).exists())) return read(stories);
-  const { example } = (await import(`${dir}/index.ts`)) as { example: Example };
+  const example = await appIn(dir);
+  if (!example) return read(stories);
   const watched = watch(example);
   await run(example, stories, watched.observe, { everywhere: watched.everywhere });
-  const src = await Bun.file(`${dir}/delta.ts`).text();
+  const { src, tables } = await documentSources(dir);
   const defined = documentsIn(src, null, await importedDocs(dir, src));
-  const { schema } = (await import(`${dir}/delta.ts`)) as { schema?: { tables: Record<string, unknown> } };
   const reading = read(stories, example, watched, defined.map((d) => d.name));
-  return { ...reading, unreached: schema ? unreachedIn(Object.keys(schema.tables), defined) : [] };
+  return { ...reading, unreached: unreachedIn(Object.keys(tables), defined) };
 }
 
 const MARKS: [keyof Cell, string][] = [["held", "H"], ["written", "W"], ["refused", "R"], ["told", "T"]];

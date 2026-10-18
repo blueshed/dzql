@@ -17,9 +17,10 @@ bun run stop     # a server started in the background
 
 - **Stories first.** `src/stories.ts` says who does what and who then sees it, each a sentence a
   customer could call true or false. Tell one, watch it fail, build the least that makes it pass.
-- **Documents** are delta's, in `src/delta.ts`: the first story says which document a person needs
-  in front of them to act. Kept in SQLite (`bun:sqlite`, a file in `data/`) once they share rows.
-- **The page** is `src/page.ts`, drawn by the server; `src/index.ts` is the app: its resources,
-  its page, who may write.
-- **The server** is delta's one server (`@blueshed/delta/serve`), run by dzql's `start.ts`: the
-  page, the socket, `/health`. The app gives it routes and resources, never a `Bun.serve` of its own.
+- **Routes and resources.** `src/routes.ts` is the server: the app's page and socket, any HTTP
+  route, and in development the model's page, on delta's one server (`@blueshed/delta/serve`: the
+  page, the socket, `/health`), never a `Bun.serve` of its own. Each document is a resource in
+  `src/resources/<name>/`: its document (`<name>-api.ts`), its rules (`<name>.ts`) and its part of
+  the page (`<name>-view.ts`). The first story says which document a person needs in front of them
+  to act.
+- **The page** is `src/page.ts`, drawn by the server from each resource's view.

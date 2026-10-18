@@ -7,14 +7,18 @@ before touching the kernel.
 bun create dzql my-app   # the app is src/, begun as dzql's examples/starter
 cd my-app
 bun install              # also installs the skills: eta-app, modelling, delta-doc
-bun run model            # the model's page, where the stories are told first (the modelling skill)
-bun dev                  # the app; bun test, bun run stories and bun run cli work on src/
+bun dev                  # the app, and the model's page at /model, where the stories are told first
+bun test                 # bun run stories and bun run cli work on src/ too
 ```
 
 ## A project made with `bun create dzql`
 
 ```
-src/          the app: index.ts, stories.ts, delta.ts, page.ts, client/ (begun as dzql's examples/starter)
+src/          the app (begun as dzql's examples/starter):
+  routes.ts                 the server: the app, its HTTP routes, the model's page in development
+  page.ts                   the page, each resource's part in its place
+  resources/<name>/         a document: <name>-api.ts, <name>.ts (its Resource), <name>-view.ts
+  stories.ts, index.html, main.ts, styles.css, icons.ts
 migrations/   made with the first schema: a field renamed or dropped, data moved; never edit one that has run
 package.json  the app's: dzql and @blueshed/delta as dependencies
 CLAUDE.md, README.md, .claude/skills/ (from `delta install-skills`, run by `bun install`)
@@ -23,14 +27,16 @@ CLAUDE.md, README.md, .claude/skills/ (from `delta install-skills`, run by `bun 
 - The app imports dzql and delta by name, from `node_modules`: `import { story } from
   "dzql/modelling/stories"`, `import type { Example } from "dzql/rendering/example"`,
   `@import "dzql/rendering/bento.css"`.
-- The scripts run dzql's own files on the app: `ETA_EXAMPLE=./src bun
-  node_modules/dzql/src/rendering/start.ts` (dev, start), `src/modelling/stories-run.ts`
-  (stories), `src/rendering/cli.ts` (cli). `bun run model` and `bun run cli:model` run the model's
-  page, `ETA_EXAMPLE=node_modules/dzql/examples/modeling`. `bun run stop` is `delta stop`.
-- The server is delta's one server (`@blueshed/delta/serve`), run by dzql's `start.ts`: the app
-  gives it routes and resources, never a `Bun.serve` of its own.
+- `bun dev` is `bun --hot src/routes.ts --model`, `bun start` the same without the model and
+  `--hot`: the server is delta's one server (`@blueshed/delta/serve`), the app giving it routes
+  and resources, never a `Bun.serve` of its own; the model's page is `modelRoute()`
+  (`dzql/model`), composed only in development. `bun run stop` is `delta stop`.
+- dzql's own files run on the app for the rest: `src/modelling/stories-run.ts` (stories),
+  `src/rendering/cli.ts` (cli), `dzql model` (`bun run model`, the model's page alone, and
+  `cli:model`).
 
-The kernel finds an app by `ETA_EXAMPLE`: an example by name (`chat`, in dzql) or a folder (`./src`).
+The kernel finds an app by `ETA_EXAMPLE`: an example by name (`chat`, in dzql) or a folder (`./src`),
+and in it the `app` its `routes.ts` exports (or an example's `index.ts` `example`).
 
 ## Moving a project to a later dzql
 
@@ -42,7 +48,7 @@ dzql in `node_modules`: a change the kernel needs is dzql's, made there and rele
 
 A seam is missing from what you know, not the app special:
 
-- may this session write at all: `Example.active`; an extra HTTP route: `Example.routes`; who a
+- may this session write at all: `Example.active`; an extra HTTP route: one more in `routes.ts`'s `compose`; who a
   request is before its socket opens: `Example.identify` ([example.md](example.md));
 - a fresh write that differs from its undo: `shape` (undo is never shaped); what follows a write:
   `afterChange` or `afterWrite`, an undo or redo: `afterWalk` ([resource.md](resource.md));

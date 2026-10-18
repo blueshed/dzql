@@ -26,22 +26,32 @@ the **modelling** skill come first; asked to build or change, build.
 Stories, then documents, then pages: each step the least that makes the next story pass. Run
 `bun run stories` after each. The words are [words](reference/words.md).
 
+An app is routes and resources. A project made with `bun create dzql` lays it out so:
+`src/routes.ts` is the server (the app, its HTTP routes and in development the model's page,
+composed on delta's one server), and each document is a resource of its own folder,
+`src/resources/<name>/`: `<name>-api.ts` (its schema and document, registered on `delta`, and
+`read` for the page), `<name>.ts` (its `Resource`: who may write it, what a write becomes) and
+`<name>-view.ts` (its part of the page, drawn by `src/page.ts`). dzql's own examples (chat,
+leave, wedding, the ticker) are the same pieces in eta's earlier places: `delta.ts`,
+`documents/<thing>.ts`, `resources/<thing>.ts` and `index.ts`; read them for how, and put what
+you write where the project's layout says.
+
 1. **The story** (`stories.ts`): who does what, and who then sees it. Watch it fail. A teller
    asking to see the page now is no reason to skip it: the stories take minutes, and find what the
    teller would. → [stories](reference/stories.md)
-2. **The documents** (`delta.ts`), cut so whoever must see a change holds it; then
-   `documents/<thing>.ts`: `read(id)` and the pure rules a write follows, tested directly; undo. →
+2. **The documents** (`resources/<name>/<name>-api.ts`), cut so whoever must see a change holds
+   it: the schema, the document, `read(id)` and the pure rules a write follows, tested directly; undo. →
    [documents](reference/documents.md); one that would grow forever, [scope](reference/scope.md);
    a field renamed or dropped, or data moved, [migrations](reference/migrations.md)
-3. **Its resource**: `permit`, `shape`, what follows; a memory document the server works out,
+3. **Its resource** (`resources/<name>/<name>.ts`, listed in the app's `resources`): `permit`, `shape`, what follows; a memory document the server works out,
    written as the difference. → [resource](reference/resource.md); why a write was refused or what
    it did, [refusal](reference/refusal.md)
-4. **The page** (`render(sessionId)`): a box or a collection, in parts. → [page](reference/page.md);
+4. **The page** (`page.ts`'s `render(sessionId)`, each resource's part from its `<name>-view.ts`): a box or a collection, in parts. → [page](reference/page.md);
    a field, form or button, [controls](reference/controls.md); a drawer, a modal, the address,
    [bento](reference/bento.md); reference data, [derive](reference/derive.md)
 5. **An applet or an island**, only for state a redraw would destroy. →
    [applets](reference/applets.md); its data, [watching](reference/watching.md)
-6. **`index.ts`**: the `Example`; `cli.ts`, if someone writes from the terminal. →
+6. **`routes.ts`**: the app (its `Example`: resources, page, who may write) and its HTTP routes, composed; `cli.ts`, if someone writes from the terminal. →
    [example](reference/example.md); sign-in and routes, [signin](reference/signin.md)
 7. **Tests**, for what a story cannot say; the gate. → [tests](reference/tests.md)
 

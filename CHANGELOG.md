@@ -6,6 +6,13 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### Changed
+
+- **One shape for a starter: routes and resources** (18 October): `bun create dzql` now lays an
+  app out as paintbrush does, `src/routes.ts` and `src/resources/<name>/`, the server-drawn page
+  among its routes (packages/dzql/CHANGELOG.md). One starter for both is the next step, once this
+  one has run a cafe.
+
 ### Added
 
 - **The model is a file, checked, then made into types, migrations and tests** (18 October, a

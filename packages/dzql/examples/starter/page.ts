@@ -1,7 +1,7 @@
 import { layers } from "dzql/rendering/bento";
 import { icon } from "./icons";
 
-// Starter's page: nothing yet but where to begin. The server draws every page (src/server.ts); a
+// Starter's page: nothing yet but where to begin. The server draws every page (./routes.ts); a
 // page is the bento's (`bento({ icon, session })`: `collectionPage` or `boxPage`, `rows` of `row`s,
 // `tool`s, in `layers()`), its marks lucide's (./icons.ts) -- the eta-app skill's page and bento.
 export function render(): string {

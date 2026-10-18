@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
  * `bun create dzql my-app`: eta's starter on dzql. The app is `src/`, begun as dzql's
- * `examples/starter` (its page, no stories yet, no documents yet), served by delta's one server
- * through dzql's `start.ts`. Copies `template/` (the app's package.json, tsconfig, README), then the
+ * `examples/starter` (its routes and its page, no stories yet, no resources yet), served by delta's
+ * one server from its own `routes.ts`. Copies `template/` (the app's package.json, tsconfig, README), then the
  * starter into `src/`, puts the app's name in, and says what to run.
  *
  * The starter is dzql's own, copied in when this package is packed (`prepack`, as `starter/`); run
@@ -32,7 +32,7 @@ cpSync(starter, join(dest, "src"), { recursive: true });
 renameSync(join(dest, "gitignore"), join(dest, ".gitignore"));
 
 // The starter's look imports the kernel's bento by a path inside dzql; in an app it is by name
-const styles = join(dest, "src/client/styles.css");
+const styles = join(dest, "src/styles.css");
 writeFileSync(styles, readFileSync(styles, "utf8").replace(/@import "[^"]*src\/rendering\/bento\.css";/, '@import "dzql/rendering/bento.css";'));
 
 // The app's name in place of {{name}}, and of the starter's own, in every file

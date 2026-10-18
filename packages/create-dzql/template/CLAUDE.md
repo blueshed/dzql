@@ -14,10 +14,15 @@ the page the server draws from them. The skills say how, and `bun install` puts 
 
 An app is routes and resources on both sides of the socket, joined by documents; entities (the
 collections of delta's `defineSchema`) are behind them, on the server. Here the server draws every
-page, so the routes and resources are the server's: a resource (`Example.resources`) looks after
-one document (who may write it, what a write becomes), and an island is the only client one. The
-server is delta's one server, run by `dzql serve` (`bun dev`, `bun start`): never a `Bun.serve` of
-the app's own.
+page, so the routes and resources are the server's:
+
+- `src/routes.ts` is the server: the app (its page, its socket, its resources) composed with any
+  HTTP route and, in development, the model's page at `/model`, on delta's one server (`serve`,
+  `run`). `bun dev` and `bun start` run it; never a `Bun.serve` of the app's own.
+- `src/resources/<name>/` is one document: `<name>-api.ts` its schema and document, registered on
+  `delta`; `<name>.ts` its resource (who may write it, what a write becomes), listed in the app's
+  `resources`; `<name>-view.ts` its part of the page, drawn by `src/page.ts`.
+- An island is the only client resource.
 
 ## Working here
 

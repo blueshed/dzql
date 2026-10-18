@@ -17,9 +17,9 @@ work in.
 
 | | Wherever dzql is installed | In a project (`bun create dzql`) | In dzql itself (`packages/dzql`) |
 |---|---|---|---|
-| The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), at `/model`, the model kept in `model.json`, named for the project; beside an app, `bunx dzql serve <app> --model` mounts it at `/model` | `bun dev`, at `localhost:3000/model` beside the app (or `bun run model` alone, port 3001) | `bun run dev:modeling`, port 3005 |
+| The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), at `/model`, the model kept in `model.json`, named for the project; beside an app, its `routes.ts` composes `modelRoute()` (`dzql/model`) in development | `bun dev`, at `localhost:3000/model` beside the app (or `bun run model` alone, port 3001) | `bun run dev:modeling`, port 3005 |
 | A verb | `bunx dzql model <verb>` | `bun run cli:model <verb>`: it talks to the server whose sign-in link it was given | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
-| Sign in | `login <link>`: `dzql model` and `dzql serve --model` print a sign-in link for each keeper as they start (Peter's for the person, Claude's for the CLI); no email or password. `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) still works | the same | the same |
+| Sign in | `login <link>`: `dzql model` and `bun dev` print a sign-in link for each keeper as they start (Peter's for the person, Claude's for the CLI); no email or password. `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) still works | the same | the same |
 | What it makes | after every change, while no check is open, into `model/` (`--out`): `types.ts`, `guards.ts`, `migrations/` and `model.test.ts`; `bunx dzql model check` once, exit 1 while one is open | the same | the same, `bun src/cli/index.ts model check` |
 
 The CLI keeps its session in `.eta-session`. A refused write prints `refused: <why>` and exits 1:
@@ -121,7 +121,7 @@ How the app uses them:
   session's table: the app adds the session's own columns to it (`cookie`, who signed in) and keeps
   it as a `perSession` resource under the name the app gives its session. The guards leave it out.
 - **The guards:** `guards.ts` stands in front of the store, `guardWrites(delta.server, guards, {
-  actorOf, rowOf })` in `delta.ts` before `registerDocs`: a write no story says is refused there,
+  actorOf, rowOf })` on the app's `delta` before any `registerDocs` (first in `routes.ts`): a write no story says is refused there,
   with the story's words. A resource's `permit` need not say the rules again. `rowsIn(db,
   schema)` (`dzql/modelling/guards`) is the `rowOf` for SQLite, its booleans read as booleans.
   The server's own writes (`serverWrite`) are no person's, and go by.
@@ -147,7 +147,7 @@ For a page the server draws, load the **eta-app** skill; the model says what to 
 | In the model | In the app |
 |---|---|
 | A story | A story in `src/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into, `model` the model story's number |
-| A document | A `defineDoc` in `src/delta.ts`: its root, and what it holds as its includes |
+| A document | A resource of its own, `src/resources/<name>/`: its `defineDoc` (from `model/types.ts`'s `docs`) registered in `<name>-api.ts`, its root and what it holds as its includes |
 | An entity, its fields, its parent | A table in `defineSchema`, its columns, its `parent` |
 | `own` | A `perSession` resource |
 | Who holds it | Who its resource lets see it |

@@ -25,6 +25,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **`bun create dzql` makes an app as routes and resources** (18 October, Peter: "the paintbrush
+  organisation made more sense", and yes to the proof). The starter (`examples/starter`, and so a
+  new project's `src/`) is laid out as paintbrush's: `routes.ts` is the server -- the app (its
+  page, socket and resources, `appOf`) composed with its HTTP routes and, in development, the
+  model's page (`modelRoute()`, now exported as `dzql/model`) on delta's one server, `run` around
+  it -- and each document will be a resource of its own folder, `resources/<name>/`: `<name>-api.ts`
+  (its schema and document), `<name>.ts` (its `Resource`) and `<name>-view.ts` (its part of the
+  page). `bun dev` is `bun --hot src/routes.ts --model`, `bun start` `bun src/routes.ts`; no
+  `index.ts`, `delta.ts` or `client/`. The stories, the model's loader and `model:check` find an
+  app in `routes.ts` (`appIn`), and read its documents from each resource's `-api.ts`. The README's
+  first file is `routes.ts`, run by `bun routes.ts`. The eta-app skill says the layout, and maps it
+  to the examples' earlier places.
+
 - **What cafe-d found, built by Gemini from the skills alone** (18 October, `cafe-d/feedback.md`).
   A write the store refuses with 401 (the guards know nobody) is refused on the page with its
   reason, as a 403 is, not "delta applied nothing"; the store failing (5xx) is reported. The guards

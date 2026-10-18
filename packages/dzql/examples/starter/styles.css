@@ -1,7 +1,7 @@
 /* Starter's look: the kernel's bento surfaces (its bento.css) in a plain ink on paper, light and
    dark. Say the app's own tokens here as it grows. */
 
-@import "../../../src/rendering/bento.css";
+@import "../../src/rendering/bento.css";
 
 :root {
   color-scheme: light dark;

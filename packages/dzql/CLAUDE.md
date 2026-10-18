@@ -82,6 +82,8 @@ What a change to them must not break. How the pieces work is in the skills; the 
 - **The shape.** `src/rendering` and `src/modelling` never import from `examples/` (their tests
   may). `examples/<name>/` is a whole app with an `index.ts` exporting `example: Example`, importing
   dzql as an app does (`dzql/rendering/...`); examples never import from each other.
+  `examples/starter/` is laid out as `bun create dzql` makes an app: routes and resources, its
+  `routes.ts` exporting `app` and serving it (`appIn`, `src/rendering/names.ts`, finds either).
   `examples/modeling/` is the model's page; its `loader/` reads an app that exists.
 - railroad only in `src/rendering/island.ts`; the examples add `lucide`; the kernel imports no icon set.
 - Documents are delta's: rendering owns people and pages, delta owns documents, their ledger and
