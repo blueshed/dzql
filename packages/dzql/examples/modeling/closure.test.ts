@@ -139,11 +139,18 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
       expect(open.code).toBe(1);
       expect(open.out).toContain("Reachability: 1 gap\n  unwatched-entity · requests: no document holds requests, so nobody is told when it changes\n");
       expect(existsSync(`${dir}/app`)).toBe(false);
+      // a model with no stories makes nothing
+      await Bun.write(file, JSON.stringify({ tables: { models: [{ id: 1, name: "Team" }] } }));
+      expect((await check()).out).toBe("No stories yet: nothing made.\n");
+      expect(existsSync(`${dir}/app`)).toBe(false);
+      // a stories.ts a person wrote is kept: the model's goes beside it
+      await Bun.write(`${dir}/app/stories.ts`, "// the app's own\n");
       await write([{ id: 1, models_id: 1, name: "team", root: "teams", own: 0, holds: { teams: { parent: null, fields: [] }, requests: { parent: "teams", fields: [] } }, held_by: ["ann"], stories: [1] }]);
       const closed = await check();
       expect(closed.out).toContain("Reachability: closed\n");
       expect(closed.code).toBe(0);
-      expect(readdirSync(`${dir}/app`).sort()).toEqual(["guards.ts", "migrations", "model.test.ts", "stories.ts", "types.ts"]);
+      expect(readdirSync(`${dir}/app`).sort()).toEqual(["guards.ts", "migrations", "model.test.ts", "stories.model.ts", "stories.ts", "types.ts"]);
+      expect(await Bun.file(`${dir}/app/stories.ts`).text()).toBe("// the app's own\n");
       expect(readdirSync(`${dir}/app/migrations`)).toEqual(["001-teams-requests.ts"]);
       expect((await check()).out).not.toContain("new)"); // the model unchanged: no next step
       // a parent changed is a step only a person can finish: written once, saying so, and not again

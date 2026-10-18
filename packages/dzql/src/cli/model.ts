@@ -39,6 +39,17 @@ export async function make(file: string, out: string): Promise<{ ok: boolean; sa
   const registers = closureOf({ models: { name: model.name }, ...model } as Parameters<typeof closureOf>[0]);
   const checks = plainClosure(registers);
   if (registers.some((r) => r.gaps.length > 0)) return { ok: false, said: `${checks}\n\nNothing made: close each gap first.` };
+  if (Object.keys(model.stories ?? {}).length === 0) return { ok: true, said: "No stories yet: nothing made." };
+  // what the model makes, written over only what it made before: a file a person wrote is kept,
+  // and the model's goes beside it (`stories.model.ts`), for them to bring together
+  const made: string[] = [];
+  const put = (name: string, source: string) => {
+    const at = join(out, name);
+    const theirs = existsSync(at) && !/dzql model/.test(readFileSync(at, "utf8").split("\n", 1)[0]!);
+    const as = theirs ? name.replace(/\.ts$/, ".model.ts") : name;
+    writeFileSync(join(out, as), source);
+    made.push(as);
+  };
   const dir = join(out, "migrations");
   mkdirSync(dir, { recursive: true });
   const { fromFolder } = await import("@blueshed/delta/sqlite");
@@ -48,16 +59,16 @@ export async function make(file: string, out: string): Promise<{ ok: boolean; sa
   const proposed = nextMigrationOf(history, model);
   const owed = proposed?.source.split("\n").filter((l) => l.startsWith("// By hand:")) ?? [];
   const next = proposed && last && !/^\s+\w+\(/m.test(proposed.source) && owed.every((l) => readFileSync(join(dir, last), "utf8").includes(l)) ? undefined : proposed;
-  writeFileSync(join(out, "types.ts"), typesOf(model));
-  writeFileSync(join(out, "stories.ts"), storiesOf(model));
-  writeFileSync(join(out, "model.test.ts"), testsOf(model, basename(resolve(out))));
+  put("types.ts", typesOf(model));
+  put("stories.ts", storiesOf(model));
+  put("model.test.ts", testsOf(model, basename(resolve(out))));
   if (next) writeFileSync(join(dir, `${next.name}.ts`), next.source);
   // hjeli's guarded write layer, once a story says what it writes (./model-tools.ts, ../modelling/guards.ts)
   const { guardsOf, guardSource } = await import("../modelling/guards");
   const guards = guardsOf({ models: { name: model.name }, ...model } as Parameters<typeof guardsOf>[0]);
-  if (guards.rules.length) writeFileSync(join(out, "guards.ts"), guardSource(guards, basename(file)));
+  if (guards.rules.length) put("guards.ts", guardSource(guards, basename(file)));
   const steps = readdirSync(dir).filter((f) => f.endsWith(".ts")).sort();
-  return { ok: true, said: `${checks}\n\n${out}: types.ts, stories.ts, model.test.ts${guards.rules.length ? ", guards.ts" : ""}; migrations ${steps.map((f) => f.replace(/\.ts$/, "")).join(", ") || "none"}${next ? ` (${next.name} new)` : ""}` };
+  return { ok: true, said: `${checks}\n\n${out}: ${made.join(", ")}; migrations ${steps.map((f) => f.replace(/\.ts$/, "")).join(", ") || "none"}${next ? ` (${next.name} new)` : ""}` };
 }
 
 /** A project's own model is named for the project -- not the example's seeded one. */
