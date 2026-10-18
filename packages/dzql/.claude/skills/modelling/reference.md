@@ -19,7 +19,7 @@ work in.
 |---|---|---|---|
 | The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), at `/model`, the model kept in `model.json`, named for the project; beside an app, `bunx dzql serve <app>` mounts it at `/model` in development | `bun run model`, port 3001 | `bun run dev:modeling`, port 3005 |
 | A verb | `bunx dzql model <verb>` | `bun run cli:model <verb>` | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
-| Sign in | `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) | `login claude@modeling.example claude-password` (or `.env`'s `MODEL_PASSWORD`) | `login claude@modeling.example claude-password` |
+| Sign in | `login <link>`: `dzql model` and `dzql serve` print a sign-in link for each keeper as they start (Peter's for the person, Claude's for the CLI); no email or password. `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) still works | the same | the same |
 | What it makes | after every change, while no check is open, the app's (`--out`, default `app`) `types.ts`, `guards.ts`, migrations and stories; `bunx dzql model check` once, exit 1 while one is open | the same | the same, `bun src/cli/index.ts model check` |
 
 The CLI keeps its session in `.eta-session`. A refused write prints `refused: <why>` and exits 1:

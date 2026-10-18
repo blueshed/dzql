@@ -8,6 +8,7 @@ import { may, model, shape, type Model } from "./model";
 import { aliases, show, stdin } from "./cli";
 import { closureOf, plainClosure } from "./closure";
 import { stories } from "./stories";
+import { signInLinks } from "./signin";
 import { example } from "./index";
 
 // A model as delta keeps it: three stories -- one the team serves, one the inbox, one nothing --
@@ -318,6 +319,17 @@ describe("modeling, served", () => {
     const res = await fetch(new URL("/model/login", server.url), { method: "POST", body: new URLSearchParams({ email, password }), redirect: "manual", headers });
     return { res, sessionId: /session_id=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] };
   }
+
+  test("signing in by a link: each keeper's, said as the server starts; one that is no link signs nobody in", async () => {
+    const links = signInLinks(server.url.origin);
+    expect(links.map((l) => l.split(":")[0])).toEqual(["Peter", "Claude"]);
+    const peter = await fetch(links[0]!.slice("Peter: ".length), { redirect: "manual" });
+    expect(peter.status).toBe(303);
+    expect(peter.headers.get("location")).toBe("/model");
+    expect(peter.headers.get("set-cookie")).toContain("session_id=");
+    const nobody = await fetch(new URL("/model/in/not-a-link", server.url), { redirect: "manual" });
+    expect(nobody.headers.get("set-cookie")).toBeNull();
+  });
 
   test("signing in: only by the form, from this site, with a password that matches the email", async () => {
     expect((await fetch(new URL("/model/login", server.url), { redirect: "manual" })).headers.get("location")).toBe("/model");

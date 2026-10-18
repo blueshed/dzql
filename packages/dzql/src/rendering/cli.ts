@@ -28,7 +28,9 @@ const url = `${(process.env.ETA_URL ?? "ws://localhost:3000").replace(/\/+$/, ""
 
 // `login <email> <password>`: signs in by the app's own form, and keeps the session it is given
 if (rest[0] === "login") {
-  const session = await signIn(url, { email: rest[1] ?? "", password: rest[2] ?? "" });
+  // a sign-in link (`dzql model` prints one for each keeper), or the email and password the form takes
+  const link = rest[1]?.startsWith("http") ? await fetch(rest[1], { redirect: "manual" }) : undefined;
+  const session = link ? /session_id=([^;]+)/.exec(link.headers.get("set-cookie") ?? "")?.[1] : await signIn(url, { email: rest[1] ?? "", password: rest[2] ?? "" });
   if (!session) {
     console.error("refused: that email and password do not match");
     process.exit(1);

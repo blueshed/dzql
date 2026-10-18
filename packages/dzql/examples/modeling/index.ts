@@ -2,7 +2,7 @@ import type { Example } from "dzql/rendering/example";
 import { modelResource, session } from "./resources";
 import { session as sessionOf } from "./model";
 import { render } from "./page";
-import { signIn } from "./signin";
+import { linkIn, signIn } from "./signin";
 import index from "./client/index.html";
 import { delta, sessions } from "./delta";
 
@@ -20,7 +20,7 @@ export const example: Example = {
   who: (sessionId) => sessionOf(sessionId).person?.id ?? sessionId,
   index,
   at: "/model", // a route of whatever app it is served beside, in development: never registered in production
-  routes: { "/login": signIn },
+  routes: { "/login": signIn, "/in/:token": linkIn as never },
   delta, // the documents are delta's (./delta.ts)
   session: sessions.of, // a session is a numbered row, named by its cookie
 };

@@ -80,6 +80,12 @@ function projectName(): string {
   }
 }
 
+/** Each keeper of the model's link to sign in, where the server starts: no email, no password. */
+async function sayLinks(port: string): Promise<void> {
+  const { signInLinks } = await import("../../examples/modeling/signin");
+  console.log(["The model's page, signed in by a link:", ...signInLinks(`http://localhost:${port}`).map((l) => `  ${l}`)].join("\n"));
+}
+
 /** After every change to the model's file, by the page or by hand: the checks, and what they let it make. */
 function watchModel(file: string, out: string): void {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -112,7 +118,10 @@ export async function run(argv: string[]): Promise<boolean> {
     }
     const model = dev && (await import("../../examples/modeling/index.ts")).example;
     await running(() => serve(compose(appOf(example), model && appOf(model))));
-    if (dev) watchModel(file, dir);
+    if (dev) {
+      await sayLinks(process.env.PORT ?? "3000");
+      watchModel(file, dir);
+    }
     return true;
   }
   if (verb !== "model") return false;
@@ -130,6 +139,7 @@ export async function run(argv: string[]): Promise<boolean> {
     process.env.DB_PATH ??= ":memory:"; // sessions only: the model is the file
     process.env.MODEL_NAME ??= projectName();
     await import("../rendering/start");
+    await sayLinks(port);
     watchModel(file, out);
     return true;
   }

@@ -22,7 +22,7 @@ function signInPage(sessionId: string): string {
     `<label class="modal-field"><span class="note">Password</span><input name="password" type="password" autocomplete="current-password" required></label>`,
     toldAt(sessionId, "session", "/login"),
     `<button type="submit" class="tool">Sign in</button>`,
-    `</form></section>`,
+    `</form><p class="note">Or open your sign-in link: \`dzql model\` and \`dzql serve\` print one for each of you as they start.</p></section>`,
   );
 }
 
