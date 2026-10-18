@@ -101,8 +101,8 @@ function projectName(): string {
 
 /** Each keeper of the model's link to sign in, where the server starts: no email, no password. */
 async function sayLinks(port: string): Promise<void> {
-  const { signInLinks } = await import("../../examples/modeling/signin");
-  console.log(["The model's page, signed in by a link:", ...signInLinks(`http://localhost:${port}`).map((l) => `  ${l}`)].join("\n"));
+  const { links } = await import("../../examples/modeling/signin");
+  console.log(["The model's page, signed in by a link:", ...links.say(`http://localhost:${port}`).map((l) => `  ${l}`)].join("\n"));
 }
 
 /**

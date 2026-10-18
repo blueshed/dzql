@@ -1,5 +1,6 @@
 import { refuseOrigin } from "@blueshed/delta/server";
 import { tell } from "dzql/rendering/refusal";
+import { signInLinks } from "dzql/rendering/links";
 import { sessionCookie } from "dzql/rendering/server";
 import { scope } from "dzql/rendering/scope";
 import { db, sessions } from "./delta";
@@ -34,21 +35,8 @@ export async function signIn(req: Request): Promise<Response> {
   return home(sessionCookie(cookie));
 }
 
-// Or a link: one for each person who keeps the model, minted as the server starts and said where it
-// starts (`dzql model`, `dzql serve`), so nobody needs an email or a password to get in. Opened, it
-// starts a fresh session as that person, as the form does; it lasts as long as the server.
-// kept on globalThis, as the sessions are (./delta.ts): a reload under `bun --hot` keeps the links it printed
-const keptLinks = globalThis as { __dzqlModelLinks?: Map<string, { person_id: number; name: string }> };
-const links = (keptLinks.__dzqlModelLinks ??= new Map(
-  (db.query("SELECT id, name FROM mdl_people ORDER BY id").all() as { id: number; name: string }[]).map((p) => [crypto.randomUUID(), { person_id: p.id, name: p.name }]),
-));
-
-/** Each person's link to sign in, at the server `origin` names. */
-export const signInLinks = (origin: string): string[] => [...links].map(([token, p]) => `${p.name}: ${origin}/model/in/${token}`);
-
-export async function linkIn(req: Bun.BunRequest<"/in/:token">): Promise<Response> {
-  const who = links.get(req.params.token);
-  if (!who) return new Response(null, { status: 303, headers: { Location: "/model" } }); // no such link: the page signs in
-  const { cookie } = await sessions.start(who);
-  return new Response(null, { status: 303, headers: { Location: "/model", "Set-Cookie": sessionCookie(cookie) } });
-}
+// Or a link: one for each person who keeps the model, printed where the server starts (`dzql model`,
+// `dzql serve --model`), so nobody needs an email or a password to get in. Opened, it starts a fresh
+// session as that person, as the form does (dzql/rendering/links says how).
+const people = () => (db.query("SELECT id, name FROM mdl_people ORDER BY id").all() as { id: number; name: string }[]).map((p) => ({ name: p.name, value: { person_id: p.id, name: p.name } }));
+export const links = signInLinks("model", sessions, people, "/model");

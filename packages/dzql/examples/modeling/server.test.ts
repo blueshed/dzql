@@ -8,7 +8,7 @@ import { may, model, shape, type Model } from "./model";
 import { aliases, show, stdin } from "./cli";
 import { closureOf, plainClosure } from "./closure";
 import { stories } from "./stories";
-import { signInLinks } from "./signin";
+import { links } from "./signin";
 import { example } from "./index";
 
 // A model as delta keeps it: three stories -- one the team serves, one the inbox, one nothing --
@@ -329,9 +329,9 @@ describe("modeling, served", () => {
   }
 
   test("signing in by a link: each keeper's, said as the server starts; one that is no link signs nobody in", async () => {
-    const links = signInLinks(server.url.origin);
-    expect(links.map((l) => l.split(":")[0])).toEqual(["Peter", "Claude"]);
-    const peter = await fetch(links[0]!.slice("Peter: ".length), { redirect: "manual" });
+    const said = links.say(server.url.origin);
+    expect(said.map((l) => l.split(":")[0])).toEqual(["Peter", "Claude"]);
+    const peter = await fetch(said[0]!.slice("Peter: ".length), { redirect: "manual" });
     expect(peter.status).toBe(303);
     expect(peter.headers.get("location")).toBe("/model");
     expect(peter.headers.get("set-cookie")).toContain("session_id_model="); // the model's own cookie, under its path

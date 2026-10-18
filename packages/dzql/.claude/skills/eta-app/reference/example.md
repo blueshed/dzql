@@ -51,8 +51,9 @@ export const aliases: Aliases = {
 };
 ```
 
-- `src/rendering/cli.ts` knows `login <email> <password>` (by the app's own `/login` form; the session kept in
-  `.eta-session`, or `--session <file>`), `inspect`, `watch`, `undo`, `redo` and
+- `src/rendering/cli.ts` knows `login <link>` (a link the server printed as it started) or `login <email>
+  <password>` (by the app's own `/login` form), the session kept in
+  `.eta-session` (or `--session <file>`); `inspect`, `watch`, `undo`, `redo` and
   `write <doc> <op> <path> [value]`. A refused write prints `refused: <why>` and exits 1.
 - With `ETA_TOKEN` set it sends `Authorization: Bearer <token>`, and the app's `identify` says who it
   is: no `login` first ([signin.md](signin.md)).

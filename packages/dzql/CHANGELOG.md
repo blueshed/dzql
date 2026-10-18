@@ -160,6 +160,16 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **Sign-in by link, for any app's people** (18 October, Peter's decision after the cafe runs:
+  cafe-e's doorway page). `dzql/rendering/links`' `signInLinks(key, sessions, people, at)` makes a
+  link per person as the server starts: `say(origin)` prints them, `ways()` is each person's name
+  and path for a page that offers a way in per person, and `route` is the app's `"/in/:token"`,
+  starting a fresh session as that person. The model's page signs its keepers in through it, and
+  its stories sign the cast in by their links (the link route answers the harness's post). The
+  eta-app skill's `signin.md` leads with links, the bento's `leave` the way out, and passwords only
+  when a story asks; first-app.md, stories.md, the starter's `routes.ts` and the template's
+  `CLAUDE.md` say the same.
+
 - **The model is a file, and it makes the app's types, migrations and tests, checked first** (18
   October, Peter: "I want a migration, types and tests generated from stories ... and you should run
   your checks before you generate"; then "yes" to one file, one command). The model is `model.json`,

@@ -64,7 +64,7 @@ exactly as the browser or the CLI would send it. `seen` names who should notice 
 and whatever else the example's `goTo` understands, because a person sees only the page they are on
 and a story says where its change shows; in an example with one page (chat's is the room; the
 ticker has one), `seen` is just a list of names. Where people sign in, the cast signs in through the example's
-own sign-in page (`signIn`), since a password is never a write. A place a story names must be a
+own way in (`signIn`): each person's link, or a sign-in form, since neither is a write. A place a story names must be a
 place the example has: the harness checks the member's page stands where it was put. And it must
 be a place a person can get to: the harness puts people there by a session write of its own, and
 a story whose `from` no control leads to would pass while nobody could do it (a modal whose story

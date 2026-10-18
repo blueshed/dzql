@@ -232,19 +232,23 @@ Undo and redo are free: every write is recorded with its opposite. Three things 
 
 ## 11. Signing people in
 
-Leave shows the whole thing. A password must never be a write (it would sit in the browser's log),
-so:
+By a link, one per person, with no email and no password: `signInLinks` (`dzql/rendering/links`)
+makes them as the server starts, prints them where it starts, and its `route` is the app's
+`"/in/:token"`. Opened, a link starts a *new* session holding who that person is and sends the
+browser home. The model's page signs its keepers in so (`examples/modeling/signin.ts`); the eta-app
+skill's `reference/signin.md` is the whole of it, a demo's home page with a way in per person
+included.
 
-1. The sign-in page is a plain `<form method="post" action="/login">`, with no `data-write`.
-2. A route on `Example.routes` checks the password with `Bun.password.verify`, starts a *new*
-   session, writes who it is into that session with `serverWrite`, and sets `sessionCookie(id)`.
-3. The session's `permit` refuses changing who you are over the wire, but allows signing out.
-4. In the stories, `signIn(name)` gives the route and form, and the harness signs the cast in
+1. The session's `permit` refuses changing who you are over the wire, but allows signing out, and
+   the bento's `leave` is the button that does.
+2. In the stories, `signIn(name)` gives the route and form, and the harness signs the cast in
    through it.
 
-Where who you are comes with the request -- a sign-in proxy in front, the CLI's token --
-`Example.identify(req)` says so before the socket opens: the session to use, or a refusal. Leave's
-is in `examples/leave/signin.ts`.
+Passwords only when a story asks for them: leave shows the whole thing (a plain `<form
+method="post" action="/login">`, never a write, checked with `Bun.password.verify`). Where who you
+are comes with the request -- a sign-in proxy in front, the CLI's token -- `Example.identify(req)`
+says so before the socket opens: the session to use, or a refusal. Leave's is in
+`examples/leave/signin.ts`.
 
 ## 12. When you need an applet
 

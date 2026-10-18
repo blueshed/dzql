@@ -23,6 +23,9 @@ page, so the routes and resources are the server's:
   `delta`; `<name>.ts` its resource (who may write it, what a write becomes), listed in the app's
   `resources`; `<name>-view.ts` its part of the page, drawn by `src/page.ts`.
 - An island is the only client resource.
+- People sign in by a link each, printed as the server starts (`signInLinks`, from
+  `dzql/rendering/links`), and sign out by the bento's `leave`: no email and no password unless a
+  story asks for them.
 
 ## Working here
 

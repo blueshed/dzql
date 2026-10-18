@@ -18,6 +18,12 @@ test("each person's link, printed at the server's origin, under the app's path",
   expect(signInLinks("test-say", sessions, () => [], "/model").say("http://localhost:3000")).toEqual(lines);
 });
 
+test("each person's way in, for a page: their name and the link's path", () => {
+  const { ways, say } = signInLinks("test-ways", sessions, people, "/model");
+  expect(ways().map((w) => w.name)).toEqual(["Mo", "Kit"]);
+  expect(ways().map((w) => `${w.name}: ${w.path}`)).toEqual(say(""));
+});
+
 test("opened, a link starts a fresh session as its person and sends the browser home; an unknown one only home", async () => {
   const { say, route } = signInLinks("test-route", sessions, people);
   const res = await opened(route, tokenOf(say("http://x")[1]!));

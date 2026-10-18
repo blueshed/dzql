@@ -15,14 +15,17 @@ const kept = globalThis as { __dzqlLinks?: Map<string, Map<string, Linked>> };
 /**
  * The links for `people`, under `key` (the app's name for them), each starting a session of
  * `sessions`, for an app served at `at` (its root when omitted). `route` is the app's
- * `"/in/:token"`; `say` is each person's link at a server's origin, to print as it starts.
+ * `"/in/:token"`; `say` is each person's link at a server's origin, to print as it starts; `ways` is
+ * each person's name and path, for a page that offers a way in per person (a demo's home page).
  */
 export function signInLinks(key: string, sessions: Sessions, people: () => Linked[], at = "") {
   const all = (kept.__dzqlLinks ??= new Map());
   const links = () => all.get(key) ?? all.set(key, new Map(people().map((p) => [crypto.randomUUID(), p]))).get(key)!;
   const home = at || "/";
+  const ways = () => [...links()].map(([token, p]) => ({ name: p.name, path: `${at}/in/${token}` }));
   return {
-    say: (origin: string): string[] => [...links()].map(([token, p]) => `${p.name}: ${origin}${at}/in/${token}`),
+    ways,
+    say: (origin: string): string[] => ways().map((w) => `${w.name}: ${origin}${w.path}`),
     route: async (req: Bun.BunRequest<"/in/:token">): Promise<Response> => {
       const who = links().get(req.params.token);
       if (!who) return new Response(null, { status: 303, headers: { Location: home } }); // no such link (the server restarted): home, signed out

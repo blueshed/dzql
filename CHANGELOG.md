@@ -15,6 +15,9 @@ what is open across them. Newest first.
 
 ### Added
 
+- **Sign-in by link everywhere** (18 October): dzql's `signInLinks` (`dzql/rendering/links`) is
+  how any app's people come in, the model's page included; the eta-app skill, first-app.md and
+  create-dzql's starter say so, passwords only when a story asks (packages/dzql/CHANGELOG.md).
 - **The model is a file, checked, then made into types, migrations and tests** (18 October, a
   modelling session with Peter on a cafe): the model is `model.json`, which the page edits;
   `dzql model` runs hjeli's six, Easy's coverage and derive-ux's playability after every change,

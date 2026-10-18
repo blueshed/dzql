@@ -14,6 +14,10 @@ import { render } from "./page";
 // (the eta-app skill): each document a resource of its own in `resources/<name>/` -- its document
 // (`<name>-api.ts`, registered on `delta` below), its rules (`<name>.ts`, listed in `resources`) and
 // its part of the page (`<name>-view.ts`, drawn by ./page.ts).
+//
+// People come in by a link each, no email and no password: `signInLinks` (dzql/rendering/links)
+// makes them, `links.route` is the app's "/in/:token", and `startServer` prints `links.say(...)` as
+// it starts (the eta-app skill's reference/signin.md). Passwords only if a story asks for them.
 
 /** The documents, in delta, in this process: each resource registers its own on it. */
 export const delta = createLocal();

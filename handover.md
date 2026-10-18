@@ -30,24 +30,19 @@ server: the app, its HTTP routes, `modelRoute()` from `dzql/model` in developmen
 `src/resources/<name>/` (`<name>-api.ts`, `<name>.ts`, `<name>-view.ts`). The packages'
 `CHANGELOG.md` say each in full.
 
-## Started, not finished: sign-in by link everywhere
+## Done since: sign-in by link everywhere
 
-Peter has asked for this every time; do it first, without asking again. Done so far:
-`packages/dzql/src/rendering/links.ts` (`signInLinks(key, sessions, people, at)`: `say(origin)`
-prints a link per person as the server starts, `route` is the app's `"/in/:token"`, starting a
-fresh session as that person) with `links.test.ts`, both passing. Still to do: the model's page
-(`examples/modeling/signin.ts`, `index.ts`, `src/cli/model.ts` `sayLinks`) uses the helper; the
-eta-app skill's `reference/signin.md` leads with links (a way in per person on the home page in
-development, as cafe-e's doorway page did), email and password only a fallback; the starter's
-`routes.ts` and the template's CLAUDE.md say so; changelog.
+`dzql/rendering/links` (`signInLinks(key, sessions, people, at)`: `say(origin)` prints a link per
+person as the server starts, `ways()` is each one's name and path for a home page, `route` is the
+app's `"/in/:token"`). The model's page and its stories sign in through it; eta-app's
+`reference/signin.md` leads with links (passwords a fallback), and first-app.md, stories.md, the
+starter's `routes.ts` and the template's CLAUDE.md say the same. delta-doc's `auth.md` is left as
+delta's own (for a page that is delta's client); signin.md says which is which. Next: decisions 2
+to 4 below.
 
 ## Peter's decisions not yet built
 
-1. **Sign-in by link** for an app's own people, not email and password (cafe-e's doorway page,
-   `docs/dzql/feedback/cafe-e-signin.ts.txt`, is what he liked: a way in per person and per table).
-   Make the model page's links (`examples/modeling/signin.ts`) a dzql helper any app uses; the
-   eta-app skill's `reference/signin.md` leads with it, passwords only as a fallback. The guidance
-   is split today: eta-app shows passwords, delta-doc another way; say it once.
+1. ~~Sign-in by link~~: done (above).
 2. **Refusals on the page are the story's words only.** The guards' reason drops "(story N)"; keep
    the number for logs and the harness.
 3. **Migrations while modelling:** rewrite the newest unreleased migration in place until it is

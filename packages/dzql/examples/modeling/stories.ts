@@ -1,4 +1,5 @@
-import { story, type Stories, type Write } from "dzql/modelling/stories";
+import { post, story, type Stories, type Write } from "dzql/modelling/stories";
+import { links } from "./signin";
 
 // Modeling is a description of an application that two people keep while they talk: Peter tells
 // the stories, and Claude writes them down -- who tells each, whether they do it or are refused,
@@ -33,7 +34,11 @@ const drop = (document: number): Write => model({ op: "remove", path: `/document
 
 export const stories: Stories = {
   cast: { peter: [], claude: [], visitor: [] },
-  signIn: (name) => (name === "visitor" ? undefined : { path: "/model/login", form: { email: `${name}@modeling.example`, password: `${name}-password` } }),
+  // by each keeper's link, as they come in (./signin.ts); the visitor has none
+  signIn: (name) => {
+    const way = links.ways().find((w) => w.name.toLowerCase() === name);
+    return way && post(way.path);
+  },
   stories: [
     // ── the stories ──
     story("Claude writes down a story Peter told, and Peter sees it arrive, with no document yet", { as: "claude", does: tell("Bo moves his week to the one after, before Mo has answered"), offPage: true, seen: ["peter", "claude"] }),
