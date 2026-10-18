@@ -34,7 +34,7 @@ numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by n
 | Said | Verb |
 |---|---|
 | A story | `story <actor> <does\|cannot> <words>`; `--post /login` among the words for one that posts a form before anyone holds a document |
-| A correction | `reword <n> <words>` |
+| A correction | `reword <n> <words>`; `teller <n> <actor>` for who tells it, its number kept |
 | What its write changes | `touches <n> <entity>...` |
 | What it writes, as hjeli had it | `writes <n> add <entity> replace <entity>.<field>=<value> remove <entity>...` |
 | The state it presupposes | `requires <n> <entity>.<field>=<value>...` |
@@ -43,7 +43,7 @@ numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by n
 | What it holds | `holds <doc> <entity> [under <parent>] <field[:type]>...`: the fields it holds, the whole list each time; types `text` (the default), `integer`, `real`, `boolean` |
 | Who holds it | `heldby <doc> <actor>...`; `own <doc>` for one each person has alone (a session) |
 | Which stories it serves | `serves <doc> <story>...` |
-| Renamed, taken out | `rename <doc> <name>`, `drop <doc>`, `unhold <doc> <entity>` (never its root) |
+| Renamed, taken out | `rename <doc> <name>`, `drop <doc>`, `unhold <doc> <entity>` (never its root); `root <doc> <entity>` for a new root, the old one held under it, its number kept |
 | A slip | `undo`, `redo` |
 | The checks, once | `bunx dzql model check [--out model] [--drops]`: every check; exit 1, and nothing made, while one is open |
 | The model, read back | `show`: each story, numbered, who and does or cannot; each document, numbered, whose, what it serves, and what it holds under its root |
@@ -125,6 +125,11 @@ How the app uses them:
   with the story's words. A resource's `permit` need not say the rules again. `rowsIn(db,
   schema)` (`dzql/modelling/guards`) is the `rowOf` for SQLite, its booleans read as booleans.
   The server's own writes (`serverWrite`) are no person's, and go by.
+  How they decide: the first `does` rule for the writer whose requirements hold lets the write
+  through; else a `cannot` for the writer refuses it, in its words. A requirement is read from the
+  written row and the rows it hangs under, on each write of the story that reaches it. Each op of a
+  write is checked on its own. Narrow each resource's `permit` to what the page sends, and let
+  the guards say who.
 - **Whose copy:** a document a role holds whose root is one of many (a table, a bill) is advice
   in actor closure until the model says how each person comes to hold theirs (a story that gives
   it them, or their own document holding a field that names it, `table`): ask the teller.

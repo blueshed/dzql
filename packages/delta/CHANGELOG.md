@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`delta stop` says "stopped" only once the server is gone** (18 October, cafe-c's feedback: it
+  said stopped, and the process lived). It waits for the process to exit, and kills one still
+  there after ten seconds, saying so; a server's own shutdown no longer waits for ever on a close
+  that hangs.
+
 ### Added
 
 - **The skill's examples are not the Shed's**, which the Shed eval holds out: custom-docs.md's

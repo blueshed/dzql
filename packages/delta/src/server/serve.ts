@@ -119,7 +119,8 @@ export async function run<S extends Runnable>(start: () => S | Promise<S>, { fil
   globalThis.__deltaShutdown = async () => {
     // a graceful stop waits for what is in flight; an open socket (HMR's in dev) could hold it for ever
     await Promise.race([served.stop(), Bun.sleep(5_000)]);
-    await served.close?.(); // what stop had not got to, if the wait ran out
+    // what stop had not got to, if the wait ran out; a close that hangs never keeps the process
+    await Promise.race([served.close?.(), Bun.sleep(2_000)]);
     process.exit(0);
   };
   if (firstRun) {
@@ -141,7 +142,11 @@ export async function stop(file = pidFile()): Promise<string> {
   try {
     if (!(pid > 0)) throw new Error("no pid");
     process.kill(pid, "SIGTERM");
-    return `stopped ${pid}`;
+    // gone when it says so: a server waits at most seven seconds on itself; one still there is killed
+    for (const end = Date.now() + 10_000; Date.now() < end; await Bun.sleep(100)) if (!isAlive(pid)) return `stopped ${pid}`;
+    process.kill(pid, "SIGKILL");
+    await f.delete();
+    return `killed ${pid}: it did not stop when asked`;
   } catch {
     await f.delete();
     return "removed stale pid file";

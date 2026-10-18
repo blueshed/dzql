@@ -221,6 +221,12 @@ describe("the model's rules", () => {
     expect(shape(m, [{ op: "replace", path: "/documents/1/stories", value: ["2"] }])).toEqual([{ op: "replace", path: "/documents/1/stories", value: [2] }]);
     expect(shape(m, [{ op: "replace", path: "/documents/1/own", value: 0 }])).toEqual([{ op: "replace", path: "/documents/1/own", value: 0 }]);
     expect(shape(m, [{ op: "replace", path: "/documents/1/own", value: true }])).toEqual([{ op: "replace", path: "/documents/1/own", value: 1 }]);
+    // a new root, the number kept: the old root still held, under it (cafe-c's feedback)
+    const [root, holds] = shape(m, [{ op: "replace", path: "/documents/1/root", value: " requests " }]);
+    expect(root).toEqual({ op: "replace", path: "/documents/1/root", value: "requests" });
+    expect((holds!.value as Record<string, { parent: string | null }>).requests!.parent).toBeNull();
+    expect((holds!.value as Record<string, { parent: string | null }>).teams!.parent).toBe("requests");
+    expect(refusal({ op: "replace", path: "/documents/1/root", value: " " })).toBe("A document holds something: name its root.");
     expect(shape(m, [{ op: "remove", path: "/documents/2" }])).toEqual([{ op: "remove", path: "/documents/2" }]);
   });
 
@@ -262,7 +268,7 @@ describe("the model's rules", () => {
       { op: "replace", path: "/documents/2/holds/sessions/x" },
       { op: "remove", path: "/documents/2/name" },
       { op: "replace", path: "/documents/2/name/x" },
-      { op: "replace", path: "/documents/2/root" },
+      { op: "remove", path: "/documents/2/root" },
     ];
     expect(yes.filter((op) => !may(m, op))).toEqual([]);
     expect(no.filter((op) => may(m, op))).toEqual([]);

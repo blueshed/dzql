@@ -235,15 +235,23 @@ function planOf(model: Model): { plans: Planned[]; typed: (entity: string, field
     return [...groups].map(([d, said]) => ({ doc: `${d.name}:1`, ops: said.flatMap((w) => opOf(d, w) ?? []) })).filter((w) => w.ops.length > 0);
   };
   // whoever a story needs first: the stories that add the rows it changes or adds under, or set the state it requires
+  // a state is set up by one story, the one that presupposes least (a table added free, not one
+  // paid and freed: cafe-c's feedback), so a premise never needs what it is setting up
+  const presupposes = (o: Story) => (o.writes ?? []).filter((w) => w.op !== "add").length + (o.requires ?? []).length;
   const direct = (s: Story): Story[] => {
-    const want = new Set<string>();
+    const rows = new Set<string>();
     for (const w of s.writes ?? []) {
-      if (w.op !== "add") want.add(`add ${w.entity}`);
+      if (w.op !== "add") rows.add(w.entity);
       const p = parentOf(w.entity);
-      if (w.op === "add" && p) want.add(`add ${p}`);
+      if (w.op === "add" && p) rows.add(p);
     }
-    for (const r of s.requires ?? []) want.add(`${r.entity}.${r.path}=${r.value}`);
-    return stories.filter((o) => o !== s && o.kind !== "cannot" && (o.writes ?? []).some((w) => (w.op === "add" && want.has(`add ${w.entity}`)) || want.has(`${w.entity}.${w.path}=${w.to}`)));
+    const doing = stories.filter((o) => o !== s && o.kind !== "cannot");
+    const adders = doing.filter((o) => (o.writes ?? []).some((w) => w.op === "add" && rows.has(w.entity)));
+    const setters = (s.requires ?? []).flatMap((r) => {
+      const by = doing.filter((o) => (o.writes ?? []).some((w) => `${w.entity}.${w.path}=${w.to}` === `${r.entity}.${r.path}=${r.value}`));
+      return by.length ? [by.reduce((best, o) => (presupposes(o) < presupposes(best) ? o : best))] : [];
+    });
+    return stories.filter((o) => adders.includes(o) || setters.includes(o)); // in the order told
   };
   // each with what it needs before it, depth first, each once
   const needs = (s: Story): Story[] => {

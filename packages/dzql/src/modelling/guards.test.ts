@@ -131,14 +131,14 @@ describe("the guarded write layer: the stories' writes, each with what it presup
       ],
     });
     expect(odd.rules.map((r) => r.story)).toEqual([1, 2, 3, 5]);
-    expect(odd.rules[0]!.custom).toBe("it presupposes rotas.live=yes, which is not a teams row or one it hangs under");
+    expect(odd.rules[0]!.custom).toBe("it presupposes rotas.live=yes, which none of its writes reaches (a row it writes, or one that hangs above it)");
     expect(odd.rules[2]!.docs).toEqual([]);
     const rowOf: RowOf = () => ({ id: 1, teams_id: null });
     expect(await check(odd, { actor: "jo", doc: "desk", op: { op: "replace", path: "/teams/1/name", value: "x" }, rowOf })).toEqual({ ok: true, story: 2 });
     expect(await check(odd, { actor: "jo", doc: "desk", op: { op: "replace", path: "/teams/1", value: { name: "x" } }, rowOf })).toEqual({ ok: true, story: 2 });
     expect(await check({ ...odd, rules: [odd.rules[0]!] }, { actor: "jo", doc: "desk", op: { op: "replace", path: "/teams/1/name", value: "x" }, rowOf })).toEqual({
       ok: false,
-      reason: 'story 1 ("Jo renames a team") cannot be checked from the write: it presupposes rotas.live=yes, which is not a teams row or one it hangs under',
+      reason: 'story 1 ("Jo renames a team") cannot be checked from the write: it presupposes rotas.live=yes, which none of its writes reaches (a row it writes, or one that hangs above it)',
     });
     expect(await check(odd, { actor: "jo", doc: "desk", op: { op: "add", path: "/holidays/-", value: {} }, rowOf })).toEqual({
       ok: false,
@@ -151,6 +151,12 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     expect(await check(weeks, { actor: "jo", doc: "rota", op: { op: "add", path: "/weeks/-", value: {} }, rowOf })).toEqual({ ok: false, reason: 'story 1 ("Jo adds a week") presupposes teams.open=yes, and there is no such row' });
     expect(await check(weeks, { actor: "jo", doc: "rota", op: { op: "add", path: "/weeks/-" }, rowOf })).toEqual({ ok: false, reason: 'story 1 ("Jo adds a week") needs the weeks row -, and there is none' });
     expect(guardsOf({}).rules).toEqual([]);
+    // two writes, one requirement: checked on the write that reaches it, not refused on the one that cannot (cafe-c's feedback)
+    const pays = guardsOf({
+      stories: [{ id: 5, text: "John pays", actor: "john", writes: [{ entity: "invoices", op: "replace", path: "paid", to: "true" }, { entity: "tables", op: "replace", path: "seated", to: "false" }], requires: [{ entity: "invoices", path: "paid", value: "false" }] }],
+      documents: [{ id: 1, name: "floor", root: "cafes", holds: { cafes: { parent: null }, tables: { parent: "cafes" }, invoices: { parent: "tables" } } as never, held_by: ["john"] }],
+    });
+    expect(pays.rules.map((r) => [r.entity, r.requires.map((q) => q.entity), r.custom])).toEqual([["invoices", ["invoices"], undefined], ["tables", [], undefined]]);
   });
 
   test("the guards as an app's file: the rules as data, and what a person must finish named at the top", () => {
@@ -161,7 +167,7 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     expect(source).not.toContain("Refused until");
     const open = guardSource(guardsOf({ stories: [{ id: 7, text: "x", actor: "a", writes: [{ entity: "t", op: "add" }], requires: [{ entity: "u", path: "f", value: "1" }] }] }), "m.sqlite");
     expect(open).toContain("from m.sqlite");
-    expect(open).toContain("//   story 7: it presupposes u.f=1, which is not a t row or one it hangs under");
+    expect(open).toContain("//   story 7: it presupposes u.f=1, which none of its writes reaches (a row it writes, or one that hangs above it)");
   });
 });
 

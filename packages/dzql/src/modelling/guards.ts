@@ -77,14 +77,17 @@ export function guardsOf(model: GuardModel): Guards {
   const rules: Rule[] = [];
   for (const s of rows(model.stories)) {
     if (s.post) continue; // a form posted to a route: the route's, not a document's
+    // a requirement is checked on each write that can reach it (its row, or one it hangs under);
+    // one that none of the story's writes reaches cannot be checked at all (cafe-c's feedback)
+    const reaches = (w: { entity: string }, r: { entity: string }) => [w.entity, ...above(w.entity)].includes(r.entity);
     for (const w of s.writes ?? []) {
       const chain = [w.entity, ...above(w.entity)];
       const requires: Rule["requires"] = [];
       let custom: string | undefined;
       for (const r of s.requires ?? []) {
         const at = chain.indexOf(r.entity);
-        if (at < 0) custom ??= `it presupposes ${r.entity}.${r.path}=${r.value}, which is not a ${w.entity} row or one it hangs under`;
-        else requires.push({ entity: r.entity, field: r.path, value: r.value, via: chain.slice(1, at + 1) });
+        if (at >= 0) requires.push({ entity: r.entity, field: r.path, value: r.value, via: chain.slice(1, at + 1) });
+        else if (!(s.writes ?? []).some((x) => reaches(x, r))) custom ??= `it presupposes ${r.entity}.${r.path}=${r.value}, which none of its writes reaches (a row it writes, or one that hangs above it)`;
       }
       rules.push({
         story: s.id,

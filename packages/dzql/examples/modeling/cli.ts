@@ -18,6 +18,7 @@ import { plain } from "./heart";
 //   bun run cli story ann does "Ann scans the table's QR code"  words with an apostrophe: in double quotes,
 //   echo "Ann scans the table's QR code" | bun run cli story ann does -   or piped in: `-` reads them
 //   bun run cli reword 1 Ann asks for a week in October
+//   bun run cli teller 1 mo                                  who tells it, its number kept
 //   bun run cli touches 1 requests teams                  the entities a story touches
 //   bun run cli writes 1 add requests                     what a story writes, as hjeli had it: an entity and a verb,
 //   bun run cli writes 10 replace requests.status=approved   and for a replace the field and the value it sets
@@ -70,12 +71,14 @@ const requiresSaid = (words: string[]) =>
 export const aliases: Aliases = {
   story: ([actor, kind, ...words]) => model({ op: "add", path: "/stories/-", value: { actor, kind, ...told(words) } }),
   reword: ([id, ...words]) => model({ op: "replace", path: `/stories/${id}/text`, value: said(words) }),
+  teller: ([id, actor]) => model({ op: "replace", path: `/stories/${id}/actor`, value: actor }),
   touches: ([id, ...entities]) => model({ op: "replace", path: `/stories/${id}/touches`, value: entities }),
   writes: ([id, ...words]) => model({ op: "replace", path: `/stories/${id}/writes`, value: writesSaid(words) }),
   requires: ([id, ...words]) => model({ op: "replace", path: `/stories/${id}/requires`, value: requiresSaid(words) }),
   unsay: ([id]) => model({ op: "remove", path: `/stories/${id}` }),
   document: ([name, root, ...stories]) => model({ op: "add", path: "/documents/-", value: { name, root, stories } }),
   own: ([id]) => model({ op: "replace", path: `/documents/${id}/own`, value: true }),
+  root: ([id, entity]) => model({ op: "replace", path: `/documents/${id}/root`, value: entity }),
   holds: ([id, entity, ...rest]) => {
     const under = rest[0] === "under" ? rest[1] : undefined;
     return model({ op: "replace", path: `/documents/${id}/holds/${entity}`, value: { under, fields: (under ? rest.slice(2) : rest).map(field) } });

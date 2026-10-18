@@ -242,6 +242,22 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
     }
   }, 30_000);
 
+  test("a state is set up by the story that presupposes least: a table added free, not one paid and freed", () => {
+    const cafe: Model = {
+      stories: {
+        "1": { id: 1, text: "George seats John at a free table", actor: "george", kind: "does", writes: [{ entity: "invoices", op: "add" }, { entity: "tables", op: "replace", path: "seated", to: "true" }], requires: [{ entity: "tables", path: "seated", value: "false" }] } as never,
+        "5": { id: 5, text: "John pays, and the table is free", actor: "john", kind: "does", writes: [{ entity: "invoices", op: "replace", path: "paid", to: "true" }, { entity: "tables", op: "replace", path: "seated", to: "false" }], requires: [{ entity: "tables", path: "seated", value: "true" }] } as never,
+        "14": { id: 14, text: "The manager adds a table", actor: "george", kind: "does", writes: [{ entity: "tables", op: "add", path: "seated", to: "false" }] } as never,
+      },
+      documents: {
+        "1": { id: 1, name: "floor", root: "cafes", held_by: ["george", "john"], stories: [1, 5, 14], holds: { cafes: { parent: null, fields: [] }, tables: { parent: "cafes", fields: [{ name: "seated", type: "boolean" }] }, invoices: { parent: "tables", fields: [{ name: "paid", type: "boolean" }] } } },
+      },
+    };
+    const seats = testsOf(cafe).split("\n").find((l) => l.includes("George seats John"))!;
+    expect(seats).toContain('"path":"/tables/-"'); // story 14's table
+    expect(seats).not.toContain('"path":"/invoices/1/paid"'); // never story 5, which needs an invoice to pay
+  });
+
   test("a story's premise: the stories it needs, each after what it needs in turn", () => {
     const cafe: Model = {
       stories: {

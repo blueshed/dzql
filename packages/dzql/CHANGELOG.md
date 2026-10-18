@@ -25,6 +25,20 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **cafe-c's second round** (18 October, `cafe-c/feedback.md`). `bun run stories` really runs on a
+  throwaway database: the harness is imported after `DB_PATH` is set (a hoisted import opened the
+  app's own `db.sqlite`). The generated proof sets up a state with the one story that presupposes
+  least (a table added free, not one paid and freed), so its premise never needs what it sets up.
+  The guards check a requirement only on the writes of its story that reach it, and precondition
+  closure says when none does (`unchecked-precondition`). `teller <n> <actor>` and `root <doc>
+  <entity>` change who tells a story and what a document is about, their numbers kept. The
+  starter's `bun test` fails below 100% coverage and leaves a linked dzql out. The modelling skill
+  decides the obvious and asks what could go either way (Peter: yes); a read is the "who sees it"
+  of a write story; a rule across rows is a field on the row it is about; read `model/types.ts` and
+  `bun check` before building. The reference says how the guards decide. eta-app: stories before
+  the first render; a page never reads the database; `""` in a `seen` record is the page with no
+  address.
+
 - **What a blank session building cafe-c found** (18 October, `cafe-c/feedback.md`, from a session
   with only the skills). A box with a cell open always has its way back: `boxPage` gives the box's
   last crumb a `back` and names the cell after it when the caller's trail has none, and bento.md

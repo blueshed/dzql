@@ -26,8 +26,9 @@ the **modelling** skill come first; asked to build or change, build.
 Stories, then documents, then pages: each step the least that makes the next story pass. Run
 `bun run stories` after each. The words are [words](reference/words.md).
 
-1. **The story** (`stories.ts`): who does what, and who then sees it. Watch it fail. →
-   [stories](reference/stories.md)
+1. **The story** (`stories.ts`): who does what, and who then sees it. Watch it fail. A teller
+   asking to see the page now is no reason to skip it: the stories take minutes, and find what the
+   teller would. → [stories](reference/stories.md)
 2. **The documents** (`delta.ts`), cut so whoever must see a change holds it; then
    `documents/<thing>.ts`: `read(id)` and the pure rules a write follows, tested directly; undo. →
    [documents](reference/documents.md); one that would grow forever, [scope](reference/scope.md);

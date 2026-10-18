@@ -107,6 +107,15 @@ describe("run and stop", () => {
     expect(await stop(file)).toBe("removed stale pid file");
   });
 
+  test("a process that will not stop when asked is killed, and stop says so (cafe-c's feedback)", async () => {
+    const stubborn = Bun.spawn([process.execPath, "-e", "process.on('SIGTERM', () => {}); console.log('up'); setInterval(() => {}, 1000);"], { stdout: "pipe", stderr: "pipe" });
+    await readUntil(stubborn, /up/);
+    await Bun.write(file, String(stubborn.pid));
+    expect(await stop(file)).toBe(`killed ${stubborn.pid}: it did not stop when asked`);
+    expect(await stubborn.exited).not.toBe(0);
+    expect(await Bun.file(file).exists()).toBe(false);
+  }, 20_000);
+
   test("`delta stop` is stop, at the command line", async () => {
     const proc = start();
     await readUntil(proc, /Listening on/);

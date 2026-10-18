@@ -22,6 +22,9 @@ message would send the whole conversation again. `part(key, html)` is `src/rende
 
 - `render` is the only renderer: it decides which screen, and reads whichever documents it must. It
   must `read()` what it shows, or its page is not told of a change ([resource.md](resource.md#who-sees-what)).
+  Never a `db.query` in `render`: a page that reads the database directly is drawn once and goes
+  stale. What a signed-out visitor sees is a document too (an app-only `floor:` holding just the
+  tables), read like any other.
 - A resource looks after a document, not a place on the page.
 - A part is the unit of a message: a change goes as the smallest part that holds it, whole. Make
   what changes alone -- a row, a card, a count -- a part of its own.

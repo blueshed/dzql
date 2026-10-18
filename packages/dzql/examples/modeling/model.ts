@@ -127,6 +127,13 @@ export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
     if (field === "held_by") return [{ op: "replace", path: op.path, value: names(op.value) }];
     if (field === "stories") return [{ op: "replace", path: op.path, value: storiesOf(m, op.value) }];
     if (field === "own") return [{ op: "replace", path: op.path, value: op.value ? 1 : 0 }];
+    // a new root, the document's number kept: the old root stays held, hanging under it
+    if (field === "root") {
+      const root = words(op.value, "A document holds something: name its root.");
+      const moved = { ...doc.holds, [root]: { parent: null, fields: doc.holds[root]?.fields ?? [] } };
+      if (doc.root !== root && moved[doc.root]) moved[doc.root] = { ...moved[doc.root]!, parent: root };
+      return [{ op: "replace", path: op.path, value: root }, { op: "replace", path: `/documents/${id}/holds`, value: moved }];
+    }
     // what it holds, an entity at a time: what it hangs under (the root, unless it says) and its fields; or taken out, but never its root
     const holds = { ...doc.holds };
     const name = words(entity, "An entity needs a name.");
@@ -142,7 +149,7 @@ export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
 }
 
 const STORY_FIELDS = new Set(["text", "actor", "kind", "touches", "writes", "requires"]);
-const DOCUMENT_FIELDS = new Set(["name", "held_by", "stories", "own"]);
+const DOCUMENT_FIELDS = new Set(["name", "root", "held_by", "stories", "own"]);
 
 /** May this op be written at all: a story or a document the model has (or a new one), and only their own fields. */
 export function may(m: Model, op: PatchOp): boolean {

@@ -48,6 +48,8 @@ how a paintbrush app keeps its stories, so one format grows from there to here
   handed its props whole ([applets.md](applets.md)).
 - `seen` is everyone **whose page changes**, not everyone who holds the document: the cook's
   kitchen does not change when a table is set up, so the cook is not in its `seen`.
+- In a `seen` record, `""` is the page with no address: where a signed-out member stands
+  (`{ ann: "", mo: "list" }`).
 - An app built from a model writes its own stories, each naming its model story (`model: n`): a
   cast of named people with `signIn`, documents by type, writes its pages really send.
   `bun run stories` runs on a throwaway database unless `DB_PATH` says one.

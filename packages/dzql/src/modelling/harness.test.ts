@@ -1279,3 +1279,21 @@ describe("a select, held to the wire", () => {
     expect(writesOn(`<select data-write='{"doc":"d","op":"replace","path":"/k"}' disabled><option value="a">A</option></select>`)).toEqual([]); // drawn disabled: sends nothing
   });
 });
+
+test("bun run stories never opens the app's own database: DB_PATH is set before anything loads (cafe-c's feedback)", async () => {
+  const { mkdtempSync, mkdirSync, rmSync, existsSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const dir = mkdtempSync(`${tmpdir()}/stories-run-`);
+  try {
+    mkdirSync(`${dir}/src`);
+    writeFileSync(`${dir}/src/stories.ts`, "export const stories = { cast: {}, stories: [] };\n");
+    const env: Record<string, string | undefined> = { ...process.env, ETA_EXAMPLE: "./src" };
+    delete env.DB_PATH;
+    const p = Bun.spawn(["bun", `${import.meta.dir}/stories-run.ts`], { cwd: dir, env, stdout: "pipe", stderr: "pipe" });
+    expect(await new Response(p.stdout).text()).toContain("no app yet");
+    await p.exited;
+    expect(existsSync(`${dir}/db.sqlite`)).toBe(false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

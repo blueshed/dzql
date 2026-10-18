@@ -1,3 +1,6 @@
 [test]
 coverage = true
-coveragePathIgnorePatterns = ["**/node_modules/**"]
+# the gate is every file of the app's covered: a dzql linked from elsewhere is reported by its own
+# path, outside the app ("../"), and is not the app's to cover
+coverageThreshold = 1.0
+coveragePathIgnorePatterns = ["**/node_modules/**", "../**"]

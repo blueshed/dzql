@@ -57,13 +57,17 @@ export function closureOf(raw: Raw): Register[] {
       if (p) parents.set(e, (parents.get(e) ?? new Map()).set(p, [...(parents.get(e)?.get(p) ?? []), d.name]));
     }
   const parentOf = (e: string) => [...(parents.get(e)?.keys() ?? [])][0];
+  /** An entity and every row it hangs under. */
+  const above = (e: string): string[] => {
+    const chain: string[] = [];
+    for (let x: string | undefined = e; x && !chain.includes(x); x = parentOf(x)) chain.push(x);
+    return chain;
+  };
   const fieldsOf = (e: string) => new Set(heldIn(e).flatMap((d) => (d.holds[e]?.fields ?? []).map((f) => f.name)));
   // whose copy a role holds is said when their own document holds a field naming it, or a row it
   // hangs under: a seat's `table` says which table's invoice is theirs (cafe-c's feedback)
   const ownSays = (who: string, root: string): boolean => {
-    const chain: string[] = [];
-    for (let e: string | undefined = root; e && !chain.includes(e); e = parentOf(e)) chain.push(e);
-    const names = new Set(chain.flatMap((e) => [e, singular(e)].flatMap((n) => [n, `${n}_id`])));
+    const names = new Set(above(root).flatMap((e) => [e, singular(e)].flatMap((n) => [n, `${n}_id`])));
     return docs.some((o) => o.own && o.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who) && Object.values(o.holds).some((h) => (h.fields ?? []).some((f) => names.has(f.name))));
   };
   const impliedRoots = new Set(docs.filter((d) => !parentOf(d.root)).map((d) => d.root));
@@ -145,6 +149,12 @@ export function closureOf(raw: Raw): Register[] {
         (s.requires ?? [])
           .filter((r) => !produced.has(`${r.entity}.${r.path}=${r.value}`))
           .map((r) => ({ kind: "unreachable-precondition", where: story(s), detail: `it presupposes ${r.entity}.${r.path}=${r.value}, but no write sets it` })),
+      ),
+      // what a story presupposes is read from a row it writes or one above it: else the guards cannot check it
+      ...stories.flatMap((s) =>
+        (s.requires ?? [])
+          .filter((r) => (s.writes ?? []).length > 0 && !(s.writes ?? []).some((w) => above(w.entity).includes(r.entity)))
+          .map((r) => ({ kind: "unchecked-precondition", where: story(s), detail: `it presupposes ${r.entity}.${r.path}=${r.value}, which none of its writes reaches (a row it writes, or one that hangs above it), so it cannot be checked` })),
       ),
     ],
   };
