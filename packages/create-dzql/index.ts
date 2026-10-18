@@ -30,6 +30,7 @@ cpSync(starter, join(dest, "src"), { recursive: true });
 
 // npm leaves dotfiles of a package behind: they travel without their dot
 renameSync(join(dest, "gitignore"), join(dest, ".gitignore"));
+renameSync(join(dest, "env.test"), join(dest, ".env.test"));
 
 // The starter's look imports the kernel's bento by a path inside dzql; in an app it is by name
 const styles = join(dest, "src/styles.css");

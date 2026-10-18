@@ -25,6 +25,21 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **What cafe-e found, built by a blank Claude from the skills alone** (18 October,
+  `cafe-e/feedback.md`: it built the whole cafe, 18 stories at 100%, and played it in Chrome). The
+  generated proof's setup makes and sets, never removes (a story that adds and removes tables took
+  the row a later story stood on). `bun create dzql` ships `.env.test` (`DB_PATH=:memory:`, so
+  `bun test` never runs on `bun dev`'s database) and ignores `db.sqlite*`. A cast the app will not
+  sign in fails every story with that sentence, instead of a stack trace. The starter asks `active`
+  as the kernel does (`settled`), so its test holds once `active` reads the session.
+  `--against-page` compares holders as the roles the cast plays (from the stories matched by
+  number) and finds the own document by its root under the app's own name. Subscription closure
+  advises where another person's document holds what a story writes and does not serve it ("are
+  they told?": the customer seeing their table seated). Precondition closure's hint says an add may
+  start a state; the verbs say `add <entity>.<field>=<value>`; the reference says what to do when
+  the own document is called `visit` (`sessionRows`' lookup), and refusal.md that a guards'
+  refusal with no control on the author's page carries no `told`.
+
 - **`bun create dzql` makes an app as routes and resources** (18 October, Peter: "the paintbrush
   organisation made more sense", and yes to the proof). The starter (`examples/starter`, and so a
   new project's `src/`) is laid out as paintbrush's: `routes.ts` is the server -- the app (its

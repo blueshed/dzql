@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { run } from "dzql/modelling/harness";
+import { activeDocuments, settled } from "dzql/rendering/documents";
 import { open, pageOf } from "dzql/rendering/test-socket";
 import { stories } from "./stories";
 import { app, startServer } from "./routes";
@@ -19,8 +20,9 @@ test("the page is served, and drawn over the socket: where to begin", async () =
   ws.close();
 });
 
-test("nobody writes anything yet", () => {
-  expect(app.active("anyone")).toBe(false);
+test("nobody writes anything yet", async () => {
+  // asked as the kernel asks it, the documents it reads loaded first: so it still holds once `active` reads the session
+  expect(await settled(activeDocuments(), () => app.active("anyone"))).toBe(false);
 });
 
 test("every story passes", async () => {

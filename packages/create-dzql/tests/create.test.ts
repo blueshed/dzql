@@ -18,12 +18,15 @@ beforeAll(async () => {
 afterAll(() => rmSync(parent, { recursive: true, force: true }));
 
 test("the app is eta's starter in src/, named, its dotfiles dotted", () => {
-  for (const file of ["src/routes.ts", "src/stories.ts", "src/page.ts", "src/index.html", ".gitignore", "README.md", "CLAUDE.md"]) expect(existsSync(join(app, file))).toBe(true);
+  for (const file of ["src/routes.ts", "src/stories.ts", "src/page.ts", "src/index.html", ".gitignore", ".env.test", "README.md", "CLAUDE.md"]) expect(existsSync(join(app, file))).toBe(true);
   expect(JSON.parse(readFileSync(join(app, "package.json"), "utf8")).name).toBe("my-app");
   expect(readFileSync(join(app, "src/routes.ts"), "utf8")).toContain('name: "my-app"');
   expect(readFileSync(join(app, "src/page.ts"), "utf8")).toContain("My App");
   expect(readFileSync(join(app, "src/styles.css"), "utf8")).toContain('@import "dzql/rendering/bento.css";');
   expect(readFileSync(join(app, "README.md"), "utf8")).not.toContain("{{name}}");
+  // the tests never touch the database `bun dev` keeps, and neither is committed (cafe-e's feedback)
+  expect(readFileSync(join(app, ".env.test"), "utf8")).toContain("DB_PATH=:memory:");
+  expect(readFileSync(join(app, ".gitignore"), "utf8")).toContain("db.sqlite*");
 });
 
 test("installing gives the app its skills: eta-app, modelling and delta-doc", () => {

@@ -394,7 +394,10 @@ describe("stories harness", () => {
     const { example: leave, stories: told } = await load("leave");
     const first = told.stories.slice(0, 1); // signed in, it passes with the rest of leave's (below, under October's clock)
     const wrong = { ...told, stories: first, signIn: (name: string) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: "not-it" } }) };
-    expect(run(leave, wrong)).rejects.toThrow("ann could not sign in at /login: 303");
+    // each story fails, saying so, and the run goes no further (cafe-e's feedback: it was a stack trace)
+    const report = await run(leave, wrong);
+    expect(report.outcomes.map((o) => o.failures)).toEqual([["ann could not sign in at /login: 303"]]);
+    expect(report.failed).toBe(1);
   }, 30000);
 
   describe("a post to a route", () => {

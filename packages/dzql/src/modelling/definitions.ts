@@ -223,8 +223,10 @@ function planOf(model: Model): { plans: Planned[]; typed: (entity: string, field
     const row = `/${w.entity}/1`;
     return w.op === "remove" ? { op: "remove", path: `${row}${w.path ? `/${w.path}` : ""}` } : { op: "replace", path: `${row}/${w.path}`, value: typed(w.entity, w.path, w.to) };
   };
-  const writesOf = (s: Story): Write[] => {
-    const ws = s.writes ?? [];
+  // a story's writes; as setup for another (`setup`), only what makes and sets, never what it takes
+  // away: a premise that removes a row would take the one the later story stands on (cafe-e's feedback)
+  const writesOf = (s: Story, setup = false): Write[] => {
+    const ws = (s.writes ?? []).filter((w) => !setup || w.op !== "remove");
     if (!ws.length || s.post) return [];
     const all = best(s, holding(s, [...new Set(ws.map((w) => w.entity))]), ws[0]!.entity);
     const groups = new Map<ModelDocument, Said[]>();
@@ -266,7 +268,7 @@ function planOf(model: Model): { plans: Planned[]; typed: (entity: string, field
     direct(s).forEach(visit);
     return out;
   };
-  return { plans: stories.map((s) => ({ s, writes: writesOf(s), premise: needs(s).flatMap(writesOf), serving: serving(s) })), typed };
+  return { plans: stories.map((s) => ({ s, writes: writesOf(s), premise: needs(s).flatMap((o) => writesOf(o, true)), serving: serving(s) })), typed };
 }
 
 const lit = (v: unknown) => JSON.stringify(v);

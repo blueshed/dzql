@@ -106,6 +106,12 @@ export function closureOf(raw: Raw): Register[] {
         .filter(({ w }) => w.path && heldIn(w.entity).length > 0 && !fieldsOf(w.entity).has(w.path))
         .map(({ s, w }) => ({ kind: "unwatched-field", where: story(s), detail: `${saidWrite(w)} sets ${w.entity}.${w.path}, which no document holds` })),
     ],
+    // a write another person's document holds, which that document does not serve: are they told? (cafe-e's feedback: the customer seeing their table seated)
+    advice: said.flatMap(({ s, w }) =>
+      docs
+        .filter((d) => !d.own && !d.serves.includes(String(s.id)) && d.held_by.some((who) => who !== s.actor) && (d.holds[w.entity]?.fields ?? []).some((f) => !w.path || f.name === w.path))
+        .map((d) => ({ kind: "unserved-holder", where: `${story(s)} · ${d.name}`, detail: `${saidWrite(w)} changes what ${d.name} holds, held by ${d.held_by.filter((who) => who !== s.actor).join(", ")}, and ${d.name} does not serve it: are they told? (serves ${d.id} ... ${s.id})` })),
+    ),
   };
 
   const actor: Register = {
@@ -148,7 +154,7 @@ export function closureOf(raw: Raw): Register[] {
       ...stories.flatMap((s) =>
         (s.requires ?? [])
           .filter((r) => !produced.has(`${r.entity}.${r.path}=${r.value}`))
-          .map((r) => ({ kind: "unreachable-precondition", where: story(s), detail: `it presupposes ${r.entity}.${r.path}=${r.value}, but no write sets it` })),
+          .map((r) => ({ kind: "unreachable-precondition", where: story(s), detail: `it presupposes ${r.entity}.${r.path}=${r.value}, but no write sets it (an add may start it: writes <story> add ${r.entity}.${r.path}=${r.value})` })),
       ),
       // what a story presupposes is read from a row it writes or one above it: else the guards cannot check it
       ...stories.flatMap((s) =>

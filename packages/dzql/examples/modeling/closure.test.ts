@@ -117,7 +117,7 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
       predicate: "precondition-closure",
       asks: "every row a write presupposes is added by some story, and every state a story requires some write sets",
       gaps: [
-        { kind: "unreachable-precondition", where: "story 2 (mo)", detail: "it presupposes requests.status=waiting, but no write sets it" },
+        { kind: "unreachable-precondition", where: "story 2 (mo)", detail: "it presupposes requests.status=waiting, but no write sets it (an add may start it: writes <story> add requests.status=waiting)" },
       ],
     });
   });
@@ -350,6 +350,23 @@ test("advice: a document a role holds, whose root is one of many, does not say w
   expect(of(r, "actor-closure").advice).toEqual([
     { kind: "whose-copy", where: "table (john)", detail: "there are many tables: which one is john's, and how do they come to hold it? (a story that gives it them, or a document of their own that says)" },
   ]);
+});
+
+test("advice: a write another person's document holds, which that document does not serve, may not tell them", () => {
+  const cafe = (stories: number[]) => closureOf({
+    models: { name: "Cafe" },
+    stories: {
+      "4": { id: 4, text: "The manager seats a table and opens its invoice", actor: "manager", kind: "does", writes: [{ entity: "invoices", op: "add", path: "paid", to: "false" }] },
+    },
+    documents: {
+      "1": { id: 1, name: "floor", root: "invoices", holds: { invoices: { parent: null, fields: [field("paid", "boolean")] } }, held_by: ["manager"], stories: [4] },
+      "2": { id: 2, name: "table", root: "invoices", holds: { invoices: { parent: null, fields: [field("paid", "boolean")] } }, held_by: ["customer"], stories },
+    },
+  });
+  expect(of(cafe([]), "subscription-closure").advice).toEqual([
+    { kind: "unserved-holder", where: "story 4 (manager) · table", detail: "add invoices.paid=false changes what table holds, held by customer, and table does not serve it: are they told? (serves 2 ... 4)" },
+  ]);
+  expect(of(cafe([4]), "subscription-closure").advice).toEqual([]);
 });
 
 test("advice: whose copy goes quiet once their own document names it, or a row it hangs under", () => {

@@ -6,3 +6,4 @@ data/
 .DS_Store
 .claude/settings.local.json
 .eta-session*
+db.sqlite*

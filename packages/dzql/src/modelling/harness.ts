@@ -774,7 +774,8 @@ async function signIn(r: Run, name: string): Promise<string | undefined> {
   if (!how) return undefined;
   const res = await postForm(r, how);
   const cookie = cookieOf(r, res);
-  if (!cookie) throw new Error(`${name} could not sign in at ${how.path}: ${res.status}`);
+  // a member the route will not sign in: every story fails with it, said, and nothing more is run (cafe-e's feedback: it was a stack trace)
+  if (!cookie) throw Object.assign(new Error(`${name} could not sign in at ${how.path}: ${res.status}`), { unsigned: true });
   return cookie;
 }
 
@@ -1067,7 +1068,12 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
   db.exec("BEGIN");
   const cast: Member[] = [];
   try {
-    await gather(r, cast);
+    try {
+      await gather(r, cast);
+    } catch (e) {
+      if ((e as { unsigned?: true }).unsigned) return { name: story.name, failures: [(e as Error).message] };
+      throw e;
+    }
 
     const who = cast.find((m) => m.name === story.as);
     if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
@@ -1630,6 +1636,10 @@ export async function run(
     const only = process.env.STORY; // run only the stories whose name contains this
     const told: { story: Story; outcome: Outcome }[] = [];
     for (const story of stories.stories) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(r, story) });
+    // a cast that cannot sign in fails every story, said; there is nowhere to walk, nothing to press
+    const unsigned = told.some(({ outcome }) => outcome.failures.some((f) => / could not sign in at /.test(f)));
+    if (unsigned) outcomes.push(...told.map(({ outcome }) => outcome));
+    else {
     // by hand: with `byHand` each story that has something to do there, and without it each that says its gesture
     const byHandToo = (story: Story): boolean => (options.byHand || story.gesture !== undefined) && misshapen(story).length === 0;
     const startsFrom = stories.goTo ? await reach(r, told, byHandToo) : new Map<Story, State>();
@@ -1653,6 +1663,7 @@ export async function run(
       }
       tally.ms = Math.round(performance.now() - started);
       byHandTally = tally;
+    }
     }
   } finally {
     hearFailures();

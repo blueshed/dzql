@@ -37,6 +37,8 @@ async afterWalk(ws, id, { way, ops, inverse }) {
 - The line lives in the session's `told` document (in memory, off the ledger) until the session's
   next write. The page that sent the write is also answered `refused`, by its id ([wire.md](wire.md)).
 - Where the browser can refuse first (`required`, `pattern`), let it.
+- A refusal the model's guards make where the author's page offers no control (the cook never sees
+  a seat button) has nowhere to be drawn: its `cannot` story says no `told`.
 - A `cannot` story that says `told` needs its line drawn where the author is: `toldAt` for that
   control's doc and path on the page they are on, even when the page no longer offers the control
   (a paid bill still draws the line for the add it refused).

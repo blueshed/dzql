@@ -258,6 +258,19 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
     expect(seats).not.toContain('"path":"/invoices/1/paid"'); // never story 5, which needs an invoice to pay
   });
 
+  test("a premise makes and sets, and never takes away: a story that adds and removes tables sets up a table that stays", () => {
+    const cafe: Model = {
+      stories: {
+        "1": { id: 1, text: "The manager says what tables there are", actor: "manager", kind: "does", writes: [{ entity: "tables", op: "add", path: "seated", to: "false" }, { entity: "tables", op: "remove" }] } as never,
+        "2": { id: 2, text: "The manager seats a table", actor: "manager", kind: "does", writes: [{ entity: "tables", op: "replace", path: "seated", to: "true" }], requires: [{ entity: "tables", path: "seated", value: "false" }] } as never,
+      },
+      documents: { "1": { id: 1, name: "floor", root: "cafes", held_by: ["manager"], stories: [1, 2], holds: { cafes: { parent: null, fields: [] }, tables: { parent: "cafes", fields: [{ name: "seated", type: "boolean" }] } } } },
+    };
+    const seats = testsOf(cafe).split("\n").find((l) => l.includes("seats a table"))!;
+    expect(seats).toContain('"path":"/tables/-"');
+    expect(seats).not.toContain('"op":"remove"');
+  });
+
   test("a story's premise: the stories it needs, each after what it needs in turn", () => {
     const cafe: Model = {
       stories: {

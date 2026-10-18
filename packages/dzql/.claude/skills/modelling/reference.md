@@ -36,7 +36,7 @@ numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by n
 | A story | `story <actor> <does\|cannot> <words>`; `--post /login` among the words for one that posts a form before anyone holds a document |
 | A correction | `reword <n> <words>`; `teller <n> <actor>` for who tells it, its number kept |
 | What its write changes | `touches <n> <entity>...` |
-| What it writes, as hjeli had it | `writes <n> add <entity> replace <entity>.<field>=<value> remove <entity>...` |
+| What it writes, as hjeli had it | `writes <n> add <entity> replace <entity>.<field>=<value> remove <entity>...`; `add <entity>.<field>=<value>` is the value a new row starts with (`add tables.seated=false`) |
 | The state it presupposes | `requires <n> <entity>.<field>=<value>...` |
 | A story taken back | `unsay <n>` |
 | A document | `document <name> <root> <story>...`: at least one story it serves; entities are plural (`invoices`) |
@@ -77,7 +77,7 @@ the page and at the foot of `show`: hjeli's six, Easy's coverage, and playabilit
 | Register | Open when |
 |---|---|
 | Reachability | an entity no document holds; a document nobody holds that is not each person's own, or that holds no field; a story no document serves |
-| Subscription closure | a story writes what reaches no document anyone holds |
+| Subscription closure | a story writes what reaches no document anyone holds; advice where another person's document holds what a story writes and does not serve it (are they told?) |
 | Actor closure | someone holds a document and tells no story |
 | Precondition closure | a write changes a row no story adds (an own document's root is made by the visit); a story requires a state no write sets. Not asked until a story says `writes` or `requires` |
 | Referential closure | a story a document serves is not told; an entity hangs under one its document does not hold; a name no table, column or document can take (a document's is one word: `my_table`); two documents of one name |
@@ -120,6 +120,9 @@ How the app uses them:
 - **Each person's own document:** the model's `own` document is the app's session. Its root is the
   session's table: the app adds the session's own columns to it (`cookie`, who signed in) and keeps
   it as a `perSession` resource under the name the app gives its session. The guards leave it out.
+  `sessionRows(delta, table)` finds a cookie's session through a document it calls `visit:`: if the
+  own document is itself named `visit`, give the lookup another prefix (`sessionRows(delta, table,
+  "cookie:")`, registering `cookie:` scoped by the cookie).
 - **The guards:** `guards.ts` stands in front of the store, `guardWrites(delta.server, guards, {
   actorOf, rowOf })` on the app's `delta` before any `registerDocs` (first in `routes.ts`): a write no story says is refused there,
   with the story's words. A resource's `permit` need not say the rules again. `rowsIn(db,

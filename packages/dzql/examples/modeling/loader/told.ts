@@ -92,15 +92,22 @@ export function gaps(t: Model, b: Model): string[] {
   }
   for (const [k, s] of b.stories) if (!to.get(k)!.how) out.push(`"${s.text}" the app tells, and it was never told: was it meant?`);
   const builtToo = new Set([...to.values()].flatMap((m) => (m.how ? [m.told] : []))); // told stories the app tells
+  // the model's tellers are roles, the app's cast are people: who plays which, from the stories matched by number (cafe-e's feedback)
+  const roleOf = new Map([...b.stories].flatMap(([bk, a]) => (to.get(bk)!.how === "number" ? [[a.actor, t.stories.get(to.get(bk)!.told)!.actor] as const] : [])));
+  const asRoles = (who: string[]) => [...new Set(who.map((w) => roleOf.get(w) ?? w))];
+  const met = new Set<Doc>(); // the built documents a told one was found as
   for (const [name, d] of t.documents) {
-    const as = b.documents.get(name);
+    // each person's own, as built a session of the app's own name: the one own document of the same root
+    const as = b.documents.get(name) ?? (d.own ? [...b.documents.values()].find((x) => x.own && x.root === d.root) : undefined);
     if (!as) {
       out.push(`${name} was told, and the app has no such document: still wanted?`);
       continue;
     }
+    met.add(as);
     if (d.root !== as.root) out.push(`${name} is rooted at ${d.root} as told, at ${as.root} as built: which is it?`);
     if (d.own !== as.own) out.push(`${name} is ${own(d.own)} as told, ${own(as.own)} as built: which is it?`);
-    if (!same(d.held_by, as.held_by)) out.push(`${name} is held by ${list([...d.held_by].sort())} as told, by ${list([...as.held_by].sort())} as built: who holds it?`);
+    const holders = asRoles(as.held_by);
+    if (!same(d.held_by, holders)) out.push(`${name} is held by ${list([...d.held_by].sort())} as told, by ${list([...holders].sort())} as built: who holds it?`);
     for (const [e, h] of d.holds) {
       const there = as.holds.get(e);
       if (!there) out.push(`${name} holds ${e} as told, and the app does not: still wanted?`);
@@ -117,7 +124,7 @@ export function gaps(t: Model, b: Model): string[] {
     for (const k of d.serves) if (builtToo.has(k) && !serves.includes(k)) out.push(`${name} serves "${t.stories.get(k)!.text}" as told, and not as built: still wanted?`);
     for (const k of as.serves) if (to.get(k)!.how && !d.serves.includes(to.get(k)!.told)) out.push(`${name} serves "${b.stories.get(k)!.text}" as built, and it was never told: was it meant?`);
   }
-  for (const name of b.documents.keys()) if (!t.documents.has(name)) out.push(`${name} the app has, and it was never told: was it meant?`);
+  for (const [name, d] of b.documents) if (!t.documents.has(name) && !met.has(d)) out.push(`${name} the app has, and it was never told: was it meant?`);
   return out;
 }
 
