@@ -25,6 +25,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- dzql: hjeli's three that `dzql model` lacked, each over the model's file, proven on leave's model
+  told through the MCP server to a running page. `dzql model guards` writes the guarded write layer
+  (`dzql/modelling/guards`: who, what, the document, the row, and what a story `requires`, checked in
+  front of any of delta's stores by `guardWrites`; a `cannot` story is the refusal's reason), and only
+  once the six registers are closed. `dzql model site` writes the model as one static page a customer
+  reads. `dzql model mcp` serves every model verb as an MCP tool over stdio. Paused here, on Peter's
+  word of 18 October (one thread at a time), to resume on top of the Mac session's `dzql model`.
 - **hjeli's six registers run on the model as it is told** (18 October, Peter: "dzql should be a
   superset of hjeli"). `examples/modeling/closure.ts` asks reachability, subscription, actor,
   precondition, referential and authorization closure of the page's model after every change: a

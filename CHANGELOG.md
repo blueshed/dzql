@@ -8,6 +8,13 @@ what is open across them. Newest first.
 
 ### Added
 
+- dzql: hjeli's three that `dzql model` lacked, each over the model's file, proven on leave's model
+  told through the MCP server to a running page. `dzql model guards` writes the guarded write layer
+  (`dzql/modelling/guards`: who, what, the document, the row, and what a story `requires`, checked in
+  front of any of delta's stores by `guardWrites`; a `cannot` story is the refusal's reason), and only
+  once the six registers are closed. `dzql model site` writes the model as one static page a customer
+  reads. `dzql model mcp` serves every model verb as an MCP tool over stdio. Paused here, on Peter's
+  word of 18 October (one thread at a time), to resume on top of the Mac session's `dzql model`.
 - **What dzql and eta lost, found and put back** (18 October): `docs/inventory.md` lists every
   feature of eta 62c2d36, dzql 3611d0c and hjeli, run old and new. hjeli's six registers run on the
   model's page as it is told, with `dzql model audit`; the session-id guard is back where the cookie
