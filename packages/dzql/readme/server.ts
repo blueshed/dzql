@@ -2,7 +2,7 @@ import { createWs } from "@blueshed/delta/server";
 import { run, serve } from "@blueshed/delta/serve";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "dzql/postgres";
 import { openPglite } from "dzql/pglite";
-import { docs, schema } from "./model";
+import { docs, schema } from "./types";
 
 // The same definitions, compiled to Postgres: every write is a stored function, and every server
 // on the database hears every change. PGlite runs Postgres in this process; on a Postgres server,

@@ -107,7 +107,7 @@ describe("Peter tells leave's stories on the model page and Claude builds leave;
   beforeAll(async () => {
     load = writesOf((await extract("leave")).heart);
     server = createServer(example, 0);
-    url = server.url.href.replace(/^http/, "ws");
+    url = `${server.url.href.replace(/^http/, "ws")}model`; // the model is a route of its own, at /model
     session = (await signIn(url, { email: "claude@modeling.example", password: "claude-password" }))!;
     db.exec("BEGIN"); // the seeded model comes back after
   }, 60000);

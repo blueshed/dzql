@@ -13,7 +13,9 @@ import { WIRE, type PatchOp, type WriteId } from "./json-patch";
 import { closeConnection, openConnection, setCookieIsSession, wireName, wireOps } from "./resources/audience";
 import { read, serverWrite } from "./documents";
 import { part } from "./parts";
-import { CHANGED_SINCE, createServer } from "./server";
+import { appOf, CHANGED_SINCE, compose, createServer } from "./server";
+import { serve } from "@blueshed/delta/serve";
+import { createWs } from "@blueshed/delta/server";
 import { assemble, type Inspection } from "./resources";
 import { onFailure } from "./failed";
 import { refuse, tell, toldAt } from "./refusal";
@@ -650,13 +652,38 @@ describe("createServer, generically (no example from the examples directory invo
   });
 });
 
-describe("createServer's one-example-per-process invariant", () => {
-  test("calling it with a second, different example object while the first is still active throws", () => {
-    const first = createServer(makeExample("first"), 0);
+describe("a server is routes to resources: apps composed side by side", () => {
+  test("two examples on one server, each under its path: its page, its socket, its cookie, its own state", async () => {
+    const app = (name: string, at: string): Example => ({ name, at, resources: [], render: () => `<p>${name}</p>`, active: () => true, index, delta: createLocal(), routes: { "/menu": () => new Response(name) } });
+    const [a, b] = [appOf(app("cafe", "")), appOf(app("model", "/model"))];
+    // and delta's own socket, its actions registered as resources: a JSON-RPC call answered on its path
+    const rpc = createWs({ path: "/rpc" });
+    rpc.on("ping", (msg, _ws, respond) => respond({ result: `pong ${msg.n}` }));
+    const { server } = serve(compose(a, b, { routes: { "/model/hello": () => new Response("a route of its own") }, ws: rpc }), { port: 0 });
     try {
-      expect(() => createServer(makeExample("second"), 0)).toThrow(/already called with a different example/);
+      const socket = async (path: string) => {
+        const ws = new WebSocket(new URL(path, server.url.href.replace("http", "ws")));
+        const first = await new Promise<{ type: string; html: string }>((resolve) => ws.addEventListener("message", (e) => resolve(JSON.parse(String(e.data))), { once: true }));
+        ws.close();
+        return first;
+      };
+      expect((await socket("/ws")).html).toContain("<p>cafe</p>");
+      expect((await socket("/model/ws")).html).toContain("<p>model</p>");
+      expect((await fetch(new URL("/model/hello", server.url))).status).toBe(200);
+      expect([await (await fetch(new URL("/menu", server.url))).text(), await (await fetch(new URL("/model/menu", server.url))).text()]).toEqual(["cafe", "model"]);
+      const called = new WebSocket(new URL("/rpc", server.url.href.replace("http", "ws")));
+      await new Promise((r) => called.addEventListener("open", r, { once: true }));
+      called.send(JSON.stringify({ id: 1, action: "ping", n: 7 }));
+      expect(await new Promise((resolve) => called.addEventListener("message", (e) => resolve(JSON.parse(String(e.data))), { once: true }))).toEqual({ id: 1, result: "pong 7" });
+      called.close();
+      expect((await fetch(new URL("/model/api/health", server.url))).status).toBe(200);
+      const upgrade = (path: string) => fetch(new URL(path, server.url), { headers: { Connection: "Upgrade", Upgrade: "websocket", "Sec-WebSocket-Version": "13", "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==" } });
+      expect((await upgrade("/model/ws")).headers.get("set-cookie")).toContain("Path=/model");
+      expect((await upgrade("/ws")).headers.get("set-cookie")).toContain("Path=/;");
+      expect(a.scope).not.toBe(b.scope);
     } finally {
-      first.stop(true);
+      server.stop(true);
+      for (const close of [...a.close, ...b.close]) close();
     }
   });
 

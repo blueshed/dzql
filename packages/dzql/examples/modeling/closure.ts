@@ -248,5 +248,5 @@ export function drawClosure(registers: Register[]): string {
 
 /** The registers in plain text, for the CLI's `show`. */
 export function plainClosure(registers: Register[]): string {
-  return ["Checks (hjeli's six, Easy's coverage, derive-ux's playability)", ...registers.flatMap((r) => [`${NAMES[r.predicate]}: ${count(r)}${r.notAsked ? ` (${r.notAsked})` : ""}`, ...r.gaps.map((g) => `  ${g.kind} · ${g.where}: ${g.detail}`), ...(r.advice ?? []).map((g) => `  advice: ${g.kind} · ${g.where}: ${g.detail}`)])].join("\n");
+  return ["Checks (hjeli's six, Easy's coverage, derive-ux's playability)", ...registers.flatMap((r) => [`${NAMES[r.predicate]}: ${count(r)}${r.notAsked ? ` (${r.notAsked})` : ""}`, ...r.gaps.map((g) => `  ${g.kind} · ${g.where}: ${g.detail}`), ...(r.notAsked ? [] : r.advice ?? []).map((g) => `  advice: ${g.kind} · ${g.where}: ${g.detail}`)])].join("\n");
 }

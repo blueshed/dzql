@@ -3,7 +3,7 @@
 // from the CLI. JSON-RPC 2.0, a message a line, by hand (no SDK). Each tool runs `dzql` itself, in
 // a process of its own, and answers with what it printed: the protocol's stdout stays clean, and a
 // tool does exactly what the command does. The verbs that write go to the model's page as the CLI's
-// do (`MODEL_PORT`, the session in `.eta-session`); audit, site, guards and export read the file.
+// do (`MODEL_PORT`, the session in `.eta-session`); check, site and guards read the file.
 import pkg from "../../package.json";
 
 type Json = any;
@@ -11,7 +11,7 @@ type Json = any;
 export type Runner = (argv: string[]) => Promise<{ text: string; code: number }>;
 
 const PROTOCOL_VERSION = "2024-11-05";
-const file = { type: "string", description: "The model's file, as `dzql model` keeps it (default model.sqlite)." };
+const file = { type: "string", description: "The model's file, as `dzql model` keeps it (default model.json)." };
 const out = { type: "string", description: "Write to this file instead of answering with it." };
 const story = { type: "string", description: "The story's number, as `show` lists it." };
 const doc = { type: "string", description: "The document's number, as `show` lists it." };
@@ -29,7 +29,7 @@ const fileArgs = (a: Json) => [...(a.file ? [a.file] : []), ...(a.out ? ["--out"
 
 /** The verbs, as tools. */
 export const tools: Tool[] = [
-  tool("audit", "hjeli's six registers over the model; the gate: every one closed before anything is generated. Gaps are an answer, not an error.", { file }, [], (a) => ["model", "audit", ...fileArgs(a)], true),
+  tool("check", "The checks over the model (hjeli's six, Easy's coverage, playability); while none is open, the app's types.ts, migrations and tests are made in `out` (default app). Gaps are an answer, not an error.", { out: { type: "string", description: "The app's folder (default app)." } }, [], (a) => ["model", "check", ...(a.out ? ["--out", a.out] : [])], true),
   tool("show", "The model as its page shows it, in plain text, with the six registers.", {}, [], () => ["model", "show"]),
   tool("story", "Tell a story: who tells it, whether they do it or cannot, its words; `post` when it posts a form to a route.", { actor: { type: "string" }, kind: { type: "string", enum: ["does", "cannot"] }, text: { type: "string" }, post: { type: "string" } }, ["actor", "kind", "text"], (a) => ["model", "story", a.actor, a.kind, ...(a.post ? ["--post", a.post] : []), a.text]),
   tool("reword", "Say a story in new words.", { story, text: { type: "string" } }, ["story", "text"], (a) => ["model", "reword", a.story, a.text]),
@@ -47,7 +47,6 @@ export const tools: Tool[] = [
   tool("drop", "Take a document out.", { document: doc }, ["document"], (a) => ["model", "drop", a.document]),
   tool("undo", "Undo the last change to the model.", {}, [], () => ["model", "undo"]),
   tool("redo", "Redo what was undone.", {}, [], () => ["model", "redo"]),
-  tool("export", "delta's definitions from the model: its schema and documents, for any store.", { file, out }, [], (a) => ["model", "export", ...fileArgs(a)]),
   tool("site", "The model read back for a customer: one static HTML page, a chapter per person.", { file, out }, [], (a) => ["model", "site", ...fileArgs(a)]),
   tool("guards", "The guarded write layer: every write the stories say, with what it presupposes. Refused while a register is open.", { file, out }, [], (a) => ["model", "guards", ...fileArgs(a)]),
 ];

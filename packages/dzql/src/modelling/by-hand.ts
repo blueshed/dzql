@@ -201,16 +201,16 @@ export class Hand {
   /** What the page sent by itself since it was opened: before anything was pressed, or after a gesture's write. */
   readonly strays: Write[] = [];
 
-  constructor(private readonly url: URL) {
+  constructor(private readonly url: URL, private readonly at = "") {
     this.view = new Bun.WebView(PHONE);
   }
 
   /** Opens the page as the session `cookie` names, standing at `place` (the URL the page mirrors); or says why it could not. */
   async enter(cookie: string, place: string | undefined): Promise<string | undefined> {
     const view = this.view;
-    await view.navigate(urlFor(view, this.url, "/api/health"));
-    await view.evaluate(`document.cookie = "session_id=${cookie}; path=/"`);
-    await view.navigate(urlFor(view, this.url, `/${encodeURI(place ?? "")}`));
+    await view.navigate(urlFor(view, this.url, `${this.at}/api/health`));
+    await view.evaluate(`document.cookie = "session_id=${cookie}; path=${this.at || "/"}"`);
+    await view.navigate(urlFor(view, this.url, `${this.at}/${encodeURI(place ?? "")}`));
     const drawn = place === undefined ? `document.querySelector("#app")?.children.length > 0` : `document.querySelector("#app [data-page]")?.dataset.page === ${JSON.stringify(place)}`;
     if (!(await this.until(`window.eta?.socket()?.readyState === 1 && ${drawn}`))) return `the page did not open at ${JSON.stringify(place ?? "")}`;
     await view.evaluate(PAGE);

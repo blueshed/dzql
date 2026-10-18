@@ -5,7 +5,8 @@
 // The model is one file, `model.json` (delta's JSON file: its stories, with what each writes, and
 // the documents they need), which the page edits and a person can read. `dzql model` serves the
 // page and, after every change to the file, runs the checks; while none is open it makes the app's
-// `types.ts`, `stories.ts`, `model.test.ts` and its next migration (`--out`, default `app`).
+// `types.ts`, `stories.ts`, `model.test.ts`, `guards.ts` and its next migration (`--out`, default
+// `app`). `dzql model site|guards|mcp` are ./model-tools.ts's.
 // `dzql model check` does that once, and exits 1 while a check is open.
 import { existsSync, mkdirSync, readFileSync, readdirSync, watch, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
@@ -19,7 +20,7 @@ export function modelIn(file: string): Model & { name: string } {
   if (!existsSync(file)) throw new Error(`No model in ${file}: start the model's page with \`dzql model\`, and tell it the stories.`);
   const { tables } = JSON.parse(readFileSync(file, "utf8")) as { tables: Record<string, Record<string, unknown>[]> };
   return {
-    name: String(tables.models?.[0]?.name ?? basename(file)),
+    name: String(tables.models?.[0]?.name ?? basename(file, ".json")),
     stories: (tables.stories ?? []) as unknown as Model["stories"],
     documents: (tables.documents ?? []) as unknown as Model["documents"],
   };
@@ -46,22 +47,60 @@ export async function make(file: string, out: string): Promise<{ ok: boolean; sa
   writeFileSync(join(out, "stories.ts"), storiesOf(model));
   writeFileSync(join(out, "model.test.ts"), testsOf(model, basename(resolve(out))));
   if (next) writeFileSync(join(dir, `${next.name}.ts`), next.source);
+  // hjeli's guarded write layer, once a story says what it writes (./model-tools.ts, ../modelling/guards.ts)
+  const { guardsOf, guardSource } = await import("../modelling/guards");
+  const guards = guardsOf({ models: { name: model.name }, ...model } as Parameters<typeof guardsOf>[0]);
+  if (guards.rules.length) writeFileSync(join(out, "guards.ts"), guardSource(guards, basename(file)));
   const steps = readdirSync(dir).filter((f) => f.endsWith(".ts")).sort();
-  return { ok: true, said: `${checks}\n\n${out}: types.ts, stories.ts, model.test.ts; migrations ${steps.map((f) => f.replace(/\.ts$/, "")).join(", ") || "none"}${next ? ` (${next.name} new)` : ""}` };
+  return { ok: true, said: `${checks}\n\n${out}: types.ts, stories.ts, model.test.ts${guards.rules.length ? ", guards.ts" : ""}; migrations ${steps.map((f) => f.replace(/\.ts$/, "")).join(", ") || "none"}${next ? ` (${next.name} new)` : ""}` };
+}
+
+/** A project's own model is named for the project -- not the example's seeded one. */
+function projectName(): string {
+  try {
+    return String(JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")).name);
+  } catch {
+    return basename(process.cwd());
+  }
+}
+
+/** After every change to the model's file, by the page or by hand: the checks, and what they let it make. */
+function watchModel(file: string, out: string): void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const again = () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => console.log((await make(file, out)).said), 200);
+  };
+  watch(resolve(file), again);
+  again();
 }
 
 /** Runs `dzql serve` or `dzql model`; false for any other command. */
 export async function run(argv: string[]): Promise<boolean> {
   const [verb, sub, ...rest] = argv;
+  const flag = (name: string, or: string) => (rest.includes(name) ? rest[rest.indexOf(name) + 1] ?? or : or);
+  const file = process.env.MODEL_FILE ?? "model.json";
   if (verb === "serve") {
-    process.env.ETA_EXAMPLE = folder(sub);
-    await import("../rendering/start");
+    // the app's routes and resources; in development the model's beside them, at /model, writing
+    // what it makes into the app's folder -- production never registers it
+    const dir = folder(sub);
+    process.env.ETA_EXAMPLE = dir;
+    const { run: running, serve } = await import("@blueshed/delta/serve");
+    const { appDir } = await import("../rendering/names");
+    const { appOf, compose } = await import("../rendering/server");
+    const { example } = await import(`${appDir(dir)}/index.ts`);
+    const dev = process.env.NODE_ENV !== "production";
+    if (dev) {
+      process.env.MODEL_FILE = file;
+      process.env.MODEL_NAME ??= projectName();
+    }
+    const model = dev && (await import("../../examples/modeling/index.ts")).example;
+    await running(() => serve(compose(appOf(example), model && appOf(model))));
+    if (dev) watchModel(file, dir);
     return true;
   }
   if (verb !== "model") return false;
   const port = process.env.MODEL_PORT ?? "3001";
-  const flag = (name: string, or: string) => (rest.includes(name) ? rest[rest.indexOf(name) + 1] ?? or : or);
-  const file = process.env.MODEL_FILE ?? "model.json";
   if (sub === "check") {
     const { ok, said } = await make(file, flag("--out", "app"));
     process.stdout.write(`${said}\n`);
@@ -73,26 +112,12 @@ export async function run(argv: string[]): Promise<boolean> {
     process.env.PORT = port;
     process.env.MODEL_FILE = file;
     process.env.DB_PATH ??= ":memory:"; // sessions only: the model is the file
-    // a project's own model, empty, named for the project -- not the example's seeded one
-    process.env.MODEL_NAME ??= (() => {
-      try {
-        return String(JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8")).name);
-      } catch {
-        return basename(process.cwd());
-      }
-    })();
+    process.env.MODEL_NAME ??= projectName();
     await import("../rendering/start");
-    // after every change to the model's file, by the page or by hand: the checks, and what they let it make
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const again = () => {
-      clearTimeout(timer);
-      timer = setTimeout(async () => console.log((await make(file, out)).said), 200);
-    };
-    watch(resolve(file), again);
-    again();
+    watchModel(file, out);
     return true;
   }
-  process.env.ETA_URL ??= `ws://localhost:${port}`;
+  process.env.ETA_URL ??= `ws://localhost:${port}/model`;
   process.argv = [process.argv[0]!, process.argv[1]!, sub, ...rest];
   await import("../rendering/cli");
   return true;

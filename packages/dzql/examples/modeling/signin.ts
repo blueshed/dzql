@@ -16,14 +16,14 @@ const NOBODY = Bun.password.hashSync(crypto.randomUUID());
 const loginOf = db.query<{ person_id: number; hash: string; name: string }, [string]>("SELECT l.person_id, l.hash, p.name FROM mdl_logins l JOIN mdl_people p ON p.id = l.person_id WHERE l.email = ?");
 
 export async function signIn(req: Request): Promise<Response> {
-  if (req.method !== "POST") return new Response(null, { status: 303, headers: { Location: "/" } }); // the page signs in
+  if (req.method !== "POST") return new Response(null, { status: 303, headers: { Location: "/model" } }); // the page signs in
   const refused = refuseOrigin(req);
   if (refused) return refused;
   const form = await req.formData();
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const login = loginOf.get(email);
   const matches = await Bun.password.verify(String(form.get("password") ?? ""), login?.hash ?? NOBODY);
-  const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/", ...(cookie ? { "Set-Cookie": cookie } : {}) } });
+  const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/model", ...(cookie ? { "Set-Cookie": cookie } : {}) } });
   if (!login || !matches) {
     const visit = /(?:^|;\s*)session_id=([^;]+)/.exec(req.headers.get("cookie") ?? "")?.[1];
     if (visit) await tell(await sessions.of(visit), { doc: "session", path: "/login", reason: "That email and password do not match." });

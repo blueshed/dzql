@@ -115,7 +115,7 @@ export function loadOrCreateSessionCookie(file: string): string {
  * page is, and no password crosses the socket.
  */
 export async function signIn(url: string, form: Record<string, string>): Promise<string | undefined> {
-  const at = new URL("/login", url.replace(/^ws/, "http"));
+  const at = new URL(`${url.replace(/^ws/, "http").replace(/\/ws$/, "")}/login`); // the app's own, under its path
   const res = await fetch(at, { method: "POST", body: new URLSearchParams(form), redirect: "manual", headers: { origin: at.origin } });
   return /session_id=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
 }

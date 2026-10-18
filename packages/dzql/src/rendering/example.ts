@@ -66,6 +66,12 @@ export type Example = {
    * already theirs.
    */
   identify?(req: Bun.BunRequest): string | Response | undefined | Promise<string | Response | undefined>;
+  /**
+   * The path the app is served under (`"/model"`), when it shares a server with others; the root
+   * when omitted. Its page, screens, routes and socket (`<at>/ws`) all sit under it, and its page's
+   * shell says it too (`<meta name="dzql-at" content="/model">`), so the browser opens its socket there.
+   */
+  at?: string;
   /** Extra HTTP routes this example needs (e.g. serving uploaded pictures). Merged into the kernel's routes; a kernel route of the same path wins. */
   routes?: Record<string, Bun.Serve.BaseRouteValue | RouteHandler>;
 };

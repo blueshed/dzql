@@ -4,43 +4,42 @@ import type { PatchOp } from "../json-patch";
 import { prefixDoc, splitDoc } from "../names";
 import { shows } from "../reading";
 import type { Resource } from "./resource";
+import { scope } from "../scope";
 
 // Who sees a document is derived, not declared: a connection sees what its page read
 // (`src/reading.ts`), and the one of each type it is on (`resolveDoc`). A session's own documents
 // (`perSession`) are seen by that session alone. Which sockets are open at all is the kernel's, kept
 // here; the kernel tells a change to its `audienceFor` and redraws its `readersOf` (src/server.ts).
 
-const openSockets = new Set<ServerWebSocket<ConnectionData>>();
-let byDocType: Map<string, Resource> | undefined;
-/** Whether a session's id is its cookie (an example with no `session`): then the id is a credential, and the wire never says it. */
-let cookieIsSession = false;
+// The app's resources and open sockets are its scope's (../scope.ts): a process may serve several.
+const open = () => scope().openSockets;
 
-/** Set by `createServer` when an example becomes active, and cleared when it stops -- so a
- * server-less call (unreachable in practice) answers "nobody" rather than throwing. `cookieIsSession`:
- * the example keeps no session row (no `Example.session`), so a session's id is its cookie. */
+/** Set when an app is served, in its scope. `cookieIsSession`: the example keeps no session row
+ * (no `Example.session`), so a session's id is its cookie. */
 export function setActiveResources(map: Map<string, Resource> | undefined, opts: { cookieIsSession?: boolean } = {}): void {
-  byDocType = map;
+  scope().byDocType = map;
   setCookieIsSession(map !== undefined && opts.cookieIsSession === true);
 }
 
 /** Whether a session's id is its cookie, as `setActiveResources` sets it; the previous setting, so a test can put it back. */
 export function setCookieIsSession(on: boolean): boolean {
-  const was = cookieIsSession;
-  cookieIsSession = on;
+  const s = scope();
+  const was = s.cookieIsSession;
+  s.cookieIsSession = on;
   return was;
 }
 
 export function openConnection(ws: ServerWebSocket<ConnectionData>): void {
-  openSockets.add(ws);
+  open().add(ws);
 }
 
 export function closeConnection(ws: ServerWebSocket<ConnectionData>): void {
-  openSockets.delete(ws);
+  open().delete(ws);
 }
 
-/** Every open connection, whatever it sees: the exception, for what is everyone's concern; reach for `audienceFor` first. */
+/** Every open connection of the app, whatever it sees: the exception, for what is everyone's concern; reach for `audienceFor` first. */
 export function allOpenSockets(): ServerWebSocket<ConnectionData>[] {
-  return [...openSockets];
+  return [...open()];
 }
 
 /**
@@ -56,10 +55,10 @@ export function allOpenSockets(): ServerWebSocket<ConnectionData>[] {
  * hand that session's credential to whoever reads the wire.
  */
 export function wireName(docType: string, docId: string, ws?: ServerWebSocket<ConnectionData>): string {
-  if (byDocType?.get(docType)?.perSession) return docType;
-  if (cookieIsSession) {
+  if (scope().byDocType?.get(docType)?.perSession) return docType;
+  if (scope().cookieIsSession) {
     if (docId === ws?.data.sessionId) return docType;
-    if ([...openSockets].some((other) => other.data.sessionId === docId)) {
+    if ([...open()].some((other) => other.data.sessionId === docId)) {
       throw new Error(`${docType} is keyed by a session id: declare its resource \`perSession\`, so the id never goes on the wire`);
     }
   }
@@ -94,14 +93,14 @@ export function sees(owner: Resource, ws: ServerWebSocket<ConnectionData>, docId
 
 /** Every open connection that sees `docId` (`sees`, above). */
 export function audienceFor(docType: string, docId: string): ServerWebSocket<ConnectionData>[] {
-  const owner = byDocType?.get(docType);
+  const owner = scope().byDocType?.get(docType);
   if (!owner) return [];
-  return [...openSockets].filter((ws) => sees(owner, ws, docId));
+  return [...open()].filter((ws) => sees(owner, ws, docId));
 }
 
 /** Every open connection whose page, as last drawn, read the document -- a session's own included: chat's presence reads everyone's name from their sessions. */
 export function readersOf(docType: string, docId: string): ServerWebSocket<ConnectionData>[] {
-  return [...openSockets].filter((ws) => shows(ws, docType, docId));
+  return [...open()].filter((ws) => shows(ws, docType, docId));
 }
 
 /**
@@ -116,6 +115,6 @@ export function wireOps(owner: Resource, docId: string, ops: PatchOp[]): PatchOp
   const at = owner.under ?? "";
   const moved = ops.map((op) => (at && (op.path === at || op.path.startsWith(`${at}/`)) ? { ...op, path: op.path.slice(at.length) } : op));
   if (!owner.perSession) return moved;
-  const secret = (k: string, v: unknown) => (cookieIsSession ? v === docId : k === "id" && (typeof v === "number" || typeof v === "string") && String(v) === docId);
+  const secret = (k: string, v: unknown) => (scope().cookieIsSession ? v === docId : k === "id" && (typeof v === "number" || typeof v === "string") && String(v) === docId);
   return JSON.parse(JSON.stringify(moved, (k, v) => (secret(k, v) ? undefined : v))) as PatchOp[];
 }

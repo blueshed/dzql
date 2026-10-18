@@ -12,7 +12,8 @@ import { diff, drawnValues, type Drawn } from "./parts";
 import { Refusal, refuse, tell } from "./refusal";
 import { handleOf, newHandle } from "./resources/ledger";
 import { refuseOrigin } from "@blueshed/delta/server";
-import { serve } from "@blueshed/delta/serve";
+import { serve, type App } from "@blueshed/delta/serve";
+import { scope, served, unserved, within, type Scope } from "./scope";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
@@ -32,15 +33,9 @@ const origins = (): string[] | undefined => process.env.ETA_ORIGINS?.split(",").
  * the visit had before (a fixed session).
  */
 export function sessionCookie(cookie: string): string {
-  return new Bun.Cookie("session_id", cookie, { path: "/", httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" }).serialize();
+  const { name, path } = scope().cookie; // the app's own, where a server holds several
+  return new Bun.Cookie(name, cookie, { path, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" }).serialize();
 }
-
-// One example per process is an invariant: a running eta process serves exactly one example, and
-// this tracks which, so the one place changes are told from (below) draws through it. It's cleared
-// when that example's server(s) are all stopped, so a test suite that creates one example's server,
-// stops it, then creates a *different* example's server (as the kernel's own generic tests and an
-// example's own tests do, in the same process) doesn't trip the guard below.
-let active: { example: Example; assembled: ReturnType<typeof assemble>; servers: number } | undefined;
 
 // What each connection was last sent, so the next drawing sends only what differs (src/parts.ts).
 const sent = new WeakMap<Socket, Drawn>();
@@ -64,10 +59,11 @@ const track = (p: Promise<unknown>): void => {
  * A drawing that fails is logged, and the connection's next drawing goes ahead.
  */
 function redraw(ws: Socket, whole = false): Promise<void> {
+  const app = scope();
   const next = (drawingFor.get(ws) ?? Promise.resolve()).then(async () => {
-    if (!active) return;
-    const { assembled } = active;
-    const drawn = await settled(assembled.documents, () => drawing(ws, () => assembled.page(ws.data.sessionId)));
+    if (!app.page) return; // the app is no longer served
+    const page = app.page;
+    const drawn = await settled(app.documents, () => drawing(ws, () => page(ws.data.sessionId)));
     const prev = sent.get(ws);
     sent.set(ws, drawn);
     const ops = prev && !whole ? diff(prev, drawn) : undefined;
@@ -92,8 +88,9 @@ async function quiet(documents: Documents): Promise<void> {
   } while (pending.size > 0);
 }
 
-// Every document copy is told its changes once, whichever server is serving it.
-const heard = new WeakSet<Documents>();
+// Every document copy is told its changes once, in the scope of the app serving it now (an example
+// served again, in a test, is a new app over the same copy).
+const heard = new WeakMap<Documents, Scope>();
 
 /**
  * A write with an id, being made: the change it makes to the document it names is "yours" to its
@@ -146,13 +143,18 @@ async function claimOf(doc: string, v: number | undefined): Promise<{ ws: Socket
  * from here, and only here: its ops echoed to everyone who sees the document, in eta's paths (a
  * resource's `under` taken off), and every page that read it drawn again.
  */
-function tellChanges(documents: Documents): void {
-  if (heard.has(documents)) return;
-  heard.add(documents);
-  documents.onChange(async ({ doc, ops, v }) => {
-    if (active?.assembled.documents !== documents) return; // a copy of an example no longer served
+function tellChanges(documents: Documents, serving: Scope): void {
+  const told = heard.has(documents);
+  heard.set(documents, serving);
+  if (told) return;
+  documents.onChange(({ doc, ops, v }) => {
+    const app = heard.get(documents)!;
+    return within(app, () => changed(app, doc, ops, v));
+  });
+  async function changed(app: Scope, doc: string, ops: unknown[], v: number | undefined) {
+    if (app.documents !== documents) return; // a copy of an example no longer served
     const { docType, docId } = splitDoc(doc);
-    const owner = active.assembled.byDocType.get(docType);
+    const owner = app.byDocType?.get(docType);
     if (!owner) return;
     const wire = wireOps(owner, docId, ops as PatchOp[]);
     const yours = await claimOf(doc, v);
@@ -162,7 +164,7 @@ function tellChanges(documents: Documents): void {
     for (const ws of echoTo) send(ws, ws === yours?.ws ? patchMessage(wireName(docType, docId, ws), v ?? 0, wire, yours.id, change) : patchMessage(wireName(docType, docId, ws), v ?? 0, wire));
     for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws); // a reader has been drawn
     await owner.afterChange?.(docId, wire);
-  });
+  }
 }
 
 type Write = { id?: unknown; doc: string; ops: (PatchOp | Test)[] };
@@ -201,19 +203,31 @@ function isWrite(message: unknown): message is Write {
   );
 }
 
-export function createServer(example: Example, port: number | string = process.env.PORT ?? 3000) {
-  if (active && active.example !== example) {
-    throw new Error(
-      `createServer was already called with a different example ("${active.example.name}"); ` +
-        `a process may only ever serve one example at a time.`,
-    );
-  }
-  const assembled = assemble(example);
-  active = { example, assembled, servers: (active?.servers ?? 0) + 1 };
+/** Each example's app while it is served, and by how many servers. */
+const scopes = new WeakMap<Example, { app: Scope; apps: number }>();
+
+/** An app as a server takes it: its routes and its socket's handlers (delta's `App`), with its scope, and `idle` for its tests. */
+export type DzqlApp = App & { websocket: Bun.WebSocketHandler<ConnectionData>; scope: Scope; idle(): Promise<void>; close: (() => void)[] };
+
+/**
+ * An example as routes and resources, never a server of its own: its page at `Example.at` (the
+ * root, unless it says a path), every screen under it, its routes, and its socket at `<at>/ws`, all
+ * in a scope of its own. `compose` puts several on one server; delta's `serve` serves them.
+ */
+export function appOf(example: Example): DzqlApp {
+  // one example served twice (a test's two servers) is one app: one scope, its sockets all told
+  const held = scopes.get(example) ?? scopes.set(example, { app: served(example.at ?? ""), apps: 0 }).get(example)!;
+  held.apps++;
+  const { app } = held;
+  const at = example.at ?? "";
+  const assembled = within(app, () => assemble(example));
   const { resources, byDocType, inspectFor, documents } = assembled;
-  setActiveResources(byDocType, { cookieIsSession: example.session === undefined });
-  setActiveDocuments(documents);
-  tellChanges(documents);
+  within(app, () => {
+    setActiveResources(byDocType, { cookieIsSession: example.session === undefined });
+    setActiveDocuments(documents);
+  });
+  app.page = assembled.page;
+  tellChanges(documents, app);
 
   const who = (ws: Socket): unknown => (example.who ? example.who(ws.data.sessionId) : ws.data.sessionId);
 
@@ -368,16 +382,16 @@ export function createServer(example: Example, port: number | string = process.e
     await documents.release(keep);
   }
 
-  // The one server is delta's (`serve`): these routes and this socket, on Bun.serve
-  const server = serve<string>({
-    routes: {
-      ...example.routes,
-      "/": example.index,
-      // A screen's address is its URL (`Example.address`): any path that is no route above is a
-      // screen, served the same shell, whose socket names the address (`/ws?at=`), routed on open.
-      "/*": example.index,
-      "/api/health": () => Response.json({ ok: true }),
-      "/ws": async (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
+  // Every route the app's, in its scope; under its path, when it has one
+  const inScope = (route: unknown): unknown => (typeof route === "function" ? (...args: unknown[]) => within(app, () => (route as (...a: unknown[]) => unknown)(...args)) : route);
+  const own: Record<string, unknown> = {
+    ...example.routes,
+    "/": example.index,
+    // A screen's address is its URL (`Example.address`): any path that is no route above is a
+    // screen, served the same shell, whose socket names the address (`/ws?at=`), routed on open.
+    "/*": example.index,
+    "/api/health": () => Response.json({ ok: true }),
+    "/ws": async (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
         // A socket is not bound by the same-origin policy: one opened from another site is refused
         // before it is a session (delta's rule: no Origin, or the page's own, or ETA_ORIGINS).
         const refused = refuseOrigin(req, origins());
@@ -385,23 +399,24 @@ export function createServer(example: Example, port: number | string = process.e
         // Then who it is, where the example can say before it opens (a proxy's header, a token).
         const identified = await example.identify?.(req);
         if (identified instanceof Response) return identified;
-        const cookie = req.cookies.get("session_id");
+        // the first of its name: the cookie of the app under the longest path, as a browser sends them
+        const cookie = new RegExp(`(?:^|;\\s*)${app.cookie.name}=([^;]+)`).exec(req.headers.get("cookie") ?? "")?.[1];
         const token = identified ?? cookie ?? crypto.randomUUID();
         const sessionId = example.session ? await example.session(token) : token;
         const headers = new Headers();
         if (token !== cookie) headers.append("Set-Cookie", sessionCookie(token));
 
         const at = new URL(req.url).searchParams.get("at") ?? undefined; // the screen the tab's URL names
-        if (server.upgrade(req, { data: { sessionId, ...(at !== undefined && { at }) }, headers })) return;
+        if (server.upgrade(req, { data: { sessionId, ...(at !== undefined && { at }), on: handlers }, headers })) return;
         return new Response("Upgrade failed", { status: 400 });
-      },
     },
-    websocket: {
-      perMessageDeflate: true, // "shared", both ways: a message compressed on its own, as `send` says
-      // A message in is at most 1 MiB, inflated: a write is small (a picture goes by HTTP), and past
-      // it the socket is closed. Bun's own 16 MB would let a 15 KB compressed frame be a 15 MB write.
-      maxPayloadLength: 1 << 20,
-      open(ws) {
+  };
+  const routes = Object.fromEntries(Object.entries(own).map(([path, route]) => [path === "/" ? at || "/" : `${at}${path}`, inScope(route)]));
+  if (at) routes[`${at}/`] = example.index; // the page, with or without its last slash
+
+  // The app's socket: what it opens, says and closes, in its scope
+  const handlers: Bun.WebSocketHandler<ConnectionData> = {
+      open: (ws) => within(app, () => {
         openConnection(ws);
         enqueue(async () => {
           try {
@@ -411,8 +426,8 @@ export function createServer(example: Example, port: number | string = process.e
             await redraw(ws, true); // the page is drawn, whatever failed opening it
           }
         });
-      },
-      message(ws, raw) {
+      }),
+      message: (ws, raw) => within(app, () => {
         let message: unknown;
         try {
           message = JSON.parse(String(raw));
@@ -420,8 +435,8 @@ export function createServer(example: Example, port: number | string = process.e
           message = undefined; // not JSON: no write, so the page is handed back
         }
         enqueue(() => handle(ws, message));
-      },
-      close(ws) {
+      }),
+      close: (ws) => within(app, () => {
         closeConnection(ws);
         if (![...allOpenSockets()].some((open) => open.data.sessionId === ws.data.sessionId)) handles.delete(ws.data.sessionId);
         enqueue(async () => {
@@ -429,23 +444,68 @@ export function createServer(example: Example, port: number | string = process.e
           await quiet(documents);
           await release();
         });
-      },
-    },
-  }, { port: Number(port) }).server as Bun.Server<ConnectionData>;
+      }),
+  };
 
+  return {
+    routes: routes as App["routes"],
+    websocket: { ...SOCKET, ...handlers },
+    scope: app,
+    /** Resolves when every event so far has been handled and everything it set going is done. */
+    idle: () => queue.then(() => quiet(documents)),
+    // no longer served: what it draws and who sees what go with it
+    close: [() => {
+      if (--held.apps > 0) return;
+      scopes.delete(example);
+      within(app, () => {
+        app.page = undefined;
+        setActiveResources(undefined);
+        setActiveDocuments(undefined);
+      });
+      unserved(app);
+    }],
+  };
+}
+
+/** How every app's socket is held: compressed, each message on its own (as `send` says), and small. */
+const SOCKET = {
+  perMessageDeflate: true, // "shared", both ways: a message compressed on its own, as `send` says
+  // A message in is at most 1 MiB, inflated: a write is small (a picture goes by HTTP), and past
+  // it the socket is closed. Bun's own 16 MB would let a 15 KB compressed frame be a 15 MB write.
+  maxPayloadLength: 1 << 20,
+} as const;
+
+/**
+ * Apps on one server: their routes together (a later app's route of the same path wins), and one
+ * socket handler that gives each socket to the app it was opened on. Any of delta's apps composes
+ * too -- routes of its own, or delta's socket (`createWs`, its actions registered with `on`).
+ */
+export function compose(...apps: (App | false | undefined)[]): App & { close: (() => void | Promise<void>)[] } {
+  const all = apps.filter((a): a is App => !!a);
+  const ws = all.find((a) => a.ws)?.ws;
+  // a socket an app opened goes to that app; any other is delta's (its actions, its pub/sub)
+  const dispatch = (name: "open" | "message" | "close") => (socket: Bun.ServerWebSocket<any>, ...rest: unknown[]) => {
+    const on = (socket.data as ConnectionData | undefined)?.on ?? (ws!.websocket as Bun.WebSocketHandler<any>);
+    return (on[name] as (...a: unknown[]) => unknown)(socket, ...rest);
+  };
+  return {
+    routes: Object.assign({}, ...all.map((a) => a.routes)),
+    ...(ws && { ws }),
+    websocket: { ...SOCKET, open: dispatch("open"), message: dispatch("message"), close: dispatch("close") } as Bun.WebSocketHandler<any>,
+    close: all.flatMap((a) => a.close ?? []),
+  };
+}
+
+/** One example served on its own: `serve(appOf(example))`, its server told how to wait for it and stop it. */
+export function createServer(example: Example, port: number | string = process.env.PORT ?? 3000) {
+  const app = appOf(example);
+  const { server } = serve<string>(app as never, { port: Number(port) });
   const stop = server.stop.bind(server);
   let stopped = false;
   server.stop = ((...args: Parameters<typeof server.stop>) => {
-    if (!stopped && active?.example === example && --active.servers === 0) {
-      active = undefined;
-      setActiveResources(undefined);
-      setActiveDocuments(undefined);
-    }
+    if (!stopped) for (const close of app.close) close();
     stopped = true;
     return stop(...args);
   }) as typeof server.stop;
-
-  /** Resolves when every event so far has been handled and everything it set going is done. */
-  const settledServer = Object.assign(server, { idle: () => queue.then(() => quiet(documents)) });
-  return settledServer;
+  return Object.assign(server as Bun.Server<ConnectionData>, { idle: app.idle });
 }

@@ -33,7 +33,7 @@ const drop = (document: number): Write => model({ op: "remove", path: `/document
 
 export const stories: Stories = {
   cast: { peter: [], claude: [], visitor: [] },
-  signIn: (name) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@modeling.example`, password: `${name}-password` } }),
+  signIn: (name) => (name === "visitor" ? undefined : { path: "/model/login", form: { email: `${name}@modeling.example`, password: `${name}-password` } }),
   stories: [
     // ── the stories ──
     story("Claude writes down a story Peter told, and Peter sees it arrive, with no document yet", { as: "claude", does: tell("Bo moves his week to the one after, before Mo has answered"), offPage: true, seen: ["peter", "claude"] }),

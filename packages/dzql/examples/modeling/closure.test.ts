@@ -143,7 +143,7 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
       const closed = await check();
       expect(closed.out).toContain("Reachability: closed\n");
       expect(closed.code).toBe(0);
-      expect(readdirSync(`${dir}/app`).sort()).toEqual(["migrations", "model.test.ts", "stories.ts", "types.ts"]);
+      expect(readdirSync(`${dir}/app`).sort()).toEqual(["guards.ts", "migrations", "model.test.ts", "stories.ts", "types.ts"]);
       expect(readdirSync(`${dir}/app/migrations`)).toEqual(["001-teams-requests.ts"]);
       expect((await check()).out).not.toContain("new)"); // the model unchanged: no next step
     } finally {

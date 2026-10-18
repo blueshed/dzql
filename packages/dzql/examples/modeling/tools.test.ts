@@ -16,9 +16,13 @@ const leave: Raw = {
     "4": { id: 4, text: "Mo approves a request that is waiting", actor: "mo", kind: "does", writes: [{ entity: "requests", op: "replace", path: "status", to: "approved" }], requires: [{ entity: "requests", path: "status", value: "waiting" }] },
     "5": { id: 5, text: "Ann cannot approve her own request", actor: "ann", kind: "cannot", writes: [{ entity: "requests", op: "replace", path: "status", to: "approved" }] },
     "6": { id: 6, text: "Ann takes back a request that's still waiting", actor: "ann", kind: "does", writes: [{ entity: "requests", op: "remove" }], requires: [{ entity: "requests", path: "status", value: "waiting" }] },
+    "7": { id: 7, text: "Ann cannot start a team", actor: "ann", kind: "cannot", writes: [{ entity: "teams", op: "add" }] },
+    "8": { id: 8, text: "Ann cannot open the team", actor: "ann", kind: "cannot", writes: [{ entity: "teams", op: "replace", path: "open", to: "yes" }] },
+    "9": { id: 9, text: "Mo cannot ask for leave", actor: "mo", kind: "cannot", writes: [{ entity: "requests", op: "add", path: "status", to: "waiting" }] },
+    "10": { id: 10, text: "Mo cannot take back Ann's request", actor: "mo", kind: "cannot", writes: [{ entity: "requests", op: "remove" }] },
   },
   documents: {
-    "1": { id: 1, name: "team", root: "teams", holds: { teams: { parent: null, fields: [field("name"), field("open")] }, requests: { parent: "teams", fields: [field("starts", "date"), field("status")] } }, held_by: ["ann", "mo"], stories: [1, 2, 3, 4, 5, 6] },
+    "1": { id: 1, name: "team", root: "teams", holds: { teams: { parent: null, fields: [field("name"), field("open")] }, requests: { parent: "teams", fields: [field("starts", "date"), field("status")] } }, held_by: ["ann", "mo"], stories: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
   },
 };
 
@@ -30,7 +34,7 @@ describe("dzql model site: the model read back for a customer", () => {
     expect(site).not.toContain("<script");
     expect(siteOf(leave, "2026-10-18")).toBe(site);
     expect(site).toContain("<title>Leave, in stories</title>");
-    expect(site).toContain("6 stories, told by 2 people, and the 1 page they need. Every question the model is asked has its answer.");
+    expect(site).toContain("10 stories, told by 2 people, and the 1 page they need. Every question the model is asked has its answer.");
   });
 
   test("a chapter a person: what they do, with each write and what it waits on, what they cannot, and what is in front of them", () => {
@@ -76,7 +80,7 @@ describe("dzql model site: the model read back for a customer", () => {
 
 describe("dzql model mcp: the model's verbs as tools", () => {
   const ran: string[][] = [];
-  const runner: Runner = async (argv) => (ran.push(argv), argv[1] === "audit" ? { text: "Reachability: 1 gap\n", code: 1 } : argv[1] === "drop" ? { text: "", code: 1 } : { text: "", code: 0 });
+  const runner: Runner = async (argv) => (ran.push(argv), argv[1] === "check" ? { text: "Reachability: 1 gap\n", code: 1 } : argv[1] === "drop" ? { text: "", code: 1 } : { text: "", code: 0 });
   const handle = mcpHandler(runner, "9.9.9");
   const call = (name: string, args: Record<string, unknown>) => handle({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name, arguments: args } });
 
@@ -98,7 +102,7 @@ describe("dzql model mcp: the model's verbs as tools", () => {
     await call("model_holds", { document: "1", entity: "requests", under: "teams", fields: ["starts:date"] });
     await call("model_holds", { document: "1", entity: "teams" });
     await call("model_document", { name: "team", root: "teams" });
-    await call("model_site", { file: "m.sqlite", out: "site.html" });
+    await call("model_site", { file: "m.json", out: "site.html" });
     await call("model_show", {});
     expect(ran).toEqual([
       ["model", "story", "ann", "does", "--post", "/ask", "Ann's week off"],
@@ -106,14 +110,14 @@ describe("dzql model mcp: the model's verbs as tools", () => {
       ["model", "holds", "1", "requests", "under", "teams", "starts:date"],
       ["model", "holds", "1", "teams"],
       ["model", "document", "team", "teams"],
-      ["model", "site", "m.sqlite", "--out", "site.html"],
+      ["model", "site", "m.json", "--out", "site.html"],
       ["model", "show"],
     ]);
     for (const t of tools) expect(t.argv({ story: "1", document: "1", entities: [], writes: [], states: [], people: [], stories: [], text: "t", name: "n", actor: "a", kind: "does", root: "r", entity: "e" })[0]).toBe("model");
   });
 
   test("gaps are an answer and a failed command an error; a tool it lacks, or an argument missing, is refused", async () => {
-    expect((await call("model_audit", {})).result).toEqual({ content: [{ type: "text", text: "Reachability: 1 gap\n" }], isError: false });
+    expect((await call("model_check", {})).result).toEqual({ content: [{ type: "text", text: "Reachability: 1 gap\n" }], isError: false });
     expect((await call("model_drop", { document: "1" })).result).toEqual({ content: [{ type: "text", text: "(no output)" }], isError: true });
     expect((await call("model_own", { document: "1" })).result.content[0].text).toBe("(ok)");
     expect((await call("model_nothing", {})).error).toEqual({ code: -32602, message: "unknown tool: model_nothing" });
@@ -124,15 +128,14 @@ describe("dzql model mcp: the model's verbs as tools", () => {
 
 describe("over a model's file, from the command line and over stdio", () => {
   const cli = `${import.meta.dir}/../../src/cli/index.ts`;
-  const made = () => {
-    const file = `${process.env.TMPDIR ?? "/tmp"}/tools-${crypto.randomUUID()}.sqlite`;
-    const db = new Database(file);
-    db.run("CREATE TABLE mdl_models (id INTEGER, name TEXT)");
-    db.run("INSERT INTO mdl_models VALUES (1, 'leave')");
-    db.run("CREATE TABLE mdl_stories (id INTEGER, models_id INTEGER, text TEXT, actor TEXT, kind TEXT, post TEXT, touches TEXT, writes TEXT, requires TEXT)");
-    db.run("CREATE TABLE mdl_documents (id INTEGER, models_id INTEGER, name TEXT, root TEXT, own INTEGER, holds TEXT, held_by TEXT, stories TEXT)");
-    for (const s of Object.values(leave.stories!)) db.run("INSERT INTO mdl_stories VALUES (?, 1, ?, ?, ?, NULL, '[]', ?, ?)", [s.id, s.text, s.actor, s.kind, JSON.stringify(s.writes ?? null), JSON.stringify(s.requires ?? null)]);
-    return { file, db };
+  // the model's file as the page keeps it: delta's JSON file, its rows by collection
+  const saved = (file: string, name: string | undefined, stories: unknown[], documents: unknown[]) =>
+    Bun.write(file, JSON.stringify({ tables: { ...(name ? { models: [{ id: 1, name }] } : {}), stories, documents } }));
+  const made = async () => {
+    const file = `${process.env.TMPDIR ?? "/tmp"}/tools-${crypto.randomUUID()}.json`;
+    const stories = Object.values(leave.stories!).map((s) => ({ ...s, models_id: 1, post: null, touches: [], writes: s.writes ?? null, requires: s.requires ?? null }));
+    await saved(file, "leave", stories, []);
+    return { file, stories };
   };
   const run = async (args: string[], input?: string) => {
     const p = Bun.spawn(["bun", cli, ...args], { stdout: "pipe", stderr: "pipe", stdin: input === undefined ? "ignore" : new Blob([input]) });
@@ -140,13 +143,11 @@ describe("over a model's file, from the command line and over stdio", () => {
   };
 
   test("guards are refused while a register is open, and written once all six are closed; the site either way", async () => {
-    const { file, db } = made();
+    const { file, stories } = await made();
     const refused = await run(["model", "guards", file]);
     expect(refused.code).toBe(1);
-    expect(refused.err).toStartWith("Not generated: close the six registers first.\n\nClosure (hjeli's six registers)\nReachability: 2 gaps");
-    const d = leave.documents!["1"]!;
-    db.run("INSERT INTO mdl_documents VALUES (1, 1, ?, ?, 0, ?, ?, ?)", [d.name, d.root, JSON.stringify(d.holds), JSON.stringify(d.held_by), JSON.stringify(d.stories)]);
-    db.close();
+    expect(refused.err).toStartWith("Not generated: close every check first.\n\nChecks (hjeli's six, Easy's coverage, derive-ux's playability)\nReachability: 2 gaps");
+    await saved(file, "leave", stories, [{ ...leave.documents!["1"]!, models_id: 1, own: 0 }]);
     const written = await run(["model", "guards", file]);
     expect(written.code).toBe(0);
     expect(written.out).toContain('"text": "Mo approves a request that is waiting"');
@@ -157,29 +158,24 @@ describe("over a model's file, from the command line and over stdio", () => {
     const lines = [
       { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05" } },
       { jsonrpc: "2.0", method: "notifications/initialized" },
-      { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "model_audit", arguments: { file } } },
+      { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "model_site", arguments: { file } } },
     ];
     const mcp = await run(["model", "mcp"], `${lines.map((l) => JSON.stringify(l)).join("\n")}\nnot json\n\n`);
     const answers = mcp.out.trim().split("\n").map((l) => JSON.parse(l));
     expect(answers.map((a) => a.id)).toEqual([1, 2, null]);
-    expect(answers[1].result.content[0].text).toContain("Precondition closure: closed");
+    expect(answers[1].result.content[0].text).toContain("<title>Leave, in stories</title>");
     expect(answers[2].error).toEqual({ code: -32700, message: "parse error" });
     for (const f of [file, `${file}.html`]) await Bun.file(f).delete();
   }, 60000);
 
   test("a model with no write said has no guards to write; a model kept before its name, the file's name", async () => {
-    const file = `${process.env.TMPDIR ?? "/tmp"}/plain-${crypto.randomUUID()}.sqlite`;
-    const db = new Database(file);
-    db.run("CREATE TABLE mdl_stories (id INTEGER, models_id INTEGER, text TEXT, actor TEXT, kind TEXT, post TEXT, touches TEXT)");
-    db.run("CREATE TABLE mdl_documents (id INTEGER, models_id INTEGER, name TEXT, root TEXT, own INTEGER, holds TEXT, held_by TEXT, stories TEXT)");
-    db.run(`INSERT INTO mdl_stories VALUES (1, 1, 'Ann reads the board', 'ann', 'does', NULL, '["notes"]')`);
-    db.run(`INSERT INTO mdl_documents VALUES (1, 1, 'board', 'notes', 0, '{"notes":{"parent":null,"fields":[]}}', '["ann"]', '[1]')`);
-    db.close();
+    const file = `${process.env.TMPDIR ?? "/tmp"}/plain-${crypto.randomUUID()}.json`;
+    await saved(file, undefined, [{ id: 1, models_id: 1, text: "Ann reads the board", actor: "ann", kind: "does", post: null, touches: ["notes"] }], [{ id: 1, models_id: 1, name: "board", root: "notes", own: 0, holds: { notes: { parent: null, fields: [] } }, held_by: ["ann"], stories: [1] }]);
     const none = await run(["model", "guards", file]);
     expect(none.code).toBe(1);
     expect(none.err).toBe("Not generated: no story says what it writes (`writes <story> add <entity> ...`).\n");
     const site = await run(["model", "site", file]);
-    expect(site.out).toContain(`<title>${file.split("/").at(-1)!.replace(/\.sqlite$/, "").replace(/^p/, "P")}, in stories</title>`);
+    expect(site.out).toContain(`<title>${file.split("/").at(-1)!.replace(/\.json$/, "").replace(/^p/, "P")}, in stories</title>`);
     await Bun.file(file).delete();
   }, 30000);
 });

@@ -2,6 +2,7 @@ import type { Local } from "@blueshed/delta/local";
 import { applyOps, type DeltaOp } from "@blueshed/delta/core";
 import { failed } from "./failed";
 import { reading } from "./reading";
+import { scope } from "./scope";
 import type { PatchOp } from "./json-patch";
 
 // eta's documents are delta's (`@blueshed/delta`). eta keeps a copy of every document
@@ -219,18 +220,17 @@ export async function settled<T>(documents: Documents | undefined, fn: () => T, 
   }
 }
 
-// The active example's documents, when it keeps them in delta: set by createServer, read by an
-// example's views through `read`, one example per process as everywhere else in the kernel.
-let active: Documents | undefined;
-
+// The app's documents, when it keeps them in delta: set as it is served, in its scope (./scope.ts),
+// read by its views through `read`.
 export function setActiveDocuments(documents: Documents | undefined): void {
-  active = documents;
+  scope().documents = documents;
 }
 
-/** The active example's documents; throws when it keeps none. */
+/** The app's documents; throws when it keeps none. */
 function kept(): Documents {
-  if (!active) throw new Error("no documents: this example does not keep them in delta");
-  return active;
+  const kept = scope().documents;
+  if (!kept) throw new Error("no documents: this example does not keep them in delta");
+  return kept;
 }
 
 /** Reads a document from the active example's copy: `room:general`, `session:<id>`. */
@@ -249,7 +249,7 @@ export function watch(doc: string, under?: string): { doc: string; under?: strin
 }
 
 /** The active example's documents, when it keeps them in delta. */
-export const activeDocuments = (): Documents | undefined => active;
+export const activeDocuments = (): Documents | undefined => scope().documents;
 
 /**
  * The server's own write -- to a live document it keeps true (who is here): no person, no cursor,

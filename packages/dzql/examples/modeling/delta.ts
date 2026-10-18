@@ -2,7 +2,8 @@ import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolde
 import * as json from "@blueshed/delta/json";
 import { existsSync } from "node:fs";
 import { createLocal } from "@blueshed/delta/local";
-import { db } from "dzql/rendering/db";
+import { Database } from "bun:sqlite";
+import { db as appDb } from "dzql/rendering/db";
 import { sessionRows } from "dzql/rendering/sessions";
 
 // modeling's documents, in delta (`@blueshed/delta`). A model is one document, written by the two
@@ -23,6 +24,10 @@ export const schema = defineSchema({
   sessions: { table: "mdl_sessions", columns: { person_id: "integer?", name: "text?", cookie: "text?" }, temporal: false },
   logins: { table: "mdl_logins", columns: { person_id: "integer", email: "text", hash: "text" }, temporal: false },
 });
+
+// Beside an app (`MODEL_FILE`: the model is its file), the model keeps nothing in the app's
+// database: its sessions and sign-ins are in memory. On its own, as an example, the database is its.
+const db = process.env.MODEL_FILE ? new Database(":memory:") : appDb;
 
 /** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
 export const migrating = { app: "modeling", schema };

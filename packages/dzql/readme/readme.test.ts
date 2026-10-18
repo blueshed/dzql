@@ -73,9 +73,9 @@ async function socket(url: URL, path = "/ws") {
 }
 
 test("the README's files are these files, byte for byte", () => {
-  for (const name of ["rendering/index.ts", "rendering/main.ts", "model.ts", "server.ts"]) expect(readme).toContain("```ts\n" + file(name) + "```");
+  for (const name of ["rendering/index.ts", "rendering/main.ts", "types.ts", "server.ts"]) expect(readme).toContain("```ts\n" + file(name) + "```");
   expect(readme).toContain("```html\n" + file("rendering/index.html") + "```");
-  expect(blocks.map((b) => b.length)).toEqual([1, 8, 2]);
+  expect(blocks.map((b) => b.length)).toEqual([1, 9, 2]);
 });
 
 describe("Install dzql and use rendering", () => {
@@ -106,16 +106,16 @@ describe("Install dzql and use modelling", () => {
   });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-  test("the stories told on the model's page export as model.ts", async () => {
+  test("the stories told on the model's page, checked, make app/types.ts", async () => {
     const [start, ...told] = blocks[1]!;
     const page = await serving(start!, dir, { MODEL_PORT: "0" });
     expect(await (await fetch(page)).text()).toContain("<html");
     for (const cmd of told) ran(cmd, dir, { MODEL_PORT: page.port });
-    expect(readFileSync(join(dir, "model.ts"), "utf8")).toBe(file("model.ts"));
+    expect(readFileSync(join(dir, "app", "types.ts"), "utf8")).toBe(file("types.ts"));
   }, 30_000);
 
-  test("model.ts runs on delta's JSON file and on SQLite", async () => {
-    const { docs, schema } = await import("./model");
+  test("types.ts runs on delta's JSON file and on SQLite", async () => {
+    const { docs, schema } = await import("./types");
     const json = await import("@blueshed/delta/json");
     const sqlite = await import("@blueshed/delta/sqlite");
     const { createWs } = await import("@blueshed/delta/server");
@@ -140,7 +140,7 @@ describe("Install dzql and use modelling", () => {
 describe("Install dzql and compile a Postgres server", () => {
   let dir: string;
   beforeAll(() => {
-    dir = app(["model.ts", "model.ts"], ["server.ts", "server.ts"]);
+    dir = app(["types.ts", "types.ts"], ["server.ts", "server.ts"]);
   });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 

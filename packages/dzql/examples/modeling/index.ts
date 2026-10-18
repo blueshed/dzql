@@ -19,6 +19,7 @@ export const example: Example = {
   // The ledger's who is the person, not the visit.
   who: (sessionId) => sessionOf(sessionId).person?.id ?? sessionId,
   index,
+  at: "/model", // a route of whatever app it is served beside, in development: never registered in production
   routes: { "/login": signIn },
   delta, // the documents are delta's (./delta.ts)
   session: sessions.of, // a session is a numbered row, named by its cookie

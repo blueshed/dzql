@@ -7,7 +7,7 @@ import { definitionsOf } from "./definitions";
 import { check, guardSource, guardsOf, guardWrites, type GuardModel, type RowOf } from "./guards";
 
 // The leave app's model, told as a modeller tells it: who asks, who approves, and what each write
-// presupposes. Its six registers are closed, so its guards may be generated.
+// presupposes. Every check is closed (hjeli's six, Easy's coverage: each write decided for both), so its guards may be generated.
 const field = (name: string, type = "text") => ({ name, type });
 const leave: GuardModel = {
   stories: {
@@ -17,6 +17,10 @@ const leave: GuardModel = {
     "4": { id: 4, text: "Mo approves a request that is waiting", actor: "mo", kind: "does", writes: [{ entity: "requests", op: "replace", path: "status", to: "approved" }], requires: [{ entity: "requests", path: "status", value: "waiting" }] },
     "5": { id: 5, text: "Ann cannot approve her own request", actor: "ann", kind: "cannot", writes: [{ entity: "requests", op: "replace", path: "status", to: "approved" }] },
     "6": { id: 6, text: "Ann takes back a request still waiting", actor: "ann", kind: "does", writes: [{ entity: "requests", op: "remove" }], requires: [{ entity: "requests", path: "status", value: "waiting" }] },
+    "7": { id: 7, text: "Ann cannot start a team", actor: "ann", kind: "cannot", writes: [{ entity: "teams", op: "add" }] },
+    "8": { id: 8, text: "Ann cannot open the team", actor: "ann", kind: "cannot", writes: [{ entity: "teams", op: "replace", path: "open", to: "yes" }] },
+    "9": { id: 9, text: "Mo cannot ask for leave", actor: "mo", kind: "cannot", writes: [{ entity: "requests", op: "add", path: "status", to: "waiting" }] },
+    "10": { id: 10, text: "Mo cannot take back Ann's request", actor: "mo", kind: "cannot", writes: [{ entity: "requests", op: "remove" }] },
   },
   documents: {
     "1": {
@@ -25,13 +29,13 @@ const leave: GuardModel = {
       root: "teams",
       holds: { teams: { parent: null, fields: [field("name"), field("open")] }, requests: { parent: "teams", fields: [field("starts", "date"), field("status")] } },
       held_by: ["ann", "mo"],
-      stories: [1, 2, 3, 4, 5, 6],
+      stories: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     } as never,
   },
 };
 
 describe("the guarded write layer: the stories' writes, each with what it presupposes", () => {
-  test("the model it is made from is closed: all six registers", () => {
+  test("the model it is made from is closed: every check", () => {
     expect(closureOf({ models: { name: "Leave" }, ...(leave as object) } as never).flatMap((r) => r.gaps)).toEqual([]);
   });
 
@@ -59,7 +63,7 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     const write = (who: typeof ann, ...ops: { op: string; path: string; value?: unknown }[]) => who.call("delta", { doc: "team:1", ops });
     await mo.call("open", { doc: "team:1" });
 
-    expect((await write(ann, { op: "add", path: "/teams/-", value: { name: "Ann's" } })).error).toEqual({ code: 403, message: "No story says ann may add teams" });
+    expect((await write(ann, { op: "add", path: "/teams/-", value: { name: "Ann's" } })).error).toEqual({ code: 403, message: "Ann cannot start a team (story 7)" });
     expect((await write(mo, { op: "add", path: "/teams/1", value: { name: "Desk", open: "no" } })).result).toEqual({ ack: true });
     // the team is closed: Ann's request presupposes it open, a row above the one she adds
     expect((await write(ann, { op: "add", path: "/requests/-", value: { teams_id: 1, starts: "2026-11-02", status: "waiting" } })).error).toEqual({

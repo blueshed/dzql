@@ -93,7 +93,7 @@ export async function measure(script: string): Promise<Measured> {
  * session heard before one more (the answer that ended them, as a measure's `heard` asks, and the
  * stories' `settle`): each one's type, size, and size as sent.
  */
-export async function tap(port: number): Promise<{ url: string; heard: (cookie: string, raws: string[]) => Heard[]; close: () => void }> {
+export async function tap(port: number, at = ""): Promise<{ url: string; heard: (cookie: string, raws: string[]) => Heard[]; close: () => void }> {
   const frames = new Map<string, number[]>();
   const server = createServer((client) => {
     const sent: number[] = [];
@@ -133,7 +133,7 @@ export async function tap(port: number): Promise<{ url: string; heard: (cookie: 
     if (sent.length < raws.length) throw new Error(`the wire carried ${sent.length} messages to ${cookie} before its last, not ${raws.length}`);
     return raws.map((raw, i) => ({ type: JSON.parse(raw).type, bytes: Buffer.byteLength(raw, "utf8"), sent: sent[i]! }));
   };
-  return { url: `ws://127.0.0.1:${(server.address() as AddressInfo).port}/ws`, heard, close: () => server.close() };
+  return { url: `ws://127.0.0.1:${(server.address() as AddressInfo).port}${at}/ws`, heard, close: () => server.close() };
 }
 
 /**

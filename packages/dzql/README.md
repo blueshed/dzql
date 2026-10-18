@@ -68,25 +68,30 @@ kept in `data/message.json`. Growing it: the `eta-app` skill.
 ### Install dzql and use modelling, for a JSON file, SQLite or Postgres
 
 Modelling records the stories, derives from them the documents each person needs in front of them,
-and builds the entities from those. Tell it on the model's page, then export it as delta's two
-definitions, which every store takes:
+and builds the entities from those. Tell it on the model's page; after every change it is checked
+(hjeli's six, Easy's coverage, playability), and while nothing is open it makes the app's types,
+migrations and tests. `dzql model check` does the same once:
 
 ```sh
 bun add dzql @blueshed/delta
 bunx dzql model
 bunx dzql model login claude@modeling.example claude-password
 bunx dzql model story ann does Ann asks for two days off, and Mo sees them waiting
-bunx dzql model document team teams 1
+bunx dzql model story mo does Mo approves them, and Ann sees it
+bunx dzql model document team teams 1 2
 bunx dzql model holds 1 teams name
 bunx dzql model holds 1 requests under teams starts:date days:number status
 bunx dzql model heldby 1 ann mo
-bunx dzql model export --out model.ts
+bunx dzql model check
 ```
 
-The model's page is http://localhost:3001, watched live as the stories land. The export, `model.ts`:
+The model's page is http://localhost:3001/model, watched live as the stories land; the model is
+`model.json`, which the page edits. What it makes goes in `app/`: `types.ts` (below), the
+migrations from empty, and the stories as tests. Beside an app, `dzql serve` mounts the model at
+`/model` in development, and production never registers it. `app/types.ts`:
 
 ```ts
-// The model, as delta's definitions: written by `dzql model export` from the model's page.
+// The model, now: delta's definitions, a row type per table and each document's shape. Written by `dzql model` from the model's page; never edited by hand.
 // Every store takes them: change the import to move to SQLite (`@blueshed/delta/sqlite`) or Postgres (`dzql/postgres`).
 import { defineDoc, defineSchema } from "@blueshed/delta/json";
 
@@ -97,8 +102,14 @@ export const schema = defineSchema({
 
 export const docs = [
   // for: Ann asks for two days off, and Mo sees them waiting
+  // for: Mo approves them, and Ann sees it
   defineDoc("team:", { root: "teams", include: ["requests"], implied: true }),
 ];
+
+export type TeamsRow = { id: number; name: string | null; };
+export type RequestsRow = { id: number; teams_id: number; starts: string | null; days: number | null; status: string | null; };
+
+export type TeamDoc = { teams: TeamsRow; requests: Record<string, RequestsRow>; };
 ```
 
 `registerDocs(ws, "data/app.json", schema, docs)` from `@blueshed/delta/json` keeps it in a file;
@@ -116,7 +127,7 @@ import { createWs } from "@blueshed/delta/server";
 import { run, serve } from "@blueshed/delta/serve";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "dzql/postgres";
 import { openPglite } from "dzql/pglite";
-import { docs, schema } from "./model";
+import { docs, schema } from "./types";
 
 // The same definitions, compiled to Postgres: every write is a stored function, and every server
 // on the database hears every change. PGlite runs Postgres in this process; on a Postgres server,
@@ -132,7 +143,7 @@ await run(() => serve({ ws, routes: {}, close: [() => listener.destroy(), () => 
 
 ```sh
 bun add dzql @blueshed/delta @electric-sql/pglite
-bunx dzql sql model.ts
+bunx dzql sql types.ts
 bun server.ts
 ```
 

@@ -23,6 +23,26 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Changed
+
+- **A server is routes to resources: dzql's rendering composes, and owns no server** (18 October,
+  Peter: "we have already said that the server is a composition of different routes and
+  resources - so why does dzql have servers?"). `appOf(example)` is an app as delta's `serve` takes
+  it -- its page, screens, routes and socket, under `Example.at` when it says a path -- and its
+  state (resources, documents, open sockets, page, cookie) is its own scope
+  (`src/rendering/scope.ts`), not the process's: `read`, `serverWrite` and who sees what read the
+  app a call is in. `compose(...apps)` puts several on one server, delta's own socket among them
+  (its actions registered with `on`, JSON-RPC style, and its publish), each socket given to the
+  app that opened it. `createServer` is `serve(appOf(example))`. The browser opens its socket under
+  the app's path (`<meta name="dzql-at">`), and an app under a path keeps its session cookie there.
+- **The model is a route, registered only in development** (18 October, Peter: "if the model is a
+  route that production can drop - that would make it completely independent"). The model's page
+  is at `/model`; `dzql serve <app>` mounts it beside the app unless `NODE_ENV` is production,
+  keeps the model in `model.json` (sessions in memory, nothing in the app's database), and after
+  every change writes what the checks let it make into the app's folder. `dzql model` serves it
+  alone, `/` sending you to `/model`. `site`, `guards` and `mcp` read `model.json`; `check` takes
+  the place of `audit` and `export` (MCP's `model_check`).
+
 ### Added
 
 - **The model is a file, and it makes the app's types, migrations and tests, checked first** (18

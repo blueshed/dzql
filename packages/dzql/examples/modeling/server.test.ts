@@ -315,12 +315,12 @@ describe("modeling, served", () => {
 
   /** Posts the sign-in form, as a browser does: the answer, and the session its cookie names. */
   async function signIn(email: string, password: string, headers: Record<string, string> = {}): Promise<{ res: Response; sessionId?: string }> {
-    const res = await fetch(new URL("/login", server.url), { method: "POST", body: new URLSearchParams({ email, password }), redirect: "manual", headers });
+    const res = await fetch(new URL("/model/login", server.url), { method: "POST", body: new URLSearchParams({ email, password }), redirect: "manual", headers });
     return { res, sessionId: /session_id=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] };
   }
 
   test("signing in: only by the form, from this site, with a password that matches the email", async () => {
-    expect((await fetch(new URL("/login", server.url), { redirect: "manual" })).headers.get("location")).toBe("/");
+    expect((await fetch(new URL("/model/login", server.url), { redirect: "manual" })).headers.get("location")).toBe("/model");
     expect((await signIn("peter@modeling.example", "peter-password", { origin: "https://elsewhere.example" })).res.status).toBe(403);
     expect((await signIn("peter@modeling.example", "wrong")).sessionId).toBeUndefined();
     expect((await signIn("nobody@modeling.example", "peter-password", { cookie: "session_id=a-visit" })).sessionId).toBeUndefined();
@@ -329,7 +329,7 @@ describe("modeling, served", () => {
 
   test("a session signs out, and then writes nothing", async () => {
     const { sessionId } = await signIn("peter@modeling.example", "peter-password");
-    const url = new URL("/ws", server.url);
+    const url = new URL("/model/ws", server.url); // the model is a route of its own, at /model
     url.protocol = "ws:";
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
     const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
@@ -355,7 +355,7 @@ describe("modeling, served", () => {
   });
 
   test("`show` prints the model as the page shows it, read as the CLI is signed in; signed out, it says to sign in", async () => {
-    const ws = server.url.href.replace(/^http/, "ws");
+    const ws = `${server.url.href.replace(/^http/, "ws")}model`;
     const file = `${process.env.TMPDIR ?? "/tmp"}/session-${crypto.randomUUID()}`;
     await Bun.write(file, (await signIn("claude@modeling.example", "claude-password")).sessionId!);
     const { readPage } = await import("./loader/told");

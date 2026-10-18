@@ -1591,7 +1591,7 @@ export async function run(
   } = {},
 ): Promise<Report> {
   const server = createServer(example, 0);
-  const tapped = await tap(server.port!);
+  const tapped = await tap(server.port!, example.at);
   const { draw, page, documents, byDocType } = assemble(example);
   const r: Run = {
     example,
@@ -1635,7 +1635,7 @@ export async function run(
     if (handed.length > 0) {
       const started = performance.now();
       const tally: ByHand = { stories: 0, presses: 0, applets: 0, ms: 0 };
-      const hand = new Hand(server.url);
+      const hand = new Hand(server.url, example.at);
       try {
         for (const { story, outcome } of handed) outcome.failures.push(...(await byHand(r, story, hand, tally, startsFrom.get(story))));
       } finally {

@@ -17,7 +17,7 @@ import { MODEL, raw, session as sessionOf } from "./model";
 function signInPage(sessionId: string): string {
   return join(
     `<section class="door"><h1 class="cap">Modeling</h1>`,
-    `<form class="sign-in" method="post" action="/login">`,
+    `<form class="sign-in" method="post" action="/model/login">`,
     `<label class="modal-field"><span class="note">Email</span><input name="email" type="email" autocomplete="username" required autofocus></label>`,
     `<label class="modal-field"><span class="note">Password</span><input name="password" type="password" autocomplete="current-password" required></label>`,
     toldAt(sessionId, "session", "/login"),

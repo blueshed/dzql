@@ -80,7 +80,7 @@ export function definitionsOf(model: Model): { schema: Schema; docs: DocDef[] } 
 }
 
 /**
- * The same, as the source of an app's file: what `dzql model export` writes. It imports from
+ * The same, as the source of an app's file: what `dzql model` writes. It imports from
  * delta's JSON file, where an app starts; moving to SQLite or Postgres changes that import alone.
  */
 export function sourceOf(model: Model, from = "@blueshed/delta/json"): string {
@@ -103,7 +103,7 @@ export function sourceOf(model: Model, from = "@blueshed/delta/json"): string {
     return [...serves, ...own, `  defineDoc(${JSON.stringify(def.prefix)}, ${json(opts)}),`];
   });
   return [
-    "// The model, as delta's definitions: written by `dzql model export` from the model's page.",
+    "// The model, as delta's definitions: written by `dzql model` from the model's page.",
     "// Every store takes them: change the import to move to SQLite (`@blueshed/delta/sqlite`) or Postgres (`dzql/postgres`).",
     `import { defineDoc, defineSchema } from ${JSON.stringify(from)};`,
     "",
@@ -152,7 +152,7 @@ export function typesOf(model: Model, from = "@blueshed/delta/json"): string {
     return `export type ${name}Doc = { ${parts.join(" ")} };`;
   });
   return [
-    sourceOf(model, from).replace("// The model, as delta's definitions: written by `dzql model export` from the model's page.", "// The model, now: delta's definitions, a row type per table and each document's shape. Written by `dzql model export` from the model's page; never edited by hand."),
+    sourceOf(model, from).replace("// The model, as delta's definitions: written by `dzql model` from the model's page.", "// The model, now: delta's definitions, a row type per table and each document's shape. Written by `dzql model` from the model's page; never edited by hand."),
     ...rowsOf,
     "",
     ...shapes,
@@ -259,7 +259,7 @@ export function storiesOf(model: Model): string {
     return [...(kept ? [] : [`    // its premise needs ${order.join(", then ")} in turn, which a cast's shape cannot keep: it fails until the harness takes an ordered premise`]), `    story(${lit(s.text)}, { ${body.join(", ")} }),`];
   });
   return [
-    "// The model's stories, as tests: written by `dzql model export` from the model's page. Each is told against",
+    "// The model's stories, as tests: written by `dzql model` from the model's page. Each is told against",
     "// the app (`bun run stories`): it fails until the app does what the story says.",
     'import { story, type Stories } from "dzql/modelling/stories";',
     "",
@@ -293,7 +293,7 @@ export function testsOf(model: Model, app = "model"): string {
     return [`  [${lit(s.text)}, ${lit(premise.map((p) => p.write))}, ${lit(write)}, ${lit(checks)}],`];
   });
   return [
-    "// The model, proved on a store: written by `dzql model export` from the model's page; never edited by hand.",
+    "// The model, proved on a store: written by `dzql model` from the model's page; never edited by hand.",
     'import { Database } from "bun:sqlite";',
     'import { describe, expect, test } from "bun:test";',
     'import { createLocal } from "@blueshed/delta/local";',

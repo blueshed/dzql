@@ -34,6 +34,8 @@ const NAMES: Record<Register["predicate"], [string, string]> = {
   "precondition-closure": ["Everything can happen", "whatever a story waits on, another story brings about"],
   "referential-closure": ["Every name means something", "nothing names what isn’t there"],
   "authorization-closure": ["Everyone may do what they do", "what a person changes is on a page they hold"],
+  coverage: ["Who may, and who may not", "for each change, everyone who could see it is either allowed or refused it"],
+  playability: ["Everyone can take their turn", "whoever’s move it is can see it, and can see what they wait on"],
 };
 
 /** The site: one HTML file, its styles inline, no scripts. `made` says when, so the same model makes the same page. */

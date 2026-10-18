@@ -1,25 +1,15 @@
-// hjeli's three that `dzql model` lacked, each over the model's file (`model.sqlite`, as the page
-// keeps it): `dzql model site` (the model read back for a customer, ../../examples/modeling/site.ts),
+// hjeli's three that `dzql model` lacked, each over the model's file (`model.json`, which the page
+// edits): `dzql model site` (the model read back for a customer, ../../examples/modeling/site.ts),
 // `dzql model guards` (the guarded write layer, ../modelling/guards.ts: written only once the six
 // registers are closed) and `dzql model mcp` (every model verb as a tool, over stdio, ./mcp.ts).
-// Apart from ./model.ts, which `dzql model export` keeps.
-import { Database } from "bun:sqlite";
+// Apart from ./model.ts, which `dzql model` and `dzql model check` keep.
 import { writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { modelIn } from "./model";
 
-/** The model in its file, with its name, as the page keeps it (`mdl_models`), else the file's. */
+/** The model in its file, with its name, as the page keeps it. */
 export function rawIn(file: string) {
-  const model = modelIn(file);
-  const db = new Database(file, { readonly: true });
-  let name = basename(file).replace(/\.sqlite$/, "");
-  try {
-    name = (db.query("SELECT name FROM mdl_models WHERE id = 1").get() as { name?: string } | null)?.name ?? name;
-  } catch {
-    // a model kept before its name was: the file's
-  } finally {
-    db.close();
-  }
+  const { name, ...model } = modelIn(file);
   return { models: { name }, ...model } as never;
 }
 
@@ -31,7 +21,7 @@ function emit(rest: string[], text: string) {
     process.stderr.write(`wrote ${rest[out + 1]}\n`);
   } else process.stdout.write(text);
 }
-const fileOf = (rest: string[]) => rest.find((a, i) => !a.startsWith("--") && rest[i - 1] !== "--out") ?? "model.sqlite";
+const fileOf = (rest: string[]) => rest.find((a, i) => !a.startsWith("--") && rest[i - 1] !== "--out") ?? process.env.MODEL_FILE ?? "model.json";
 
 /** Runs `dzql model site|guards|mcp`; false for any other command. */
 export async function run(argv: string[]): Promise<boolean> {
@@ -53,7 +43,7 @@ export async function run(argv: string[]): Promise<boolean> {
   const { closureOf, plainClosure } = await import("../../examples/modeling/closure");
   const registers = closureOf(raw);
   if (registers.some((r) => r.gaps.length > 0)) {
-    process.stderr.write(`Not generated: close the six registers first.\n\n${plainClosure(registers)}\n`);
+    process.stderr.write(`Not generated: close every check first.\n\n${plainClosure(registers)}\n`);
     process.exit(1);
   }
   const { guardsOf, guardSource } = await import("../modelling/guards");

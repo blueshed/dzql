@@ -210,8 +210,11 @@ const hooks: MorphHooks = {
 let knownPage: string | undefined;
 let pageWrite: string | undefined;
 
-/** The page the URL names: its path and, after a `?`, the one thing open over it (src/bento.ts's address). */
-const pageInUrl = (): string => decodeURI(location.pathname.slice(1) + location.search);
+/** The path the app is served under, as its shell says (`Example.at`): "" at the root. */
+const AT = document.querySelector<HTMLMetaElement>('meta[name="dzql-at"]')?.content.replace(/\/$/, "") ?? "";
+
+/** The page the URL names: its path under the app's and, after a `?`, the one thing open over it (src/bento.ts's address). */
+const pageInUrl = (): string => decodeURI(location.pathname.slice(AT.length).replace(/^\//, "") + location.search);
 
 function syncPage() {
   const el = app.querySelector<HTMLElement>("[data-page]");
@@ -219,8 +222,8 @@ function syncPage() {
   const page = el.dataset.page!;
   if (el.dataset.pageWrite) pageWrite = el.dataset.pageWrite;
   if (page === knownPage) return;
-  if (knownPage === undefined) history.replaceState({ page }, "", "/" + encodeURI(page));
-  else history.pushState({ page }, "", "/" + encodeURI(page));
+  if (knownPage === undefined) history.replaceState({ page }, "", `${AT}/` + encodeURI(page));
+  else history.pushState({ page }, "", `${AT}/` + encodeURI(page));
   knownPage = page;
 }
 
@@ -790,7 +793,7 @@ const connection = app.nextElementSibling!;
 
 function connect() {
   // http: goes ws:, https: wss:; the URL's screen goes with it, for the server to route
-  socket = new WebSocket(`${location.origin.replace("http", "ws")}/ws?at=${encodeURIComponent(pageInUrl())}`);
+  socket = new WebSocket(`${location.origin.replace("http", "ws")}${AT}/ws?at=${encodeURIComponent(pageInUrl())}`);
 
   // A successful connection means prior turbulence is over: the next drop,
   // whenever it happens, should retry promptly rather than inherit an old backoff.
