@@ -30,6 +30,17 @@ server: the app, its HTTP routes, `modelRoute()` from `dzql/model` in developmen
 `src/resources/<name>/` (`<name>-api.ts`, `<name>.ts`, `<name>-view.ts`). The packages'
 `CHANGELOG.md` say each in full.
 
+## Started, not finished: sign-in by link everywhere
+
+Peter has asked for this every time; do it first, without asking again. Done so far:
+`packages/dzql/src/rendering/links.ts` (`signInLinks(key, sessions, people, at)`: `say(origin)`
+prints a link per person as the server starts, `route` is the app's `"/in/:token"`, starting a
+fresh session as that person) with `links.test.ts`, both passing. Still to do: the model's page
+(`examples/modeling/signin.ts`, `index.ts`, `src/cli/model.ts` `sayLinks`) uses the helper; the
+eta-app skill's `reference/signin.md` leads with links (a way in per person on the home page in
+development, as cafe-e's doorway page did), email and password only a fallback; the starter's
+`routes.ts` and the template's CLAUDE.md say so; changelog.
+
 ## Peter's decisions not yet built
 
 1. **Sign-in by link** for an app's own people, not email and password (cafe-e's doorway page,
