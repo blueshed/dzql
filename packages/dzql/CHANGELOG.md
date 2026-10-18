@@ -25,6 +25,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The model's page as a second cafe found it** (18 October, `cafe-two/feedback.md`): signed in by
+  a link each keeper gets as `dzql model` or `dzql serve` starts (`login <link>` for the CLI), and
+  kept signed in across `bun --hot` (the sessions and links on globalThis, not a fresh `:memory:`);
+  a write to a story or document the model has not got says they go by number; the checks never
+  show closed over a model with little said (a silent story, a document holding no field, a teller
+  with nothing in front of them; no story at all is "not asked").
+
 - **A store's refusal says why on the page** (18 October, todo #32): a write the store answers 403
   -- the model's guards, a document's permission -- is refused as a resource's `refuse` is, its
   message the reason beside the control that sent it.
