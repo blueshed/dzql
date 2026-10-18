@@ -24,8 +24,16 @@ binds the app's icons, its session's docType and the last tool, once. These are 
   `grid()`, `src/rendering/grid.ts`) or a **collection** (`collectionPage`: the window alone).
 - Every gesture is a `data-write` string you hand in.
 - A modal is new (`addModal`) or delete (`confirmModal`); there is no bare one.
-- Escalate only as the data forces: in place, then the cell, a drawer, a window, a modal. A list of
-  five needs no find.
+- **A page displays; an edit or a deed opens over it.** A row shows what a thing is and taps open
+  its drawer (`drawer`), where its fields and its deeds are; making a new one is the window's plus
+  (`addTool`) opening `addModal`; taking one away is `confirmModal`. No form, input or select
+  sits on a page that displays, and no row carries a button beside it: the deed is in its drawer.
+  The one exception is the thing the page is for, said in one field at its foot (chat's message).
+- **Several kinds of work are a box**, a cell each (`cell`, its count and summary in its head),
+  one grown into the window at a time -- never one long scroll of sections. A person whose work is
+  one list is a collection.
+- Escalate only as the data forces: the cell, then a drawer, a window, a modal. A list of five
+  needs no find.
 - Find and the reading switch write to the session (`/filter/<key>`, `/hide/<key>`,
   `/reading/<key>`): its `permit` says yes when `collectionsWrite(op)` is not undefined, and its
   `shape` takes `collectionsWrite(op, ui)`, each field it moves replaced whole (the ticker's desk).

@@ -56,6 +56,10 @@ kernel, [where-an-app-lives](reference/where-an-app-lives.md).
   a deed is a `tool()`; `styles.css` imports `bento.css` first and says only the app's tokens and
   what the bento has no surface for. The result is a clean, simple interface: one thing to do per
   row, nothing drawn that no story needs.
+- **Display, then a sheet.** A page shows; whatever edits or acts opens over it: a row's tap opens
+  its drawer (its fields, its deeds), a new thing is the plus and `addModal`, a removal
+  `confirmModal`. No forms, inputs, selects or per-row buttons on a page that displays, and
+  several kinds of work are a `boxPage` of cells, not one long scroll ([bento](reference/bento.md)).
 - **Icons are lucide**, through the app's `icons.ts` (`svg(ICONS[name])`, as chat's): the bento asks
   for its own marks by name (chevron-right, undo, redo, pencil, plus, x, and the leave tool's).
   Never another icon set, inline SVG, or a word where an icon says it.
