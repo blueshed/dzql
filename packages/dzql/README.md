@@ -78,6 +78,8 @@ bunx dzql model
 bunx dzql model login claude@modeling.example claude-password
 bunx dzql model story ann does Ann asks for two days off, and Mo sees them waiting
 bunx dzql model story mo does Mo approves them, and Ann sees it
+bunx dzql model touches 1 requests
+bunx dzql model touches 2 requests
 bunx dzql model document team teams 1 2
 bunx dzql model holds 1 teams name
 bunx dzql model holds 1 requests under teams starts:date days:number status

@@ -36,9 +36,11 @@ export async function signIn(req: Request): Promise<Response> {
 // Or a link: one for each person who keeps the model, minted as the server starts and said where it
 // starts (`dzql model`, `dzql serve`), so nobody needs an email or a password to get in. Opened, it
 // starts a fresh session as that person, as the form does; it lasts as long as the server.
-const links = new Map<string, { person_id: number; name: string }>(
+// kept on globalThis, as the sessions are (./delta.ts): a reload under `bun --hot` keeps the links it printed
+const keptLinks = globalThis as { __dzqlModelLinks?: Map<string, { person_id: number; name: string }> };
+const links = (keptLinks.__dzqlModelLinks ??= new Map(
   (db.query("SELECT id, name FROM mdl_people ORDER BY id").all() as { id: number; name: string }[]).map((p) => [crypto.randomUUID(), { person_id: p.id, name: p.name }]),
-);
+));
 
 /** Each person's link to sign in, at the server `origin` names. */
 export const signInLinks = (origin: string): string[] => [...links].map(([token, p]) => `${p.name}: ${origin}/model/in/${token}`);

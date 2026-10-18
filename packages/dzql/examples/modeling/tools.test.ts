@@ -65,7 +65,7 @@ describe("dzql model site: the model read back for a customer", () => {
     expect(open).toContain("Nothing is in front of jo yet.");
     expect(open).toContain("erDiagram\n  rotas");
     expect(siteOf({ models: { name: "x" } })).toContain("0 stories, told by 0 people, and the 0 pages they need.");
-    expect(siteOf({ models: { name: "x" }, documents: { "1": { id: 1, name: "d", root: "t", held_by: ["a"], stories: [] } } })).toContain("1 question is still open");
+    expect(siteOf({ models: { name: "x" }, documents: { "1": { id: 1, name: "d", root: "t", held_by: ["a"], stories: [] } } })).toContain("2 questions are still open");
   });
 
   test("each write and each requirement, as someone reads it", () => {
@@ -170,7 +170,7 @@ describe("over a model's file, from the command line and over stdio", () => {
 
   test("a model with no write said has no guards to write; a model kept before its name, the file's name", async () => {
     const file = `${process.env.TMPDIR ?? "/tmp"}/plain-${crypto.randomUUID()}.json`;
-    await saved(file, undefined, [{ id: 1, models_id: 1, text: "Ann reads the board", actor: "ann", kind: "does", post: null, touches: ["notes"] }], [{ id: 1, models_id: 1, name: "board", root: "notes", own: 0, holds: { notes: { parent: null, fields: [] } }, held_by: ["ann"], stories: [1] }]);
+    await saved(file, undefined, [{ id: 1, models_id: 1, text: "Ann reads the board", actor: "ann", kind: "does", post: null, touches: ["notes"] }], [{ id: 1, models_id: 1, name: "board", root: "notes", own: 0, holds: { notes: { parent: null, fields: [{ name: "text", type: "text" }] } }, held_by: ["ann"], stories: [1] }]);
     const none = await run(["model", "guards", file]);
     expect(none.code).toBe(1);
     expect(none.err).toBe("Not generated: no story says what it writes (`writes <story> add <entity> ...`).\n");

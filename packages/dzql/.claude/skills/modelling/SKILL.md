@@ -18,7 +18,14 @@ and go on.
 
 ## The order
 
-1. **Start the page and sign the CLI in.** → reference: *Where it runs*
+1. **Start the page, give the teller their link, and sign the CLI in with yours.** `dzql model` (or
+   `dzql serve`) prints a sign-in link for each keeper as it starts: hand the teller theirs at once
+   (Peter's, the first of `MODEL_PEOPLE`), with no homework, and sign the CLI in with Claude's
+   (`login <link>`). Never sign the two in as one person. → reference: *Where it runs*
+   - **One change at a time, while the teller watches.** Say it, write it, let them see it land on
+     the page; never a wall of commands. Stories and documents go by their number (`show` lists
+     them), entities by their plural (`invoices`). A bare `refused` is a session signed out: sign
+     in again and say so, never work around it.
 2. **Write the story down as it was said**: who tells it, whether they do it or are refused, their
    words. Don't improve it; ask, and reword what they say. → *The verbs*
 3. **Ask what the person needs in front of them to do it.** That is a document; whoever else must

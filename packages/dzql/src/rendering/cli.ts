@@ -59,7 +59,8 @@ if (command.kind === "watch") {
   watch(ws, (line) => console.log(line));
 } else {
   const inspection = await runCommand(ws, command, limit);
-  if (inspection.refused) console.error(`refused${inspection.refused.reason ? `: ${inspection.refused.reason}` : ""}`);
+  // a refusal with no reason is a write to nothing this session sees: most often, it is signed out
+  if (inspection.refused) console.error(`refused: ${inspection.refused.reason ?? "nothing this session can see was written; is it still signed in? (login <your link>)"}`);
   console.log(formatInspection(inspection));
   ws.close();
   if (inspection.refused) process.exitCode = 1;

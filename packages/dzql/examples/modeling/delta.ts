@@ -27,7 +27,10 @@ export const schema = defineSchema({
 
 // Beside an app (`MODEL_FILE`: the model is its file), the model keeps nothing in the app's
 // database: its sessions and sign-ins are in memory. On its own, as an example, the database is its.
-const db = process.env.MODEL_FILE ? new Database(":memory:") : appDb;
+// Kept on globalThis, so `bun --hot` running the modules again (the app beside it reloads as the model
+// writes its types) keeps who is signed in: a browser's cookie still names its session.
+const kept = globalThis as { __dzqlModelDb?: Database };
+const db = process.env.MODEL_FILE ? (kept.__dzqlModelDb ??= new Database(":memory:")) : appDb;
 
 /** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
 export const migrating = { app: "modeling", schema };

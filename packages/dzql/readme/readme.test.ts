@@ -75,7 +75,7 @@ async function socket(url: URL, path = "/ws") {
 test("the README's files are these files, byte for byte", () => {
   for (const name of ["rendering/index.ts", "rendering/main.ts", "types.ts", "server.ts"]) expect(readme).toContain("```ts\n" + file(name) + "```");
   expect(readme).toContain("```html\n" + file("rendering/index.html") + "```");
-  expect(blocks.map((b) => b.length)).toEqual([1, 9, 2]);
+  expect(blocks.map((b) => b.length)).toEqual([1, 11, 2]);
 });
 
 describe("Install dzql and use rendering", () => {

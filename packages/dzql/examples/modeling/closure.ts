@@ -66,6 +66,8 @@ export function closureOf(raw: Raw): Register[] {
     gaps: [
       ...[...entities].filter((e) => heldIn(e).length === 0).map((e) => ({ kind: "unwatched-entity", where: e, detail: `no document holds ${e}, so nobody is told when it changes` })),
       ...docs.filter((d) => !someoneHolds(d)).map((d) => ({ kind: "unheld-document", where: d.name, detail: `${d.name} is held by nobody, and is not each person's own` })),
+      // a document with no field anywhere in it shows nobody anything: an empty model is never "closed"
+      ...docs.filter((d) => !d.own && Object.values(d.holds).every((h) => !(h.fields ?? []).length)).map((d) => ({ kind: "empty-document", where: d.name, detail: `${d.name} holds no field: say what it holds (holds <document> <entity> <field>...)` })),
       // asked once stories say what they write: an entity held and read, which no story ever writes, is always empty
       ...(said.length === 0
         ? []
@@ -80,6 +82,8 @@ export function closureOf(raw: Raw): Register[] {
     predicate: "subscription-closure",
     asks: "every write a story makes reaches a document someone holds",
     gaps: [
+      // a story that says neither what it changes nor what it reads tells nobody anything
+      ...doing.filter((s) => touched(s).length === 0).map((s) => ({ kind: "silent-story", where: story(s), detail: `it says nothing it writes or reads: say its writes (writes <story> add <entity>...) or what it touches` })),
       ...writes
         .filter(({ entity }) => !heldIn(entity).some(someoneHolds))
         .map(({ s, entity }) => ({ kind: "silent-write", where: story(s), detail: `it touches ${entity}, which reaches no document anyone holds` })),
@@ -92,10 +96,16 @@ export function closureOf(raw: Raw): Register[] {
 
   const actor: Register = {
     predicate: "actor-closure",
-    asks: "every actor is someone a story knows: whoever holds a document tells a story",
-    gaps: docs.flatMap((d) =>
-      d.held_by.filter((who) => !tellers.has(who)).map((who) => ({ kind: "unknown-holder", where: d.name, detail: `${d.name} is held by ${who}, who tells no story` })),
-    ),
+    asks: "every actor is someone a story knows, and has something in front of them: whoever holds a document tells a story, whoever tells a story holds a document",
+    gaps: [
+      ...docs.flatMap((d) =>
+        d.held_by.filter((who) => !tellers.has(who)).map((who) => ({ kind: "unknown-holder", where: d.name, detail: `${d.name} is held by ${who}, who tells no story` })),
+      ),
+      // hjeli's: every actor has something in front of them -- a teller who holds no document acts blind
+      ...[...new Set(doing.map((s) => s.actor))]
+        .filter((who) => docs.length > 0 && !docs.some((d) => d.held_by.includes(who) || (d.own && d.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who))))
+        .map((who) => ({ kind: "nothing-in-front", where: who, detail: `${who} tells a story and holds no document: what do they need in front of them? (heldby <document> ${who})` })),
+    ],
   };
 
   const byVisit = new Set(docs.filter((d) => d.own).map((d) => d.root));
@@ -214,7 +224,9 @@ export function closureOf(raw: Raw): Register[] {
     ],
   };
 
-  return [reachability, subscription, actor, precondition, referential, authorization, coverage, playability];
+  const all = [reachability, subscription, actor, precondition, referential, authorization, coverage, playability];
+  // nothing told is nothing checked: an empty model is never shown as closed
+  return stories.length ? all : all.map((r) => (r.gaps.length ? r : { ...r, notAsked: "no story is told yet" }));
 }
 
 const NAMES: Record<Register["predicate"], string> = {

@@ -29,11 +29,13 @@ describe("hjeli's six registers, over the model as it is told", () => {
     expect(r.map((x) => x.predicate)).toEqual(["reachability", "subscription-closure", "actor-closure", "precondition-closure", "referential-closure", "authorization-closure", "coverage", "playability"]);
   });
 
-  test("reachability: an entity no document holds, and a document nobody holds that is not each person's own", () => {
+  test("reachability: an entity no document holds, a document nobody holds that is not each person's own, and one that holds no field", () => {
     expect(of(r, "reachability").gaps).toEqual([
       { kind: "unwatched-entity", where: "approvals", detail: "no document holds approvals, so nobody is told when it changes" },
       { kind: "unwatched-entity", where: "logins", detail: "no document holds logins, so nobody is told when it changes" },
       { kind: "unheld-document", where: "holidays", detail: "holidays is held by nobody, and is not each person's own" },
+      { kind: "empty-document", where: "holidays", detail: "holidays holds no field: say what it holds (holds <document> <entity> <field>...)" },
+      { kind: "empty-document", where: "calendar", detail: "calendar holds no field: say what it holds (holds <document> <entity> <field>...)" },
     ]);
   });
 
@@ -75,17 +77,19 @@ describe("hjeli's six registers, over the model as it is told", () => {
 
   test("drawn across the top: each a chip, open, closed or not asked, its gaps beneath; and in plain text for the CLI", () => {
     const html = drawClosure(r);
-    expect(html).toStartWith(`<section id="closure" aria-label="the model's checks: 11 gaps">`);
-    expect(html).toContain(`<details class="register open" data-predicate="reachability"><summary><span class="dot"></span>Reachability · 3 gaps</summary>`);
+    expect(html).toStartWith(`<section id="closure" aria-label="the model's checks: 13 gaps">`);
+    expect(html).toContain(`<details class="register open" data-predicate="reachability"><summary><span class="dot"></span>Reachability · 5 gaps</summary>`);
     expect(html).toContain(`<details class="register unasked" data-predicate="precondition-closure"><summary><span class="dot"></span>Precondition closure · not asked</summary><div class="register-body"><p class="asks">every row a write presupposes is added by some story, and every state a story requires some write sets</p><p>Not asked: no story says what it writes or what it presupposes (writes, requires).</p>`);
     expect(html).toContain("<li><b>story 5 (ann)</b> ann touches holidays, held by no document ann holds</li>");
     const closed = drawClosure(closureOf({ models: { name: "Cafe" } }));
     expect(closed).toContain(`aria-label="the model's checks: 0 gaps"`);
-    expect(closed).toContain(`<details class="register closed" data-predicate="actor-closure"><summary><span class="dot"></span>Actor closure · closed</summary><div class="register-body"><p class="asks">every actor is someone a story knows: whoever holds a document tells a story</p><p>Every one: every actor is someone a story knows: whoever holds a document tells a story.</p>`);
-    expect(drawClosure(closureOf({ models: { name: "Cafe" }, documents: { "3": { ...told.documents!["3"]!, stories: [] } } }))).toContain(`aria-label="the model's checks: 1 gap"`);
+    expect(closed).toContain(`<details class="register unasked" data-predicate="actor-closure"><summary><span class="dot"></span>Actor closure · not asked</summary><div class="register-body"><p class="asks">every actor is someone a story knows, and has something in front of them: whoever holds a document tells a story, whoever tells a story holds a document</p><p>Not asked: no story is told yet.</p>`);
+    const asked = drawClosure(closureOf({ models: { name: "Cafe" }, stories: { "1": { id: 1, text: "Ann asks", actor: "ann", kind: "does", touches: ["requests"] } }, documents: { "1": { id: 1, name: "team", root: "requests", holds: { requests: { parent: null, fields: [field("starts")] } }, held_by: ["ann"], stories: [1] } } }));
+    expect(asked).toContain(`<details class="register closed" data-predicate="actor-closure"><summary><span class="dot"></span>Actor closure · closed</summary>`);
+    expect(drawClosure(closureOf({ models: { name: "Cafe" }, documents: { "3": { ...told.documents!["3"]!, stories: [] } } }))).toContain(`aria-label="the model's checks: 2 gaps"`) // held by nobody, and holds no field;
     expect(plainClosure(r).split("\n").slice(0, 5)).toEqual([
       "Checks (hjeli's six, Easy's coverage, derive-ux's playability)",
-      "Reachability: 3 gaps",
+      "Reachability: 5 gaps",
       "  unwatched-entity · approvals: no document holds approvals, so nobody is told when it changes",
       "  unwatched-entity · logins: no document holds logins, so nobody is told when it changes",
       "  unheld-document · holidays: holidays is held by nobody, and is not each person's own",
@@ -145,7 +149,7 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
       expect(existsSync(`${dir}/app`)).toBe(false);
       // a stories.ts a person wrote is kept: the model's goes beside it
       await Bun.write(`${dir}/app/stories.ts`, "// the app's own\n");
-      await write([{ id: 1, models_id: 1, name: "team", root: "teams", own: 0, holds: { teams: { parent: null, fields: [] }, requests: { parent: "teams", fields: [] } }, held_by: ["ann"], stories: [1] }]);
+      await write([{ id: 1, models_id: 1, name: "team", root: "teams", own: 0, holds: { teams: { parent: null, fields: [] }, requests: { parent: "teams", fields: [{ name: "starts" }] } }, held_by: ["ann"], stories: [1] }]);
       const closed = await check();
       expect(closed.out).toContain("Reachability: closed\n");
       expect(closed.code).toBe(0);
@@ -155,7 +159,7 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
       expect((await check()).out).not.toContain("new)"); // the model unchanged: no next step
       // a parent changed is a step only a person can finish: written once, saying so, and not again
       const grouping = { id: 2, models_id: 1, text: "Ann makes a group", actor: "ann", kind: "does", post: null, touches: [], writes: [{ entity: "groups", op: "add" }], requires: null };
-      await write([{ id: 1, models_id: 1, name: "team", root: "teams", own: 0, holds: { teams: { parent: null, fields: [] }, groups: { parent: "teams", fields: [] }, requests: { parent: "groups", fields: [] } }, held_by: ["ann"], stories: [1, 2] }], [grouping]);
+      await write([{ id: 1, models_id: 1, name: "team", root: "teams", own: 0, holds: { teams: { parent: null, fields: [] }, groups: { parent: "teams", fields: [] }, requests: { parent: "groups", fields: [{ name: "starts" }] } }, held_by: ["ann"], stories: [1, 2] }], [grouping]);
       await check();
       expect(readdirSync(`${dir}/app/migrations`).sort()).toEqual(["001-teams-requests.ts", "002-groups.ts"]);
       expect(await Bun.file(`${dir}/app/migrations/002-groups.ts`).text()).toContain("// By hand: requests: its parent is");
@@ -275,5 +279,20 @@ describe("Easy's coverage and derive-ux's playability, over the model as told", 
     expect(of(r, "playability").advice).toContainEqual({ kind: "uneditable-field", where: "orders.item", detail: "no story changes orders.item once its row is made" });
     const blind = closureOf({ ...raw, documents: { ...raw.documents, "2": { ...raw.documents!["2"]!, held_by: ["jo"] } } });
     expect(of(blind, "playability").gaps).toContainEqual({ kind: "blind-wait", where: "story 2 (paul)", detail: "paul sets orders.status=ready and waits on someone else, but holds no document that shows orders.status" });
+  });
+});
+
+describe("a model with little said is not shown as fine (the second cafe's feedback)", () => {
+  test("a story that says nothing it writes or reads, and a teller with nothing in front of them", () => {
+    const r = closureOf({
+      models: { name: "Cafe" },
+      stories: {
+        "1": { id: 1, text: "The cook says when it is ready", actor: "cook", kind: "does" },
+        "2": { id: 2, text: "The customer orders", actor: "customer", kind: "does", touches: ["items"] },
+      },
+      documents: { "1": { id: 1, name: "bill", root: "items", holds: { items: { parent: null, fields: [field("name")] } }, held_by: ["customer"], stories: [2] } },
+    });
+    expect(of(r, "subscription-closure").gaps).toContainEqual({ kind: "silent-story", where: "story 1 (cook)", detail: "it says nothing it writes or reads: say its writes (writes <story> add <entity>...) or what it touches" });
+    expect(of(r, "actor-closure").gaps).toContainEqual({ kind: "nothing-in-front", where: "cook", detail: "cook tells a story and holds no document: what do they need in front of them? (heldby <document> cook)" });
   });
 });

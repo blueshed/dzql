@@ -146,12 +146,12 @@ export function may(m: Model, op: PatchOp): boolean {
   if (more.length > 0) return false;
   if (coll === "stories") {
     if (id === "-") return op.op === "add" && field === undefined;
-    if (!m.stories.some((s) => s.id === id)) return false;
+    if (!m.stories.some((s) => s.id === id)) throw refuse(`No story ${id}: stories go by their number (show lists them)`);
     return field === undefined ? op.op === "remove" : STORY_FIELDS.has(field) && op.op === "replace" && entity === undefined;
   }
   if (coll !== "documents") return false;
   if (id === "-") return op.op === "add" && field === undefined;
-  if (!m.documents.some((d) => d.id === id)) return false;
+  if (!m.documents.some((d) => d.id === id)) throw refuse(`No document ${id}: documents go by their number, not their name (show lists them)`);
   if (field === undefined) return op.op === "remove";
   if (field === "holds") return entity !== undefined && (op.op === "replace" || op.op === "remove");
   return DOCUMENT_FIELDS.has(field) && op.op === "replace" && entity === undefined;

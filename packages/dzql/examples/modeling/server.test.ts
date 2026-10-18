@@ -249,14 +249,12 @@ describe("the model's rules", () => {
     const no: PatchOp[] = [
       { op: "replace", path: "/stories/-" },
       { op: "add", path: "/stories/-/text" },
-      { op: "remove", path: "/stories/9" },
       { op: "replace", path: "/stories/1" },
       { op: "remove", path: "/stories/1/text" },
       { op: "replace", path: "/stories/1/post" },
       { op: "replace", path: "/stories/1/text/x" },
       { op: "replace", path: "/models/name" },
       { op: "remove", path: "/documents/-" },
-      { op: "remove", path: "/documents/9" },
       { op: "replace", path: "/documents/2" },
       { op: "add", path: "/documents/2/holds/sessions" },
       { op: "replace", path: "/documents/2/holds" },
@@ -267,6 +265,9 @@ describe("the model's rules", () => {
     ];
     expect(yes.filter((op) => !may(m, op))).toEqual([]);
     expect(no.filter((op) => may(m, op))).toEqual([]);
+    // one the model has not got is refused, saying they go by number
+    expect(() => may(m, { op: "remove", path: "/stories/9" })).toThrow("No story 9: stories go by their number (show lists them)");
+    expect(() => may(m, { op: "replace", path: "/documents/bill/held_by" })).toThrow("No document bill: documents go by their number, not their name (show lists them)");
     expect(model({ models: { name: "Empty" } })).toEqual({ stories: [], documents: [] });
   });
 
