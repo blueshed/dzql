@@ -25,6 +25,14 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **A store's refusal says why on the page** (18 October, todo #32): a write the store answers 403
+  -- the model's guards, a document's permission -- is refused as a resource's `refuse` is, its
+  message the reason beside the control that sent it.
+- **The starter starts the new way** (18 October, todo #34): a `bun create dzql` app's `dev` and
+  `start` are `dzql serve ./src`, the model at `/model` in development and never in production;
+  `model` and `cli:model` are `dzql model`; its `icons.ts` is lucide's, as the bento asks; and its
+  page points at the bento. paintbrush's model scripts the same.
+
 - **A server is routes to resources: dzql's rendering composes, and owns no server** (18 October,
   Peter: "we have already said that the server is a composition of different routes and
   resources - so why does dzql have servers?"). `appOf(example)` is an app as delta's `serve` takes

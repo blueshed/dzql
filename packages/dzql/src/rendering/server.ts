@@ -264,6 +264,8 @@ export function appOf(example: Example): DzqlApp {
     const writing = documents.write(doc, shaped.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable });
     // a write never undone: its echo names no change
     const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : { version: w.version, entry: undoable ? w.entry : undefined }));
+    // a store's own refusal (403: the model's guards, a document's permission) says why, as a resource's does
+    if ("error" in written && written.error.code === 403) throw refuse(written.error.message);
     if ("error" in written || written.ops.length === 0) return false;
     const named = owner.perSession ? owner.docType : doc; // a session's own named by type: its id is a credential
     if ((written.entry === undefined) !== (owner.ledger === false)) {

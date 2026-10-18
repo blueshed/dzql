@@ -8,22 +8,23 @@
     "bun": ">=1.4.3"
   },
   "scripts": {
-    "dev": "ETA_EXAMPLE=./src bun --hot node_modules/dzql/src/rendering/start.ts",
-    "start": "NODE_ENV=production ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/start.ts",
+    "dev": "bun --hot node_modules/dzql/src/cli/index.ts serve ./src",
+    "start": "NODE_ENV=production bun node_modules/dzql/src/cli/index.ts serve ./src",
     "stop": "delta stop",
     "stories": "ETA_EXAMPLE=./src bun node_modules/dzql/src/modelling/stories-run.ts",
     "cli": "ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/cli.ts",
-    "model": "PORT=${MODEL_PORT:-3001} DB_PATH=model.sqlite ETA_EXAMPLE=node_modules/dzql/examples/modeling bun node_modules/dzql/src/rendering/start.ts",
-    "cli:model": "ETA_URL=ws://localhost:${MODEL_PORT:-3001} ETA_EXAMPLE=node_modules/dzql/examples/modeling bun node_modules/dzql/src/rendering/cli.ts",
-    "model:load": "LOG_LEVEL=warn ETA_URL=ws://localhost:${MODEL_PORT:-3001} bun node_modules/dzql/examples/modeling/loader/load.ts ./src",
-    "model:check": "LOG_LEVEL=warn ETA_URL=ws://localhost:${MODEL_PORT:-3001} bun node_modules/dzql/examples/modeling/loader/check.ts ./src",
+    "model": "bun node_modules/dzql/src/cli/index.ts model --out src",
+    "cli:model": "bun node_modules/dzql/src/cli/index.ts model",
+    "model:load": "LOG_LEVEL=warn ETA_URL=ws://localhost:${MODEL_PORT:-3001}/model bun node_modules/dzql/examples/modeling/loader/load.ts ./src",
+    "model:check": "LOG_LEVEL=warn ETA_URL=ws://localhost:${MODEL_PORT:-3001}/model bun node_modules/dzql/examples/modeling/loader/check.ts ./src",
     "typecheck": "bun check",
     "test": "bun test",
     "prepare": "delta install-skills"
   },
   "dependencies": {
     "@blueshed/delta": "^1.2.0",
-    "dzql": "^0.13.0"
+    "dzql": "^0.13.0",
+    "lucide": "^1.46.0"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3"

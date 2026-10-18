@@ -510,6 +510,26 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
+  test("a write the store refuses (403: the model's guards) is refused on the page with the store's reason", async () => {
+    // an app of its own: the store's refusal stands in front of it, as the model's guards do (dzql/modelling/guards)
+    const guarded = createLocal();
+    guarded.server.on("delta", (msg, _client, respond) => {
+      if (JSON.stringify(msg.ops ?? []).includes('"forbidden"')) respond({ error: { code: 403, message: "The store says no." } });
+    });
+    const store = new Database(":memory:");
+    createTables(store, schema);
+    registerDocs(guarded.server, store, schema, [defineDoc("note:", { root: "notes", include: [], implied: true })], [], { ledger: true });
+    const app = createServer({ name: "guarded", resources: [{ ...noteResource, shape: undefined }], render: () => "<p>guarded</p>", active: () => true, index, delta: guarded }, 0);
+    try {
+      const ws = await open(app);
+      const id = write(ws, "note", [{ op: "replace", path: "/text", value: "forbidden" }]);
+      expect(await expectMessage(ws, "refused")).toEqual({ type: "refused", id, reason: "The store says no." });
+      ws.close();
+    } finally {
+      app.stop(true);
+    }
+  });
+
   test("a refused write from a test's socket is answered within a second: `write` gives every write an id, so its refusal has one to answer", async () => {
     const ws = await open(server);
     const id = write(ws, "note", [{ op: "replace", path: "/text", value: "" }]);

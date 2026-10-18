@@ -6,10 +6,10 @@ draws every page on the server and tells each one what changed, and
 it. It begins as nothing but its page, waiting for its first story.
 
 ```sh
-bun dev          # http://localhost:3000
+bun dev          # http://localhost:3000, and the model's page at /model, where the stories are told first
 bun test         # the page is served and drawn, and every story passes
 bun run stories  # each story in src/stories.ts, told against the app
-bun run model    # http://localhost:3001: the model's page, where the stories are told first
+bun run model    # the model's page alone, http://localhost:3001/model
 bun run stop     # a server started in the background
 ```
 
