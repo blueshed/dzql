@@ -159,7 +159,7 @@ function tellChanges(documents: Documents): void {
     // a tab not yet drawn is told nothing: its first page, drawn after (a route's write before it), holds it
     const echoTo = (await settled(documents, () => audienceFor(docType, docId))).filter((ws) => sent.has(ws));
     const change = yours?.entry === undefined ? undefined : handleFor(yours.ws.data.sessionId, yours.entry);
-    for (const ws of echoTo) send(ws, ws === yours?.ws ? patchMessage(wireName(docType, docId), v ?? 0, wire, yours.id, change) : patchMessage(wireName(docType, docId), v ?? 0, wire));
+    for (const ws of echoTo) send(ws, ws === yours?.ws ? patchMessage(wireName(docType, docId, ws), v ?? 0, wire, yours.id, change) : patchMessage(wireName(docType, docId, ws), v ?? 0, wire));
     for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws); // a reader has been drawn
     await owner.afterChange?.(docId, wire);
   });
@@ -211,7 +211,7 @@ export function createServer(example: Example, port: number | string = process.e
   const assembled = assemble(example);
   active = { example, assembled, servers: (active?.servers ?? 0) + 1 };
   const { resources, byDocType, inspectFor, documents } = assembled;
-  setActiveResources(byDocType);
+  setActiveResources(byDocType, { cookieIsSession: example.session === undefined });
   setActiveDocuments(documents);
   tellChanges(documents);
 
@@ -294,7 +294,7 @@ export function createServer(example: Example, port: number | string = process.e
       () => owner?.afterWalk?.(ws, docId, { way, ops: wireOps(owner, docId, done.ops as PatchOp[]), inverse: wireOps(owner, docId, (done.inverse ?? []) as PatchOp[]) }),
       `following a walk of ${owner?.perSession ? owner.docType : plan.doc}`,
     );
-    if (id !== undefined && done.ops.length === 0) send(ws, patchMessage(wireName(docType, docId), done.version ?? 0, [], id));
+    if (id !== undefined && done.ops.length === 0) send(ws, patchMessage(wireName(docType, docId, ws), done.version ?? 0, [], id));
     return true;
   }
 

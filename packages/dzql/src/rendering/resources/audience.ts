@@ -12,11 +12,22 @@ import type { Resource } from "./resource";
 
 const openSockets = new Set<ServerWebSocket<ConnectionData>>();
 let byDocType: Map<string, Resource> | undefined;
+/** Whether a session's id is its cookie (an example with no `session`): then the id is a credential, and the wire never says it. */
+let cookieIsSession = false;
 
 /** Set by `createServer` when an example becomes active, and cleared when it stops -- so a
- * server-less call (unreachable in practice) answers "nobody" rather than throwing. */
-export function setActiveResources(map: Map<string, Resource> | undefined): void {
+ * server-less call (unreachable in practice) answers "nobody" rather than throwing. `cookieIsSession`:
+ * the example keeps no session row (no `Example.session`), so a session's id is its cookie. */
+export function setActiveResources(map: Map<string, Resource> | undefined, opts: { cookieIsSession?: boolean } = {}): void {
   byDocType = map;
+  setCookieIsSession(map !== undefined && opts.cookieIsSession === true);
+}
+
+/** Whether a session's id is its cookie, as `setActiveResources` sets it; the previous setting, so a test can put it back. */
+export function setCookieIsSession(on: boolean): boolean {
+  const was = cookieIsSession;
+  cookieIsSession = on;
+  return was;
 }
 
 export function openConnection(ws: ServerWebSocket<ConnectionData>): void {
@@ -38,9 +49,21 @@ export function allOpenSockets(): ServerWebSocket<ConnectionData>[] {
  * document (its session, its ledger, its desk: `perSession`) is named by its type alone: a tab
  * knows only its own, and its session's number -- a row's, like any other -- is not the wire's to
  * say. The credential is the cookie, which nothing on the wire carries.
+ *
+ * Where the cookie is the session (an example with no `Example.session`), a session's id is that
+ * credential: a document keyed by `ws`'s own session goes by its type, and one keyed by any other
+ * live session that does not say it is `perSession` is refused by name, loudly -- naming it would
+ * hand that session's credential to whoever reads the wire.
  */
-export function wireName(docType: string, docId: string): string {
-  return byDocType?.get(docType)?.perSession ? docType : prefixDoc(docType, docId);
+export function wireName(docType: string, docId: string, ws?: ServerWebSocket<ConnectionData>): string {
+  if (byDocType?.get(docType)?.perSession) return docType;
+  if (cookieIsSession) {
+    if (docId === ws?.data.sessionId) return docType;
+    if ([...openSockets].some((other) => other.data.sessionId === docId)) {
+      throw new Error(`${docType} is keyed by a session id: declare its resource \`perSession\`, so the id never goes on the wire`);
+    }
+  }
+  return prefixDoc(docType, docId);
 }
 
 /**
@@ -86,10 +109,13 @@ export function readersOf(docType: string, docId: string): ServerWebSocket<Conne
  * resource's `under` taken off), and -- for a session's own document, keyed by the session id -- with
  * that id taken out where it is the row's `id`: never on the wire, not even to its own tabs. The same
  * number whether the id is written as one or as text; any other value is the session's to say, "3"
- * included.
+ * included. Where the cookie is the session (no `Example.session`), the id is a credential, so every
+ * value equal to it is taken out, whatever field holds it.
  */
 export function wireOps(owner: Resource, docId: string, ops: PatchOp[]): PatchOp[] {
   const at = owner.under ?? "";
   const moved = ops.map((op) => (at && (op.path === at || op.path.startsWith(`${at}/`)) ? { ...op, path: op.path.slice(at.length) } : op));
-  return owner.perSession ? (JSON.parse(JSON.stringify(moved, (k, v) => (k === "id" && (typeof v === "number" || typeof v === "string") && String(v) === docId ? undefined : v))) as PatchOp[]) : moved;
+  if (!owner.perSession) return moved;
+  const secret = (k: string, v: unknown) => (cookieIsSession ? v === docId : k === "id" && (typeof v === "number" || typeof v === "string") && String(v) === docId);
+  return JSON.parse(JSON.stringify(moved, (k, v) => (secret(k, v) ? undefined : v))) as PatchOp[];
 }

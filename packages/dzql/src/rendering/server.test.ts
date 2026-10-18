@@ -7,9 +7,10 @@ import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import type { Resource, Walk } from "./resources/resource";
 import type { Example } from "./example";
+import type { ConnectionData } from "./connection";
 import index from "./server.test.fixture.html";
 import { WIRE, type PatchOp, type WriteId } from "./json-patch";
-import { closeConnection, openConnection, wireName, wireOps } from "./resources/audience";
+import { closeConnection, openConnection, setCookieIsSession, wireName, wireOps } from "./resources/audience";
 import { read, serverWrite } from "./documents";
 import { part } from "./parts";
 import { CHANGED_SINCE, createServer } from "./server";
@@ -909,13 +910,47 @@ describe("one socket, any documents: a document is named whole, and seen because
   });
 
   test("a session's own document goes by its type; any other by its whole name, a session's number among ids like any other", () => {
-    expect(wireName("note", "1")).toBe("note"); // note is `perSession`
-    expect(wireName("month", "2026-09")).toBe("month:2026-09");
-    expect(wireName("month", "1")).toBe("month:1"); // the same number as a session's: a row's, not a credential
+    const was = setCookieIsSession(false); // sessions are numbered rows (an example with `session`)
+    try {
+      expect(wireName("note", "1")).toBe("note"); // note is `perSession`
+      expect(wireName("month", "2026-09")).toBe("month:2026-09");
+      expect(wireName("month", "1")).toBe("month:1"); // the same number as a session's: a row's, not a credential
+    } finally {
+      setCookieIsSession(was);
+    }
+  });
+
+  // 7707774 took this guard out with numbered sessions; an example with no `session` keeps its
+  // cookie as the session's id, a credential, and lost it: a document keyed by another's went on the wire.
+  test("where the cookie is the session: one keyed by your own goes by its type; one keyed by another live session, not perSession, is refused by name", () => {
+    const was = setCookieIsSession(true);
+    const me = { data: { sessionId: "s-me" } } as unknown as Bun.ServerWebSocket<ConnectionData>;
+    const other = { data: { sessionId: "s-other" } } as unknown as Bun.ServerWebSocket<ConnectionData>;
+    openConnection(other);
+    try {
+      expect(wireName("note", "s-other", me)).toBe("note"); // note is `perSession`
+      expect(wireName("month", "2026-09", me)).toBe("month:2026-09");
+      expect(wireName("month", "s-me", me)).toBe("month");
+      expect(() => wireName("month", "s-other", me)).toThrow("month is keyed by a session id: declare its resource `perSession`, so the id never goes on the wire");
+    } finally {
+      closeConnection(other);
+      setCookieIsSession(was);
+    }
+  });
+
+  test("where the cookie is the session, a session's own document is told with every value equal to it taken out, whatever field holds it", () => {
+    const was = setCookieIsSession(true);
+    try {
+      const ops: PatchOp[] = [{ op: "add", path: "/notes", value: { id: "c-1", owner: "c-1", text: "c-1 said", n: 3 } }];
+      expect(wireOps(noteResource, "c-1", ops)).toEqual([{ op: "add", path: "", value: { text: "c-1 said", n: 3 } }]);
+    } finally {
+      setCookieIsSession(was);
+    }
   });
 
   // A value equal to the session's number was taken out too: session 3 writing "3" was echoed a `replace` with no value.
   test("a session's own document is told without its id -- a row's `id`, number or text -- and with every other value whatever it says", () => {
+    const was = setCookieIsSession(false); // sessions are numbered rows
     const ops: PatchOp[] = [
       { op: "replace", path: "/notes/text", value: "3" },
       { op: "add", path: "/notes", value: { id: 3, text: "3", count: 3 } },
@@ -926,5 +961,6 @@ describe("one socket, any documents: a document is named whole, and seen because
       { op: "add", path: "", value: { text: "3", count: 3 } },
       { op: "add", path: "", value: { text: "a" } },
     ]);
+    setCookieIsSession(was);
   });
 });
