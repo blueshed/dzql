@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { extractSessionFile, type Aliases } from "dzql/rendering/cli/commands";
+import { extractSessionFile, savedServer, type Aliases } from "dzql/rendering/cli/commands";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { closureOf, plainClosure } from "./closure";
 import { plain } from "./heart";
@@ -107,4 +107,4 @@ export async function show(url: string, sessionFile: string): Promise<number> {
 }
 
 const { sessionFile, rest } = extractSessionFile(process.argv.slice(2));
-if (rest[0] === "show") process.exit(await show(process.env.ETA_URL ?? "ws://localhost:3000", sessionFile));
+if (rest[0] === "show") process.exit(await show(process.env.ETA_URL ?? savedServer(sessionFile) ?? "ws://localhost:3000", sessionFile));

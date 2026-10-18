@@ -229,7 +229,7 @@ export function setActiveDocuments(documents: Documents | undefined): void {
 /** The app's documents; throws when it keeps none. */
 function kept(): Documents {
   const kept = scope().documents;
-  if (!kept) throw new Error("no documents: this example does not keep them in delta");
+  if (!kept) throw new Error("no documents: this example does not keep them in delta, or this was called outside any app's scope while several apps are served (a feed or a hook made at module load: start it from a resource's onOpen, or in the app's scope)");
   return kept;
 }
 

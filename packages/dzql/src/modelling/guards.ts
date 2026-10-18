@@ -50,7 +50,7 @@ export type Rule = {
   custom?: string;
 };
 /** The guards: the documents they stand in front of, and each write's rule. */
-export type Guards = { documents: string[]; rules: Rule[] };
+export type Guards = { documents: string[]; rules: Rule[]; /** Each document's root, by its name: its row is addressed as `/<root>/<field>` too (delta's). */ roots?: Record<string, string> };
 
 export type Op = { op: string; path: string; value?: unknown };
 export type Row = Record<string, unknown>;
@@ -101,7 +101,7 @@ export function guardsOf(model: GuardModel): Guards {
       });
     }
   }
-  return { documents: [...new Set(documents.map((d) => d.name))], rules };
+  return { documents: [...new Set(documents.map((d) => d.name))], rules, roots: Object.fromEntries(documents.map((d) => [d.name, d.root])) };
 }
 
 /** A write's path, as delta's: `/<entity>/<id>[/<field>]`, each segment unescaped (RFC 6901). */
@@ -120,9 +120,12 @@ function says(rule: Rule, op: Op, entity: string, field: string | undefined): bo
 }
 
 /** May `actor` make this op, on document `doc` (its name, before the `:`)? The first story that lets it, or why not. */
-export async function check(guards: Guards, write: { actor: string; doc: string; op: Op; rowOf: RowOf }): Promise<Verdict> {
+export async function check(guards: Guards, write: { actor: string; doc: string; docId?: string; op: Op; rowOf: RowOf }): Promise<Verdict> {
   const { actor, doc, op, rowOf } = write;
-  const [entity = "", id = "-", field] = segments(op.path);
+  const at = segments(op.path);
+  // the document's root row, as delta also addresses it: `/<root>/<field>`, or `/<root>` whole -- its id the document's
+  const atRoot = guards.roots?.[doc] === at[0] && (at[1] === undefined || (at[1] !== "-" && !/^\d+$/.test(at[1])));
+  const [entity = "", id = "-", field] = atRoot ? [at[0], write.docId ?? "-", at[1]] : at;
   const saying = guards.rules.filter((r) => says(r, op, entity, field));
   const why: string[] = [];
   for (const rule of saying.filter((r) => r.allow && r.actor === actor)) {
@@ -165,12 +168,12 @@ type On = { on(action: string, handler: (msg: any, client: any, respond: (r: any
  */
 export function guardWrites(ws: On, guards: Guards, opts: { actorOf: (identity: unknown, client: unknown) => string | undefined; rowOf: RowOf }): void {
   ws.on("delta", async (msg, client, respond) => {
-    const doc = String(msg?.doc ?? "").split(":")[0]!;
+    const [doc = "", docId] = String(msg?.doc ?? "").split(":");
     if (!guards.documents.includes(doc) || !Array.isArray(msg.ops)) return; // not the model's, or the store's 400
     const actor = opts.actorOf(client?.data?.identity, client);
     if (actor === undefined) return respond({ error: { code: 401, message: `Sign in to write to ${msg.doc}` } });
     for (const op of msg.ops as Op[]) {
-      const verdict = await check(guards, { actor, doc, op, rowOf: opts.rowOf });
+      const verdict = await check(guards, { actor, doc, docId, op, rowOf: opts.rowOf });
       if (!verdict.ok) return respond({ error: { code: 403, message: verdict.reason } });
     }
   });

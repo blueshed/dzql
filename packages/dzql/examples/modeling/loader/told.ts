@@ -1,4 +1,5 @@
 import { connectCli } from "dzql/rendering/cli/commands";
+import { cookieNameForUrl } from "dzql/rendering/scope";
 import { decoded } from "dzql/rendering/parts";
 import { list as and, type Raw } from "../heart";
 import { MODEL } from "../model";
@@ -132,7 +133,8 @@ export function format(name: string, said: string[], how?: { number: string[]; w
  * database of its own.
  */
 export async function readPage(url: string, session: string): Promise<Raw> {
-  const ws = await connectCli(`${url.replace(/\/+$/, "")}/ws`, `session_id=${session}`).catch(() => {
+  const at = `${url.replace(/\/+$/, "")}/ws`;
+  const ws = await connectCli(at, `${cookieNameForUrl(at)}=${session}`).catch(() => {
     throw new Error(`No model page at ${url}: is it running?`);
   });
   const page = await new Promise<string>((resolve) =>
@@ -146,6 +148,6 @@ export async function readPage(url: string, session: string): Promise<Raw> {
   ws.close();
   let props: string | null = null;
   new HTMLRewriter().on(`[data-doc="model:${MODEL}"]`, { element: (el) => void (props = el.getAttribute("data-props")) }).transform(page);
-  if (props === null) throw new Error("No model on the page: sign in first (bun run cli login <email> <password>).");
+  if (props === null) throw new Error("No model on the page: sign in first (login <your link>).");
   return JSON.parse(decoded(props)) as Raw;
 }

@@ -66,8 +66,10 @@ export function closureOf(raw: Raw): Register[] {
     gaps: [
       ...[...entities].filter((e) => heldIn(e).length === 0).map((e) => ({ kind: "unwatched-entity", where: e, detail: `no document holds ${e}, so nobody is told when it changes` })),
       ...docs.filter((d) => !someoneHolds(d)).map((d) => ({ kind: "unheld-document", where: d.name, detail: `${d.name} is held by nobody, and is not each person's own` })),
+      // a story no document serves happens in front of nobody (the page's "no document")
+      ...stories.filter((s) => !s.post && !docs.some((d) => d.serves.includes(String(s.id)))).map((s) => ({ kind: "unserved-story", where: story(s), detail: `no document serves it: which document is it done on? (serves <document's number> ... ${s.id})` })),
       // a document with no field anywhere in it shows nobody anything: an empty model is never "closed"
-      ...docs.filter((d) => !d.own && Object.values(d.holds).every((h) => !(h.fields ?? []).length)).map((d) => ({ kind: "empty-document", where: d.name, detail: `${d.name} holds no field: say what it holds (holds <document> <entity> <field>...)` })),
+      ...docs.filter((d) => !d.own && Object.values(d.holds).every((h) => !(h.fields ?? []).length)).map((d) => ({ kind: "empty-document", where: d.name, detail: `${d.name} holds no field: say what it holds (holds ${d.id} <entity> <field>...)` })),
       // asked once stories say what they write: an entity held and read, which no story ever writes, is always empty
       ...(said.length === 0
         ? []
@@ -103,8 +105,8 @@ export function closureOf(raw: Raw): Register[] {
       ),
       // hjeli's: every actor has something in front of them -- a teller who holds no document acts blind
       ...[...new Set(doing.map((s) => s.actor))]
-        .filter((who) => docs.length > 0 && !docs.some((d) => d.held_by.includes(who) || (d.own && d.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who))))
-        .map((who) => ({ kind: "nothing-in-front", where: who, detail: `${who} tells a story and holds no document: what do they need in front of them? (heldby <document> ${who})` })),
+        .filter((who) => !docs.some((d) => d.held_by.includes(who) || (d.own && d.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who))))
+        .map((who) => ({ kind: "nothing-in-front", where: who, detail: `${who} tells a story and holds no document: what do they need in front of them? (heldby <document's number> ${who})` })),
     ],
     // a document held by a role, whose root is one of many (a story adds them): which one is each person's?
     advice: docs.flatMap((d) =>
@@ -124,7 +126,8 @@ export function closureOf(raw: Raw): Register[] {
     ...(!asked && { notAsked: "no story says what it writes or what it presupposes (writes, requires)" }),
     gaps: [
       ...said
-        .filter(({ w }) => w.op !== "add" && !added.has(w.entity) && !byVisit.has(w.entity))
+        // an implied root's row is made by its first write, as a visit makes an own document's
+        .filter(({ w }) => w.op !== "add" && !added.has(w.entity) && !byVisit.has(w.entity) && !impliedRoots.has(w.entity))
         .map(({ s, w }: { s: (typeof stories)[number]; w: StoryWrite }) => ({ kind: "unestablished-row", where: story(s), detail: `${saidWrite(w)} presupposes a ${w.entity} row, but no story adds one` })),
       // a row added under a parent presupposes the parent's row: added by a story, made by the visit, or a document's implied root
       ...said
@@ -183,7 +186,7 @@ export function closureOf(raw: Raw): Register[] {
   // generated model.test.ts on a store, the stories over the wire, and by hand in a browser.)
   const refused = stories.filter((s) => s.kind === "cannot");
   const decided = (who: string, w: StoryWrite) =>
-    [...doing, ...refused].some((s) => s.actor === who && (s.writes ?? []).some((x) => x.entity === w.entity && x.op === w.op && (x.path ?? "") === (w.path ?? "")));
+    [...doing, ...refused].some((s) => s.actor === who && (s.writes ?? []).some((x) => x.entity === w.entity && x.op === w.op && ((x.path ?? "") === (w.path ?? "") || (s.kind === "cannot" && !x.path)))); // a cannot with no field refuses every one, as the guards do
   const writers = new Map<string, { w: StoryWrite; holders: Set<string> }>();
   for (const { w } of said) {
     const key = `${w.op} ${w.entity}${w.path ? `.${w.path}` : ""}`;
@@ -201,7 +204,9 @@ export function closureOf(raw: Raw): Register[] {
 
   // Playability (rights' derive-ux.ts): can each person take their turn? A turn is a state a story
   // waits on; a wait is a state a person makes that someone else's story waits on.
-  const shows = (who: string, entity: string, path: string) => docs.some((d) => d.held_by.includes(who) && (d.holds[entity]?.fields ?? []).some((f) => f.name === path));
+  // what is in front of someone: what they hold, and their own document where it serves a story of theirs
+  const inFront = (d: (typeof docs)[number], who: string) => d.held_by.includes(who) || (!!d.own && d.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who));
+  const shows = (who: string, entity: string, path: string) => docs.some((d) => inFront(d, who) && (d.holds[entity]?.fields ?? []).some((f) => f.name === path));
   const consumers = (k: string) => stories.filter((s) => s.kind !== "cannot" && (s.requires ?? []).some((r) => `${r.entity}.${r.path}=${r.value}` === k));
   const playability: Register = {
     predicate: "playability",

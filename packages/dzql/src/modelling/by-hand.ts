@@ -12,6 +12,7 @@
 import { isTest } from "../rendering/json-patch";
 import type { Gesture, Post, Write } from "./stories";
 import { CENTRED, MOUSE, NAMED, urlFor, waitFor } from "../rendering/webview";
+import { cookieNameFor } from "../rendering/scope";
 
 /** A phone, held upright: the stories are pressed at the size most people hold them. */
 // A phone-sized tab. On Chrome (any platform but macOS, whose default is WebKit) a page left for
@@ -209,7 +210,7 @@ export class Hand {
   async enter(cookie: string, place: string | undefined): Promise<string | undefined> {
     const view = this.view;
     await view.navigate(urlFor(view, this.url, `${this.at}/api/health`));
-    await view.evaluate(`document.cookie = "session_id=${cookie}; path=${this.at || "/"}"`);
+    await view.evaluate(`document.cookie = "${cookieNameFor(this.at)}=${cookie}; path=${this.at || "/"}"`);
     await view.navigate(urlFor(view, this.url, `${this.at}/${encodeURI(place ?? "")}`));
     const drawn = place === undefined ? `document.querySelector("#app")?.children.length > 0` : `document.querySelector("#app [data-page]")?.dataset.page === ${JSON.stringify(place)}`;
     if (!(await this.until(`window.eta?.socket()?.readyState === 1 && ${drawn}`))) return `the page did not open at ${JSON.stringify(place ?? "")}`;

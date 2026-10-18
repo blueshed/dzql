@@ -25,6 +25,25 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **Made usable before a third cafe: what three reviews and a fresh app found** (18 October,
+  Peter: "please make this a usable library ... perhaps run a review?"). The model is served beside
+  an app only when asked: `dzql serve <app> --model` (the starter's `bun dev` passes it; `start`
+  never does), not on `NODE_ENV`. Two apps composed onto one path are refused, naming it. Each app
+  under a path has its own cookie (`session_id_model` under `/model`), its own pending writes and
+  undo handles, and its sockets are closed for a reload to reconnect, so the model and the app
+  never take each other's session. The CLI signed in by a link talks to that server from then on
+  (`.eta-session.url`), `show`, `model:load` and `model:check` too, so `bun dev`'s model at
+  `:3000/model` needs no `ETA_URL`. A story told as anything but does or cannot is refused. The
+  checks: a story no document serves is a reachability gap; a gap's hint names the document by its
+  number; a teller with nothing in front of them is a gap even before any document is made; a
+  document's root row is made by its first write, as the visit makes an own document's; a cannot
+  with no field refuses every field; an own document counts as in front of its teller. What the
+  model makes: a step that drops a column or table waits for `dzql model check --drops`; a file
+  already as it would be is not written again (no reload for nothing); `By hand:` lines an earlier
+  step owes are not repeated; the guards address a document's root row as delta does
+  (`/<root>/<field>`); `model.test.ts` type-checks in the app (the starter's `tsconfig` includes
+  `model/`). The skills and README say what the tools now do.
+
 - **What the model makes stays in its own folder, and the app's stories are the app's** (18
   October, `cafe-two/feedback.md` parts two and three). `dzql model` writes into `model/` (never the
   app's `src/`, so nothing of the app's is overwritten and the app does not reload for it):

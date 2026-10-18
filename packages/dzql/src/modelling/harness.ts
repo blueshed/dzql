@@ -1,5 +1,6 @@
 import { db } from "../rendering/db";
 import type { Example } from "../rendering/example";
+import { cookieNameFor } from "../rendering/scope";
 import { assemble, type Assembled } from "../rendering/resources";
 import { createServer } from "../rendering/server";
 import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
@@ -751,7 +752,7 @@ async function snapshot(r: Run, cast: Member[], quiet?: Member): Promise<Snapsho
 
 /** Posts a form to a route as a browser posts it: from the page's own site, with the session's cookie if it has one. The route's answer, not followed. */
 const postForm = (r: Run, how: Post, cookie?: string): Promise<Response> =>
-  fetch(new URL(how.path, r.server.url), { method: "POST", body: new URLSearchParams(how.form), redirect: "manual", headers: { Origin: r.server.url.origin, ...(cookie && { Cookie: `session_id=${cookie}` }) } });
+  fetch(new URL(how.path, r.server.url), { method: "POST", body: new URLSearchParams(how.form), redirect: "manual", headers: { Origin: r.server.url.origin, ...(cookie && { Cookie: `${cookieNameFor(r.example.at)}=${cookie}` }) } });
 
 /**
  * The session a new cookie names, as the server finds it (`Example.session`), told nothing yet.
@@ -765,7 +766,7 @@ const sessionOf = async (r: Run, cookie: string): Promise<string> => {
 };
 
 /** The cookie an answer sets, if it sets one. */
-const cookieOf = (r: Run, res: Response): string | undefined => /(?:^|;\s*|,\s*)session_id=([^;,\s]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
+const cookieOf = (r: Run, res: Response): string | undefined => new RegExp(`(?:^|;\\s*|,\\s*)${cookieNameFor(r.example.at)}=([^;,\\s]+)`).exec(res.headers.get("set-cookie") ?? "")?.[1];
 
 /** Signs a member in through the example's own route, as a browser posts its form: the cookie the answer sets, or undefined for a visitor. */
 async function signIn(r: Run, name: string): Promise<string | undefined> {
@@ -787,7 +788,7 @@ async function connect(r: Run, name: string): Promise<Member> {
 /** Opens a tab of `member`'s session, as a page loading does: a socket of its own, and the page it is drawn. */
 async function open(r: Run, member: Member): Promise<void> {
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-  const ws: WebSocket = new WebSocket(r.tapped.url, { headers: { Cookie: `session_id=${member.cookie}` } });
+  const ws: WebSocket = new WebSocket(r.tapped.url, { headers: { Cookie: `${cookieNameFor(r.example.at)}=${member.cookie}` } });
   Object.assign(member, { ws, page: "", taken: new Map() });
   const name = member.name;
   ws.addEventListener("message", (event) => {

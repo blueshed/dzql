@@ -171,8 +171,10 @@ export function typesOf(model: Model, from = "@blueshed/delta/json"): string {
  * and its tables -- or nothing, when they already lead to it. Made each time the checks pass, the
  * migrations are the model's history from empty, one step per change to its schema.
  */
-export function nextMigrationOf(history: { changes?: Change[] }[], model: Model): { name: string; source: string } | undefined {
-  const { changes, byHand } = diff(stateOf(history), definitionsOf(model).schema);
+export function nextMigrationOf(history: { changes?: Change[] }[], model: Model, owed?: (line: string) => boolean): { name: string; source: string } | undefined {
+  const { changes, byHand: all } = diff(stateOf(history), definitionsOf(model).schema);
+  // what a person must finish that an earlier step already says is owed there, not here again
+  const byHand = all.filter((b) => !owed?.(`// By hand: ${b}`));
   if (!changes.length && !byHand.length) return undefined;
   const keys = [...new Set(changes.map((c) => c.key))].slice(0, 3).join("-") || "by-hand";
   return { name: `${String(history.length + 1).padStart(3, "0")}-${keys}`, source: writeMigration(changes, byHand) };
@@ -182,45 +184,55 @@ type Said = { entity: string; op: "add" | "replace" | "remove"; path?: string; t
 type Story = ModelStory & { post?: string | null; writes?: Said[] | null; requires?: { entity: string; path: string; value: string }[] | null };
 
 type Write = { doc: string; ops: Record<string, unknown>[] };
-/** One story as the tests tell it: its write on the document it is born into, the writes it needs first (in order, each with its teller), and the documents it is born into. */
-type Planned = { s: Story; write?: Write; premise: { who: string; write: Write }[]; serving: ModelDocument[] };
+/** One story as the tests tell it: its writes, each on a document that holds what it writes, the writes it needs first (in order), and the documents it is born into. */
+type Planned = { s: Story; writes: Write[]; premise: Write[]; serving: ModelDocument[] };
 
 /**
- * Each story, planned: the write on the document it is born into (one its teller holds, if any),
- * at row 1 of what it changes and under row 1 of the parent it adds under; and its premise, the
- * stories it needs -- whoever adds the row it changes or adds under, or sets the state it
- * requires -- each after what it needs in turn.
+ * Each story, planned: its writes on the documents it is born into -- one that holds every entity
+ * it writes if there is one, else each write on one that holds its entity -- at row 1 of what it
+ * changes and under row 1 of the parent it adds under; and its premise, the stories it needs --
+ * whoever adds the row it changes or adds under, or sets the state it requires -- each after what
+ * it needs in turn. A value is of its field's type ("false" is false on a boolean).
  */
-function planOf(model: Model): Planned[] {
+function planOf(model: Model): { plans: Planned[]; typed: (entity: string, field: string | undefined, v: string | undefined) => unknown } {
   const { schema } = definitionsOf(model);
   const documents = rows(model.documents);
   const stories = rows(model.stories as Record<string, Story> | Story[] | undefined);
   const parentOf = (e: string) => schema.tables[e]?.parent?.collection;
   const serving = (s: Story) => documents.filter((d) => (d.stories ?? []).map(String).includes(String(s.id)));
-  // the document the write is made on: one the teller holds, and one where what it writes is a row of
-  // a collection rather than the document's own root (adding a table is done on a page of tables)
-  const docFor = (s: Story, entity: string) => {
-    const by = serving(s).filter((d) => entity in (d.holds ?? {}));
-    const rank = (d: ModelDocument) => ((d.held_by ?? []).includes(s.actor) ? 0 : 2) + (d.root === entity ? 1 : 0);
-    return [...by].sort((x, y) => rank(x) - rank(y))[0];
+  const holding = (s: Story, entities: string[]) => serving(s).filter((d) => entities.every((e) => e in (d.holds ?? {})));
+  // where a write is made: a page of rows rather than the row's own document (a table is added on
+  // the floor), then one the teller holds
+  const best = (s: Story, docs: ModelDocument[], entity: string) =>
+    [...docs].sort((x, y) => (x.root === entity ? 2 : 0) + ((x.held_by ?? []).includes(s.actor) ? 0 : 1) - ((y.root === entity ? 2 : 0) + ((y.held_by ?? []).includes(s.actor) ? 0 : 1)))[0];
+  const typed = (entity: string, field: string | undefined, v: string | undefined): unknown => {
+    const type = field ? schema.tables[entity]?.columns[field]?.type : undefined;
+    if (v === undefined) return type === "integer" || type === "real" ? 1 : type === "boolean" ? true : type === "json" ? {} : "changed"; // none said: one of its type
+    if (type === "boolean") return v === "true" || v === "yes" || v === "1";
+    if ((type === "integer" || type === "real") && v.trim() !== "" && !Number.isNaN(Number(v))) return Number(v);
+    return v;
   };
-  // a value a replace with none said can set: one of the field's type
-  const sample = (entity: string, field?: string) => {
-    const type = field && schema.tables[entity]?.columns[field]?.type;
-    return type === "integer" || type === "real" ? 1 : type === "boolean" ? true : type === "json" ? {} : "changed";
-  };
+  // the row's own document addresses it by its id (delta: /<root>/<id>), a page of rows by /<collection>/<id>
   const opOf = (d: ModelDocument, w: Said) => {
-    if (w.entity === d.root) return w.path ? { op: "replace", path: `/${w.entity}/${w.path}`, value: w.to ?? sample(w.entity, w.path) } : { op: w.op, path: `/${w.entity}` };
-    if (w.op === "add") {
-      const parent = parentOf(w.entity);
-      return { op: "add", path: `/${w.entity}/-`, value: { ...(parent ? { [`${parent}_id`]: 1 } : {}), ...(w.path ? { [w.path]: w.to ?? null } : {}) } };
-    }
-    return w.op === "remove" ? { op: "remove", path: `/${w.entity}/1${w.path ? `/${w.path}` : ""}` } : { op: "replace", path: `/${w.entity}/1/${w.path}`, value: w.to ?? sample(w.entity, w.path) };
+    const parent = parentOf(w.entity);
+    const fields = { ...(parent ? { [`${parent}_id`]: 1 } : {}), ...(w.path ? { [w.path]: typed(w.entity, w.path, w.to) } : {}) };
+    // the document's own root is there once the document is open (made by the store, or by the proof
+    // for one under a parent), so adding it is setting the field it says, if it says one
+    if (w.op === "add" && w.entity === d.root) return w.path ? { op: "replace", path: `/${w.entity}/1/${w.path}`, value: typed(w.entity, w.path, w.to) } : undefined;
+    if (w.op === "add") return { op: "add", path: `/${w.entity}/-`, value: fields };
+    const row = `/${w.entity}/1`;
+    return w.op === "remove" ? { op: "remove", path: `${row}${w.path ? `/${w.path}` : ""}` } : { op: "replace", path: `${row}/${w.path}`, value: typed(w.entity, w.path, w.to) };
   };
-  const writeOf = (s: Story): Write | undefined => {
+  const writesOf = (s: Story): Write[] => {
     const ws = s.writes ?? [];
-    const d = ws.length ? docFor(s, ws[0]!.entity) : undefined;
-    return d && { doc: `${d.name}:1`, ops: ws.map((w) => opOf(d, w)) };
+    if (!ws.length || s.post) return [];
+    const all = best(s, holding(s, [...new Set(ws.map((w) => w.entity))]), ws[0]!.entity);
+    const groups = new Map<ModelDocument, Said[]>();
+    for (const w of ws) {
+      const d = all ?? best(s, holding(s, [w.entity]), w.entity);
+      if (d) groups.set(d, [...(groups.get(d) ?? []), w]);
+    }
+    return [...groups].map(([d, said]) => ({ doc: `${d.name}:1`, ops: said.flatMap((w) => opOf(d, w) ?? []) })).filter((w) => w.ops.length > 0);
   };
   // whoever a story needs first: the stories that add the rows it changes or adds under, or set the state it requires
   const direct = (s: Story): Story[] => {
@@ -246,7 +258,7 @@ function planOf(model: Model): Planned[] {
     direct(s).forEach(visit);
     return out;
   };
-  return stories.map((s) => ({ s, write: s.post ? undefined : writeOf(s), premise: needs(s).flatMap((o) => (writeOf(o) ? [{ who: o.actor, write: writeOf(o)! }] : [])), serving: serving(s) }));
+  return { plans: stories.map((s) => ({ s, writes: writesOf(s), premise: needs(s).flatMap(writesOf), serving: serving(s) })), typed };
 }
 
 const lit = (v: unknown) => JSON.stringify(v);
@@ -258,19 +270,20 @@ const lit = (v: unknown) => JSON.stringify(v);
  * needed: it is the model's definitions under delta, as an app keeps them. The app's own stories,
  * each saying its model story's number, are told against its pages.
  */
-export function testsOf(model: Model, app = "model"): string {
+export function testsOf(model: Model, app = "model", types = "./types"): string {
   const holds = (d: ModelDocument, w: Said) => w.entity in (d.holds ?? {}) && (!w.path || (d.holds![w.entity]!.fields ?? []).some((f) => f.name === w.path));
-  const cases = planOf(model).flatMap(({ s, write, premise, serving }) => {
-    if (!write || s.kind === "cannot") return [];
+  const { plans, typed } = planOf(model);
+  const cases = plans.flatMap(({ s, writes, premise, serving }) => {
+    if (!writes.length || s.kind === "cannot") return [];
     const told = [...new Set([s.actor, ...serving.flatMap((d) => d.held_by ?? [])])];
     // what is there after the whole write: an entity the same write removes is checked as nothing more
     const removed = new Set((s.writes ?? []).filter((w) => w.op === "remove" && !w.path).map((w) => w.entity));
     const checks = (s.writes ?? []).filter((w) => !removed.has(w.entity)).flatMap((w) =>
       told.flatMap((who) =>
-        serving.filter((d) => (d.held_by ?? []).includes(who) && holds(d, w)).map((d) => ({ who, doc: `${d.name}:1`, entity: w.entity, ...(w.path ? { path: w.path, to: w.to ?? null } : {}), root: d.root === w.entity })),
+        serving.filter((d) => (d.held_by ?? []).includes(who) && holds(d, w)).map((d) => ({ who, doc: `${d.name}:1`, entity: w.entity, ...(w.path ? { path: w.path, to: typed(w.entity, w.path, w.to) } : {}), root: d.root === w.entity })),
       ),
     );
-    return [`  [${lit(s.text)}, ${lit(premise.map((p) => p.write))}, ${lit(write)}, ${lit(checks)}],`];
+    return [`  [${lit(s.text)}, ${lit(premise)}, ${lit(writes)}, ${lit(checks)}],`];
   });
   return [
     "// The model, proved on a store: written by `dzql model` from the model's page; never edited by hand.",
@@ -279,25 +292,33 @@ export function testsOf(model: Model, app = "model"): string {
     'import { createLocal } from "@blueshed/delta/local";',
     'import { diff, stateOf } from "@blueshed/delta/migrations";',
     'import { fromFolder, migrate, registerDocs } from "@blueshed/delta/sqlite";',
-    'import { docs, schema } from "./types";',
+    `import { docs, schema } from ${lit(types)};`,
     "",
     "const migrations = await fromFolder(`${import.meta.dir}/migrations`);",
+    "// what a person must finish by hand (a parent changed) is owed by the step that says so",
+    "const owed = (await Promise.all([...new Bun.Glob(\"*.ts\").scanSync(`${import.meta.dir}/migrations`)].map((f) => Bun.file(`${import.meta.dir}/migrations/${f}`).text()))).join(\"\\n\");",
     "async function store() {",
     '  const db = new Database(":memory:");',
-    `  const { drift } = await migrate(db, migrations, { app: ${lit(app)}, schema });`,
+    `  await migrate(db, migrations, { app: ${lit(app)}, schema });`,
+    "  // a document whose root hangs from another is opened at a row that is there: row 1, and each above it",
+    "  for (const d of docs) {",
+    "    const chain = [];",
+    "    for (let t: (typeof schema.tables)[string] | undefined = schema.tables[d.root]; t; t = t.parent ? schema.tables[t.parent.collection] : undefined) chain.unshift(t);",
+    "    if (chain.length > 1) for (const t of chain) db.run(`INSERT OR IGNORE INTO \"${t.name}\" (id${t.parent ? `, \"${t.parent.fkColumn}\"` : \"\"}) VALUES (1${t.parent ? \", 1\" : \"\"})`);",
+    "  }",
     "  const local = createLocal();",
     "  registerDocs(local.server, db, schema, docs);",
-    "  return { drift, local };",
+    "  return { local };",
     "}",
     "",
     'test("the migrations, from empty, are the schema the types describe", async () => {',
-    "  expect(diff(stateOf(migrations), schema)).toEqual({ changes: [], byHand: [] });",
-    "  expect((await store()).drift).toEqual([]);",
+    "  const { changes, byHand } = diff(stateOf(migrations), schema);",
+    "  expect({ changes, byHand: byHand.filter((b) => !owed.includes(`// By hand: ${b}`)) }).toEqual({ changes: [], byHand: [] });",
     "});",
     "",
     "type Write = { doc: string; ops: unknown[] };",
     "type Check = { who: string; doc: string; entity: string; path?: string; to?: unknown; root: boolean };",
-    "const cases: [string, Write[], Write, Check[]][] = [",
+    "const cases: [string, Write[], Write[], Check[]][] = [",
     ...cases,
     "];",
     "",
@@ -306,9 +327,12 @@ export function testsOf(model: Model, app = "model"): string {
     "    test(name, async () => {",
     "      const { local } = await store();",
     "      // a write goes to a document its writer has open, as on a page",
-    '      const write = async (w: Write) => (await local.call("open", { doc: w.doc }), await local.call("delta", w));',
-    "      for (const w of premise) expect(await write(w)).toEqual({ result: { ack: true } });",
-    "      expect(await write(does)).toEqual({ result: { ack: true } });",
+    "      const write = async (w: Write) => {",
+    '        expect((await local.call("open", { doc: w.doc })).error, `open ${w.doc}`).toBeUndefined();',
+    '        return local.call("delta", w);',
+    "      };",
+    "      for (const w of premise) expect(await write(w), `the premise: ${JSON.stringify(w)}`).toEqual({ result: { ack: true } });",
+    "      for (const w of does) expect(await write(w), JSON.stringify(w)).toEqual({ result: { ack: true } });",
     "      for (const c of checks) {",
     '        const doc = (await local.call("open", { doc: c.doc })).result as Record<string, any>;',
     "        const rows = c.root ? [doc[c.entity]] : Object.values(doc[c.entity] ?? {});",

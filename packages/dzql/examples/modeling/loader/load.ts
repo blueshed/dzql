@@ -7,7 +7,7 @@
 // ./writes.ts's; what the app is, ./extract.ts's reading of its code and a run of its stories.
 // ETA_URL is the model's server (ws://localhost:3005 in eta).
 
-import { extractSessionFile } from "dzql/rendering/cli/commands";
+import { extractSessionFile, savedServer } from "dzql/rendering/cli/commands";
 import { connect, opened } from "dzql/rendering/test-socket";
 import { extract } from "./extract";
 import { send, writesOf } from "./writes";
@@ -20,12 +20,12 @@ if (!at) {
 }
 const session = (await Bun.file(sessionFile).text().catch(() => "")).trim();
 if (!session) {
-  console.error(`No session in ${sessionFile}: sign in first (bun run cli login <email> <password>).`);
+  console.error(`No session in ${sessionFile}: sign in first (login <your link>).`);
   process.exit(1);
 }
 
 const load = writesOf((await extract(at)).heart);
-const ws = connect({ url: (process.env.ETA_URL ?? "ws://localhost:3005").replace(/^ws/, "http") }, session);
+const ws = connect({ url: (process.env.ETA_URL ?? savedServer(sessionFile) ?? "ws://localhost:3005").replace(/^ws/, "http") }, session);
 await opened(ws);
 
 await send(ws, load);

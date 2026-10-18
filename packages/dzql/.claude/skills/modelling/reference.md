@@ -17,10 +17,10 @@ work in.
 
 | | Wherever dzql is installed | In a project (`bun create dzql`) | In dzql itself (`packages/dzql`) |
 |---|---|---|---|
-| The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), at `/model`, the model kept in `model.json`, named for the project; beside an app, `bunx dzql serve <app>` mounts it at `/model` in development | `bun run model`, port 3001 | `bun run dev:modeling`, port 3005 |
-| A verb | `bunx dzql model <verb>` | `bun run cli:model <verb>` | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
-| Sign in | `login <link>`: `dzql model` and `dzql serve` print a sign-in link for each keeper as they start (Peter's for the person, Claude's for the CLI); no email or password. `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) still works | the same | the same |
-| What it makes | after every change, while no check is open, the app's (`--out`, default `app`) `types.ts`, `guards.ts`, migrations and stories; `bunx dzql model check` once, exit 1 while one is open | the same | the same, `bun src/cli/index.ts model check` |
+| The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), at `/model`, the model kept in `model.json`, named for the project; beside an app, `bunx dzql serve <app> --model` mounts it at `/model` | `bun dev`, at `localhost:3000/model` beside the app (or `bun run model` alone, port 3001) | `bun run dev:modeling`, port 3005 |
+| A verb | `bunx dzql model <verb>` | `bun run cli:model <verb>`: it talks to the server whose sign-in link it was given | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
+| Sign in | `login <link>`: `dzql model` and `dzql serve --model` print a sign-in link for each keeper as they start (Peter's for the person, Claude's for the CLI); no email or password. `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) still works | the same | the same |
+| What it makes | after every change, while no check is open, into `model/` (`--out`): `types.ts`, `guards.ts`, `migrations/` and `model.test.ts`; `bunx dzql model check` once, exit 1 while one is open | the same | the same, `bun src/cli/index.ts model check` |
 
 The CLI keeps its session in `.eta-session`. A refused write prints `refused: <why>` and exits 1:
 it is the model saying no. Everyone signs in as `<name, lower case>@modeling.example`; `.env`'s
@@ -29,7 +29,7 @@ it is the model saying no. Everyone signs in as `<name, lower case>@modeling.exa
 ## The verbs
 
 `examples/modeling/cli.ts` (in a project, under `node_modules/dzql/`). Stories and documents are
-numbered as made; the page shows each story's number.
+numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by name); the page shows each number.
 
 | Said | Verb |
 |---|---|
@@ -39,13 +39,13 @@ numbered as made; the page shows each story's number.
 | What it writes, as hjeli had it | `writes <n> add <entity> replace <entity>.<field>=<value> remove <entity>...` |
 | The state it presupposes | `requires <n> <entity>.<field>=<value>...` |
 | A story taken back | `unsay <n>` |
-| A document | `document <name> <root> <story>...`: at least one story it serves |
-| What it holds | `holds <doc> <entity> [under <parent>] <field[:type]>...` |
+| A document | `document <name> <root> <story>...`: at least one story it serves; entities are plural (`invoices`) |
+| What it holds | `holds <doc> <entity> [under <parent>] <field[:type]>...`: the fields it holds, the whole list each time; types `text` (the default), `integer`, `real`, `boolean` |
 | Who holds it | `heldby <doc> <actor>...`; `own <doc>` for one each person has alone (a session) |
 | Which stories it serves | `serves <doc> <story>...` |
 | Renamed, taken out | `rename <doc> <name>`, `drop <doc>`, `unhold <doc> <entity>` (never its root) |
 | A slip | `undo`, `redo` |
-| The checks, once | `bunx dzql model check [--out app]`: every check; exit 1, and nothing made, while one is open |
+| The checks, once | `bunx dzql model check [--out model] [--drops]`: every check; exit 1, and nothing made, while one is open |
 | The model, read back | `show`: each story, numbered, who and does or cannot; each document, numbered, whose, what it serves, and what it holds under its root |
 
 Words with an apostrophe go in double quotes (`story ann does "Ann scans the table's QR code"`):
@@ -76,7 +76,7 @@ the page and at the foot of `show`: hjeli's six, Easy's coverage, and playabilit
 
 | Register | Open when |
 |---|---|
-| Reachability | an entity no document holds; a document nobody holds that is not each person's own |
+| Reachability | an entity no document holds; a document nobody holds that is not each person's own, or that holds no field; a story no document serves |
 | Subscription closure | a story writes what reaches no document anyone holds |
 | Actor closure | someone holds a document and tells no story |
 | Precondition closure | a write changes a row no story adds (an own document's root is made by the visit); a story requires a state no write sets. Not asked until a story says `writes` or `requires` |
@@ -124,7 +124,7 @@ For a page the server draws, load the **eta-app** skill; the model says what to 
 
 | In the model | In the app |
 |---|---|
-| A story | A story in `src/modelling/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into, `model` the model story's number |
+| A story | A story in `src/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into, `model` the model story's number |
 | A document | A `defineDoc` in `src/delta.ts`: its root, and what it holds as its includes |
 | An entity, its fields, its parent | A table in `defineSchema`, its columns, its `parent` |
 | `own` | A `perSession` resource |

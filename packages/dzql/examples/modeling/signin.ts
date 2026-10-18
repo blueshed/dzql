@@ -1,6 +1,7 @@
 import { refuseOrigin } from "@blueshed/delta/server";
 import { tell } from "dzql/rendering/refusal";
 import { sessionCookie } from "dzql/rendering/server";
+import { scope } from "dzql/rendering/scope";
 import { db, sessions } from "./delta";
 
 // Signing in: an email and a password, posted from the sign-in page as a plain form -- so the
@@ -25,7 +26,7 @@ export async function signIn(req: Request): Promise<Response> {
   const matches = await Bun.password.verify(String(form.get("password") ?? ""), login?.hash ?? NOBODY);
   const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/model", ...(cookie ? { "Set-Cookie": cookie } : {}) } });
   if (!login || !matches) {
-    const visit = /(?:^|;\s*)session_id=([^;]+)/.exec(req.headers.get("cookie") ?? "")?.[1];
+    const visit = new RegExp(`(?:^|;\\s*)${scope().cookie.name}=([^;]+)`).exec(req.headers.get("cookie") ?? "")?.[1];
     if (visit) await tell(await sessions.of(visit), { doc: "session", path: "/login", reason: "That email and password do not match." });
     return home();
   }

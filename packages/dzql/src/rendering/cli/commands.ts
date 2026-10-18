@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isVerb, type PatchOp } from "../json-patch";
 
 export type Command =
@@ -65,6 +65,10 @@ export function extractFlag(argv: string[], flag: string): { value: string | und
   return { value, rest };
 }
 
+/** The server a sign-in link came from (`http://host/model/in/<token>` is `ws://host/model`), kept beside the session file. */
+export const serverOfLink = (link: string): string => link.replace(/^http/, "ws").replace(/\/in\/[^/]*$/, "");
+export const savedServer = (sessionFile: string): string | undefined => (existsSync(`${sessionFile}.url`) ? readFileSync(`${sessionFile}.url`, "utf8").trim() || undefined : undefined);
+
 /** `--session <file>`, defaulting to the shared session file. */
 export function extractSessionFile(argv: string[]): { sessionFile: string; rest: string[] } {
   const { value, rest } = extractFlag(argv, "--session");
@@ -98,13 +102,13 @@ export function formatHistory(doc: { doc: string; entries?: { ops: PatchOp[] }[]
 }
 
 /** Reuses a session id saved at `file` across invocations, minting one on first use -- a cookie jar of one. */
-export function loadOrCreateSessionCookie(file: string): string {
+export function loadOrCreateSessionCookie(file: string, name = "session_id"): string {
   try {
-    return `session_id=${readFileSync(file, "utf8").trim()}`;
+    return `${name}=${readFileSync(file, "utf8").trim()}`;
   } catch {
     const id = crypto.randomUUID();
     writeFileSync(file, id);
-    return `session_id=${id}`;
+    return `${name}=${id}`;
   }
 }
 
@@ -117,7 +121,7 @@ export function loadOrCreateSessionCookie(file: string): string {
 export async function signIn(url: string, form: Record<string, string>): Promise<string | undefined> {
   const at = new URL(`${url.replace(/^ws/, "http").replace(/\/ws$/, "")}/login`); // the app's own, under its path
   const res = await fetch(at, { method: "POST", body: new URLSearchParams(form), redirect: "manual", headers: { origin: at.origin } });
-  return /session_id=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
+  return /session_id\w*=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1]; // the app's own: `session_id`, or one under a path's
 }
 
 /** Opens the socket as the session `cookie` names, or, with a `token` (`ETA_TOKEN`), as whoever the app's `identify` says it is. */

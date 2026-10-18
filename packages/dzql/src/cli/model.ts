@@ -13,6 +13,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, watch, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { nextMigrationOf, testsOf, typesOf, type Model } from "../modelling/definitions";
+import { extractSessionFile, savedServer } from "../rendering/cli/commands";
 
 /** An app's folder as `ETA_EXAMPLE` names it: a path, from here. */
 const folder = (dir = "./src") => (dir.includes("/") ? dir : `./${dir}`);
@@ -30,46 +31,54 @@ export function modelIn(file: string): Model & { name: string } {
 
 /**
  * The checks over the model in `file`, then, while none is open, what it makes in `out`: the
- * snapshot (types.ts), the tests (stories.ts, model.test.ts) and, when the schema says more than
+ * snapshot (types.ts), the guards (guards.ts), the proof (model.test.ts) and, when the schema says more than
  * the migrations there, the next one -- so the migrations are the model's trajectory, each step a
  * model the checks passed, and never behind it (model.test.ts folds them and compares). Nothing is
  * written while a check is open. Returns what to print, and whether every check passed.
  */
-export async function make(file: string, out: string): Promise<{ ok: boolean; said: string }> {
+export async function make(file: string, out: string, { drops = false }: { drops?: boolean } = {}): Promise<{ ok: boolean; said: string }> {
   const { closureOf, plainClosure } = await import("../../examples/modeling/closure");
   const model = modelIn(file);
   const registers = closureOf({ models: { name: model.name }, ...model } as Parameters<typeof closureOf>[0]);
   const checks = plainClosure(registers);
   if (registers.some((r) => r.gaps.length > 0)) return { ok: false, said: `${checks}\n\nNothing made: close each gap first.` };
   if (Object.keys(model.stories ?? {}).length === 0) return { ok: true, said: "No stories yet: nothing made." };
-  // what the model makes, written over only what it made before: a file a person wrote is kept,
-  // and the model's goes beside it (`stories.model.ts`), for them to bring together
-  const made: string[] = [];
-  const put = (name: string, source: string) => {
-    const at = join(out, name);
-    const theirs = existsSync(at) && !/dzql model/.test(readFileSync(at, "utf8").split("\n", 1)[0]!);
-    const as = theirs ? name.replace(/\.ts$/, ".model.ts") : name;
-    writeFileSync(join(out, as), source);
-    made.push(as);
-  };
   const dir = join(out, "migrations");
   mkdirSync(dir, { recursive: true });
   const { fromFolder } = await import("@blueshed/delta/sqlite");
   const history = await fromFolder(resolve(dir));
-  // a step only a person can finish (a parent changed, a type) is written once, for them to finish: not again on every change
-  const last = readdirSync(dir).filter((f) => f.endsWith(".ts")).sort().at(-1);
-  const proposed = nextMigrationOf(history, model);
-  const owed = proposed?.source.split("\n").filter((l) => l.startsWith("// By hand:")) ?? [];
-  const next = proposed && last && !/^\s+\w+\(/m.test(proposed.source) && owed.every((l) => readFileSync(join(dir, last), "utf8").includes(l)) ? undefined : proposed;
-  put("types.ts", typesOf(model));
-  put("model.test.ts", testsOf(model, basename(resolve(out))));
+  const steps = () => readdirSync(dir).filter((f) => f.endsWith(".ts")).sort();
+  // a step only a person can finish (a parent changed, a type) is written once, for them to finish:
+  // a By hand: line an earlier step already carries is owed there, not again
+  const before = steps().map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
+  const proposed = nextMigrationOf(history, model, (line) => before.includes(line));
+  // a step that drops a column or a table loses data: the page never writes one on its own (an undo,
+  // a field list said again, might be a slip); `dzql model check` writes it, said so
+  const dropped = proposed?.source.match(/\b(dropColumn|dropTable)\([^)]*\)/g) ?? [];
+  const held = dropped.length > 0 && !drops;
+  const next = held ? undefined : proposed;
+  // what the model makes, written over only what it made before: a file a person wrote is kept,
+  // and the model's goes beside it (`types.model.ts`); a file already as it would be is left alone,
+  // so a server under `bun --hot` that imports it does not reload for nothing
+  const made: string[] = [];
+  const put = (name: string, source: (as: string) => string) => {
+    const at = join(out, name);
+    const theirs = existsSync(at) && !/dzql model/.test(readFileSync(at, "utf8").split("\n", 1)[0]!);
+    const as = theirs ? name.replace(/\.ts$/, ".model.ts") : name;
+    const text = source(as);
+    if (!existsSync(join(out, as)) || readFileSync(join(out, as), "utf8") !== text) writeFileSync(join(out, as), text);
+    made.push(as);
+    return as;
+  };
+  const types = put("types.ts", () => typesOf(model));
+  put("model.test.ts", () => testsOf(model, basename(resolve(out)), `./${types.replace(/\.ts$/, "")}`));
   if (next) writeFileSync(join(dir, `${next.name}.ts`), next.source);
   // hjeli's guarded write layer, once a story says what it writes (./model-tools.ts, ../modelling/guards.ts)
   const { guardsOf, guardSource } = await import("../modelling/guards");
   const guards = guardsOf({ models: { name: model.name }, ...model } as Parameters<typeof guardsOf>[0]);
-  if (guards.rules.length) put("guards.ts", guardSource(guards, basename(file)));
-  const steps = readdirSync(dir).filter((f) => f.endsWith(".ts")).sort();
-  return { ok: true, said: `${checks}\n\n${out}: ${made.join(", ")}; migrations ${steps.map((f) => f.replace(/\.ts$/, "")).join(", ") || "none"}${next ? ` (${next.name} new)` : ""}` };
+  if (guards.rules.length) put("guards.ts", () => guardSource(guards, basename(file)));
+  const waiting = held ? `\nA step that drops data is waiting, not written: ${dropped.join(", ")}. If that is meant, \`dzql model check --drops\` writes it; if not, say the model again.` : "";
+  return { ok: true, said: `${checks}\n\nmodel: ${made.join(", ")}; migrations ${steps().map((f) => f.replace(/\.ts$/, "")).join(", ") || "none"}${next ? ` (${next.name} new)` : ""}${waiting}` };
 }
 
 /** A project's own model is named for the project -- not the example's seeded one. */
@@ -87,14 +96,21 @@ async function sayLinks(port: string): Promise<void> {
   console.log(["The model's page, signed in by a link:", ...signInLinks(`http://localhost:${port}`).map((l) => `  ${l}`)].join("\n"));
 }
 
-/** After every change to the model's file, by the page or by hand: the checks, and what they let it make. */
+/**
+ * After every change to the model's file, by the page or by hand: the checks, and what they let it
+ * make. One watcher a process: `bun --hot` running this again closes the last one, so a change is
+ * made once, not once for every reload.
+ */
 function watchModel(file: string, out: string): void {
+  const kept = globalThis as { __dzqlModelWatch?: { close(): void } };
+  kept.__dzqlModelWatch?.close();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const again = () => {
     clearTimeout(timer);
     timer = setTimeout(async () => console.log((await make(file, out)).said), 200);
   };
-  watch(resolve(file), again);
+  const watcher = watch(resolve(file), again);
+  kept.__dzqlModelWatch = { close: () => (clearTimeout(timer), watcher.close()) };
   again();
 }
 
@@ -104,15 +120,15 @@ export async function run(argv: string[]): Promise<boolean> {
   const flag = (name: string, or: string) => (rest.includes(name) ? rest[rest.indexOf(name) + 1] ?? or : or);
   const file = process.env.MODEL_FILE ?? "model.json";
   if (verb === "serve") {
-    // the app's routes and resources; in development the model's beside them, at /model, writing
-    // what it makes into its own folder (`model/`) -- production never registers it
+    // the app's routes and resources; with --model (development) the model's beside them, at /model, writing
+    // what it makes into its own folder (`model/`) -- without it the model is never registered
     const dir = folder(sub);
     process.env.ETA_EXAMPLE = dir;
     const { run: running, serve } = await import("@blueshed/delta/serve");
     const { appDir } = await import("../rendering/names");
     const { appOf, compose } = await import("../rendering/server");
     const { example } = await import(`${appDir(dir)}/index.ts`);
-    const dev = process.env.NODE_ENV !== "production";
+    const dev = rest.includes("--model");
     if (dev) {
       process.env.MODEL_FILE = file;
       process.env.MODEL_NAME ??= projectName();
@@ -128,7 +144,11 @@ export async function run(argv: string[]): Promise<boolean> {
   if (verb !== "model") return false;
   const port = process.env.MODEL_PORT ?? "3001";
   if (sub === "check") {
-    const { ok, said } = await make(file, flag("--out", "model"));
+    if (!existsSync(file)) {
+      process.stderr.write(`No model in ${file}: start the model's page with \`dzql model\` (or \`dzql serve <app> --model\`), and tell it the stories.\n`);
+      process.exit(1);
+    }
+    const { ok, said } = await make(file, flag("--out", "model"), { drops: rest.includes("--drops") });
     process.stdout.write(`${said}\n`);
     process.exit(ok ? 0 : 1);
   }
@@ -144,7 +164,8 @@ export async function run(argv: string[]): Promise<boolean> {
     watchModel(file, out);
     return true;
   }
-  process.env.ETA_URL ??= `ws://localhost:${port}/model`;
+  // the server the CLI signed in to (its link said where), else the model's own on its port
+  if (!savedServer(extractSessionFile(rest).sessionFile)) process.env.ETA_URL ??= `ws://localhost:${port}/model`;
   process.argv = [process.argv[0]!, process.argv[1]!, sub, ...rest];
   await import("../rendering/cli");
   return true;

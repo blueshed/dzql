@@ -150,3 +150,11 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     expect(open).toContain("//   story 7: it presupposes u.f=1, which is not a t row or one it hangs under");
   });
 });
+
+test("a document's root row, as delta also addresses it (/<root>/<field>), is the document's own row", async () => {
+  const guards = guardsOf(leave);
+  const row: RowOf = () => ({ id: 1, open: "no" });
+  expect(await check(guards, { actor: "mo", doc: "team", docId: "1", op: { op: "replace", path: "/teams/open", value: "yes" }, rowOf: row })).toEqual({ ok: true, story: 2 });
+  expect(await check(guards, { actor: "mo", doc: "team", docId: "1", op: { op: "replace", path: "/teams/1/open", value: "yes" }, rowOf: row })).toEqual({ ok: true, story: 2 });
+  expect((await check(guards, { actor: "ann", doc: "team", docId: "1", op: { op: "replace", path: "/teams/open", value: "yes" }, rowOf: row })).ok).toBe(false);
+});

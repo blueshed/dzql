@@ -29,7 +29,7 @@ const fileArgs = (a: Json) => [...(a.file ? [a.file] : []), ...(a.out ? ["--out"
 
 /** The verbs, as tools. */
 export const tools: Tool[] = [
-  tool("check", "The checks over the model (hjeli's six, Easy's coverage, playability); while none is open, the app's types.ts, migrations and tests are made in `out` (default app). Gaps are an answer, not an error.", { out: { type: "string", description: "The app's folder (default app)." } }, [], (a) => ["model", "check", ...(a.out ? ["--out", a.out] : [])], true),
+  tool("check", "The checks over the model (hjeli's six, Easy's coverage, playability); while none is open, types.ts, guards.ts, migrations and model.test.ts are made in `out` (default model). Gaps are an answer, not an error.", { out: { type: "string", description: "The folder the model's files go in (default model)." } }, [], (a) => ["model", "check", ...(a.out ? ["--out", a.out] : [])], true),
   tool("show", "The model as its page shows it, in plain text, with the six registers.", {}, [], () => ["model", "show"]),
   tool("story", "Tell a story: who tells it, whether they do it or cannot, its words; `post` when it posts a form to a route.", { actor: { type: "string" }, kind: { type: "string", enum: ["does", "cannot"] }, text: { type: "string" }, post: { type: "string" } }, ["actor", "kind", "text"], (a) => ["model", "story", a.actor, a.kind, ...(a.post ? ["--post", a.post] : []), a.text]),
   tool("reword", "Say a story in new words.", { story, text: { type: "string" } }, ["story", "text"], (a) => ["model", "reword", a.story, a.text]),

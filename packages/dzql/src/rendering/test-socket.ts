@@ -1,6 +1,7 @@
 import { expect } from "bun:test";
 import { hear, type Heard } from "../modelling/harness";
 import type { PatchOp, Test, WriteId } from "./json-patch";
+import { cookieNameForUrl } from "./scope";
 
 // A socket to a running app, as a test holds it: everything the app sends it, in order, and the page
 // it holds once each render is laid on, as the browser keeps it (the harness's `hear`). For what a
@@ -39,7 +40,7 @@ export function connect(server: { url: URL | string }, sessionId?: string, at?: 
   if (at !== undefined) url.searchParams.set("at", at); // the screen a tab's URL names, as the client sends it
   url.protocol = "ws:";
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-  const ws: WebSocket = sessionId ? new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } }) : new WebSocket(url);
+  const ws: WebSocket = sessionId ? new WebSocket(url, { headers: { Cookie: `${cookieNameForUrl(url)}=${sessionId}` } }) : new WebSocket(url);
   const h: Held = { queue: [], waiting: [], page: "" };
   held.set(ws, h);
   ws.addEventListener("message", (event) => {

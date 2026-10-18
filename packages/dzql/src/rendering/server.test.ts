@@ -673,6 +673,11 @@ describe("createServer, generically (no example from the examples directory invo
 });
 
 describe("a server is routes to resources: apps composed side by side", () => {
+  test("two apps never answer one path: composing them says which", () => {
+    const hello = () => new Response("hello");
+    expect(() => compose({ routes: { "/hello": hello } }, { routes: { "/hello": hello } })).toThrow("two apps serve /hello: mount one at its own path (Example.at)");
+  });
+
   test("two examples on one server, each under its path: its page, its socket, its cookie, its own state", async () => {
     const app = (name: string, at: string): Example => ({ name, at, resources: [], render: () => `<p>${name}</p>`, active: () => true, index, delta: createLocal(), routes: { "/menu": () => new Response(name) } });
     const [a, b] = [appOf(app("cafe", "")), appOf(app("model", "/model"))];

@@ -146,7 +146,7 @@ describe("over a model's file, from the command line and over stdio", () => {
     const { file, stories } = await made();
     const refused = await run(["model", "guards", file]);
     expect(refused.code).toBe(1);
-    expect(refused.err).toStartWith("Not generated: close every check first.\n\nChecks (hjeli's six, Easy's coverage, derive-ux's playability)\nReachability: 2 gaps");
+    expect(refused.err).toStartWith("Not generated: close every check first.\n\nChecks (hjeli's six, Easy's coverage, derive-ux's playability)\nReachability: 12 gaps");
     await saved(file, "leave", stories, [{ ...leave.documents!["1"]!, models_id: 1, own: 0 }]);
     const written = await run(["model", "guards", file]);
     expect(written.code).toBe(0);

@@ -101,12 +101,13 @@ const heard = new WeakMap<Documents, Scope>();
  */
 type Made = { version?: number; entry?: number } | null;
 type Claim = { ws: Socket; id: WriteId; doc: string; made: Promise<Made> };
-const claims = new Set<Claim>();
+/** The app's writes awaiting their echo (its scope's). */
+const claims = () => scope().claims as Set<Claim>;
 
 /** Makes a write for `ws`, claiming its change to `doc` for the write's id, if it has one. */
 function claimed<T>(ws: Socket, id: WriteId | undefined, doc: string, writing: Promise<T>, made: (done: T) => Made): Promise<T> {
   if (id === undefined) return writing;
-  claims.add({ ws, id, doc, made: Promise.allSettled([writing]).then(([done]) => (done!.status === "fulfilled" ? made(done.value) : null)) }); // a write that throws made no change
+  claims().add({ ws, id, doc, made: Promise.allSettled([writing]).then(([done]) => (done!.status === "fulfilled" ? made(done.value) : null)) }); // a write that throws made no change
   return writing;
 }
 
@@ -116,12 +117,13 @@ function claimed<T>(ws: Socket, id: WriteId | undefined, doc: string, writing: P
  * gaps count everyone's writes, in documents this person cannot read too. Undo by change takes a
  * handle and nothing else. Kept while the session has a page open, the last MOST_HANDLES of them.
  */
-const handles = new Map<string, Map<string, number>>();
+/** The app's sessions' handles (its scope's): two apps may each have a session "1". */
+const handles = () => scope().handles;
 const MOST_HANDLES = 100;
 
 /** A handle for `entry`, a change `sessionId` made. */
 function handleFor(sessionId: string, entry: number): string {
-  const mine = handles.get(sessionId) ?? handles.set(sessionId, new Map()).get(sessionId)!;
+  const mine = handles().get(sessionId) ?? handles().set(sessionId, new Map()).get(sessionId)!;
   const handle = newHandle();
   mine.set(handle, entry);
   if (mine.size > MOST_HANDLES) mine.delete(mine.keys().next().value!);
@@ -130,9 +132,9 @@ function handleFor(sessionId: string, entry: number): string {
 
 /** The claim a change answers, if any: a write's to that document, at that version, with the entry it made. Taken, so it answers once. */
 async function claimOf(doc: string, v: number | undefined): Promise<{ ws: Socket; id: WriteId; entry?: number } | undefined> {
-  for (const claim of [...claims].filter((c) => c.doc === doc)) {
+  for (const claim of [...claims()].filter((c) => c.doc === doc)) {
     const made = await claim.made;
-    if (!made || made.version !== v || !claims.delete(claim)) continue;
+    if (!made || made.version !== v || !claims().delete(claim)) continue;
     return { ws: claim.ws, id: claim.id, entry: made.entry };
   }
   return undefined;
@@ -288,7 +290,7 @@ export function appOf(example: Example): DzqlApp {
   async function walk(ws: Socket, ops: PatchOp[], id?: WriteId): Promise<boolean> {
     const way = ops[0]!.op === "add" ? "redo" : "undo";
     const handle = handleOf(ops[0]!.path);
-    const change = handle === undefined ? undefined : handles.get(ws.data.sessionId)?.get(handle);
+    const change = handle === undefined ? undefined : handles().get(ws.data.sessionId)?.get(handle);
     const unknown = () => refuse(`No change of yours is called ${handle}.`);
     if (handle !== undefined && change === undefined) throw unknown();
     const by = { identity: who(ws), cursor: ws.data.sessionId };
@@ -374,7 +376,7 @@ export function appOf(example: Example): DzqlApp {
       void redraw(ws, !asWrite); // a message that is no write asks for the page (src/client/app.ts)
     }
     await quiet(documents);
-    for (const claim of claims) if (claim.ws === ws) claims.delete(claim); // its change told by now, or never to be
+    for (const claim of claims()) if (claim.ws === ws) claims().delete(claim); // its change told by now, or never to be
   }
 
   /** Lets go of the documents no open page reads any more. */
@@ -440,7 +442,7 @@ export function appOf(example: Example): DzqlApp {
       }),
       close: (ws) => within(app, () => {
         closeConnection(ws);
-        if (![...allOpenSockets()].some((open) => open.data.sessionId === ws.data.sessionId)) handles.delete(ws.data.sessionId);
+        if (![...allOpenSockets()].some((open) => open.data.sessionId === ws.data.sessionId)) handles().delete(ws.data.sessionId);
         enqueue(async () => {
           for (const resource of resources) await resource.onClose?.(ws);
           await quiet(documents);
@@ -460,6 +462,8 @@ export function appOf(example: Example): DzqlApp {
       if (--held.apps > 0) return;
       scopes.delete(example);
       within(app, () => {
+        // sockets on handlers no longer served (a `bun --hot` reload) reconnect to the new ones
+        for (const ws of app.openSockets) ws.close(1012, "restarting");
         app.page = undefined;
         setActiveResources(undefined);
         setActiveDocuments(undefined);
@@ -484,6 +488,10 @@ const SOCKET = {
  */
 export function compose(...apps: (App | false | undefined)[]): App & { close: (() => void | Promise<void>)[] } {
   const all = apps.filter((a): a is App => !!a);
+  // two apps never answer one path: mount one of them elsewhere (`at`)
+  const taken = all.flatMap((a) => Object.keys(a.routes ?? {}));
+  const clash = taken.find((path, i) => taken.indexOf(path) !== i);
+  if (clash) throw new Error(`two apps serve ${clash}: mount one at its own path (Example.at)`);
   const ws = all.find((a) => a.ws)?.ws;
   // a socket an app opened goes to that app; any other is delta's (its actions, its pub/sub)
   const dispatch = (name: "open" | "message" | "close") => (socket: Bun.ServerWebSocket<any>, ...rest: unknown[]) => {

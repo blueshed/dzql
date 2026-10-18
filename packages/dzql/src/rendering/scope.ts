@@ -17,18 +17,27 @@ export type Scope = {
   openSockets: Set<ServerWebSocket<ConnectionData>>;
   /** The app's page for a session (its resources' `page`), drawn for each of its sockets. */
   page?: (sessionId: string) => string;
-  /** The cookie its sessions go by, and the path it is sent on: under its own path, so a browser sends it first there (the longest path first). */
+  /** The cookie its sessions go by, and the path it is sent on: its own name under its own path, so two apps on one server never take each other's. */
   cookie: { name: string; path: string };
+  /** Writes awaiting their echo, and each session's handles for the changes it made (./server.ts): the app's own. */
+  claims: Set<unknown>;
+  handles: Map<string, Map<string, number>>;
 };
+
+/** The cookie an app's sessions go by: `session_id` at the root, `session_id_model` under `/model`. */
+export const cookieNameFor = (at = ""): string => (at ? `session_id_${at.replace(/[^A-Za-z0-9]/g, "")}` : "session_id");
+
+/** The cookie of the app a socket's or a route's URL is under: `ws://host/model/ws` is the model's. */
+export const cookieNameForUrl = (url: string | URL): string => cookieNameFor(new URL(String(url).replace(/^ws/, "http")).pathname.replace(/\/(ws|login)?\/?$/, ""));
 
 const storage = new AsyncLocalStorage<Scope>();
 const serving = new Set<Scope>();
 /** What a call outside any app reads when the process serves none, or more than one. */
-const nobody: Scope = { cookieIsSession: false, openSockets: new Set(), cookie: { name: "session_id", path: "/" } };
+const nobody: Scope = { cookieIsSession: false, openSockets: new Set(), cookie: { name: "session_id", path: "/" }, claims: new Set(), handles: new Map() };
 
 /** A new app's scope, served until `unserved`. */
 export function served(at = ""): Scope {
-  const scope: Scope = { cookieIsSession: false, openSockets: new Set(), cookie: { name: "session_id", path: at || "/" } };
+  const scope: Scope = { cookieIsSession: false, openSockets: new Set(), cookie: { name: cookieNameFor(at), path: at || "/" }, claims: new Set(), handles: new Map() };
   serving.add(scope);
   return scope;
 }

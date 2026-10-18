@@ -8,7 +8,7 @@
 // model page read as the CLI signed in to it (.eta-session, or `--session <file>`; ETA_URL, by
 // default ws://localhost:3005), or the page's document saved to a file.
 
-import { extractSessionFile } from "dzql/rendering/cli/commands";
+import { extractSessionFile, savedServer } from "dzql/rendering/cli/commands";
 import type { Stories } from "dzql/modelling/stories";
 import { toEngineModel } from "./model/document-first";
 import { runAll } from "./model/predicates";
@@ -26,7 +26,7 @@ const p = rest.indexOf("--against-page");
 if (p >= 0) {
   const file = rest[p + 1];
   const session = (await Bun.file(sessionFile).text().catch(() => "")).trim();
-  const page = file && !file.startsWith("--") ? await Bun.file(file).json() : await readPage(process.env.ETA_URL ?? "ws://localhost:3005", session).catch((err: Error) => {
+  const page = file && !file.startsWith("--") ? await Bun.file(file).json() : await readPage(process.env.ETA_URL ?? savedServer(sessionFile) ?? "ws://localhost:3005", session).catch((err: Error) => {
     console.error(err.message);
     process.exit(1);
   });

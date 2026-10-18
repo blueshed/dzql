@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Resource } from "../resources/resource";
@@ -19,6 +19,8 @@ import {
   formatHistory,
   formatInspection,
   loadOrCreateSessionCookie,
+  savedServer,
+  serverOfLink,
   parseCommand,
   runCommand,
   signIn,
@@ -162,6 +164,19 @@ describe("loadOrCreateSessionCookie", () => {
     const second = loadOrCreateSessionCookie(file);
     expect(second).toBe(first);
 
+    rmSync(dir, { recursive: true });
+  });
+});
+
+describe("the server a sign-in link came from", () => {
+  test("is the link's app as a socket, kept beside the session file; none until a link is used", () => {
+    expect(serverOfLink("http://localhost:3000/model/in/abc")).toBe("ws://localhost:3000/model");
+    expect(serverOfLink("https://cafe.example/in/abc")).toBe("wss://cafe.example");
+    const dir = mkdtempSync(join(tmpdir(), "eta-cli-"));
+    const file = join(dir, "session");
+    expect(savedServer(file)).toBeUndefined();
+    writeFileSync(`${file}.url`, "ws://localhost:3000/model\n");
+    expect(savedServer(file)).toBe("ws://localhost:3000/model");
     rmSync(dir, { recursive: true });
   });
 });

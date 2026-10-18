@@ -19,7 +19,7 @@ and go on.
 ## The order
 
 1. **Start the page, give the teller their link, and sign the CLI in with yours.** `dzql model` (or
-   `dzql serve`) prints a sign-in link for each keeper as it starts: hand the teller theirs at once
+   `dzql serve --model`, which `bun dev` runs) prints a sign-in link for each keeper as it starts: hand the teller theirs at once
    (Peter's, the first of `MODEL_PEOPLE`), with no homework, and sign the CLI in with Claude's
    (`login <link>`). Never sign the two in as one person. → reference: *Where it runs*
    - **One change at a time, while the teller watches.** Say it, write it, let them see it land on
@@ -41,6 +41,6 @@ and go on.
    something to fix quietly. → *The gaps*
 6. **Build nothing yet.** The model is done enough when the checks are closed (or say why they
    cannot be asked) and the teller reads the page and calls each story true. While none is open,
-   `dzql model` (or `dzql serve`, the model at `/model` beside the app) writes the app's
-   `types.ts`, `guards.ts`, migrations and stories; the app is built from them with the **eta-app**
+   `dzql model` (or `dzql serve --model`, the model at `/model` beside the app) writes
+   `model/types.ts`, `guards.ts`, `migrations/` and `model.test.ts`, never a story; the app is built from them with the **eta-app**
    skill -- load it, and its page and bento references, before drawing a page. → *From the model to the app*

@@ -90,8 +90,8 @@ bunx dzql model check
 The model's page is http://localhost:3001/model, watched live as the stories land; the model is
 `model.json`, which the page edits, signed in by the link each keeper gets as it starts. What it
 makes goes in a folder of its own, `model/`: `types.ts` (below), `guards.ts`, the migrations from
-empty and `model.test.ts`, the proof. Beside an app, `dzql serve` mounts the model at `/model` in
-development, and production never registers it. `model/types.ts`:
+empty and `model.test.ts`, the proof. Beside an app, `dzql serve --model` mounts the model at `/model`
+(the starter's `bun dev` passes it); without it the model is never registered. `model/types.ts`:
 
 ```ts
 // The model, now: delta's definitions, a row type per table and each document's shape. Written by `dzql model` from the model's page; never edited by hand.

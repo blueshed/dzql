@@ -194,9 +194,10 @@ describe("the model's rules", () => {
     expect(shape(m, [{ op: "add", path: "/stories/-", value: { text: " Bo asks ", actor: "bo", kind: "cannot", post: " /login ", touches: ["requests", " "] } }])).toEqual([
       { op: "add", path: "/stories/-", value: { text: "Bo asks", actor: "bo", kind: "cannot", post: "/login", touches: ["requests"] } },
     ]);
-    expect(shape(m, [{ op: "add", path: "/stories/-", value: { text: "Bo asks", actor: "bo", kind: "maybe", post: " " } }])).toEqual([
+    expect(shape(m, [{ op: "add", path: "/stories/-", value: { text: "Bo asks", actor: "bo", post: " " } }])).toEqual([
       { op: "add", path: "/stories/-", value: { text: "Bo asks", actor: "bo", kind: "does", post: null, touches: [] } },
     ]);
+    expect(refusal({ op: "add", path: "/stories/-", value: { text: "Bo asks", actor: "bo", kind: "sees" } })).toBe('A story is one someone does or cannot do, not "sees".');
     expect(refusal({ op: "add", path: "/stories/-" })).toBe("A story needs words.");
     expect(refusal({ op: "add", path: "/stories/-", value: { text: "Bo asks" } })).toBe("A story is someone's: say who tells it.");
     expect(shape(m, [{ op: "replace", path: "/stories/1/text", value: "Ann asks again" }])).toEqual([{ op: "replace", path: "/stories/1/text", value: "Ann asks again" }]);
@@ -318,7 +319,7 @@ describe("modeling, served", () => {
   /** Posts the sign-in form, as a browser does: the answer, and the session its cookie names. */
   async function signIn(email: string, password: string, headers: Record<string, string> = {}): Promise<{ res: Response; sessionId?: string }> {
     const res = await fetch(new URL("/model/login", server.url), { method: "POST", body: new URLSearchParams({ email, password }), redirect: "manual", headers });
-    return { res, sessionId: /session_id=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] };
+    return { res, sessionId: /session_id_model=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] };
   }
 
   test("signing in by a link: each keeper's, said as the server starts; one that is no link signs nobody in", async () => {
@@ -327,7 +328,7 @@ describe("modeling, served", () => {
     const peter = await fetch(links[0]!.slice("Peter: ".length), { redirect: "manual" });
     expect(peter.status).toBe(303);
     expect(peter.headers.get("location")).toBe("/model");
-    expect(peter.headers.get("set-cookie")).toContain("session_id=");
+    expect(peter.headers.get("set-cookie")).toContain("session_id_model="); // the model's own cookie, under its path
     const nobody = await fetch(new URL("/model/in/not-a-link", server.url), { redirect: "manual" });
     expect(nobody.headers.get("set-cookie")).toBeNull();
   });
@@ -336,7 +337,7 @@ describe("modeling, served", () => {
     expect((await fetch(new URL("/model/login", server.url), { redirect: "manual" })).headers.get("location")).toBe("/model");
     expect((await signIn("peter@modeling.example", "peter-password", { origin: "https://elsewhere.example" })).res.status).toBe(403);
     expect((await signIn("peter@modeling.example", "wrong")).sessionId).toBeUndefined();
-    expect((await signIn("nobody@modeling.example", "peter-password", { cookie: "session_id=a-visit" })).sessionId).toBeUndefined();
+    expect((await signIn("nobody@modeling.example", "peter-password", { cookie: "session_id_model=a-visit" })).sessionId).toBeUndefined();
     expect((await signIn(" Peter@Modeling.example ", "peter-password")).sessionId).toBeString();
   });
 
@@ -345,7 +346,7 @@ describe("modeling, served", () => {
     const url = new URL("/model/ws", server.url); // the model is a route of its own, at /model
     url.protocol = "ws:";
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-    const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
+    const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id_model=${sessionId}` } });
     const inbox: string[] = [];
     let answered: () => void = () => {};
     ws.addEventListener("message", (event) => {
@@ -383,7 +384,7 @@ describe("modeling, served", () => {
       expect(await show(ws, file)).toBe(0);
       expect(printed).toHaveBeenCalledWith(`${page}\n\n${plainClosure(closureOf(raw))}`);
       expect(await show(ws, `${file}-none`)).toBe(1);
-      expect(said).toHaveBeenCalledWith("No model on the page: sign in first (bun run cli login <email> <password>).");
+      expect(said).toHaveBeenCalledWith("No model on the page: sign in first (login <your link>).");
     } finally {
       printed.mockRestore();
       said.mockRestore();

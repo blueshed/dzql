@@ -75,7 +75,11 @@ const requiresOf = (value: unknown): Requires[] =>
   });
 
 /** Whether a story is done or refused: `does` unless it says `cannot`. */
-const kindOf = (value: unknown): string => (value === "cannot" ? "cannot" : "does");
+const kindOf = (value: unknown): string => {
+  if (value === undefined) return "does";
+  if (value === "does" || value === "cannot") return value;
+  throw refuse(`A story is one someone does or cannot do, not "${String(value)}".`);
+};
 
 /** The stories a document is for: ids the model has, at least one. */
 function storiesOf(m: Model, value: unknown): number[] {

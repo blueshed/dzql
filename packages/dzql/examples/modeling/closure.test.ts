@@ -34,8 +34,9 @@ describe("hjeli's six registers, over the model as it is told", () => {
       { kind: "unwatched-entity", where: "approvals", detail: "no document holds approvals, so nobody is told when it changes" },
       { kind: "unwatched-entity", where: "logins", detail: "no document holds logins, so nobody is told when it changes" },
       { kind: "unheld-document", where: "holidays", detail: "holidays is held by nobody, and is not each person's own" },
-      { kind: "empty-document", where: "holidays", detail: "holidays holds no field: say what it holds (holds <document> <entity> <field>...)" },
-      { kind: "empty-document", where: "calendar", detail: "calendar holds no field: say what it holds (holds <document> <entity> <field>...)" },
+      { kind: "unserved-story", where: "story 4 (ann)", detail: "no document serves it: which document is it done on? (serves <document's number> ... 4)" },
+      { kind: "empty-document", where: "holidays", detail: "holidays holds no field: say what it holds (holds 3 <entity> <field>...)" },
+      { kind: "empty-document", where: "calendar", detail: "calendar holds no field: say what it holds (holds 4 <entity> <field>...)" },
     ]);
   });
 
@@ -77,8 +78,8 @@ describe("hjeli's six registers, over the model as it is told", () => {
 
   test("drawn across the top: each a chip, open, closed or not asked, its gaps beneath; and in plain text for the CLI", () => {
     const html = drawClosure(r);
-    expect(html).toStartWith(`<section id="closure" aria-label="the model's checks: 13 gaps">`);
-    expect(html).toContain(`<details class="register open" data-predicate="reachability"><summary><span class="dot"></span>Reachability · 5 gaps</summary>`);
+    expect(html).toStartWith(`<section id="closure" aria-label="the model's checks: 14 gaps">`);
+    expect(html).toContain(`<details class="register open" data-predicate="reachability"><summary><span class="dot"></span>Reachability · 6 gaps</summary>`);
     expect(html).toContain(`<details class="register unasked" data-predicate="precondition-closure"><summary><span class="dot"></span>Precondition closure · not asked</summary><div class="register-body"><p class="asks">every row a write presupposes is added by some story, and every state a story requires some write sets</p><p>Not asked: no story says what it writes or what it presupposes (writes, requires).</p>`);
     expect(html).toContain("<li><b>story 5 (ann)</b> ann touches holidays, held by no document ann holds</li>");
     const closed = drawClosure(closureOf({ models: { name: "Cafe" } }));
@@ -89,7 +90,7 @@ describe("hjeli's six registers, over the model as it is told", () => {
     expect(drawClosure(closureOf({ models: { name: "Cafe" }, documents: { "3": { ...told.documents!["3"]!, stories: [] } } }))).toContain(`aria-label="the model's checks: 2 gaps"`) // held by nobody, and holds no field;
     expect(plainClosure(r).split("\n").slice(0, 5)).toEqual([
       "Checks (hjeli's six, Easy's coverage, derive-ux's playability)",
-      "Reachability: 5 gaps",
+      "Reachability: 6 gaps",
       "  unwatched-entity · approvals: no document holds approvals, so nobody is told when it changes",
       "  unwatched-entity · logins: no document holds logins, so nobody is told when it changes",
       "  unheld-document · holidays: holidays is held by nobody, and is not each person's own",
@@ -111,12 +112,11 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
       "2": { id: 2, name: "session", root: "sessions", own: 1, holds: { sessions: { parent: null, fields: [] } }, stories: [4] },
     },
   };
-  test("a change to a row no story adds, and a state no write sets; the visit makes an own document's row", () => {
+  test("a state no write sets; a document's root row is the document's, and the visit makes an own document's row", () => {
     expect(of(closureOf(said), "precondition-closure")).toEqual({
       predicate: "precondition-closure",
       asks: "every row a write presupposes is added by some story, and every state a story requires some write sets",
       gaps: [
-        { kind: "unestablished-row", where: "story 3 (mo)", detail: "replace teams.name presupposes a teams row, but no story adds one" },
         { kind: "unreachable-precondition", where: "story 2 (mo)", detail: "it presupposes requests.status=waiting, but no write sets it" },
       ],
     });
@@ -141,7 +141,7 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
       await write([]);
       const open = await check();
       expect(open.code).toBe(1);
-      expect(open.out).toContain("Reachability: 1 gap\n  unwatched-entity · requests: no document holds requests, so nobody is told when it changes\n");
+      expect(open.out).toContain("Reachability: 2 gaps\n  unwatched-entity · requests: no document holds requests, so nobody is told when it changes\n");
       expect(existsSync(`${dir}/app`)).toBe(false);
       // a model with no stories makes nothing
       await Bun.write(file, JSON.stringify({ tables: { models: [{ id: 1, name: "Team" }] } }));
@@ -293,7 +293,7 @@ describe("a model with little said is not shown as fine (the second cafe's feedb
       documents: { "1": { id: 1, name: "bill", root: "items", holds: { items: { parent: null, fields: [field("name")] } }, held_by: ["customer"], stories: [2] } },
     });
     expect(of(r, "subscription-closure").gaps).toContainEqual({ kind: "silent-story", where: "story 1 (cook)", detail: "it says nothing it writes or reads: say its writes (writes <story> add <entity>...) or what it touches" });
-    expect(of(r, "actor-closure").gaps).toContainEqual({ kind: "nothing-in-front", where: "cook", detail: "cook tells a story and holds no document: what do they need in front of them? (heldby <document> cook)" });
+    expect(of(r, "actor-closure").gaps).toContainEqual({ kind: "nothing-in-front", where: "cook", detail: "cook tells a story and holds no document: what do they need in front of them? (heldby <document's number> cook)" });
   });
 });
 

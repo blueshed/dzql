@@ -177,6 +177,24 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
     }
   });
 
+  test("a step a diff cannot make is written once, with what is owed by hand; never again while a step owes it", async () => {
+    const under = (parent: string): Model => ({
+      stories: { "1": { id: 1, text: "Ann orders", actor: "ann", kind: "does" } },
+      documents: { "1": { id: 1, name: "floor", root: "cafes", held_by: ["ann"], stories: [1], holds: { cafes: { parent: null, fields: [] }, tables: { parent: "cafes", fields: [] }, orders: { parent, fields: [{ name: "status" }] } } } },
+    });
+    const dir = mkdtempSync(join(import.meta.dir, ".steps-"));
+    try {
+      const load = async (m: { name: string; source: string }) => (await Bun.write(join(dir, `${m.name}.ts`), m.source), await import(join(dir, `${m.name}.ts`)));
+      const history = [await load(nextMigrationOf([], under("tables"))!)];
+      const moved = nextMigrationOf(history, under("cafes"))!;
+      expect(moved.source).toContain("// By hand:");
+      history.push(await load(moved));
+      expect(nextMigrationOf(history, under("cafes"), (line) => moved.source.includes(line))).toBeUndefined();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("model.test.ts: written beside the rest, it passes, and each story is seen by everyone it tells", async () => {
     const app = mkdtempSync(join(import.meta.dir, ".export-"));
     try {
@@ -223,4 +241,19 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
       rmSync(app, { recursive: true, force: true });
     }
   }, 30_000);
+
+  test("a story's premise: the stories it needs, each after what it needs in turn", () => {
+    const cafe: Model = {
+      stories: {
+        "1": { id: 1, text: "The cook says it is ready", actor: "cook", kind: "does", writes: [{ entity: "orders", op: "replace", path: "status", to: "ready" }] } as never,
+        "2": { id: 2, text: "The customer orders", actor: "customer", kind: "does", writes: [{ entity: "orders", op: "add" }] } as never,
+        "3": { id: 3, text: "The manager sets up a table", actor: "manager", kind: "does", writes: [{ entity: "tables", op: "add" }] } as never,
+      },
+      documents: {
+        "1": { id: 1, name: "floor", root: "cafes", held_by: ["manager", "customer", "cook"], stories: [1, 2, 3], holds: { cafes: { parent: null, fields: [] }, tables: { parent: "cafes", fields: [] }, orders: { parent: "tables", fields: [{ name: "status" }] } } },
+      },
+    };
+    const ready = testsOf(cafe).split("\n").find((l) => l.includes("The cook says it is ready"))!;
+    expect(ready.indexOf('"path":"/tables/-"')).toBeLessThan(ready.indexOf('"path":"/orders/-"')); // the table, then the order on it
+  });
 });

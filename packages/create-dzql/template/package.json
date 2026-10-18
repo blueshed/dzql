@@ -8,15 +8,15 @@
     "bun": ">=1.4.3"
   },
   "scripts": {
-    "dev": "bun --hot node_modules/dzql/src/cli/index.ts serve ./src",
+    "dev": "bun --hot node_modules/dzql/src/cli/index.ts serve ./src --model",
     "start": "NODE_ENV=production bun node_modules/dzql/src/cli/index.ts serve ./src",
     "stop": "delta stop",
     "stories": "ETA_EXAMPLE=./src bun node_modules/dzql/src/modelling/stories-run.ts",
     "cli": "ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/cli.ts",
     "model": "bun node_modules/dzql/src/cli/index.ts model",
     "cli:model": "bun node_modules/dzql/src/cli/index.ts model",
-    "model:load": "LOG_LEVEL=warn ETA_URL=ws://localhost:${MODEL_PORT:-3001}/model bun node_modules/dzql/examples/modeling/loader/load.ts ./src",
-    "model:check": "LOG_LEVEL=warn ETA_URL=ws://localhost:${MODEL_PORT:-3001}/model bun node_modules/dzql/examples/modeling/loader/check.ts ./src",
+    "model:load": "LOG_LEVEL=warn bun node_modules/dzql/examples/modeling/loader/load.ts ./src",
+    "model:check": "LOG_LEVEL=warn bun node_modules/dzql/examples/modeling/loader/check.ts ./src",
     "typecheck": "bun check",
     "test": "bun test",
     "prepare": "delta install-skills"

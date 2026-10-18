@@ -22,7 +22,7 @@ const PKG_VERSION = (() => {
 
 const USAGE =
     `Usage:\n` +
-    `  dzql serve [<dir>]                       the app in <dir> (default ./src), its page drawn by the server\n` +
+    `  dzql serve [<dir>] [--model]             the app in <dir> (default ./src), its page drawn by the server; --model mounts the model at /model\n` +
     `  dzql model [--out <dir>]                 the model's page (MODEL_PORT, default 3001), the model kept in model.json;\n` +
     `                                           after every change, the checks, then the app's types, migrations and tests in <dir> (app)\n` +
     `  dzql model <login|story|document|...>    the model's CLI, against that page\n` +

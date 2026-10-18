@@ -103,7 +103,7 @@ export async function tap(port: number, at = ""): Promise<{ url: string; heard: 
     client.on("data", function upgrade(chunk: Buffer) {
       request += chunk.toString("latin1");
       if (!request.includes("\r\n\r\n")) return;
-      frames.set(/session_id=([^;\s]+)/.exec(request)?.[1] ?? "", sent);
+      frames.set(/session_id\w*=([^;\s]+)/.exec(request)?.[1] ?? "", sent);
       client.off("data", upgrade);
     });
     // what the server sends: its answer to the upgrade, then frames, never masked, however the reads fall
