@@ -25,8 +25,8 @@ const of = (registers: Register[], predicate: Register["predicate"]) => register
 describe("hjeli's six registers, over the model as it is told", () => {
   const r = closureOf(told);
 
-  test("all six, in hjeli's order", () => {
-    expect(r.map((x) => x.predicate)).toEqual(["reachability", "subscription-closure", "actor-closure", "precondition-closure", "referential-closure", "authorization-closure"]);
+  test("all six, in hjeli's order, then Easy's coverage and derive-ux's playability", () => {
+    expect(r.map((x) => x.predicate)).toEqual(["reachability", "subscription-closure", "actor-closure", "precondition-closure", "referential-closure", "authorization-closure", "coverage", "playability"]);
   });
 
   test("reachability: an entity no document holds, and a document nobody holds that is not each person's own", () => {
@@ -70,21 +70,21 @@ describe("hjeli's six registers, over the model as it is told", () => {
   });
 
   test("an empty model: every register closed but the one not asked", () => {
-    expect(closureOf({ models: { name: "Cafe" } }).map((x) => x.gaps.length)).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(closureOf({ models: { name: "Cafe" } }).map((x) => x.gaps.length)).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });
 
   test("drawn across the top: each a chip, open, closed or not asked, its gaps beneath; and in plain text for the CLI", () => {
     const html = drawClosure(r);
-    expect(html).toStartWith(`<section id="closure" aria-label="hjeli's six registers: 11 gaps">`);
+    expect(html).toStartWith(`<section id="closure" aria-label="the model's checks: 11 gaps">`);
     expect(html).toContain(`<details class="register open" data-predicate="reachability"><summary><span class="dot"></span>Reachability · 3 gaps</summary>`);
     expect(html).toContain(`<details class="register unasked" data-predicate="precondition-closure"><summary><span class="dot"></span>Precondition closure · not asked</summary><div class="register-body"><p class="asks">every row a write presupposes is added by some story, and every state a story requires some write sets</p><p>Not asked: no story says what it writes or what it presupposes (writes, requires).</p>`);
     expect(html).toContain("<li><b>story 5 (ann)</b> ann touches holidays, held by no document ann holds</li>");
     const closed = drawClosure(closureOf({ models: { name: "Cafe" } }));
-    expect(closed).toContain(`aria-label="hjeli's six registers: 0 gaps"`);
+    expect(closed).toContain(`aria-label="the model's checks: 0 gaps"`);
     expect(closed).toContain(`<details class="register closed" data-predicate="actor-closure"><summary><span class="dot"></span>Actor closure · closed</summary><div class="register-body"><p class="asks">every actor is someone a story knows: whoever holds a document tells a story</p><p>Every one: every actor is someone a story knows: whoever holds a document tells a story.</p>`);
-    expect(drawClosure(closureOf({ models: { name: "Cafe" }, documents: { "3": { ...told.documents!["3"]!, stories: [] } } }))).toContain(`aria-label="hjeli's six registers: 1 gap"`);
+    expect(drawClosure(closureOf({ models: { name: "Cafe" }, documents: { "3": { ...told.documents!["3"]!, stories: [] } } }))).toContain(`aria-label="the model's checks: 1 gap"`);
     expect(plainClosure(r).split("\n").slice(0, 5)).toEqual([
-      "Closure (hjeli's six registers)",
+      "Checks (hjeli's six, Easy's coverage, derive-ux's playability)",
       "Reachability: 3 gaps",
       "  unwatched-entity · approvals: no document holds approvals, so nobody is told when it changes",
       "  unwatched-entity · logins: no document holds logins, so nobody is told when it changes",
@@ -123,27 +123,32 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
     expect(of(r, "subscription-closure").gaps.map((g) => g.detail)).toContain("it touches requests, which reaches no document anyone holds");
   });
 
-  test("dzql model audit: the six over a model's file, exit 1 while one is open, 0 when none is", async () => {
-    const { Database } = await import("bun:sqlite");
-    const dir = `${process.env.TMPDIR ?? "/tmp"}/audit-${crypto.randomUUID()}`;
-    const file = `${dir}.sqlite`;
-    const db = new Database(file);
-    db.run("CREATE TABLE mdl_stories (id INTEGER, models_id INTEGER, text TEXT, actor TEXT, kind TEXT, post TEXT, touches TEXT)");
-    db.run("CREATE TABLE mdl_documents (id INTEGER, models_id INTEGER, name TEXT, root TEXT, own INTEGER, holds TEXT, held_by TEXT, stories TEXT)");
-    db.run(`INSERT INTO mdl_stories VALUES (1, 1, 'Ann asks', 'ann', 'does', NULL, '["requests"]')`);
-    const audit = async () => {
-      const p = Bun.spawn(["bun", `${import.meta.dir}/../../src/cli/index.ts`, "model", "audit", file], { stdout: "pipe" });
+  test("dzql model check: the checks over the model's file, exit 1 and nothing made while one is open; then the app's files", async () => {
+    const { mkdtempSync, rmSync, existsSync, readdirSync } = await import("node:fs");
+    const dir = mkdtempSync(`${import.meta.dir}/.check-`);
+    const file = `${dir}/model.json`;
+    const story = { id: 1, models_id: 1, text: "Ann asks", actor: "ann", kind: "does", post: null, touches: [], writes: [{ entity: "requests", op: "add" }], requires: null };
+    const write = (documents: unknown[]) => Bun.write(file, JSON.stringify({ tables: { models: [{ id: 1, name: "Team" }], stories: [story], documents } }));
+    const check = async () => {
+      const p = Bun.spawn(["bun", `${import.meta.dir}/../../src/cli/index.ts`, "model", "check", "--out", `${dir}/app`], { stdout: "pipe", env: { ...process.env, MODEL_FILE: file } });
       return { out: await new Response(p.stdout).text(), code: await p.exited };
     };
-    const open = await audit();
-    expect(open.code).toBe(1);
-    expect(open.out).toContain("Reachability: 1 gap\n  unwatched-entity · requests: no document holds requests, so nobody is told when it changes\n");
-    db.run(`INSERT INTO mdl_documents VALUES (1, 1, 'team', 'requests', 0, '{"requests":{"parent":null,"fields":[]}}', '["ann"]', '[1]')`);
-    db.close();
-    const closed = await audit();
-    expect(closed.out).toContain("Reachability: closed\n");
-    expect(closed.code).toBe(0);
-    await Bun.file(file).delete();
+    try {
+      await write([]);
+      const open = await check();
+      expect(open.code).toBe(1);
+      expect(open.out).toContain("Reachability: 1 gap\n  unwatched-entity · requests: no document holds requests, so nobody is told when it changes\n");
+      expect(existsSync(`${dir}/app`)).toBe(false);
+      await write([{ id: 1, models_id: 1, name: "team", root: "teams", own: 0, holds: { teams: { parent: null, fields: [] }, requests: { parent: "teams", fields: [] } }, held_by: ["ann"], stories: [1] }]);
+      const closed = await check();
+      expect(closed.out).toContain("Reachability: closed\n");
+      expect(closed.code).toBe(0);
+      expect(readdirSync(`${dir}/app`).sort()).toEqual(["migrations", "model.test.ts", "stories.ts", "types.ts"]);
+      expect(readdirSync(`${dir}/app/migrations`)).toEqual(["001-teams-requests.ts"]);
+      expect((await check()).out).not.toContain("new)"); // the model unchanged: no next step
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }, 30000);
 });
 
@@ -182,5 +187,78 @@ describe("a story's writes and requires: kept by the model, said by the CLI, sho
     const raw: Raw = { models: { name: "L" }, stories: { "1": { id: 1, text: "Mo approves", actor: "mo", kind: "does", touches: ["teams"], writes: [{ entity: "requests", op: "replace", path: "status", to: "approved" }, { entity: "requests", op: "add" }], requires: [{ entity: "requests", path: "status", value: "waiting" }] } } };
     expect(plain(raw)).toContain("1. mo does, no document: Mo approves; writes replace requests.status=approved, add requests; requires requests.status=waiting");
     expect(heartOf(raw).stories[0]!.touches).toEqual(["teams", "requests"]);
+  });
+});
+
+describe("what the cafe showed: checks that only a schema would have caught", () => {
+  // John orders under a table nobody adds; the menu is never written; money is said as numeric
+  const cafe: Raw = {
+    models: { name: "Cafe" },
+    stories: {
+      "1": { id: 1, text: "John orders at his table", actor: "john", kind: "does", writes: [{ entity: "orders", op: "add", path: "status", to: "ordered" }] },
+      "2": { id: 2, text: "Paul says it is ready", actor: "paul", kind: "does", writes: [{ entity: "orders", op: "replace", path: "state", to: "ready" }] },
+    },
+    documents: {
+      "1": { id: 1, name: "table", root: "tables", holds: { tables: { parent: null, fields: [field("number", "integer")] }, orders: { parent: "tables", fields: [field("status")] } }, held_by: ["john"], stories: [1] },
+      "2": { id: 2, name: "kitchen", root: "cafes", holds: { cafes: { parent: null, fields: [] }, tables: { parent: "cafes", fields: [] }, orders: { parent: "tables", fields: [field("status")] } }, held_by: ["paul"], stories: [1, 2] },
+      "3": { id: 3, name: "menu", root: "menus", holds: { menus: { parent: null, fields: [] }, items: { parent: "menus", fields: [field("price", "numeric")] } }, held_by: ["john"], stories: [1] },
+      "4": { id: 4, name: "elsewhere", root: "rooms", holds: { rooms: { parent: null, fields: [] }, tables: { parent: "rooms", fields: [] } }, held_by: ["john"], stories: [1] },
+    },
+  };
+  const r = closureOf(cafe);
+
+  test("reachability: an entity held and never written is always empty; an implied root with no fields is not", () => {
+    expect(of(r, "reachability").gaps.filter((g) => g.kind === "unwritten-entity").map((g) => g.where)).toEqual(["tables", "items"]);
+  });
+
+  test("subscription closure: a write to a field no document holds", () => {
+    expect(of(r, "subscription-closure").gaps).toEqual([{ kind: "unwatched-field", where: "story 2 (paul)", detail: "replace orders.state=ready sets orders.state, which no document holds" }]);
+  });
+
+  test("precondition closure: a row added under a parent no story adds (an implied root needs none)", () => {
+    expect(of(r, "precondition-closure").gaps).toContainEqual({ kind: "unestablished-parent", where: "story 1 (john)", detail: "add orders.status=ordered adds under a tables row, but no story adds one" });
+  });
+
+  test("referential closure: one table under two parents, and a type the model does not know -- never guessed as text", () => {
+    const gaps = of(r, "referential-closure").gaps;
+    expect(gaps).toContainEqual({ kind: "parent-clash", where: "tables", detail: "one table hangs from one parent, but kitchen puts tables under cafes and elsewhere puts tables under rooms" });
+    expect(gaps).toContainEqual({ kind: "unknown-type", where: "menu: items.price", detail: '"numeric" is not a type the model knows (text, integer, real, boolean, json, timestamptz, date)' });
+  });
+});
+
+describe("Easy's coverage and derive-ux's playability, over the model as told", () => {
+  const raw: Raw = {
+    models: { name: "Cafe" },
+    stories: {
+      "1": { id: 1, text: "John orders", actor: "john", kind: "does", writes: [{ entity: "orders", op: "add", path: "status", to: "ordered" }] },
+      "2": { id: 2, text: "Paul says ready", actor: "paul", kind: "does", writes: [{ entity: "orders", op: "replace", path: "status", to: "ready" }], requires: [{ entity: "orders", path: "status", value: "ordered" }] },
+      "3": { id: 3, text: "Ann takes it", actor: "ann", kind: "does", writes: [{ entity: "orders", op: "replace", path: "status", to: "taken" }], requires: [{ entity: "orders", path: "status", value: "ready" }] },
+      "4": { id: 4, text: "Paul cannot order", actor: "paul", kind: "cannot", writes: [{ entity: "orders", op: "add", path: "status", to: "ordered" }] },
+    },
+    documents: {
+      "1": { id: 1, name: "table", root: "orders", holds: { orders: { parent: null, fields: [field("status"), field("item")] } }, held_by: ["john"], stories: [1] },
+      "2": { id: 2, name: "kitchen", root: "orders", holds: { orders: { parent: null, fields: [field("status")] } }, held_by: ["paul", "jo"], stories: [1, 2, 4] },
+      "3": { id: 3, name: "door", root: "orders", holds: { orders: { parent: null, fields: [] } }, held_by: ["ann"], stories: [3] },
+    },
+  };
+  const r = closureOf(raw);
+
+  test("coverage: a write not decided for someone who holds what it changes; a cannot story decides it", () => {
+    expect(of(r, "coverage").gaps).toEqual([
+      { kind: "undecided-write", where: "add orders.status", detail: "jo holds it, and no story says whether jo may add orders.status" },
+      { kind: "undecided-write", where: "replace orders.status", detail: "john holds it, and no story says whether john may replace orders.status" },
+      { kind: "undecided-write", where: "replace orders.status", detail: "jo holds it, and no story says whether jo may replace orders.status" },
+    ]);
+  });
+
+  test("playability: a turn its taker cannot see, a wait its maker cannot see; one way on and an end are advice", () => {
+    expect(of(r, "playability").gaps).toEqual([
+      { kind: "blind-turn", where: "story 3 (ann)", detail: "it is ann's move once orders.status=ready, but no document ann holds shows orders.status" },
+    ]);
+    expect(of(r, "playability").advice).toContainEqual({ kind: "single-exit", where: "orders.status=ordered", detail: 'orders.status=ordered has one way on (paul: "Paul says ready"), and no way to say no' });
+    expect(of(r, "playability").advice).toContainEqual({ kind: "terminal-state", where: "orders.status=taken", detail: "orders.status=taken is made, and no story moves on from it: an end, or a story not yet told" });
+    expect(of(r, "playability").advice).toContainEqual({ kind: "uneditable-field", where: "orders.item", detail: "no story changes orders.item once its row is made" });
+    const blind = closureOf({ ...raw, documents: { ...raw.documents, "2": { ...raw.documents!["2"]!, held_by: ["jo"] } } });
+    expect(of(blind, "playability").gaps).toContainEqual({ kind: "blind-wait", where: "story 2 (paul)", detail: "paul sets orders.status=ready and waits on someone else, but holds no document that shows orders.status" });
   });
 });

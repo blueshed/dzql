@@ -25,6 +25,29 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **The model is a file, and it makes the app's types, migrations and tests, checked first** (18
+  October, Peter: "I want a migration, types and tests generated from stories ... and you should run
+  your checks before you generate"; then "yes" to one file, one command). The model is `model.json`,
+  delta's JSON file, which the page edits (`MODEL_FILE`; sessions stay in memory) and a person can
+  read. `dzql model` serves the page and, after every change to the file, runs the checks; while
+  none is open it writes the app's (`--out`, default `app`) `types.ts` (delta's definitions, a row
+  type per table and each document's shape: the snapshot), `stories.ts` (each story with its write,
+  its premise and who sees it, for the app's pages), `model.test.ts` (the proof on SQLite: the
+  migrations from empty are the types, and each story's write lands in every holder's document) and,
+  when the schema says more than the migrations there, the next one (the trajectory, by delta's
+  `diff` and `writeMigration`). `dzql model check` does it once, exit 1 while a check is open; it
+  replaces `audit` and `export`. `src/modelling/definitions.ts`: `typesOf`, `nextMigrationOf`,
+  `storiesOf`, `testsOf`; a document's root no longer sets its entity's parent to nothing over the
+  parent another document gives it (the cafe's kitchen showed no orders).
+- **Easy's coverage and rights' playability join hjeli's six** (18 October, Peter: "extend dzql to
+  have all of simple's, hjeli's and eta's checks"). On the page, in `show`, `audit` and the export's
+  gate: *coverage* (Easy: every write decided for everyone who holds what it changes, by a story
+  that makes it or a `cannot` story that is refused it); *playability* (derive-ux: a turn its taker
+  cannot see, a wait its maker cannot see; one way on, an end and a field no story changes as advice
+  that does not block). hjeli's registers gain four the cafe showed only a schema would catch: an
+  entity held and never written, a row added under a parent no story adds, one table under two
+  parents, and a type the model does not know (no longer guessed as text); and a write to a field no
+  document holds.
 - dzql: hjeli's three that `dzql model` lacked, each over the model's file, proven on leave's model
   told through the MCP server to a running page. `dzql model guards` writes the guarded write layer
   (`dzql/modelling/guards`: who, what, the document, the row, and what a story `requires`, checked in

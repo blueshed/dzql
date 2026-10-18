@@ -1,4 +1,6 @@
 import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
+import * as json from "@blueshed/delta/json";
+import { existsSync } from "node:fs";
 import { createLocal } from "@blueshed/delta/local";
 import { db } from "dzql/rendering/db";
 import { sessionRows } from "dzql/rendering/sessions";
@@ -94,7 +96,14 @@ if (!db.query("SELECT 1 FROM mdl_models").get()) {
 
 export const delta = createLocal();
 
-registerDocs(delta.server, db, schema, [defineDoc("model:", { root: "models", include: ["stories", "documents"] })], [], { ledger: true });
+const model = [defineDoc("model:", { root: "models", include: ["stories", "documents"] })];
+// In a project, the model is a file in the app (`MODEL_FILE`, `dzql model`'s `model.json`): delta's
+// JSON file, which a person can read and the page edits, its undo kept in it. Sessions stay here.
+const MODEL_FILE = process.env.MODEL_FILE;
+if (MODEL_FILE) {
+  if (!existsSync(MODEL_FILE)) json.importTables(MODEL_FILE, schema, { tables: { models: [{ id: 1, name: NAME ?? "Model" }] } });
+  json.registerDocs(delta.server, MODEL_FILE, schema, model, [], { ledger: true });
+} else registerDocs(delta.server, db, schema, model, [], { ledger: true });
 
 // A session, with no ledger: signing in and out is not the model's history. A session is a numbered
 // row, found by its cookie's hash through `visit:` (dzql/rendering/sessions), which `session:` never holds.

@@ -8,6 +8,11 @@ what is open across them. Newest first.
 
 ### Added
 
+- **The model is a file, checked, then made into types, migrations and tests** (18 October, a
+  modelling session with Peter on a cafe): the model is `model.json`, which the page edits;
+  `dzql model` runs hjeli's six, Easy's coverage and derive-ux's playability after every change,
+  and while none is open writes the app's `types.ts`, its next migration, `stories.ts` and a proof
+  on SQLite (packages/dzql/CHANGELOG.md).
 - dzql: hjeli's three that `dzql model` lacked, each over the model's file, proven on leave's model
   told through the MCP server to a running page. `dzql model guards` writes the guarded write layer
   (`dzql/modelling/guards`: who, what, the document, the row, and what a story `requires`, checked in
