@@ -128,7 +128,7 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
     const dir = mkdtempSync(`${import.meta.dir}/.check-`);
     const file = `${dir}/model.json`;
     const story = { id: 1, models_id: 1, text: "Ann asks", actor: "ann", kind: "does", post: null, touches: [], writes: [{ entity: "requests", op: "add" }], requires: null };
-    const write = (documents: unknown[]) => Bun.write(file, JSON.stringify({ tables: { models: [{ id: 1, name: "Team" }], stories: [story], documents } }));
+    const write = (documents: unknown[], more: unknown[] = []) => Bun.write(file, JSON.stringify({ tables: { models: [{ id: 1, name: "Team" }], stories: [story, ...more], documents } }));
     const check = async () => {
       const p = Bun.spawn(["bun", `${import.meta.dir}/../../src/cli/index.ts`, "model", "check", "--out", `${dir}/app`], { stdout: "pipe", env: { ...process.env, MODEL_FILE: file } });
       return { out: await new Response(p.stdout).text(), code: await p.exited };
@@ -146,6 +146,14 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
       expect(readdirSync(`${dir}/app`).sort()).toEqual(["guards.ts", "migrations", "model.test.ts", "stories.ts", "types.ts"]);
       expect(readdirSync(`${dir}/app/migrations`)).toEqual(["001-teams-requests.ts"]);
       expect((await check()).out).not.toContain("new)"); // the model unchanged: no next step
+      // a parent changed is a step only a person can finish: written once, saying so, and not again
+      const grouping = { id: 2, models_id: 1, text: "Ann makes a group", actor: "ann", kind: "does", post: null, touches: [], writes: [{ entity: "groups", op: "add" }], requires: null };
+      await write([{ id: 1, models_id: 1, name: "team", root: "teams", own: 0, holds: { teams: { parent: null, fields: [] }, groups: { parent: "teams", fields: [] }, requests: { parent: "groups", fields: [] } }, held_by: ["ann"], stories: [1, 2] }], [grouping]);
+      await check();
+      expect(readdirSync(`${dir}/app/migrations`).sort()).toEqual(["001-teams-requests.ts", "002-groups.ts"]);
+      expect(await Bun.file(`${dir}/app/migrations/002-groups.ts`).text()).toContain("// By hand: requests: its parent is");
+      await check();
+      expect(readdirSync(`${dir}/app/migrations`)).toHaveLength(2);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -42,7 +42,12 @@ export async function make(file: string, out: string): Promise<{ ok: boolean; sa
   const dir = join(out, "migrations");
   mkdirSync(dir, { recursive: true });
   const { fromFolder } = await import("@blueshed/delta/sqlite");
-  const next = nextMigrationOf(await fromFolder(resolve(dir)), model);
+  const history = await fromFolder(resolve(dir));
+  // a step only a person can finish (a parent changed, a type) is written once, for them to finish: not again on every change
+  const last = readdirSync(dir).filter((f) => f.endsWith(".ts")).sort().at(-1);
+  const proposed = nextMigrationOf(history, model);
+  const owed = proposed?.source.split("\n").filter((l) => l.startsWith("// By hand:")) ?? [];
+  const next = proposed && last && !/^\s+\w+\(/m.test(proposed.source) && owed.every((l) => readFileSync(join(dir, last), "utf8").includes(l)) ? undefined : proposed;
   writeFileSync(join(out, "types.ts"), typesOf(model));
   writeFileSync(join(out, "stories.ts"), storiesOf(model));
   writeFileSync(join(out, "model.test.ts"), testsOf(model, basename(resolve(out))));
