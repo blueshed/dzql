@@ -106,12 +106,12 @@ describe("Install dzql and use modelling", () => {
   });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-  test("the stories told on the model's page, checked, make app/types.ts", async () => {
+  test("the stories told on the model's page, checked, make model/types.ts", async () => {
     const [start, ...told] = blocks[1]!;
     const page = await serving(start!, dir, { MODEL_PORT: "0" });
     expect(await (await fetch(page)).text()).toContain("<html");
     for (const cmd of told) ran(cmd, dir, { MODEL_PORT: page.port });
-    expect(readFileSync(join(dir, "app", "types.ts"), "utf8")).toBe(file("types.ts"));
+    expect(readFileSync(join(dir, "model", "types.ts"), "utf8")).toBe(file("types.ts"));
   }, 30_000);
 
   test("types.ts runs on delta's JSON file and on SQLite", async () => {

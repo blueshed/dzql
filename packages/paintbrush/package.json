@@ -15,7 +15,7 @@
     "stop": "delta stop",
     "typecheck": "bun check",
     "test": "bun test",
-    "model": "bun node_modules/dzql/src/cli/index.ts model --out src",
+    "model": "bun node_modules/dzql/src/cli/index.ts model",
     "cli:model": "bun node_modules/dzql/src/cli/index.ts model",
     "test:evolve": "bun test ./tests/evolve.ts",
     "start": "NODE_ENV=production bun src/routes.ts",

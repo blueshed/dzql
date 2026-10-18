@@ -106,6 +106,12 @@ export function closureOf(raw: Raw): Register[] {
         .filter((who) => docs.length > 0 && !docs.some((d) => d.held_by.includes(who) || (d.own && d.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who))))
         .map((who) => ({ kind: "nothing-in-front", where: who, detail: `${who} tells a story and holds no document: what do they need in front of them? (heldby <document> ${who})` })),
     ],
+    // a document held by a role, whose root is one of many (a story adds them): which one is each person's?
+    advice: docs.flatMap((d) =>
+      d.own || !said.some(({ w }) => w.op === "add" && w.entity === d.root)
+        ? []
+        : d.held_by.filter((who) => !said.some(({ s, w }) => s.actor === who && w.op === "add" && w.entity === d.root)).map((who) => ({ kind: "whose-copy", where: `${d.name} (${who})`, detail: `there are many ${d.root}: which one is ${who}'s, and how do they come to hold it? (a story that gives it them, or a document of their own that says)` })),
+    ),
   };
 
   const byVisit = new Set(docs.filter((d) => d.own).map((d) => d.root));

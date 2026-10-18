@@ -10,7 +10,7 @@ import * as json from "@blueshed/delta/json";
 import * as sqlite from "@blueshed/delta/sqlite";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "../postgres";
 import { openPglite } from "../postgres/pglite";
-import { definitionsOf, nextMigrationOf, sourceOf, storiesOf, testsOf, typesOf, type Model } from "./definitions";
+import { definitionsOf, nextMigrationOf, sourceOf, testsOf, typesOf, type Model } from "./definitions";
 
 setLogLevel("silent");
 
@@ -152,7 +152,8 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
 
   test("types.ts: the definitions, a row per table, each document's shape", () => {
     const t = typesOf(cafe());
-    expect(t).toContain("export const schema = defineSchema({");
+    expect(t).toContain("export const tables: Parameters<typeof defineSchema>[0] = {");
+    expect(t).toContain("export const schema = defineSchema(tables);");
     expect(t).toContain("export type TablesRow = { id: number; cafes_id: number; number: number | null; };");
     expect(t).toContain("export type TableDoc = { tables: TablesRow; orders: Record<string, OrdersRow>; payments: Record<string, PaymentsRow>; };");
   });
@@ -176,12 +177,6 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
     }
   });
 
-  test("stories.ts: each story after what it needs; a premise a cast's shape cannot order is said so", () => {
-    const s = storiesOf(cafe());
-    expect(s).toContain('story("Paul says it is ready", { as: "paul", does: {"doc":"kitchen:1","ops":[{"op":"replace","path":"/orders/1/status","value":"ready"}]}, seen: ["paul","john","george"], premise: {"george":[{"doc":"till:1","ops":[{"op":"add","path":"/tables/-","value":{"cafes_id":1}}]}],"john":[{"doc":"table:1","ops":[{"op":"add","path":"/orders/-","value":{"tables_id":1,"status":"ordered"}}]}]}, model: 3 })');
-    expect(s).toContain("// its premise needs george, then john, then paul, then george in turn");
-  });
-
   test("model.test.ts: written beside the rest, it passes, and each story is seen by everyone it tells", async () => {
     const app = mkdtempSync(join(import.meta.dir, ".export-"));
     try {
@@ -194,6 +189,36 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
       const out = run.stderr.toString();
       expect(out).toContain(" 6 pass");
       expect(out).toContain(" 0 fail");
+    } finally {
+      rmSync(app, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  test("model.test.ts passes on the stories it was made from: one write that adds, changes and takes away; a replace with no value said; a row added on a page of rows", async () => {
+    // the second cafe's: the manager keeps the menu (add, a price changed, a dish gone, in one write), and sets up a table
+    const menu: Model = {
+      stories: {
+        "1": { id: 1, text: "The manager keeps the menu up to date", actor: "manager", kind: "does", writes: [{ entity: "items", op: "add", path: "name", to: "Tea" }, { entity: "items", op: "replace", path: "price" }, { entity: "items", op: "remove" }] } as never,
+        "2": { id: 2, text: "The manager sets up a table", actor: "manager", kind: "does", writes: [{ entity: "tables", op: "add" }] } as never,
+      },
+      documents: {
+        "1": { id: 1, name: "menu", root: "menus", held_by: ["manager"], stories: [1], holds: { menus: { parent: null, fields: [] }, items: { parent: "menus", fields: [{ name: "name" }, { name: "price", type: "integer" }] } } },
+        "2": { id: 2, name: "table", root: "tables", held_by: ["manager"], stories: [2], holds: { tables: { parent: null, fields: [{ name: "number", type: "integer" }] } } },
+        "3": { id: 3, name: "floor", root: "cafes", held_by: ["manager"], stories: [2], holds: { cafes: { parent: null, fields: [] }, tables: { parent: "cafes", fields: [{ name: "number", type: "integer" }] } } },
+      },
+    };
+    const app = mkdtempSync(join(import.meta.dir, ".export-"));
+    try {
+      mkdirSync(join(app, "migrations"));
+      await Bun.write(join(app, "types.ts"), typesOf(menu));
+      const first = nextMigrationOf([], menu)!;
+      await Bun.write(join(app, "migrations", `${first.name}.ts`), first.source);
+      const tests = testsOf(menu, "menu");
+      expect(tests).toContain('"path":"/items/1/price","value":1'); // an integer, not null
+      expect(tests).toContain('{"doc":"floor:1","ops":[{"op":"add","path":"/tables/-"'); // on the page of tables, not the table's own
+      await Bun.write(join(app, "model.test.ts"), tests);
+      const run = Bun.spawnSync(["bun", "test", "model.test.ts"], { cwd: app, env: { ...process.env, LOG_LEVEL: "silent" } });
+      expect(run.stderr.toString()).toContain(" 0 fail");
     } finally {
       rmSync(app, { recursive: true, force: true });
     }

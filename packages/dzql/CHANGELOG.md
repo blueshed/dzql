@@ -25,6 +25,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **What the model makes stays in its own folder, and the app's stories are the app's** (18
+  October, `cafe-two/feedback.md` parts two and three). `dzql model` writes into `model/` (never the
+  app's `src/`, so nothing of the app's is overwritten and the app does not reload for it):
+  `types.ts` (now exporting `tables`, so the app keeps its own beside them and runs its own
+  migrations after the model's), `guards.ts` (stood in front of the store with `guardWrites`),
+  the migrations and `model.test.ts`. It no longer writes `stories.ts`: generated stories had roles
+  for a cast and made-up ids, so the app writes its own, each naming its model story. The proof
+  passes on the stories it is made from: a write that adds, changes and removes is checked by what
+  is left; a replace with no value said sets one of its field's type; a row is added on the page of
+  rows, not its own. Actor closure's advice asks whose copy a role's document is when its root is
+  one of many. `bun run stories` runs on a throwaway database unless `DB_PATH` says one.
+
 - **The model's page as a second cafe found it** (18 October, `cafe-two/feedback.md`): signed in by
   a link each keeper gets as `dzql model` or `dzql serve` starts (`login <link>` for the CLI), and
   kept signed in across `bun --hot` (the sessions and links on globalThis, not a fresh `:memory:`);

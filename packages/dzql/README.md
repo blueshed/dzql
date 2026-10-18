@@ -88,19 +88,24 @@ bunx dzql model check
 ```
 
 The model's page is http://localhost:3001/model, watched live as the stories land; the model is
-`model.json`, which the page edits. What it makes goes in `app/`: `types.ts` (below), the
-migrations from empty, and the stories as tests. Beside an app, `dzql serve` mounts the model at
-`/model` in development, and production never registers it. `app/types.ts`:
+`model.json`, which the page edits, signed in by the link each keeper gets as it starts. What it
+makes goes in a folder of its own, `model/`: `types.ts` (below), `guards.ts`, the migrations from
+empty and `model.test.ts`, the proof. Beside an app, `dzql serve` mounts the model at `/model` in
+development, and production never registers it. `model/types.ts`:
 
 ```ts
 // The model, now: delta's definitions, a row type per table and each document's shape. Written by `dzql model` from the model's page; never edited by hand.
 // Every store takes them: change the import to move to SQLite (`@blueshed/delta/sqlite`) or Postgres (`dzql/postgres`).
 import { defineDoc, defineSchema } from "@blueshed/delta/json";
 
-export const schema = defineSchema({
+// The model's tables: an app that keeps more (who signs in, its sessions) defines them beside these,
+// `defineSchema({ ...tables, ... })`, and runs its own migrations after the model's.
+export const tables: Parameters<typeof defineSchema>[0] = {
   teams: { columns: { name: "text?" }, temporal: false },
   requests: { columns: { starts: "text?", days: "real?", status: "text?" }, temporal: false, parent: "teams" },
-});
+};
+
+export const schema = defineSchema(tables);
 
 export const docs = [
   // for: Ann asks for two days off, and Mo sees them waiting

@@ -147,14 +147,14 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
       await Bun.write(file, JSON.stringify({ tables: { models: [{ id: 1, name: "Team" }] } }));
       expect((await check()).out).toBe("No stories yet: nothing made.\n");
       expect(existsSync(`${dir}/app`)).toBe(false);
-      // a stories.ts a person wrote is kept: the model's goes beside it
-      await Bun.write(`${dir}/app/stories.ts`, "// the app's own\n");
+      // a file a person wrote is kept: the model's goes beside it
+      await Bun.write(`${dir}/app/types.ts`, "// the app's own\n");
       await write([{ id: 1, models_id: 1, name: "team", root: "teams", own: 0, holds: { teams: { parent: null, fields: [] }, requests: { parent: "teams", fields: [{ name: "starts" }] } }, held_by: ["ann"], stories: [1] }]);
       const closed = await check();
       expect(closed.out).toContain("Reachability: closed\n");
       expect(closed.code).toBe(0);
-      expect(readdirSync(`${dir}/app`).sort()).toEqual(["guards.ts", "migrations", "model.test.ts", "stories.model.ts", "stories.ts", "types.ts"]);
-      expect(await Bun.file(`${dir}/app/stories.ts`).text()).toBe("// the app's own\n");
+      expect(readdirSync(`${dir}/app`).sort()).toEqual(["guards.ts", "migrations", "model.test.ts", "types.model.ts", "types.ts"]); // no stories: the app's are its own
+      expect(await Bun.file(`${dir}/app/types.ts`).text()).toBe("// the app's own\n");
       expect(readdirSync(`${dir}/app/migrations`)).toEqual(["001-teams-requests.ts"]);
       expect((await check()).out).not.toContain("new)"); // the model unchanged: no next step
       // a parent changed is a step only a person can finish: written once, saying so, and not again
@@ -295,4 +295,20 @@ describe("a model with little said is not shown as fine (the second cafe's feedb
     expect(of(r, "subscription-closure").gaps).toContainEqual({ kind: "silent-story", where: "story 1 (cook)", detail: "it says nothing it writes or reads: say its writes (writes <story> add <entity>...) or what it touches" });
     expect(of(r, "actor-closure").gaps).toContainEqual({ kind: "nothing-in-front", where: "cook", detail: "cook tells a story and holds no document: what do they need in front of them? (heldby <document> cook)" });
   });
+});
+
+test("advice: a document a role holds, whose root is one of many, does not say which is each person's", () => {
+  const r = closureOf({
+    models: { name: "Cafe" },
+    stories: {
+      "1": { id: 1, text: "George opens a table", actor: "george", kind: "does", writes: [{ entity: "tables", op: "add" }] },
+      "2": { id: 2, text: "John orders", actor: "john", kind: "does", writes: [{ entity: "orders", op: "add" }] },
+    },
+    documents: {
+      "1": { id: 1, name: "table", root: "tables", holds: { tables: { parent: null, fields: [field("number", "integer")] }, orders: { parent: "tables", fields: [field("item")] } }, held_by: ["john", "george"], stories: [1, 2] },
+    },
+  });
+  expect(of(r, "actor-closure").advice).toEqual([
+    { kind: "whose-copy", where: "table (john)", detail: "there are many tables: which one is john's, and how do they come to hold it? (a story that gives it them, or a document of their own that says)" },
+  ]);
 });

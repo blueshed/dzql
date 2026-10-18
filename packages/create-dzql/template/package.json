@@ -13,7 +13,7 @@
     "stop": "delta stop",
     "stories": "ETA_EXAMPLE=./src bun node_modules/dzql/src/modelling/stories-run.ts",
     "cli": "ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/cli.ts",
-    "model": "bun node_modules/dzql/src/cli/index.ts model --out src",
+    "model": "bun node_modules/dzql/src/cli/index.ts model",
     "cli:model": "bun node_modules/dzql/src/cli/index.ts model",
     "model:load": "LOG_LEVEL=warn ETA_URL=ws://localhost:${MODEL_PORT:-3001}/model bun node_modules/dzql/examples/modeling/loader/load.ts ./src",
     "model:check": "LOG_LEVEL=warn ETA_URL=ws://localhost:${MODEL_PORT:-3001}/model bun node_modules/dzql/examples/modeling/loader/check.ts ./src",

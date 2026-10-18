@@ -3,6 +3,8 @@
 // folder (`ETA_EXAMPLE=./src`, src/names.ts `appDir`). See docs/dzql/modelling/stories.md.
 // Stories come first, so an example may have them before it has an app: that is said, as the next
 // thing to do, not as a missing module.
+// a run's writes are thrown away: it never touches the app's own database, unless DB_PATH says one
+process.env.DB_PATH ??= ":memory:";
 import { print, run } from "./harness";
 import type { Stories } from "./stories";
 import { appDir } from "../rendering/names";

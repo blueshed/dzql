@@ -96,12 +96,26 @@ each, who is told, what permit lets through that no page offers) and hjeli's pre
 
 ## From the model to the app
 
-While no check is open, `dzql model` writes into the app: `types.ts`, delta's two definitions (a
+While no check is open, `dzql model` writes into a folder of its own (`model/`, never the app's
+`src/`, so the app neither reloads nor loses a file of its own): `types.ts`, delta's two definitions (a
 `defineSchema` of its entities, each with the fields documents give it, hanging from its parent,
 and a `defineDoc` for each document, saying in a comment which stories it is for) with a row type
 per table and each document's shape; `guards.ts`, the guarded write layer; `migrations/`, the next
 step each time the schema says more (a step a diff cannot make -- a parent changed -- is written
-once with `// By hand:` lines to finish); `stories.ts` and `model.test.ts`, the proof on SQLite.
+once with `// By hand:` lines to finish); and `model.test.ts`, the proof on SQLite. It writes no
+stories: the app's stories are the app's, in its words, each naming its model story (`model: n`).
+A file in `model/` a person wrote is kept, and the model's goes beside it (`types.model.ts`).
+
+How the app uses them:
+- **The tables:** `types.ts` exports `tables`; the app keeps what the model does not (who signs
+  in, sessions) beside them, `defineSchema({ ...tables, ... })`, its own tables under its own
+  name, and runs the model's migrations (`migrate(db, model's, { app: "<name>-model", schema })`)
+  then its own (`{ app: "<name>", ... }`): two histories, one database.
+- **The guards:** `guards.ts` stands in front of the store, `guardWrites(delta.server, guards, {
+  actorOf, rowOf })` in `delta.ts` before `registerDocs`: a write no story says is refused there,
+  with the story's words. A resource's `permit` need not say the rules again.
+- **Whose copy:** a document a role holds whose root is one of many (a table, a bill) is advice
+  in actor closure until the model says how each person comes to hold theirs: ask the teller.
 Every store takes the definitions: delta's JSON file and SQLite, and dzql's Postgres. In code, `definitionsOf(model)` (`dzql/modelling/definitions`) does the
 same. Who owns a document that is each person's own is not in the model: the file says so, to be
 given with sign-in.

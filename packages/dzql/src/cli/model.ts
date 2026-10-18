@@ -4,13 +4,15 @@
 //
 // The model is one file, `model.json` (delta's JSON file: its stories, with what each writes, and
 // the documents they need), which the page edits and a person can read. `dzql model` serves the
-// page and, after every change to the file, runs the checks; while none is open it makes the app's
-// `types.ts`, `stories.ts`, `model.test.ts`, `guards.ts` and its next migration (`--out`, default
-// `app`). `dzql model site|guards|mcp` are ./model-tools.ts's.
+// page and, after every change to the file, runs the checks; while none is open it makes, in a folder
+// of its own (`--out`, default `model`, never the app's `src/`), `types.ts` (the app imports its
+// definitions and extends its tables), `guards.ts` (stood in front of the store), the migrations and
+// `model.test.ts` (the proof). The app's stories are the app's: each says its model story's number.
+// `dzql model site|guards|mcp` are ./model-tools.ts's.
 // `dzql model check` does that once, and exits 1 while a check is open.
 import { existsSync, mkdirSync, readFileSync, readdirSync, watch, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { nextMigrationOf, storiesOf, testsOf, typesOf, type Model } from "../modelling/definitions";
+import { nextMigrationOf, testsOf, typesOf, type Model } from "../modelling/definitions";
 
 /** An app's folder as `ETA_EXAMPLE` names it: a path, from here. */
 const folder = (dir = "./src") => (dir.includes("/") ? dir : `./${dir}`);
@@ -60,7 +62,6 @@ export async function make(file: string, out: string): Promise<{ ok: boolean; sa
   const owed = proposed?.source.split("\n").filter((l) => l.startsWith("// By hand:")) ?? [];
   const next = proposed && last && !/^\s+\w+\(/m.test(proposed.source) && owed.every((l) => readFileSync(join(dir, last), "utf8").includes(l)) ? undefined : proposed;
   put("types.ts", typesOf(model));
-  put("stories.ts", storiesOf(model));
   put("model.test.ts", testsOf(model, basename(resolve(out))));
   if (next) writeFileSync(join(dir, `${next.name}.ts`), next.source);
   // hjeli's guarded write layer, once a story says what it writes (./model-tools.ts, ../modelling/guards.ts)
@@ -104,7 +105,7 @@ export async function run(argv: string[]): Promise<boolean> {
   const file = process.env.MODEL_FILE ?? "model.json";
   if (verb === "serve") {
     // the app's routes and resources; in development the model's beside them, at /model, writing
-    // what it makes into the app's folder -- production never registers it
+    // what it makes into its own folder (`model/`) -- production never registers it
     const dir = folder(sub);
     process.env.ETA_EXAMPLE = dir;
     const { run: running, serve } = await import("@blueshed/delta/serve");
@@ -120,20 +121,20 @@ export async function run(argv: string[]): Promise<boolean> {
     await running(() => serve(compose(appOf(example), model && appOf(model))));
     if (dev) {
       await sayLinks(process.env.PORT ?? "3000");
-      watchModel(file, dir);
+      watchModel(file, "model");
     }
     return true;
   }
   if (verb !== "model") return false;
   const port = process.env.MODEL_PORT ?? "3001";
   if (sub === "check") {
-    const { ok, said } = await make(file, flag("--out", "app"));
+    const { ok, said } = await make(file, flag("--out", "model"));
     process.stdout.write(`${said}\n`);
     process.exit(ok ? 0 : 1);
   }
   process.env.ETA_EXAMPLE = "modeling";
   if (!sub || sub.startsWith("--")) {
-    const out = flag("--out", "app");
+    const out = flag("--out", "model");
     process.env.PORT = port;
     process.env.MODEL_FILE = file;
     process.env.DB_PATH ??= ":memory:"; // sessions only: the model is the file

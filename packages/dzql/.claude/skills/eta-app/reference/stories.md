@@ -46,6 +46,13 @@ how a paintbrush app keeps its stories, so one format grows from there to here
   biggest part. `budget` (bytes before compression), on a story or on `Stories`, fails a page handed
   more. A part far bigger than its write is cut too coarse ([page.md](page.md)), or an applet is
   handed its props whole ([applets.md](applets.md)).
+- `seen` is everyone **whose page changes**, not everyone who holds the document: the cook's
+  kitchen does not change when a table is set up, so the cook is not in its `seen`.
+- An app built from a model writes its own stories, each naming its model story (`model: n`): a
+  cast of named people with `signIn`, documents by type, writes its pages really send.
+  `bun run stories` runs on a throwaway database unless `DB_PATH` says one.
+- To watch several people at once in one browser, give each a host of their own (a session is a
+  cookie per host): `localhost:3000`, `127.0.0.1:3000`, `kitchen.localhost:3000`.
 - `seen` compares pages; it does not look for a word. That a value is drawn, check in a server test
   ([tests.md](tests.md)).
 - A `cannot` story can pass before anything is built, when `permit` already refuses the write: let
