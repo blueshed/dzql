@@ -2,7 +2,7 @@ import { read as readDoc } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { refuse } from "dzql/rendering/refusal";
-import type { Field, Held, Raw } from "./heart";
+import type { Field, Held, Raw, Requires, StoryWrite } from "./heart";
 
 // modeling's documents as its page reads them, and the rules a write to the model follows. The
 // model (`model:1`): its stories and the documents they need, as delta keeps them (`Raw`); the
@@ -51,6 +51,29 @@ const fieldsOf = (value: unknown): Field[] =>
     return name ? [{ name, type: String((f as Partial<Field>).type ?? "").trim() || "text" }] : [];
   });
 
+const VERBS = new Set(["add", "replace", "remove"]);
+const ident = (v: unknown) => String(v ?? "").trim();
+
+/** What a story writes, as hjeli said it: each an entity and a verb, and for a replace the field and the value it sets, if said. */
+const writesOf = (value: unknown): StoryWrite[] =>
+  (Array.isArray(value) ? value : []).map((w) => {
+    const said = (w ?? {}) as Partial<StoryWrite>;
+    const entity = ident(said.entity);
+    if (!entity || !VERBS.has(String(said.op))) throw refuse("A write names an entity and add, replace or remove.");
+    const path = ident(said.path);
+    const to = said.to === undefined || said.to === null ? "" : String(said.to).trim();
+    return { entity, op: said.op as StoryWrite["op"], ...(path && { path }), ...(to && { to }) };
+  });
+
+/** The states a story presupposes: each an entity's field and the value it holds. */
+const requiresOf = (value: unknown): Requires[] =>
+  (Array.isArray(value) ? value : []).map((r) => {
+    const said = (r ?? {}) as Partial<Requires>;
+    const [entity, path, v] = [ident(said.entity), ident(said.path), ident(said.value)];
+    if (!entity || !path || !v) throw refuse("A state a story presupposes names an entity, its field and the value.");
+    return { entity, path, value: v };
+  });
+
 /** Whether a story is done or refused: `does` unless it says `cannot`. */
 const kindOf = (value: unknown): string => (value === "cannot" ? "cannot" : "does");
 
@@ -65,7 +88,8 @@ type Said = { text?: unknown; actor?: unknown; kind?: unknown; post?: unknown; t
 
 /**
  * A write to the model as it takes it. A story: written down with its words, who tells it, and
- * whether they do it or are refused (and a route it posts to, the entities it touches); reworded,
+ * whether they do it or are refused (and a route it posts to, the entities it touches, and, as hjeli
+ * had them, what it writes and the states it presupposes); reworded,
  * retold, taken back -- never without words, nor on more than one line. A document: described with its name, its root and
  * the stories it serves (one at least); what it holds, an entity at a time with what it hangs under
  * and its fields; who holds it; whether it is each person's own; taken out. Its root stays.
@@ -84,6 +108,8 @@ export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
       if (field === "text") return [{ op: "replace", path: op.path, value: line(op.value) }];
       if (field === "actor") return [{ op: "replace", path: op.path, value: words(op.value, "A story is someone's: say who tells it.") }];
       if (field === "kind") return [{ op: "replace", path: op.path, value: kindOf(op.value) }];
+      if (field === "writes") return [{ op: "replace", path: op.path, value: writesOf(op.value) }];
+      if (field === "requires") return [{ op: "replace", path: op.path, value: requiresOf(op.value) }];
       return [{ op: "replace", path: op.path, value: names(op.value) }]; // touches
     }
     if (op.op === "add") {
@@ -111,7 +137,7 @@ export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
   });
 }
 
-const STORY_FIELDS = new Set(["text", "actor", "kind", "touches"]);
+const STORY_FIELDS = new Set(["text", "actor", "kind", "touches", "writes", "requires"]);
 const DOCUMENT_FIELDS = new Set(["name", "held_by", "stories", "own"]);
 
 /** May this op be written at all: a story or a document the model has (or a new one), and only their own fields. */

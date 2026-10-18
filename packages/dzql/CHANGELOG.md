@@ -23,8 +23,33 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **hjeli's six registers run on the model as it is told** (18 October, Peter: "dzql should be a
+  superset of hjeli"). `examples/modeling/closure.ts` asks reachability, subscription, actor,
+  precondition, referential and authorization closure of the page's model after every change: a
+  part across the top of the page, the foot of `show`, and `dzql model audit [model.sqlite]`, which
+  exits 1 while one is open (hjeli's `audit`). A register the model cannot answer says "not asked",
+  never "closed". Off since eta's 3b60ade (12 October), which dropped reachability and subscription
+  closure because they passed by construction over invented per-actor documents; these run over the
+  documents as told.
+- **A story says what it writes and presupposes, as hjeli had it**: `writes` (add, replace a field
+  to a value, remove) and `requires` on the page's stories (`bun run cli writes`, `requires`), so
+  precondition closure's row and state tiers are asked. `touches` stays.
+- **model:check reads hjeli's reachability and dead actor over the real documents**: each table of
+  the app's schema no document holds, and each person who held and wrote nothing. A row of the
+  visitor's own document (`session`) is made by the visit, so precondition closure no longer reports
+  chat's eight session writes as gaps.
+- The modelling skill keeps hjeli's loop: say what a story writes, read the six registers after every
+  change, propose the change that closes a gap, close a red register by adding, never removing.
+
 ### Fixed
 
+- **A session's id is kept off the wire again where the cookie is the session** (an example with no
+  `Example.session`, as the starter and `dzql serve` apps are). 7707774 removed the guard with
+  numbered sessions: a document keyed by another live session, not `perSession`, is refused by name
+  again, and a session's own document has every value equal to its id taken out (2ac7100 narrowed it
+  to the row's `id`, right only for numbered rows).
 - **A person numbered past 2^31 signs in on Postgres** (`dzql/auth-link`): their id was cast to an
   int and overflowed; it is read whole from its `BIGINT`.
 - **A session's own echo keeps a value equal to its id** (`wireOps`): only the row's `id` is taken

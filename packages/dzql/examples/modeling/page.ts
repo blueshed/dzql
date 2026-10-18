@@ -3,13 +3,15 @@ import { watch } from "dzql/rendering/documents";
 import { appletProps, esc, join, write } from "dzql/rendering/html";
 import { part } from "dzql/rendering/parts";
 import { toldAt, toldTo } from "dzql/rendering/refusal";
+import { closureOf, drawClosure } from "./closure";
 import { drawHeart, heartOf } from "./heart";
 import { MODEL, raw, session as sessionOf } from "./model";
 
 // modeling's page. Signed out: sign in. Signed in: the model as the modeller draws it -- its
 // stories, its documents and its entities, three columns -- in one applet that watches the model
 // document, so every change, whoever makes it, is drawn as delta tells it. Click one and the other
-// two light up. The server draws the first paint with the applet's own drawing (./heart.ts).
+// two light up. The server draws the first paint with the applet's own drawing (./heart.ts). Above
+// them, hjeli's six registers over the model (./closure.ts): a part, drawn again with every change.
 
 /** Signed out: the one thing to do, and why the last try did not work, if it did not. */
 function signInPage(sessionId: string): string {
@@ -37,6 +39,7 @@ function modelPage(sessionId: string): string {
     `<div class="heart-page">`,
     `<header><h1>${esc(doc.models.name)}</h1><p>click a story, a document or an entity: the other two light up</p>`,
     `<button type="button" class="sign-out"${write("session", "remove", "/person_id")}>Sign out</button></header>`,
+    part("closure", drawClosure(closureOf(doc))),
     part("told", `<div id="told">${toldOfModel(sessionId)}</div>`),
     `<div class="cols" id="model" data-applet="heart"${appletProps(doc, watch(`model:${MODEL}`))}>${drawHeart(heartOf(doc), { hideStories: false, hideEnts: false, pop: null })}</div>`,
     `<div id="pop"></div>`,

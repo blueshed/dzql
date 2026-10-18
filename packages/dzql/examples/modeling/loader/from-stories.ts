@@ -35,6 +35,8 @@ export type Reading = {
   collections: Map<string, string>;
   /** The document left out as the session's, if the example has a `goTo()`. */
   session?: string;
+  /** Entities written through the visitor's own document (`session`): its row is made by the visit, when a cookie is first seen, not by a story. */
+  madeByVisit: Set<string>;
   notes: Note[];
 };
 
@@ -115,11 +117,13 @@ export function fromStories(stories: Stories): Reading {
   const collections = new Map<string, string>();
   const fields = new Map<string, Map<string, unknown>>(); // entity -> field -> a value seen
   const modelStories: ModelStory[] = [];
+  const madeByVisit = new Set<string>();
 
   const writesOf = (w: Write): StoryWrite[] =>
     w.ops.filter((op): op is PatchOp => !isTest(op)).map((op) => {
       const { write, fields: fs } = readOp(w.doc, op); // a test is no write: a condition on one
       collections.set(write.entity, locate(w.doc, op.path).chain.join("/"));
+      if (docType(w.doc) === "session") madeByVisit.add(write.entity);
       const known = fields.get(write.entity) ?? new Map<string, unknown>();
       for (const [name, value] of fs) if (known.get(name) === undefined) known.set(name, value);
       fields.set(write.entity, known);
@@ -196,6 +200,7 @@ export function fromStories(stories: Stories): Reading {
     },
     collections,
     session,
+    madeByVisit,
     notes,
   };
 }

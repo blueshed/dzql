@@ -36,6 +36,8 @@ numbered as made; the page shows each story's number.
 | A story | `story <actor> <does\|cannot> <words>`; `--post /login` among the words for one that posts a form before anyone holds a document |
 | A correction | `reword <n> <words>` |
 | What its write changes | `touches <n> <entity>...` |
+| What it writes, as hjeli had it | `writes <n> add <entity> replace <entity>.<field>=<value> remove <entity>...` |
+| The state it presupposes | `requires <n> <entity>.<field>=<value>...` |
 | A story taken back | `unsay <n>` |
 | A document | `document <name> <root> <story>...`: at least one story it serves |
 | What it holds | `holds <doc> <entity> [under <parent>] <field[:type]>...` |
@@ -43,6 +45,7 @@ numbered as made; the page shows each story's number.
 | Which stories it serves | `serves <doc> <story>...` |
 | Renamed, taken out | `rename <doc> <name>`, `drop <doc>`, `unhold <doc> <entity>` (never its root) |
 | A slip | `undo`, `redo` |
+| hjeli's audit | `bunx dzql model audit [model.sqlite]`: the six registers; exit 1 while one is open |
 | The model, read back | `show`: each story, numbered, who and does or cannot; each document, numbered, whose, what it serves, and what it holds under its root |
 
 Words with an apostrophe go in double quotes (`story ann does "Ann scans the table's QR code"`):
@@ -66,6 +69,18 @@ documents by who must be told, not by table.
 | *needed by no story* (red) | A document, or its entities, that no story still told needs: take it out, or is a story missing? |
 | *looked up, never held* (dashed) | Touched by a story, held by no document: right for a credential read at sign-in; otherwise, who is told when it changes? |
 | A document everyone holds and everyone writes | Every write tells every holder: is that what the stories ask for? |
+
+hjeli's six registers run on the model after every change (`examples/modeling/closure.ts`), across
+the top of the page and at the foot of `show`:
+
+| Register | Open when |
+|---|---|
+| Reachability | an entity no document holds; a document nobody holds that is not each person's own |
+| Subscription closure | a story writes what reaches no document anyone holds |
+| Actor closure | someone holds a document and tells no story |
+| Precondition closure | a write changes a row no story adds (an own document's root is made by the visit); a story requires a state no write sets. Not asked until a story says `writes` or `requires` |
+| Referential closure | a story a document serves is not told; an entity hangs under one its document does not hold; a name no table or column can take; two documents of one name |
+| Authorization closure | a teller writes what no document they hold holds: you may write what you may read |
 
 ## Loading an app that exists
 

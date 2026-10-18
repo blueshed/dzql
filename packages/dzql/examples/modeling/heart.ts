@@ -16,12 +16,16 @@
 import { esc } from "dzql/rendering/html";
 
 export type Field = { name: string; type: string };
+/** What a story writes, as hjeli said it: an entity, the verb, the field it sets and the value it sets it to. */
+export type StoryWrite = { entity: string; op: "add" | "replace" | "remove"; path?: string; to?: string };
+/** A state a story presupposes, as hjeli said it: an entity's field holding a value. */
+export type Requires = { entity: string; path: string; value: string };
 export type Held = { parent: string | null; fields: Field[] };
 
 /** The model document as delta keeps it: its stories and its documents, each a row by its id. */
 export type Raw = {
   models: { name: string };
-  stories?: Record<string, { id: string | number; text: string; actor: string; kind: string; post?: string | null; touches?: string[] }>;
+  stories?: Record<string, { id: string | number; text: string; actor: string; kind: string; post?: string | null; touches?: string[]; writes?: StoryWrite[] | null; requires?: Requires[] | null }>;
   documents?: Record<string, { id: string | number; name: string; root: string; own?: number | boolean; holds?: Record<string, Held>; held_by?: string[]; stories?: (string | number)[] }>;
 };
 
@@ -49,6 +53,11 @@ export function shape(head: string, root: string, holds: Record<string, Held>): 
 
 const byId = (a: { id: string | number }, b: { id: string | number }) => Number(a.id) - Number(b.id);
 
+/** What a story touches: what it says it touches, and what it writes. */
+export const touched = (s: { touches?: string[]; writes?: StoryWrite[] | null }): string[] => [...new Set([...(s.touches ?? []), ...(s.writes ?? []).map((w) => w.entity)])];
+/** A write as said: `replace requests.status=approved`. */
+export const saidWrite = (w: StoryWrite) => `${w.op} ${w.entity}${w.path ? `.${w.path}` : ""}${w.to !== undefined ? `=${w.to}` : ""}`;
+
 /** The heart's facts, worked out from the model document. */
 export function heartOf(raw: Raw) {
   const rows = Object.values(raw.stories ?? {}).sort(byId);
@@ -68,7 +77,7 @@ export function heartOf(raw: Raw) {
       e.documents.push(d.name);
     }
   }
-  for (const s of rows) for (const t of s.touches ?? []) entity(t);
+  for (const s of rows) for (const t of touched(s)) entity(t);
 
   return {
     example: raw.models.name,
@@ -79,7 +88,7 @@ export function heartOf(raw: Raw) {
       kind: s.kind,
       post: s.post ?? null,
       born: docs.filter((d) => d.serves.includes(String(s.id))).map((d) => d.name),
-      touches: s.touches ?? [],
+      touches: touched(s),
     })),
     documents: docs.map((d) => ({
       name: d.name,
@@ -294,7 +303,13 @@ export function drawHeart(h: Heart, ui: Ui, width = Infinity): string {
 export function plain(raw: Raw): string {
   const h = heartOf(raw);
   const told = new Set(h.stories.map((s) => String(s.n)));
-  const stories = h.stories.map((s) => `${s.n}. ${s.as} ${s.kind}${s.post ? `, posts to ${s.post}` : s.born.length ? "" : ", no document"}: ${s.name}`);
+  const said = (n: number) => {
+    const s = raw.stories?.[String(n)];
+    const w = (s?.writes ?? []).map(saidWrite);
+    const r = (s?.requires ?? []).map((q) => `${q.entity}.${q.path}=${q.value}`);
+    return `${w.length ? `; writes ${w.join(", ")}` : ""}${r.length ? `; requires ${r.join(", ")}` : ""}`;
+  };
+  const stories = h.stories.map((s) => `${s.n}. ${s.as} ${s.kind}${s.post ? `, posts to ${s.post}` : s.born.length ? "" : ", no document"}: ${s.name}${said(s.n)}`);
   const documents = Object.values(raw.documents ?? {})
     .sort(byId)
     .flatMap((d) => {

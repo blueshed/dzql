@@ -51,6 +51,10 @@ export type Reading = {
   readOnly: string[];
   /** What permit allows that no story does and no page a member can get to offers. It over-reports: a shape may refuse it, and a value is never tried. */
   permitAllows: Allowed[];
+  /** hjeli's reachability over the app's own definitions: each table of its schema no document holds (as its root, an include, or a table a custom document watches). */
+  unreached: string[];
+  /** hjeli's dead actor: someone in the stories who held nothing and wrote nothing. */
+  idle: string[];
 };
 
 /** A document's type: `room` for `room:general`, and for a write that names the type alone. */
@@ -287,7 +291,15 @@ export function read(stories: Stories, example?: Example, watched?: Watched, def
   }
   const permitAllows = [...byPath.values()];
 
-  return { ran: !!watched, docs: types, actors, grid, stories: rows, noDocument, tellsNobody, unneeded, readOnly, permitAllows };
+  const idle = actors.filter((a) => Object.values(grid[a]!).every((c) => c.held === 0 && c.written === 0));
+
+  return { ran: !!watched, docs: types, actors, grid, stories: rows, noDocument, tellsNobody, unneeded, readOnly, permitAllows, unreached: [], idle };
+}
+
+/** hjeli's reachability over delta's definitions: each table no document reaches -- as its root, what it includes, or what a custom document watches. */
+export function unreachedIn(tables: string[], documents: { root: string | null; include: string[]; watch?: string[] }[]): string[] {
+  const reached = new Set(documents.flatMap((d) => [...(d.root ? [d.root] : []), ...d.include, ...(d.watch ?? [])]));
+  return tables.filter((t) => !reached.has(t));
 }
 
 /**
@@ -328,7 +340,10 @@ export async function documentsOf(at: string): Promise<Reading> {
   const { example } = (await import(`${dir}/index.ts`)) as { example: Example };
   const watched = watch(example);
   await run(example, stories, watched.observe, { everywhere: watched.everywhere });
-  return read(stories, example, watched, documentsIn(await Bun.file(`${dir}/delta.ts`).text(), null).map((d) => d.name));
+  const defined = documentsIn(await Bun.file(`${dir}/delta.ts`).text(), null);
+  const { schema } = (await import(`${dir}/delta.ts`)) as { schema?: { tables: Record<string, unknown> } };
+  const reading = read(stories, example, watched, defined.map((d) => d.name));
+  return { ...reading, unreached: schema ? unreachedIn(Object.keys(schema.tables), defined) : [] };
 }
 
 const MARKS: [keyof Cell, string][] = [["held", "H"], ["written", "W"], ["refused", "R"], ["told", "T"]];
@@ -355,6 +370,16 @@ export function format(name: string, r: Reading): string {
   out();
   out(`## Writes that tell nobody (${r.tellsNobody.length})`);
   for (const f of r.tellsNobody) out(`- ${f.story} — ${f.detail}`);
+  out();
+  if (r.ran) {
+    out(`## Tables no document holds (${r.unreached.length})`);
+    out(`hjeli's reachability, over the app's schema and its documents`);
+    for (const t of r.unreached) out(`- ${t}: in the schema, and no document's root, include or watch`);
+    out();
+  }
+  out(`## People with nothing in front of them (${r.idle.length})`);
+  out(`hjeli's dead actor: held nothing, wrote nothing`);
+  for (const a of r.idle) out(`- ${a}`);
   out();
   if (r.ran) {
     out(`## Documents no story needs (${r.unneeded.length})`);

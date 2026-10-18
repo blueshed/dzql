@@ -5,7 +5,8 @@ import { sessionRows } from "dzql/rendering/sessions";
 
 // modeling's documents, in delta (`@blueshed/delta`). A model is one document, written by the two
 // who keep it and on the ledger: its stories -- each with who tells it, whether they do it or are
-// refused, a route it posts to, and the entities it touches -- and the documents they need -- each
+// refused, a route it posts to, the entities it touches, and, as hjeli had them, what it writes and
+// the states it presupposes -- and the documents they need -- each
 // with its root, what it holds (an entity at a time: what it hangs under, its fields), who holds
 // it, whether it is each person's own, and which stories it serves. The entities are worked out
 // from those (./heart.ts), never kept. A session is who you are; it is signed in by the sign-in
@@ -14,7 +15,7 @@ import { sessionRows } from "dzql/rendering/sessions";
 
 export const schema = defineSchema({
   models: { table: "mdl_models", columns: { name: "text" }, temporal: false },
-  stories: { table: "mdl_stories", parent: "models", columns: { text: "text", actor: "text", kind: "text", post: "text?", touches: "json" }, temporal: false },
+  stories: { table: "mdl_stories", parent: "models", columns: { text: "text", actor: "text", kind: "text", post: "text?", touches: "json", writes: "json?", requires: "json?" }, temporal: false },
   documents: { table: "mdl_documents", parent: "models", columns: { name: "text", root: "text", own: "integer", holds: "json", held_by: "json", stories: "json" }, temporal: false },
   people: { table: "mdl_people", columns: { name: "text" }, temporal: false },
   sessions: { table: "mdl_sessions", columns: { person_id: "integer?", name: "text?", cookie: "text?" }, temporal: false },

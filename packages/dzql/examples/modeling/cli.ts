@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { extractSessionFile, type Aliases } from "dzql/rendering/cli/commands";
 import type { PatchOp } from "dzql/rendering/json-patch";
+import { closureOf, plainClosure } from "./closure";
 import { plain } from "./heart";
 
 // modeling's own short verbs, loaded by src/cli.ts (ETA_EXAMPLE=modeling) after the kernel's own
@@ -18,6 +19,9 @@ import { plain } from "./heart";
 //   echo "Ann scans the table's QR code" | bun run cli story ann does -   or piped in: `-` reads them
 //   bun run cli reword 1 Ann asks for a week in October
 //   bun run cli touches 1 requests teams                  the entities a story touches
+//   bun run cli writes 1 add requests                     what a story writes, as hjeli had it: an entity and a verb,
+//   bun run cli writes 10 replace requests.status=approved   and for a replace the field and the value it sets
+//   bun run cli requires 10 requests.status=waiting       the states a story presupposes
 //   bun run cli unsay 2                                   a story taken back
 //   bun run cli document team teams 2 4 5                 a document: its name, its root, the stories it serves
 //   bun run cli own 2                                     each person's own (a session), not shared
@@ -27,7 +31,7 @@ import { plain } from "./heart";
 //   bun run cli serves 1 2 4 5
 //   bun run cli rename 1 team
 //   bun run cli drop 2                                    a document taken out
-//   bun run cli show                                      the model as its page shows it, in plain text
+//   bun run cli show                                      the model as its page shows it, in plain text, and hjeli's six registers over it
 
 type Write = { doc: string; ops: PatchOp[] };
 const model = (op: PatchOp): Write => ({ doc: "model", ops: [op] });
@@ -46,10 +50,29 @@ function told(words: string[]): { text: string; post?: string } {
   return { text: said([...words.slice(0, at), ...words.slice(at + 2)]), post: words[at + 1] };
 }
 
+/** `add requests`, `replace requests.status=approved`, ...: a story's writes, a verb and its target each. */
+function writesSaid(words: string[]) {
+  const writes = [];
+  for (let i = 0; i < words.length; i += 2) {
+    const [, entity, path, to] = (words[i + 1] ?? "").match(/^([^.=]+)(?:\.([^=]+))?(?:=(.*))?$/) ?? [];
+    writes.push({ op: words[i], entity, ...(path && { path }), ...(to !== undefined && { to }) });
+  }
+  return writes;
+}
+
+/** `requests.status=waiting`, ...: the states a story presupposes. */
+const requiresSaid = (words: string[]) =>
+  words.map((w) => {
+    const [, entity, path, value] = w.match(/^([^.=]+)\.([^=]+)=(.*)$/) ?? [];
+    return { entity, path, value };
+  });
+
 export const aliases: Aliases = {
   story: ([actor, kind, ...words]) => model({ op: "add", path: "/stories/-", value: { actor, kind, ...told(words) } }),
   reword: ([id, ...words]) => model({ op: "replace", path: `/stories/${id}/text`, value: said(words) }),
   touches: ([id, ...entities]) => model({ op: "replace", path: `/stories/${id}/touches`, value: entities }),
+  writes: ([id, ...words]) => model({ op: "replace", path: `/stories/${id}/writes`, value: writesSaid(words) }),
+  requires: ([id, ...words]) => model({ op: "replace", path: `/stories/${id}/requires`, value: requiresSaid(words) }),
   unsay: ([id]) => model({ op: "remove", path: `/stories/${id}` }),
   document: ([name, root, ...stories]) => model({ op: "add", path: "/documents/-", value: { name, root, stories } }),
   own: ([id]) => model({ op: "replace", path: `/documents/${id}/own`, value: true }),
@@ -65,7 +88,8 @@ export const aliases: Aliases = {
 };
 
 /**
- * `show`: the model as its page shows it, in plain text (./heart.ts `plain`), read as the session
+ * `show`: the model as its page shows it, in plain text (./heart.ts `plain`), and hjeli's six registers
+ * over it (./closure.ts), read as the session
  * file's person reads the page; or why there is none to read. A read, not a write, so it is
  * answered here, as the kernel's CLI loads this file, before it looks for a write: the exit code.
  */
@@ -73,7 +97,8 @@ export async function show(url: string, sessionFile: string): Promise<number> {
   const { readPage } = await import("./loader/told"); // only for `show`: a write needs none of it
   const session = (await Bun.file(sessionFile).text().catch(() => "")).trim();
   try {
-    console.log(plain(await readPage(url, session)));
+    const page = await readPage(url, session);
+    console.log(`${plain(page)}\n\n${plainClosure(closureOf(page))}`);
     return 0;
   } catch (err) {
     console.error((err as Error).message);

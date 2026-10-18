@@ -28,6 +28,20 @@ button:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
 .heart-page header p { margin: 0; font-size: 15px; color: var(--muted); }
 .sign-out { margin-left: auto; border: 0; background: transparent; color: var(--muted); font-size: 13px; padding: 10px; }
 .heart-page .refused { margin: 0; color: var(--red); font-size: 14px; }
+/* hjeli's six registers across the top: a chip each, green closed, red open, grey not asked; opened, its gaps */
+#closure { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.register { position: relative; font-size: 13px; }
+.register summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); cursor: pointer; }
+.register summary::-webkit-details-marker { display: none; }
+.register .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fainter); }
+.register.closed .dot { background: var(--go); }
+.register.open summary { border-color: var(--red-line); background: var(--red-bg); color: var(--red-ink); }
+.register.open .dot { background: var(--red); }
+.register.unasked summary { color: var(--muted); }
+.register-body { position: absolute; z-index: 3; top: 38px; left: 0; width: 420px; max-height: 50vh; overflow: auto; padding: 10px 14px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(var(--ink-rgb), 0.12); }
+.register-body p { margin: 0 0 6px; }
+.register-body .asks { color: var(--muted); }
+.register-body ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 330px 360px minmax(0, 1fr); gap: 28px; }
 .cols > section { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; position: sticky; top: 0; z-index: 1; background: var(--paper); }

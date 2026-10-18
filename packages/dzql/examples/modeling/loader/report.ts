@@ -2,12 +2,14 @@
 // read, and the checks that only stories can ask. Pure: the CLI (closure.ts) loads and prints;
 // this reads and judges.
 //
-// Two of the six are not run: reachability and subscription closure ask what a document watches,
-// and documents are documents.ts's now, read from the stories, the resources and a run -- not
-// invented one per actor per page, over which the one thing either could find was a write nobody
-// notices (an empty `seen`): documents.ts flags that as a write that tells nobody. Nor is actor
-// closure's dead actor, which read those pages: an actor with nothing in front of them and nothing
-// written is a row of dots in the documents' grid.
+// Two of the six are not run here: reachability and subscription closure ask what a document
+// watches, and documents are documents.ts's now, read from the stories, the resources and a run --
+// not invented one per actor per page, over which the one thing either could find was a write
+// nobody notices (an empty `seen`). They run there, over the real documents (check.ts prints both):
+// documents.ts's reachability is each table of the app's schema held by some document, its
+// subscription closure a write that tells nobody, and actor closure's dead actor someone with
+// nothing in front of them and nothing written. A row of the visitor's own document (`session`) is
+// made by the visit, not a story: precondition closure's row tier does not ask a story to add it.
 
 import { writeOf, type Stories } from "dzql/modelling/stories";
 import type { Gap, Model } from "./model/grammar";
@@ -17,9 +19,9 @@ import { fromStories, locate, entityOf, noticing, type Note, type Reading } from
 /** What the stories give each predicate to read. Where they do not say what it asks, it passes. */
 export const READS: Partial<Record<Gap["predicate"], string>> = {
   "actor-closure": "the cast, and who tells (a dead actor is the documents' grid's, not asked here)",
-  "precondition-closure": "the row tier (a row is added before it is changed); stories have no `requires`, so the state tier passes",
+  "precondition-closure": "the row tier (a row is added before it is changed; a session's row by the visit); stories have no `requires`, so the state tier is not asked",
   "referential-closure": "names are the stories' own: documents, paths, keys",
-  "authorization-closure": "stories do not say who owns a row, so it passes; `does` and `cannot` are the permit table instead",
+  "authorization-closure": "stories do not say who owns a row, so it is not asked; `does` and `cannot` are the permit table instead",
 };
 
 export type Finding = { check: string; where: string; detail: string };
@@ -44,7 +46,8 @@ export type Report = {
 export function judge(stories: Stories): { reading: Reading; report: Report } {
   const reading = fromStories(stories);
   const { model } = reading;
-  const gaps = [...actorClosure(model).filter((g) => g.kind !== "dead-actor"), ...preconditionClosure(model), ...referentialClosure(model), ...authorizationClosure(model)];
+  const byVisit = (g: Gap) => g.kind === "unestablished-row" && reading.madeByVisit.has(g.refs?.entity ?? "");
+  const gaps = [...actorClosure(model).filter((g) => g.kind !== "dead-actor"), ...preconditionClosure(model).filter((g) => !byVisit(g)), ...referentialClosure(model), ...authorizationClosure(model)];
 
   const authorBlind: Finding[] = [];
   const writers = new Map<string, Set<string>>();

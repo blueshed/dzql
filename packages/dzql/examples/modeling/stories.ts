@@ -6,7 +6,8 @@ import { story, type Stories, type Write } from "dzql/modelling/stories";
 // that hangs under, who holds it, which stories it serves. The entities are worked out from those,
 // never written. Claude writes from the CLI (`bun run cli`, ./cli.ts); Peter watches the page, the
 // modeller's three columns, live: each change drawn as it lands, and the gaps as they open -- a
-// story no document serves, an entity needed by no story, one looked up and never held.
+// story no document serves, an entity needed by no story, one looked up and never held -- and above
+// them hjeli's six registers, run on the model after every change (./closure.ts).
 //
 // The seed: leave's model, as the modeller read it from leave's code and a run of its 23 stories:
 // the team (1, rooted at teams, holding people and requests, held by ann, bo and mo) for the stories
@@ -51,6 +52,9 @@ export const stories: Stories = {
     // ── the entities, worked out ──
     story("Claude takes back the last story the session serves, and Peter sees the sessions needed by no story", { as: "claude", premise: { claude: [serves(2, ["23"])] }, does: unsay(23), offPage: true, seen: ["peter", "claude"] }),
     story("Claude takes out the session, and Peter sees the sessions looked up, held by no document", { as: "claude", does: drop(2), offPage: true, seen: ["peter", "claude"] }),
+
+    // ── hjeli's six registers, run as the model is told ──
+    story("Claude says a story touches the rotas, which no document holds, and Peter sees reachability open", { as: "claude", does: touches(2, ["requests", "rotas"]), offPage: true, seen: ["peter", "claude"] }),
 
     // ── who may ──
     story("A visitor who has not signed in cannot write a story down", { as: "visitor", cannot: tell("I would like a day off") }),

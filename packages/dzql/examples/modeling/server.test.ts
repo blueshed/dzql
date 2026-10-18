@@ -6,6 +6,7 @@ import { Refusal } from "dzql/rendering/refusal";
 import { BOX, boxHeight, drawHeart, heartOf, layout, picked, plain, reason, related, shape as shapeOf, singular, type Raw, type Ui } from "./heart";
 import { may, model, shape, type Model } from "./model";
 import { aliases, show, stdin } from "./cli";
+import { closureOf, plainClosure } from "./closure";
 import { stories } from "./stories";
 import { example } from "./index";
 
@@ -358,7 +359,8 @@ describe("modeling, served", () => {
     const file = `${process.env.TMPDIR ?? "/tmp"}/session-${crypto.randomUUID()}`;
     await Bun.write(file, (await signIn("claude@modeling.example", "claude-password")).sessionId!);
     const { readPage } = await import("./loader/told");
-    const page = plain(await readPage(ws, (await Bun.file(file).text()).trim()));
+    const raw = await readPage(ws, (await Bun.file(file).text()).trim());
+    const page = plain(raw);
     expect(page).toContain("\n21. visitor does, posts to /login: Bo signs in on another phone, and sees the team's calendar\n");
     expect(page).toContain("\n2. session, each person's own, held by ann, bo, mo and visitor; serves 1, 3, 20 and 23\n   sessions: person_id, page, draft:json");
 
@@ -366,7 +368,7 @@ describe("modeling, served", () => {
     const said = spyOn(console, "error").mockImplementation(() => {});
     try {
       expect(await show(ws, file)).toBe(0);
-      expect(printed).toHaveBeenCalledWith(page);
+      expect(printed).toHaveBeenCalledWith(`${page}\n\n${plainClosure(closureOf(raw))}`);
       expect(await show(ws, `${file}-none`)).toBe(1);
       expect(said).toHaveBeenCalledWith("No model on the page: sign in first (bun run cli login <email> <password>).");
     } finally {
@@ -376,7 +378,11 @@ describe("modeling, served", () => {
 
     // and as the CLI runs it: the kernel's, loading modeling's verbs
     const cli = Bun.spawn(["bun", `${import.meta.dir}/../../src/rendering/cli.ts`, "show", "--session", file], { env: { ...process.env, ETA_EXAMPLE: "modeling", ETA_URL: ws }, stdout: "pipe" });
-    expect(await new Response(cli.stdout).text()).toBe(`${page}\n`);
+    const out = await new Response(cli.stdout).text();
+    expect(out).toBe(`${page}\n\n${plainClosure(closureOf(raw))}\n`);
+    // hjeli's registers over the seed: the logins a sign-in looks up, no document holds
+    expect(out).toContain("\nReachability: 1 gap\n  unwatched-entity · logins: no document holds logins, so nobody is told when it changes\n");
+    expect(out).toContain("\nPrecondition closure: not asked (no story says what it writes or what it presupposes (writes, requires))\n");
     expect(await cli.exited).toBe(0);
     await Bun.file(file).delete();
   }, 30000);

@@ -1,4 +1,4 @@
-// `dzql serve` and `dzql model`: the two commands that are not Postgres's (src/postgres/cli.ts has
+// `dzql serve` and `dzql model` (and `dzql model audit`, hjeli's: the six registers, exit 1 while one is open): the two commands that are not Postgres's (src/postgres/cli.ts has
 // those). Each runs what is already there: the page the server draws for an app's folder
 // (src/rendering/start.ts), and the model's page, an app of its own (examples/modeling).
 import { Database } from "bun:sqlite";
@@ -16,7 +16,10 @@ export function modelIn(file: string): Model {
   try {
     const parse = (row: Record<string, unknown>, keys: string[]) => ({ ...row, ...Object.fromEntries(keys.map((k) => [k, JSON.parse(String(row[k] ?? "null"))])) });
     return {
-      stories: (db.query("SELECT id, text, actor, kind FROM mdl_stories WHERE models_id = 1").all() as Record<string, unknown>[]) as Model["stories"],
+      // every column, so a model kept before a column was added still reads; what is JSON, parsed
+      stories: (db.query("SELECT * FROM mdl_stories WHERE models_id = 1").all() as Record<string, unknown>[]).map((s) =>
+        parse(s, ["touches", "writes", "requires"].filter((k) => k in s)),
+      ) as Model["stories"],
       documents: (db.query("SELECT id, name, root, own, holds, held_by, stories FROM mdl_documents WHERE models_id = 1").all() as Record<string, unknown>[]).map((d) =>
         parse(d, ["holds", "held_by", "stories"]),
       ) as Model["documents"],
@@ -36,6 +39,14 @@ export async function run(argv: string[]): Promise<boolean> {
   }
   if (verb !== "model") return false;
   const port = process.env.MODEL_PORT ?? "3001";
+  if (sub === "audit") {
+    // hjeli's `audit`: the six registers over the model as told, and exit 1 until none is open
+    const file = rest.find((a) => !a.startsWith("--")) ?? "model.sqlite";
+    const { closureOf, plainClosure } = await import("../../examples/modeling/closure");
+    const registers = closureOf({ models: { name: basename(file) }, ...modelIn(file) } as Parameters<typeof closureOf>[0]);
+    process.stdout.write(`${plainClosure(registers)}\n`);
+    process.exit(registers.some((r) => r.gaps.length > 0) ? 1 : 0);
+  }
   if (sub === "export") {
     const out = rest.indexOf("--out");
     const file = rest.find((a, i) => !a.startsWith("--") && i !== out + 1) ?? "model.sqlite";

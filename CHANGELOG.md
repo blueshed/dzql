@@ -6,6 +6,13 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### Added
+
+- **What dzql and eta lost, found and put back** (18 October): `docs/inventory.md` lists every
+  feature of eta 62c2d36, dzql 3611d0c and hjeli, run old and new. hjeli's six registers run on the
+  model's page as it is told, with `dzql model audit`; the session-id guard is back where the cookie
+  is the session (packages/dzql/CHANGELOG.md).
+
 ### Fixed
 
 - **docs/ tells one story** (17 October, Peter: "is our docs folder telling a consistent story?").
