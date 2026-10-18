@@ -51,7 +51,7 @@ describe("a page drawn from a collection's shape", () => {
     expect(drawer).toContain(`aria-label="The Mount"`);
     // each the bento's field: a form of its own, its label tied to it
     expect(drawer).toContain(`<form data-eta-part="venues-1-seats" class="prop" data-write-on="blur"><label class="prop-name cap" for="field-board-venues-1-seats">Seats</label>`);
-    expect(drawer).toContain(`id="field-board-venues-1-seats" name="seats"${write("board", "replace", "/venues/1/seats")} type="number" value="120"`);
+    expect(drawer).toContain(`id="field-board-venues-1-seats" name="seats"${write("board", "replace", "/venues/1/seats")} type="number" step="any" value="120"`);
     expect(drawer).toContain(`name="name"${write("board", "replace", "/venues/1/name")} type="text"`);
     expect(drawer).toContain(`<div class="prop-value">&lt;booked&gt;</div>`); // the permit says no: read, not typed
     expect(drawer).toContain(`<span class="prop-name cap">Picture</span>`);

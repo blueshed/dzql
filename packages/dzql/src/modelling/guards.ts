@@ -101,7 +101,8 @@ export function guardsOf(model: GuardModel): Guards {
       });
     }
   }
-  return { documents: [...new Set(documents.map((d) => d.name))], rules, roots: Object.fromEntries(documents.map((d) => [d.name, d.root])) };
+  // each person's own document is the app's session, kept by the app (a perSession resource): not guarded here
+  return { documents: [...new Set(documents.filter((d) => !d.own).map((d) => d.name))], rules, roots: Object.fromEntries(documents.map((d) => [d.name, d.root])) };
 }
 
 /** A write's path, as delta's: `/<entity>/<id>[/<field>]`, each segment unescaped (RFC 6901). */
@@ -170,6 +171,7 @@ export function guardWrites(ws: On, guards: Guards, opts: { actorOf: (identity: 
   ws.on("delta", async (msg, client, respond) => {
     const [doc = "", docId] = String(msg?.doc ?? "").split(":");
     if (!guards.documents.includes(doc) || !Array.isArray(msg.ops)) return; // not the model's, or the store's 400
+    if (client?.data?.local && client.data.identity === undefined) return; // the server's own write (dzql's serverWrite), no person's
     const actor = opts.actorOf(client?.data?.identity, client);
     if (actor === undefined) return respond({ error: { code: 401, message: `Sign in to write to ${msg.doc}` } });
     for (const op of msg.ops as Op[]) {
@@ -177,6 +179,20 @@ export function guardWrites(ws: On, guards: Guards, opts: { actorOf: (identity: 
       if (!verdict.ok) return respond({ error: { code: 403, message: verdict.reason } });
     }
   });
+}
+
+/**
+ * A `rowOf` for a SQLite store (delta's, or the JSON file's): the row as the schema says it, its
+ * booleans as booleans (SQLite keeps them as 0 and 1), so a story's `requires paid=false` reads true.
+ */
+export function rowsIn(db: { query(sql: string): { get(...params: unknown[]): unknown } }, schema: { tables: Record<string, { name: string; columns: Record<string, { type: string }> }> }): RowOf {
+  return (entity, id) => {
+    const t = schema.tables[entity];
+    if (!t) return null;
+    const row = db.query(`SELECT * FROM "${t.name}" WHERE id = ?`).get(id) as Row | null;
+    if (row) for (const [name, c] of Object.entries(t.columns)) if (c.type === "boolean" && row[name] != null) row[name] = !!row[name];
+    return row;
+  };
 }
 
 /** The guards as an app's file: what `dzql model guards` writes. */

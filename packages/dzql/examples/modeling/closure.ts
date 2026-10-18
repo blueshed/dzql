@@ -17,7 +17,7 @@
 
 import { esc } from "dzql/rendering/html";
 import { knownType, parentIn } from "dzql/modelling/definitions";
-import { saidWrite, touched, type Raw, type StoryWrite } from "./heart";
+import { saidWrite, singular, touched, type Raw, type StoryWrite } from "./heart";
 
 export type Register = {
   predicate: "reachability" | "subscription-closure" | "actor-closure" | "precondition-closure" | "referential-closure" | "authorization-closure" | "coverage" | "playability";
@@ -58,6 +58,14 @@ export function closureOf(raw: Raw): Register[] {
     }
   const parentOf = (e: string) => [...(parents.get(e)?.keys() ?? [])][0];
   const fieldsOf = (e: string) => new Set(heldIn(e).flatMap((d) => (d.holds[e]?.fields ?? []).map((f) => f.name)));
+  // whose copy a role holds is said when their own document holds a field naming it, or a row it
+  // hangs under: a seat's `table` says which table's invoice is theirs (cafe-c's feedback)
+  const ownSays = (who: string, root: string): boolean => {
+    const chain: string[] = [];
+    for (let e: string | undefined = root; e && !chain.includes(e); e = parentOf(e)) chain.push(e);
+    const names = new Set(chain.flatMap((e) => [e, singular(e)].flatMap((n) => [n, `${n}_id`])));
+    return docs.some((o) => o.own && o.serves.some((id) => stories.find((x) => String(x.id) === id)?.actor === who) && Object.values(o.holds).some((h) => (h.fields ?? []).some((f) => names.has(f.name))));
+  };
   const impliedRoots = new Set(docs.filter((d) => !parentOf(d.root)).map((d) => d.root));
 
   const reachability: Register = {
@@ -112,7 +120,7 @@ export function closureOf(raw: Raw): Register[] {
     advice: docs.flatMap((d) =>
       d.own || !said.some(({ w }) => w.op === "add" && w.entity === d.root)
         ? []
-        : d.held_by.filter((who) => !said.some(({ s, w }) => s.actor === who && w.op === "add" && w.entity === d.root)).map((who) => ({ kind: "whose-copy", where: `${d.name} (${who})`, detail: `there are many ${d.root}: which one is ${who}'s, and how do they come to hold it? (a story that gives it them, or a document of their own that says)` })),
+        : d.held_by.filter((who) => !said.some(({ s, w }) => s.actor === who && w.op === "add" && w.entity === d.root) && !ownSays(who, d.root)).map((who) => ({ kind: "whose-copy", where: `${d.name} (${who})`, detail: `there are many ${d.root}: which one is ${who}'s, and how do they come to hold it? (a story that gives it them, or a document of their own that says)` })),
     ),
   };
 
@@ -154,6 +162,8 @@ export function closureOf(raw: Raw): Register[] {
           .map(([e, h]) => ({ kind: "unknown-parent", where: d.name, detail: `${e} hangs under ${h.parent}, which ${d.name} does not hold` })),
       ),
       ...[...entities].filter((e) => !IDENT.test(e)).map((e) => ({ kind: "invalid-name", where: e, detail: `${JSON.stringify(e)} is not a name a table can take` })),
+      // a document's name is its prefix on the wire and its type's name: one word (cafe-c's feedback)
+      ...docs.filter((d) => !IDENT.test(d.name)).map((d) => ({ kind: "invalid-name", where: d.name, detail: `${JSON.stringify(d.name)} is not a name a document can take: one word, letters, digits and _ (rename ${d.id} ${d.name.replace(/[^A-Za-z0-9_]+/g, "_")})` })),
       ...docs.flatMap((d) =>
         Object.entries(d.holds).flatMap(([e, h]) =>
           (h.fields ?? []).filter((f) => !IDENT.test(f.name)).map((f) => ({ kind: "invalid-name", where: `${d.name}: ${e}`, detail: `${JSON.stringify(f.name)} is not a name a column can take` })),
@@ -197,9 +207,19 @@ export function closureOf(raw: Raw): Register[] {
     predicate: "coverage",
     asks: "every write is decided for everyone who holds what it changes: a story where they make it, or one where they are refused",
     ...(!said.length && { notAsked: "no story says what it writes (writes)" }),
-    gaps: [...writers].flatMap(([key, { w, holders }]) =>
-      [...holders].filter((who) => !decided(who, w)).map((who) => ({ kind: "undecided-write", where: key, detail: `${who} holds it, and no story says whether ${who} may ${key}` })),
-    ),
+    gaps: [
+      ...[...writers].flatMap(([key, { w, holders }]) =>
+        [...holders].filter((who) => !decided(who, w)).map((who) => ({ kind: "undecided-write", where: key, detail: `${who} holds it, and no story says whether ${who} may ${key}` })),
+      ),
+      // a cannot the same teller's does already lets through, presupposing nothing: the guards try
+      // the does first, so the cannot never refuses (cafe-c's feedback)
+      ...refused.flatMap((c) =>
+        (c.writes ?? []).flatMap((cw) => {
+          const by = doing.find((d) => d.actor === c.actor && !(d.requires ?? []).length && (d.writes ?? []).some((dw) => dw.entity === cw.entity && dw.op === cw.op && (!dw.path || dw.path === cw.path) && (dw.to === undefined || dw.to === cw.to)));
+          return by ? [{ kind: "shadowed-cannot", where: story(c), detail: `story ${by.id} already lets ${c.actor} ${saidWrite(cw)}, presupposing nothing, so this is never refused: say what tells them apart (requires ${by.id} ...)` }] : [];
+        }),
+      ),
+    ],
   };
 
   // Playability (rights' derive-ux.ts): can each person take their turn? A turn is a state a story

@@ -36,7 +36,16 @@ export function modelIn(file: string): Model & { name: string } {
  * model the checks passed, and never behind it (model.test.ts folds them and compares). Nothing is
  * written while a check is open. Returns what to print, and whether every check passed.
  */
-export async function make(file: string, out: string, { drops = false }: { drops?: boolean } = {}): Promise<{ ok: boolean; said: string }> {
+export async function make(file: string, out: string, options: { drops?: boolean } = {}): Promise<{ ok: boolean; said: string }> {
+  try {
+    return await making(file, out, options);
+  } catch (err) {
+    // never quietly stale: what failed, and that what is there is behind the page
+    return { ok: false, said: `Nothing made: making ${out}/ failed: ${(err as Error).message}\n${out}/ is as it was, behind the model.` };
+  }
+}
+
+async function making(file: string, out: string, { drops = false }: { drops?: boolean }): Promise<{ ok: boolean; said: string }> {
   const { closureOf, plainClosure } = await import("../../examples/modeling/closure");
   const model = modelIn(file);
   const registers = closureOf({ models: { name: model.name }, ...model } as Parameters<typeof closureOf>[0]);
@@ -114,6 +123,21 @@ function watchModel(file: string, out: string): void {
   again();
 }
 
+/**
+ * The model as a route, for an app's routes in development: `compose(app, await modelRoute())`.
+ * Its page at /model, the model in `model.json`, what the checks let it make in `model/`; a
+ * sign-in link printed for each keeper. Production never calls it, so never registers it.
+ */
+export async function modelRoute({ file = process.env.MODEL_FILE ?? "model.json", out = "model", port = process.env.PORT ?? "3000" } = {}) {
+  process.env.MODEL_FILE = file;
+  process.env.MODEL_NAME ??= projectName();
+  const { appOf } = await import("../rendering/server");
+  const app = appOf((await import("../../examples/modeling/index.ts")).example);
+  await sayLinks(String(port));
+  watchModel(file, out);
+  return app;
+}
+
 /** Runs `dzql serve` or `dzql model`; false for any other command. */
 export async function run(argv: string[]): Promise<boolean> {
   const [verb, sub, ...rest] = argv;
@@ -128,17 +152,8 @@ export async function run(argv: string[]): Promise<boolean> {
     const { appDir } = await import("../rendering/names");
     const { appOf, compose } = await import("../rendering/server");
     const { example } = await import(`${appDir(dir)}/index.ts`);
-    const dev = rest.includes("--model");
-    if (dev) {
-      process.env.MODEL_FILE = file;
-      process.env.MODEL_NAME ??= projectName();
-    }
-    const model = dev && (await import("../../examples/modeling/index.ts")).example;
-    await running(() => serve(compose(appOf(example), model && appOf(model))));
-    if (dev) {
-      await sayLinks(process.env.PORT ?? "3000");
-      watchModel(file, "model");
-    }
+    const model = rest.includes("--model") && (await modelRoute({ file }));
+    await running(() => serve(compose(appOf(example), model)));
     return true;
   }
   if (verb !== "model") return false;

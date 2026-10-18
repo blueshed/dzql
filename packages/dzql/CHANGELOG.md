@@ -25,6 +25,21 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **What a blank session building cafe-c found** (18 October, `cafe-c/feedback.md`, from a session
+  with only the skills). A box with a cell open always has its way back: `boxPage` gives the box's
+  last crumb a `back` and names the cell after it when the caller's trail has none, and bento.md
+  says which example to copy for a box (ticker) and which for a collection (leave). A number field
+  takes 2.80 (`step="any"`). A document's name must be one word (it is a wire prefix and a type's
+  name): a space or hyphen is a referential gap with the rename to say, and making `model/` that
+  fails says so ("Nothing made: ... failed") instead of leaving it stale. Coverage flags a
+  `cannot` that the same teller's `does` already lets through, presupposing nothing
+  (`shadowed-cannot`). The guards let the server's own writes by, leave each person's own
+  document to the app's session, and ship `rowsIn(db, schema)`, a SQLite `rowOf` with booleans
+  read as booleans. Whose-copy advice goes quiet once the person's own document holds a field
+  naming the document's root or a row it hangs under. The model's page counts "8 of 20" stories
+  when some are hidden. The modelling reference says how `types.ts` meets another store, what an
+  own document becomes, and which schema the model's migrations run with.
+
 - **Made usable before a third cafe: what three reviews and a fresh app found** (18 October,
   Peter: "please make this a usable library ... perhaps run a review?"). The model is served beside
   an app only when asked: `dzql serve <app> --model` (the starter's `bun dev` passes it; `start`

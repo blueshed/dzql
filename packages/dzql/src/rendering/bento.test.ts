@@ -149,9 +149,12 @@ describe("the surfaces", () => {
     expect(b.boxPage([{ label: "The desk" }], ["<p>in place</p>"], cells, { key: "market", body: "" })).toContain('<div class="in-place" inert><p>in place</p></div>');
     expect(b.boxPage([{ label: "The desk" }], ["<p>in place</p>"], cells)).not.toContain("inert"); // closed, all of it is there
     expect(b.boxPage([{ label: "The desk" }], [], cells)).toContain('<div class="in-place"></div><div class="cells"'); // the wrapper always, so opening changes only its tag
-    // a window on the root has no way back, and may have no tools at all
+    // a window always has a way back: a trail with none gains it, back to the box, the cell named last (cafe-c's feedback)
     const bare = b.boxPage([{ label: "rooms" }], [], cells, { key: "board", body: "" });
-    expect(bare).toContain('<div class="cell-head cap"><span class="cell-name">rooms</span></div><div class="rail work"></div><div class="full"></div>');
+    expect(bare).toContain(`<div class="cell-head cap"><a class="cell-back" href="#"${b.go("")}><span>rooms</span></a>`);
+    expect(bare).toContain('<span class="cell-name">board</span></div><div class="rail work"></div><div class="full"></div>'); // and may have no tools at all
+    const windowOf = (html: string) => html.slice(html.indexOf('class="cell open"'));
+    expect(windowOf(b.boxPage([{ label: "rooms" }, { label: "board" }], [], cells, { key: "board", body: "" }))).toBe(windowOf(bare)); // its name already in the trail
   });
 
   test("the window's head is the whole trail, as the page's is: every earlier crumb a way back, the root included", () => {
@@ -232,7 +235,7 @@ describe("the surfaces", () => {
     const add = b.addModal("A new room", [{ name: "room", label: "Its name" }, { name: "seats", label: "Seats", type: "number", required: false, value: "4", placeholder: "how many" }], open, close);
     expect(add).toContain(`<div class="scrim modal-scrim" data-escape${close}></div><dialog open class="modal" aria-label="A new room"><h3>A new room</h3><form${open}>`);
     expect(add).toContain('<input name="room" type="text" value="" placeholder="" autocomplete="off" required autofocus>');
-    expect(add).toContain('<input name="seats" type="number" min="0" value="4" placeholder="how many" autocomplete="off">');
+    expect(add).toContain('<input name="seats" type="number" min="0" step="any" value="4" placeholder="how many" autocomplete="off">');
     expect(add).toContain('type="submit" class="tool add"><i data-icon="plus" data-size="16"></i>Add</button>');
     expect(b.addModal("t", [], open, close, "Make it")).toContain("Make it</button>");
     const drop = b.confirmModal("Stop watching ALPH", "Its row leaves.", open, close, "Stop watching");

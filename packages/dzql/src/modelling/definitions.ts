@@ -134,7 +134,7 @@ export function sourceOf(model: Model, from = "@blueshed/delta/json"): string {
 // ---------------------------------------------------------------------------------------------
 
 const TS: Record<string, string> = { text: "string", integer: "number", real: "number", boolean: "boolean", json: "unknown", timestamptz: "string" };
-const pascal = (key: string) => key.replace(/(^|_)([a-z0-9])/g, (_, __, c: string) => c.toUpperCase());
+const pascal = (key: string) => key.replace(/(^|[_-])([a-z0-9])/g, (_, __, c: string) => c.toUpperCase());
 
 /**
  * The snapshot: `types.ts`, as hjeli's was -- the definitions (`sourceOf`), then each table's row

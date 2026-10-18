@@ -80,9 +80,9 @@ the page and at the foot of `show`: hjeli's six, Easy's coverage, and playabilit
 | Subscription closure | a story writes what reaches no document anyone holds |
 | Actor closure | someone holds a document and tells no story |
 | Precondition closure | a write changes a row no story adds (an own document's root is made by the visit); a story requires a state no write sets. Not asked until a story says `writes` or `requires` |
-| Referential closure | a story a document serves is not told; an entity hangs under one its document does not hold; a name no table or column can take; two documents of one name |
+| Referential closure | a story a document serves is not told; an entity hangs under one its document does not hold; a name no table, column or document can take (a document's is one word: `my_table`); two documents of one name |
 | Authorization closure | a teller writes what no document they hold holds: you may write what you may read |
-| Coverage | someone holds what a write changes, and no story says whether they may make it (a `cannot` story decides it) |
+| Coverage | someone holds what a write changes, and no story says whether they may make it (a `cannot` story decides it); a `cannot` that the same teller's `does` already lets through, presupposing nothing, so it is never refused |
 | Playability | it is someone's move on a state no document they hold shows; someone waits on a state they cannot see |
 
 ## Loading an app that exists
@@ -107,15 +107,27 @@ stories: the app's stories are the app's, in its words, each naming its model st
 A file in `model/` a person wrote is kept, and the model's goes beside it (`types.model.ts`).
 
 How the app uses them:
-- **The tables:** `types.ts` exports `tables`; the app keeps what the model does not (who signs
-  in, sessions) beside them, `defineSchema({ ...tables, ... })`, its own tables under its own
-  name, and runs the model's migrations (`migrate(db, model's, { app: "<name>-model", schema })`)
-  then its own (`{ app: "<name>", ... }`): two histories, one database.
+- **The store:** `types.ts` exports `tables`, `docs` and `schema`, made with the JSON file's
+  `defineSchema` for the model's own proof. An app on another store takes `tables` and `docs` and
+  gives them to its own: `defineSchema({ ...tables, ... })` and `registerDocs` from
+  `@blueshed/delta/sqlite` (or dzql's Postgres). The definitions are the same on every store.
+- **The tables:** the app keeps what the model does not (who signs in, sessions) beside the
+  model's, its own tables under its own name. At start-up it runs the model's migrations with the
+  model's schema (`migrate(db, model's, { app: "<name>-model", schema })`, `schema` from
+  `types.ts`), then `createTables` and `migrateSchema` with its own, which add what it says
+  beyond the model (eta-app's documents.md). Passing the app's schema to the model's migrations
+  makes delta warn that the definitions say more than the migrations: they are the model's.
+- **Each person's own document:** the model's `own` document is the app's session. Its root is the
+  session's table: the app adds the session's own columns to it (`cookie`, who signed in) and keeps
+  it as a `perSession` resource under the name the app gives its session. The guards leave it out.
 - **The guards:** `guards.ts` stands in front of the store, `guardWrites(delta.server, guards, {
   actorOf, rowOf })` in `delta.ts` before `registerDocs`: a write no story says is refused there,
-  with the story's words. A resource's `permit` need not say the rules again.
+  with the story's words. A resource's `permit` need not say the rules again. `rowsIn(db,
+  schema)` (`dzql/modelling/guards`) is the `rowOf` for SQLite, its booleans read as booleans.
+  The server's own writes (`serverWrite`) are no person's, and go by.
 - **Whose copy:** a document a role holds whose root is one of many (a table, a bill) is advice
-  in actor closure until the model says how each person comes to hold theirs: ask the teller.
+  in actor closure until the model says how each person comes to hold theirs (a story that gives
+  it them, or their own document holding a field that names it, `table`): ask the teller.
 Every store takes the definitions: delta's JSON file and SQLite, and dzql's Postgres. In code, `definitionsOf(model)` (`dzql/modelling/definitions`) does the
 same. Who owns a document that is each person's own is not in the model: the file says so, to be
 given with sign-in.

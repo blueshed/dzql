@@ -247,7 +247,7 @@ export function drawHeart(h: Heart, ui: Ui, width = Infinity): string {
     `<button class="icon eye" data-act="${which}" data-key="${which}" aria-pressed="${hidden}" aria-label="${esc(hidden ? show : hide)}" title="${esc(hidden ? show : hide)}">${hidden ? EYE_OFF : EYE}</button>`;
 
   // ── Stories ──
-  const storiesHead = sel.k === "doc" ? `${r.stories.size} it was born from` : sel.k === "ent" ? `${r.stories.size} touch ${subject}` : subject;
+  const storiesHead = sel.k === "doc" ? `${r.stories.size} of ${h.stories.length} it was born from` : sel.k === "ent" ? `${r.stories.size} of ${h.stories.length} touch ${subject}` : subject;
   const story = (s: Story) => {
     const cls = ["story", r.stories.has(s.n) && "on", isSel("story", s.n) && "me"].filter(Boolean).join(" ");
     const tag = (s.kind === "cannot" ? `<span class="cannot">cannot · </span>` : "") + (s.post ? `<span class="tag">posts to ${esc(s.post)} · </span>` : s.born.length ? "" : `<span class="tag">no document · </span>`);

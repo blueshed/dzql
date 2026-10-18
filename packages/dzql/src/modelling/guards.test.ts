@@ -4,7 +4,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { createTables, registerDocs } from "@blueshed/delta/sqlite";
 import { closureOf } from "../../examples/modeling/closure";
 import { definitionsOf } from "./definitions";
-import { check, guardSource, guardsOf, guardWrites, type GuardModel, type RowOf } from "./guards";
+import { check, guardSource, guardsOf, guardWrites, rowsIn, type GuardModel, type RowOf } from "./guards";
 
 // The leave app's model, told as a modeller tells it: who asks, who approves, and what each write
 // presupposes. Every check is closed (hjeli's six, Easy's coverage: each write decided for both), so its guards may be generated.
@@ -82,10 +82,24 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     expect((await write(mo, { op: "replace", path: "/requests/1/status", value: "approved" })).error!.message).toBe('story 4 ("Mo approves a request that is waiting") presupposes requests.status=waiting, and it is "approved"');
     expect((await write(ann, { op: "remove", path: "/requests/1" })).error!.message).toContain("presupposes requests.status=waiting");
     expect((await write(ann, { op: "remove", path: "/requests/9" })).error!.message).toBe('story 6 ("Ann takes back a request still waiting") needs the requests row 9, and there is none');
-    // nobody signed in; a document the model does not describe goes by to the store
-    expect((await local.call("delta", { doc: "team:1", ops: [{ op: "remove", path: "/requests/1" }] })).error).toEqual({ code: 401, message: "Sign in to write to team:1" });
+    // nobody signed in (a visit: an identity that names no teller); a document the model does not describe goes by to the store
+    expect((await local.as("visit-7").call("delta", { doc: "team:1", ops: [{ op: "remove", path: "/requests/1" }] })).error).toEqual({ code: 401, message: "Sign in to write to team:1" });
     expect((await ann.call("delta", { doc: "elsewhere:1", ops: [] })).error!.code).toBe(404);
     expect(db.query("SELECT status FROM requests").all()).toEqual([{ status: "approved" }]);
+    // the server's own write (no identity: dzql's serverWrite) is no person's, and goes by (cafe-c's feedback)
+    expect((await local.call("delta", { doc: "team:1", ops: [{ op: "replace", path: "/teams/1/name", value: "The desk" }] })).result).toEqual({ ack: true });
+  });
+
+  test("each person's own document is the app's session, not guarded; rowsIn reads a SQLite row with its booleans", async () => {
+    const own: GuardModel = { ...leave, documents: { ...leave.documents, "9": { id: 9, name: "seat", root: "seats", own: 1, holds: { seats: { parent: null } } } } };
+    expect(guardsOf(own).documents).toEqual(guardsOf(leave).documents);
+    const db = new Database(":memory:");
+    db.run('CREATE TABLE "cafe_invoices" (id INTEGER PRIMARY KEY, paid INTEGER, note TEXT)');
+    db.run("INSERT INTO cafe_invoices VALUES (1, 0, 'x')");
+    const rowOf = rowsIn(db, { tables: { invoices: { name: "cafe_invoices", columns: { paid: { type: "boolean" }, note: { type: "text" } } } } });
+    expect(await rowOf("invoices", "1")).toEqual({ id: 1, paid: false, note: "x" });
+    expect(await rowOf("invoices", "2")).toBeNull();
+    expect(await rowOf("nothing", "1")).toBeNull();
   });
 
   test("a whole row replaced is read for the field the story sets; a write to a document its teller does not hold is refused", async () => {

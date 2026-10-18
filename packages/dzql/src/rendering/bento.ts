@@ -55,6 +55,8 @@ export interface CellOptions<I extends string> {
 /** A cell as the tray places it: its html, and how much of the tray it asked for. */
 export interface Placeable extends Cell {
   html: string;
+  /** Its name, for the window's trail when it opens. */
+  name?: string;
 }
 
 /** What grows into the window when a cell opens: its reading, its tools on the rail, a note. */
@@ -206,7 +208,7 @@ export function field(o: FieldOptions): string {
     kind === "textarea" ? `<textarea class="field"${attrs}${hint} rows="3">\n${esc(o.value)}</textarea>` // the first newline is the parser's to drop, so the value's own survives
     : kind === "select" ? `<select class="field"${attrs}>${(o.options ?? []).map((c) => `<option value="${esc(c.value)}"${c.value === String(o.value ?? "") ? " selected" : ""}>${esc(c.text)}</option>`).join("")}</select>`
     : kind === "checkbox" ? `<input${attrs} type="checkbox"${o.value ? " checked" : ""}>`
-    : `<input class="field"${attrs} type="${kind}" value="${esc(o.value)}"${hint} autocomplete="off">`;
+    : `<input class="field"${attrs} type="${kind}"${kind === "number" ? ' step="any"' : ""} value="${esc(o.value)}"${hint} autocomplete="off">`;
   const status = o.said === undefined ? "" : `<div class="field-said" id="${id}-said">${o.said}</div>`;
   const on = ` data-write-on="${o.on ?? (CHOSEN.has(kind) ? "change" : "blur")}"`;
   const label = `<label class="${o.inRow ? "sr-only" : "prop-name cap"}" for="${id}">${esc(o.label)}</label>`;
@@ -339,7 +341,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
       o.body && `<div class="cell-body">${o.body}</div>`,
       "</div>",
     );
-    return { key, span: o.big ? COLUMNS : (o.span ?? 1), rows: 1, html };
+    return { key, span: o.big ? COLUMNS : (o.span ?? 1), rows: 1, html, name: o.name };
   }
 
   /**
@@ -378,13 +380,25 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
    * what is behind it -- the trail, the other cells, what is in place -- is `inert`: not to be
    * reached or heard until it closes.
    */
+  /**
+   * A window always has a way back to its box. A trail with no crumb going back (the box's own,
+   * however the caller grew it or not) gains one: the box's last crumb goes back to the tray, and
+   * the cell is named after it.
+   */
+  function wayBack(trail: Crumb[], opened: Placeable): Crumb[] {
+    if (trail.slice(0, -1).some((c) => c.back !== undefined)) return trail;
+    const name = opened.name ?? opened.key;
+    const box = trail.length > 1 && trail[trail.length - 1]!.label === name ? trail.slice(0, -1) : trail;
+    return [...box.slice(0, -1), { ...box[box.length - 1]!, back: box[box.length - 1]!.back ?? go("") }, { label: name }];
+  }
+
   function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], open?: OpenOptions): string {
     const wide = grid(cells, COLUMNS);
     const narrow = grid(cells, 1);
     const cornersOf = (t: Grid, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
     const behind = open ? " inert" : "";
     const placed = cells.map((c) => {
-      if (open && c.key === open.key) return windowOf(trail, open);
+      if (open && c.key === open.key) return windowOf(wayBack(trail, c), open);
       return part(c.key, c.html.replace(`data-key="${c.key}"`, `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"${behind}`));
     });
     const areas = (t: Grid): string => t.areas.replace(/\n/g, " ");
@@ -467,7 +481,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
         const asked = `${f.required === false ? "" : " required"}${i === 0 ? " autofocus" : ""}`;
         const control = f.options
           ? `<select name="${esc(f.name)}"${asked}>${f.options.map((o) => `<option value="${esc(o.value)}"${o.value === f.value ? " selected" : ""}>${esc(o.text)}</option>`).join("")}</select>`
-          : `<input name="${esc(f.name)}" type="${f.type ?? "text"}"${f.type === "number" ? ' min="0"' : ""} value="${esc(f.value ?? "")}" placeholder="${esc(f.placeholder ?? "")}" autocomplete="off"${asked}>`;
+          : `<input name="${esc(f.name)}" type="${f.type ?? "text"}"${f.type === "number" ? ' min="0" step="any"' : ""} value="${esc(f.value ?? "")}" placeholder="${esc(f.placeholder ?? "")}" autocomplete="off"${asked}>`;
         return `<label class="modal-field"><span class="note">${esc(f.label)}</span>${control}</label>`;
       })
       .join("");

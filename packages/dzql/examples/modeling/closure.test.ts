@@ -282,6 +282,45 @@ describe("Easy's coverage and derive-ux's playability, over the model as told", 
   });
 });
 
+describe("a name the app cannot take is caught before anything is made (cafe-c's feedback)", () => {
+  test("a document's name is one word: a space or a hyphen is a referential gap, with the rename to say", () => {
+    const named = (name: string) => closureOf({ models: { name: "Cafe" }, stories: { "1": { id: 1, text: "Ann sits", actor: "ann", kind: "does" } }, documents: { "2": { id: 2, name, root: "visits", holds: { visits: { parent: null, fields: [field("table")] } }, held_by: ["ann"], stories: [1] } } });
+    expect(of(named("my table"), "referential-closure").gaps).toContainEqual({ kind: "invalid-name", where: "my table", detail: '"my table" is not a name a document can take: one word, letters, digits and _ (rename 2 my_table)' });
+    expect(of(named("my-table"), "referential-closure").gaps.map((g) => g.kind)).toContain("invalid-name");
+    expect(of(named("my_table"), "referential-closure").gaps).toEqual([]);
+  });
+
+  test("a cannot that the same teller's does already lets through is never refused: a coverage gap", () => {
+    const cafe = (requires?: { entity: string; path: string; value: string }[]) => closureOf({
+      models: { name: "Cafe" },
+      stories: {
+        "1": { id: 1, text: "The manager opens an invoice", actor: "manager", kind: "does", writes: [{ entity: "invoices", op: "add" }], ...(requires && { requires }) },
+        "21": { id: 21, text: "The manager cannot open an invoice on a table with an unpaid one", actor: "manager", kind: "cannot", writes: [{ entity: "invoices", op: "add" }], requires: [{ entity: "invoices", path: "paid", value: "false" }] },
+      },
+      documents: { "1": { id: 1, name: "floor", root: "tables", holds: { tables: { parent: null, fields: [field("name")] }, invoices: { parent: "tables", fields: [field("paid", "boolean")] } }, held_by: ["manager"], stories: [1, 21] } },
+    });
+    expect(of(cafe(), "coverage").gaps).toContainEqual({ kind: "shadowed-cannot", where: "story 21 (manager)", detail: "story 1 already lets manager add invoices, presupposing nothing, so this is never refused: say what tells them apart (requires 1 ...)" });
+    expect(of(cafe([{ entity: "tables", path: "name", value: "free" }]), "coverage").gaps.map((g) => g.kind)).not.toContain("shadowed-cannot");
+  });
+
+  test("making the model's files fails out loud: nothing made, and why", async () => {
+    const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
+    const { make } = await import("../../src/cli/model");
+    const dir = mkdtempSync(`${import.meta.dir}/.make-`);
+    try {
+      const story = { id: 1, models_id: 1, text: "Ann sits", actor: "ann", kind: "does", post: null, touches: [], writes: [{ entity: "visits", op: "add" }], requires: null };
+      const doc = { id: 1, models_id: 1, name: "seat", root: "visits", own: 0, holds: { visits: { parent: null, fields: [{ name: "table" }] } }, held_by: ["ann"], stories: [1] };
+      writeFileSync(`${dir}/model.json`, JSON.stringify({ tables: { models: [{ id: 1, name: "Cafe" }], stories: [story], documents: [doc] } }));
+      writeFileSync(`${dir}/out`, "a file where the folder goes");
+      const made = await make(`${dir}/model.json`, `${dir}/out`);
+      expect(made.ok).toBe(false);
+      expect(made.said).toStartWith(`Nothing made: making ${dir}/out/ failed:`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("a model with little said is not shown as fine (the second cafe's feedback)", () => {
   test("a story that says nothing it writes or reads, and a teller with nothing in front of them", () => {
     const r = closureOf({
@@ -311,4 +350,22 @@ test("advice: a document a role holds, whose root is one of many, does not say w
   expect(of(r, "actor-closure").advice).toEqual([
     { kind: "whose-copy", where: "table (john)", detail: "there are many tables: which one is john's, and how do they come to hold it? (a story that gives it them, or a document of their own that says)" },
   ]);
+});
+
+test("advice: whose copy goes quiet once their own document names it, or a row it hangs under", () => {
+  const cafe = (field_: string) => closureOf({
+    models: { name: "Cafe" },
+    stories: {
+      "1": { id: 1, text: "George opens an invoice", actor: "george", kind: "does", writes: [{ entity: "invoices", op: "add" }] },
+      "2": { id: 2, text: "John scans his table", actor: "john", kind: "does", writes: [{ entity: "visits", op: "replace", path: field_ }] },
+    },
+    documents: {
+      "1": { id: 1, name: "invoice", root: "invoices", holds: { invoices: { parent: null, fields: [field("paid", "boolean")] } }, held_by: ["john", "george"], stories: [1] },
+      "3": { id: 3, name: "floor", root: "cafes", holds: { cafes: { parent: null, fields: [] }, tables: { parent: "cafes", fields: [field("name")] }, invoices: { parent: "tables", fields: [field("paid", "boolean")] } }, held_by: ["george"], stories: [1] },
+      "2": { id: 2, name: "seat", root: "visits", own: 1, holds: { visits: { parent: null, fields: [field(field_)] } }, stories: [2] },
+    },
+  });
+  expect(of(cafe("table"), "actor-closure").advice).toEqual([]); // the floor hangs invoices under tables, and the seat names one
+  expect(of(cafe("invoice_id"), "actor-closure").advice).toEqual([]);
+  expect(of(cafe("colour"), "actor-closure").advice!.map((a) => a.where)).toEqual(["invoice (john)"]);
 });

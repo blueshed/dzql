@@ -128,7 +128,7 @@ describe("the heart, worked out from the model", () => {
   test("the three columns, as the modeller draws them, for each kind of subject", () => {
     const ui: Ui = { hideStories: false, hideEnts: false, pop: null };
     const doc = drawHeart(h, ui);
-    expect(doc).toContain("Stories · 2 it was born from");
+    expect(doc).toContain("Stories · 2 of 3 it was born from");
     expect(doc).toContain("Documents · Team");
     expect(doc).toContain("Entities · 3 of 5 reached");
     expect(doc).toContain('<div class="shape"><div style="padding-left:0px">team:&lt;team&gt;</div>');
@@ -144,7 +144,7 @@ describe("the heart, worked out from the model", () => {
     expect(story).toContain('aria-pressed="true" aria-label="Show every story"');
     expect(drawHeart(h, { ...ui, sel: { k: "story", id: 3 }, hideEnts: true })).toContain("No entity goes with story 3.");
     const ent = drawHeart(h, { ...ui, sel: { k: "ent", id: "requests" } });
-    expect(ent).toContain("Stories · 1 touch requests");
+    expect(ent).toContain("Stories · 1 of 3 touch requests");
     expect(ent).toContain("Documents · 2 reach requests");
     const alone = heartOf({ ...leave, documents: {}, stories: { "4": { id: 4, text: "Jo waits", actor: "jo", kind: "does" } } });
     expect(drawHeart(alone, ui)).toContain('<span class="tag">no document · </span>Jo waits');
