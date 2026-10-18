@@ -35,7 +35,7 @@ import { typeOf, type StoryRow, type Told } from "./documents";
 import { singular } from "./from-stories";
 
 /** A document as delta.ts defines it (`documentsIn`). */
-export type Doc = { name: string; root: string | null; include: string[]; watch?: string[] };
+export type Doc = { name: string; root: string | null; include: string[]; watch?: string[]; columns?: Record<string, string[]> };
 /** A table as the page draws it: its parent link, its columns, and where code outside delta.ts names it. */
 export type Table = { name: string; parent: string | null; columns: { name: string; type: string }[]; code: { at: string; seed: boolean; line: string }[] };
 type File = { path: string; lines: string[] };
@@ -134,7 +134,7 @@ export function shape(head: string, root: string, include: string[], parentOf: (
 }
 
 /** A story as extract.ts reads it: what the heart needs of it. */
-type StoryFacts = { n: number; name: string; as: string; kind: string; offPage: boolean; post?: string | null; model?: number; ops: { table: string | null }[]; seen: Record<string, unknown>; untold: string[] };
+type StoryFacts = { n: number; name: string; as: string; kind: string; offPage: boolean; post?: string | null; model?: number | false; ops: { table: string | null }[]; seen: Record<string, unknown>; untold: string[] };
 
 /**
  * The heart page's data: the stories (born into, touches, told and not asked for, with the patch
@@ -193,6 +193,7 @@ export function heartOf(f: {
       name: d.name,
       for: holders.join(", ") || (f.ran ? "nobody, in the run" : "nobody, in the stories"),
       reach: d.root ? [d.root, ...d.include] : reads,
+      ...(d.columns && { columns: d.columns }), // the fields it holds of a table, where fewer than the table has
       computed: d.root ? null : { by: d.watch ? "delta.ts" : kept?.file ?? null },
       shape: d.root ? shape(head, d.root, d.include, parentOf) : [{ text: head, pad: 0 }, { text: how, pad: 14 }, ...reads.map((t) => ({ text: t, pad: 28 }))],
       held: holders.length,

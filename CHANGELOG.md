@@ -15,6 +15,8 @@ what is open across them. Newest first.
 
 ### Added
 
+- **dzql's worked example: the cafe, from its model** (18 October): `packages/dzql/examples/cafe`,
+  told, made and built as routes and resources, read back with no gaps; the skills point at it.
 - **dzql's tools agree** (18 October): one reading of a model (`dzql/modelling/reading`) taken by
   the checks, the proof, the guards and the read-back, and a conformance test that runs the proof
   through the guards over fixture models; a document can list every row of its root (`menu:`); a

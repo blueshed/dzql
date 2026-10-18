@@ -20,8 +20,6 @@ export { knownType, parentIn, type ModelDocument, type ModelField, type ModelSto
 /** The model as the model's page keeps it (`model:1`): its stories and documents, each a row by its id; a list does as well. */
 export type Model = AnyModel;
 
-const rows = <T extends { id: string | number }>(of: Record<string, T> | T[] | undefined): T[] =>
-  Object.values(of ?? {}).sort((a, b) => Number(a.id) - Number(b.id));
 
 /** The model as delta's definitions: the schema of its entities, and its documents over them. */
 export function definitionsOf(model: Model): { schema: Schema; docs: DocDef[] } {
@@ -30,7 +28,13 @@ export function definitionsOf(model: Model): { schema: Schema; docs: DocDef[] } 
   const held = [...m.entities.values()].filter((e) => e.documents.length > 0);
   const columnsOf = (e: Entity) => Object.fromEntries([...e.fields].filter(([f]) => f !== "id" && !(e.parent && f === `${e.parent}_id`)).map(([f, type]) => [f, `${typeOf(type)}?` as ColumnShorthand]));
   const schema = defineSchema(Object.fromEntries(held.map((e) => [e.name, { columns: columnsOf(e), temporal: false, ...(e.parent ? { parent: e.parent } : {}) }])));
-  const docs = m.documents.map((d) => defineDoc(`${d.name}:`, { root: d.root, include: Object.keys(d.holds).filter((e) => e !== d.root), ...(d.implied ? { implied: true } : {}) }));
+  // a document that names fewer of an entity's fields than another gives it shows, is told and takes
+  // only those (delta's `columns`); one that names none of them has not said, and keeps them all
+  const columns = (d: Document) => {
+    const fewer = Object.entries(d.holds).filter(([e, h]) => h.fields.length > 0 && [...m.entities.get(e)!.fields.keys()].some((f) => !h.fields.some((x) => x.name === f)));
+    return fewer.length ? { columns: Object.fromEntries(fewer.map(([e, h]) => [e, h.fields.map((f) => f.name)])) } : {};
+  };
+  const docs = m.documents.map((d) => defineDoc(`${d.name}:`, { root: d.root, include: Object.keys(d.holds).filter((e) => e !== d.root), ...(d.implied ? { implied: true } : {}), ...columns(d) }));
   return { schema, docs };
 }
 
@@ -54,7 +58,7 @@ export function sourceOf(model: Model, from = "@blueshed/delta/json"): string {
     const serves = m.stories.filter((s) => d.serves.includes(s.id)).map((s) => `  // for: ${s.text}`);
     const own = d.own ? ["  // each person's own: say whose with `owns` (a path to the person) once people sign in"] : [];
     const list = d.list ? [`  // every ${d.root}: opened as ${JSON.stringify(def.prefix)}`] : [];
-    const opts = { root: def.root, include: def.include, ...(def.implied ? { implied: true } : {}) };
+    const opts = { root: def.root, include: def.include, ...(def.implied ? { implied: true } : {}), ...(def.columns ? { columns: def.columns } : {}) };
     return [...serves, ...own, ...list, `  defineDoc(${JSON.stringify(def.prefix)}, ${json(opts)}),`];
   });
   return [

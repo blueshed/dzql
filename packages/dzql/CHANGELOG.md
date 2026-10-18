@@ -160,6 +160,23 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **The worked example: the cafe, from its model** (`examples/cafe/`, Peter's ask after cafe-e: "the
+  learning was large up front"). The model told (13 stories, five documents: the floor and the
+  menu lists, a table, the door, each person's visit), made by `dzql model` into `model/`, and
+  built as `bun create dzql` lays an app out: `store.ts` (the model's migrations, the app's own
+  tables, the guards first), a folder per document under `resources/` (`-api`, resource, `-view`),
+  the page, staff signed in by a link and customers by their table's code, and 22 stories, each
+  naming its model story. Its README walks the path; `bun run dev:cafe` serves it. It is a
+  conformance fixture, and the read-back finds no gap. It ships in the package, and the eta-app
+  and modelling skills and the template point at it.
+- **The read-back reads an app laid out as routes and resources**: the model's `types` imported
+  from a resource's api, the schema in a `store.ts`, a `registerDocs` that takes some of the
+  model's documents (`docs.filter(...)`), and a document's `columns`. It no longer asks who holds
+  each person's own document (everyone holds theirs), nor where a story that posts a form is
+  served; an app story that is the app's own says `model: false` and is not asked about.
+- **A document holds only the fields the model names for it**: where it names fewer of an
+  entity's fields than another document gives it, its definition says them (delta's `columns`):
+  the door shows a table's name, not whether it is seated.
 - **The tools agree: one reading of a model, and a test that holds them to it** (18 October, Peter
   on cafe-e's report: "How do the tools disagree with each other?"). `dzql/modelling/reading`
   works a model out once -- its entities and where each hangs, which roots are there before a row

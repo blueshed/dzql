@@ -63,8 +63,6 @@ export type Row = Record<string, unknown>;
 export type RowOf = (entity: string, id: string) => Row | undefined | null | Promise<Row | undefined | null>;
 export type Verdict = { ok: true; story: string | number } | { ok: false; reason: string; story?: string | number };
 
-const rows = <T extends { id: string | number }>(of: Record<string, T> | T[] | undefined): T[] =>
-  Object.values(of ?? {}).sort((a, b) => Number(a.id) - Number(b.id));
 
 /** The guards the model's stories say, over the documents it describes. */
 export function guardsOf(model: GuardModel): Guards {

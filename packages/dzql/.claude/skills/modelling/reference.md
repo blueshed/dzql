@@ -150,7 +150,10 @@ Every store takes the definitions: delta's JSON file and SQLite, and dzql's Post
 same. Who owns a document that is each person's own is not in the model: the file says so, to be
 given with sign-in.
 
-For a page the server draws, load the **eta-app** skill; the model says what to build, story by story:
+For a page the server draws, load the **eta-app** skill; the model says what to build, story by
+story. **dzql's `examples/cafe/` is the whole of it, worked** (`node_modules/dzql/examples/cafe/`,
+its README the path): a model told, made, and built as routes and resources until every story
+passes and the read-back finds no gap. Read it before building:
 
 | In the model | In the app |
 |---|---|

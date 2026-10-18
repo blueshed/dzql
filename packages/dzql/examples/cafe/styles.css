@@ -1,0 +1,26 @@
+/* The cafe's look: the kernel's bento surfaces (its bento.css) in a plain ink on paper, light and
+   dark, and the door's ways in, which the bento has no surface for. */
+
+@import "dzql/rendering/bento.css";
+
+:root {
+  color-scheme: light dark;
+  --paper: #f6f5f1; --tray: #e2e0d8; --card: #ffffff; --card-hover: #fbfaf7; --well: #efede6;
+  --ink: #23283a; --accent: #3b4fa0; --muted: #5f6272; --line: rgba(35, 40, 58, 0.14); --edge: rgba(35, 40, 58, 0.52);
+  --ink-rgb: 35, 40, 58;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #101218; --tray: #1e2130; --card: #161925; --card-hover: #1b1f2d; --well: #12151f;
+    --ink: #e2e4ee; --accent: #9aa9f0; --muted: #9a9db0; --line: rgba(226, 228, 238, 0.14); --edge: rgba(226, 228, 238, 0.42);
+    --ink-rgb: 0, 0, 0;
+  }
+}
+
+body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.45; }
+main#app { box-sizing: border-box; position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
+.door { max-width: 28rem; box-shadow: none; }
+.ways-in { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.ways-in form { margin: 0; }
+.ways-in a.tool { text-decoration: none; }

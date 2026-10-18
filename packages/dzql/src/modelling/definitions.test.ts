@@ -55,6 +55,9 @@ describe("the model as delta's definitions", () => {
     ]);
     const withPerson = definitionsOf({ documents: [...Object.values(model.documents!), { id: 3, name: "person", root: "people", holds: { people: { parent: null } } }] });
     expect(withPerson.docs[2]).toEqual({ prefix: "person:", root: "people", include: [], scope: {} }); // a person hangs from a team, so is made there first
+    // a document that names fewer of an entity's fields than another gives it holds only those
+    const named = definitionsOf({ documents: [...Object.values(model.documents!), { id: 3, name: "names", root: "people", holds: { people: { parent: null, fields: [{ name: "name" }] } } }] });
+    expect(named.docs[2]!.columns).toEqual({ people: ["name"] });
   });
 
   test("a document said with no holds holds its root, and a model with nothing in it is empty", () => {

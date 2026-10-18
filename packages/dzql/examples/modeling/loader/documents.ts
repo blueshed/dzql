@@ -12,6 +12,7 @@
 //
 // The checks are advice: they flag, they never fail a run.
 
+import { existsSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { Example } from "dzql/rendering/example";
 import type { Resource } from "dzql/rendering/resources/resource";
@@ -93,11 +94,14 @@ const partKey = (target: string) => target.match(/data-eta-part="([^"]+)"/)?.[1]
  * `watch`es.
  */
 /** Each `defineDoc("<name>:", { ... })` in `text`, its options in any order: its name, root, the column it is scoped by, and what it includes. */
-function defineDocsIn(text: string): { name: string; root: string; scope?: string; include: string }[] {
-  return [...text.matchAll(/defineDoc\("(\w+):",\s*\{([^]*?)\}\s*\)/g)].flatMap((m) => {
+function defineDocsIn(text: string): { name: string; root: string; scope?: string; include: string; columns?: Record<string, string[]> }[] {
+  return [...text.matchAll(/defineDoc\("(\w+):",\s*\{([^]*?\})\s*\)/g)].flatMap((m) => {
     const root = /root:\s*"(\w+)"/.exec(m[2]!)?.[1];
     const include = /include:\s*(\[[^\]]*\]|\w+)/.exec(m[2]!)?.[1] ?? "[]";
-    return root ? [{ name: m[1]!, root, scope: /scope:\s*\{\s*(\w+):/.exec(m[2]!)?.[1], include }] : [];
+    // the columns a document holds of a table, where it holds fewer than the table has (`columns: { tables: ["name"] }`)
+    const said = /columns:\s*\{([^}]*)\}/.exec(m[2]!)?.[1];
+    const columns = said ? Object.fromEntries([...said.matchAll(/(\w+):\s*\[([^\]]*)\]/g)].map((c) => [c[1]!, [...c[2]!.matchAll(/"(\w+)"/g)].map((x) => x[1]!)])) : undefined;
+    return root ? [{ name: m[1]!, root, scope: /scope:\s*\{\s*(\w+):/.exec(m[2]!)?.[1], include, ...(columns && { columns }) }] : [];
   });
 }
 
@@ -109,15 +113,16 @@ function defineDocsIn(text: string): { name: string; root: string; scope?: strin
 export async function importedDocs(dir: string, src: string): Promise<Record<string, string>> {
   const imported: Record<string, string> = {};
   for (const m of src.matchAll(/import \{([^}]*)\} from "([^"]*model\/types)(?:\.ts)?"/g)) {
-    const file = Bun.file(`${dir}/${m[2]}.ts`);
-    if (!(await file.exists())) continue;
+    // from delta.ts (`../model/types`) or a resource's api (`../../model/types`): the app's own model/
+    const file = [`${dir}/${m[2]}.ts`, `${dir}/${m[2]!.replace(/^(\.\.?\/)+/, "")}.ts`].map((f) => Bun.file(f)).find((f) => existsSync(f.name!));
+    if (!file) continue;
     const text = await file.text();
     for (const name of m[1]!.split(",").map((n) => n.trim().split(/\s+as\s+/).at(-1)!)) if (name) imported[name] = text;
   }
   return imported;
 }
 
-export function documentsIn(src: string, session: string | null, imported: Record<string, string> = {}): { name: string; root: string | null; include: string[]; kind: string; note: string; watch?: string[] }[] {
+export function documentsIn(src: string, session: string | null, imported: Record<string, string> = {}): { name: string; root: string | null; include: string[]; kind: string; note: string; watch?: string[]; columns?: Record<string, string[]> }[] {
   const lists = new Map<string, string[]>();
   for (const m of src.matchAll(/const (\w+) = \[([^\]]*)\]/g)) lists.set(m[1]!, [...m[2]!.matchAll(/"(\w+)"/g)].map((x) => x[1]!));
   const names = (raw: string) =>
@@ -132,8 +137,11 @@ export function documentsIn(src: string, session: string | null, imported: Recor
     // the call's own definitions, and any it passes from the model's types (`docs`, `docs.filter(...)`)
     const own = call.split(/registerMemory\(|defineCustomDoc/)[0]!;
     const from = i === 0 ? [] : Object.entries(imported).filter(([name]) => new RegExp(`\\b${name}\\b`).test(own)).map(([, text]) => text);
-    for (const d of [call, ...from].flatMap(defineDocsIn))
-      if (d.scope !== "cookie" && !documents.some((x) => x.name === d.name)) documents.push({ name: d.name, root: d.root, include: names(d.include), kind, note: d.name === session ? "the session: who you are and where" : "" });
+    // a call that takes some of the model's (`docs.filter((d) => d.prefix === "floor:")`) takes only those
+    const only = [...own.matchAll(/prefix === "(\w+):"/g)].map((p) => p[1]!);
+    const theirs = (d: { name: string }) => only.length === 0 || only.includes(d.name) || defineDocsIn(call).some((x) => x.name === d.name);
+    for (const d of [call, ...from].flatMap(defineDocsIn).filter(theirs))
+      if (d.scope !== "cookie" && !documents.some((x) => x.name === d.name)) documents.push({ name: d.name, root: d.root, include: names(d.include), kind, note: d.name === session ? "the session: who you are and where" : "", ...(d.columns && { columns: d.columns }) });
   });
   for (const m of src.matchAll(/registerMemory\([^,]*,\s*\{\s*prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "memory", note: "kept by the server, in memory" });
   for (const m of src.matchAll(/defineCustomDoc(?:<[^>]*>)?\("(\w+):", \{\s*watch: (\[[^\]]*\]|\w+)/g))
@@ -366,7 +374,8 @@ export function exampleAt(arg: string): { dir: string; name: string } {
  * each resource's `resources/<name>/<name>-api.ts` -- their text, joined, and their schemas' tables.
  */
 export async function documentSources(dir: string): Promise<{ src: string; tables: Record<string, unknown> }> {
-  const files = [...(await Bun.file(`${dir}/delta.ts`).exists() ? ["delta.ts"] : []), ...[...new Bun.Glob("resources/*/*-api.ts").scanSync(dir)].sort()];
+  // delta.ts in an example; laid out as routes and resources, each api, and the store they share if there is one
+  const files = [...["delta.ts", "store.ts"].filter((f) => existsSync(`${dir}/${f}`)), ...[...new Bun.Glob("resources/*/*-api.ts").scanSync(dir)].sort()];
   let src = "";
   const tables: Record<string, unknown> = {};
   for (const f of files) {

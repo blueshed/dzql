@@ -53,4 +53,5 @@ and go on.
    `dzql model` (or `bun dev`, the model at `/model` beside the app) writes
    `model/types.ts`, `guards.ts`, `migrations/` and `model.test.ts`, never a story; the app is built from them with the **eta-app**
    skill -- load it, and its page and bento references, before drawing a page. Read
-   `model/types.ts` and run `bun check` before building on it. → *From the model to the app*
+   `model/types.ts` and run `bun check` before building on it; dzql's `examples/cafe/` is the step
+   from model to app, worked (its README). → *From the model to the app*

@@ -54,8 +54,12 @@ export type Gesture = { press: string } | { drag: [from: string, to: string] };
  */
 type Budgeted = { budget?: number };
 
-/** The number of the story on the model's page this one tells, for `model:check --against-page` to match it by, where the words differ. The harness reads nothing of it. */
-type Modelled = { model?: number };
+/**
+ * The number of the story on the model's page this one tells, for `model:check --against-page` to
+ * match it by, where the words differ; `false` for one that is the app's own and tells none (signing
+ * out, a guard of the app's). The harness reads nothing of it.
+ */
+type Modelled = { model?: number | false };
 
 /** A story that writes: `does`. */
 type Does = Budgeted & Modelled & {

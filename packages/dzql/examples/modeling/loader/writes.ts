@@ -10,7 +10,7 @@ import type { Heart } from "./facts";
 type Field = { name: string; type: string };
 
 /** A story as the model takes it: its words, who tells it, whether they do it or are refused, a route it posts to, what it touches; and, for the model as built, the model story it tells, where the app's names one (the model takes no such field). */
-export type StoryWrite = { text: string; actor: string; kind: "does" | "cannot"; post?: string; model?: number; touches: string[] };
+export type StoryWrite = { text: string; actor: string; kind: "does" | "cannot"; post?: string; model?: number | false; touches: string[] };
 
 /** A document as the model takes it, its stories by their place among the stories loaded, and each entity it holds besides its root. */
 export type DocumentWrite = { name: string; root: string; own: boolean; held_by: string[]; serves: number[]; fields: Field[]; holds: { entity: string; under: string; fields: Field[] }[] };
@@ -38,10 +38,10 @@ export function writesOf(heart: Heart): Load {
       own: !d.shape[0]!.text.includes(":<"), // each person's own goes by its name alone
       held_by: d.for.startsWith("nobody") ? [] : d.for.split(", "),
       serves,
-      fields: text(entity(root)?.columns ?? []),
+      fields: text(d.columns?.[root] ?? entity(root)?.columns ?? []),
       holds: d.reach.slice(1).map((name) => {
         const parent = entity(name)?.parent;
-        return { entity: name, under: parent && d.reach.includes(parent) ? parent : root, fields: text(entity(name)?.columns ?? []) };
+        return { entity: name, under: parent && d.reach.includes(parent) ? parent : root, fields: text(d.columns?.[name] ?? entity(name)?.columns ?? []) };
       }),
     });
   }

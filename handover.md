@@ -63,9 +63,14 @@ checks, the heart, the definitions, the proof, the guards and the read-back take
 `src/modelling/fixtures/` (leave, cafe-e, menu) in the fast tier. A model that breaks one of them
 is a fixture to add. It found four disagreements (dzql's CHANGELOG says which), each fixed.
 
-**Too much to learn up front.** The worked example: the cafe built from a model in the routes and
-resources layout, made a conformance fixture, the skills pointing at it instead of prose; then the
-skills cut to one path. See below for where it stands.
+**Too much to learn up front: the worked example is built.** `packages/dzql/examples/cafe/`
+(its README walks it): the model told, made, built as routes and resources, 22 stories, read back
+with no gaps, a conformance fixture; the eta-app and modelling skills and the template point at
+it. Building it found three more disagreements, fixed: the read-back could not read the new
+layout, a document held every field of an entity though the model named fewer (now `columns`),
+and an app story of the app's own had no way to say so (`model: false`). Still open: cutting the
+skills to one path, each word where first needed (todo #49), an editorial pass for Peter.
+Worth running next: a blank-agent cafe run against the skills as they now stand.
 
 ## How to check
 

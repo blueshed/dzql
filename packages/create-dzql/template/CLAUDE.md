@@ -8,6 +8,8 @@ the page the server draws from them. The skills say how, and `bun install` puts 
   (`bun dev` serves it at `localhost:3000/model` beside the app, and prints a sign-in link for
   each keeper; `bun run cli:model login <link>`, then `bun run cli:model <verb>`).
 - **eta-app**: building or changing the app in `src/`: stories, documents, resources, the page.
+  `node_modules/dzql/examples/cafe/` is an app built from its model, laid out as this one is: its
+  README walks the path from the model to the app.
 - **delta-doc**: the documents themselves: schema, storage, the ledger. **railroad**: an island.
 
 ## The shape

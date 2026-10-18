@@ -31,10 +31,12 @@ An app is routes and resources. A project made with `bun create dzql` lays it ou
 composed on delta's one server), and each document is a resource of its own folder,
 `src/resources/<name>/`: `<name>-api.ts` (its schema and document, registered on `delta`, and
 `read` for the page), `<name>.ts` (its `Resource`: who may write it, what a write becomes) and
-`<name>-view.ts` (its part of the page, drawn by `src/page.ts`). dzql's own examples (chat,
-leave, wedding, the ticker) are the same pieces in eta's earlier places: `delta.ts`,
-`documents/<thing>.ts`, `resources/<thing>.ts` and `index.ts`; read them for how, and put what
-you write where the project's layout says.
+`<name>-view.ts` (its part of the page, drawn by `src/page.ts`). **dzql's `examples/cafe/` is
+an app laid out so, built from its model** (`node_modules/dzql/examples/cafe/`; its README walks
+it, step by step): read it first, and copy its shape. dzql's older examples (chat, leave, wedding,
+the ticker) are the same pieces in eta's earlier places: `delta.ts`, `documents/<thing>.ts`,
+`resources/<thing>.ts` and `index.ts`; read them for how, and put what you write where the
+project's layout says.
 
 1. **The story** (`stories.ts`): who does what, and who then sees it. Watch it fail. A teller
    asking to see the page now is no reason to skip it: the stories take minutes, and find what the

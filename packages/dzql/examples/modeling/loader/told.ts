@@ -15,7 +15,7 @@ import type { Load } from "./writes";
 type Held = { under: string | null; fields: string[] };
 type Doc = { root: string; own: boolean; held_by: string[]; holds: Map<string, Held>; serves: string[] };
 /** A story either way: as told, with its number on the page; as built, with the number of the model story it names, if it names one. */
-type Story = { text: string; actor: string; kind: string; id?: string | number; model?: number };
+type Story = { text: string; actor: string; kind: string; post?: string | null; id?: string | number; model?: number | false };
 /** A model either way: its stories by their words, its documents by their names. */
 export type Model = { stories: Map<string, Story>; documents: Map<string, Doc> };
 
@@ -85,13 +85,14 @@ export function matched(t: Model, b: Model): { number: string[]; words: string[]
 export function gaps(t: Model, b: Model): string[] {
   const out: string[] = [];
   const to = tells(t, b);
-  for (const [k, s] of b.stories) if (s.model !== undefined && to.get(k)!.how !== "number") out.push(`"${s.text}" tells model story ${s.model}, and the page has no story ${s.model}: which does it tell?`);
+  for (const [k, s] of b.stories) if (typeof s.model === "number" && to.get(k)!.how !== "number") out.push(`"${s.text}" tells model story ${s.model}, and the page has no story ${s.model}: which does it tell?`);
   for (const [k, s] of t.stories) {
     const as = [...b.stories].filter(([bk]) => to.get(bk)!.told === k);
     if (as.length === 0) out.push(`"${s.text}" was told, and the app does not tell it: still wanted?`);
     for (const [bk, a] of as) if (a.kind !== s.kind || (to.get(bk)!.how === "words" && a.actor !== s.actor)) out.push(`"${s.text}" was told as ${s.actor} ${s.kind}, and is built as ${a.actor} ${a.kind}: which is it?`);
   }
-  for (const [k, s] of b.stories) if (!to.get(k)!.how) out.push(`"${s.text}" the app tells, and it was never told: was it meant?`);
+  // a story the app says is its own (`model: false`: signing out, a guard of its own) was never meant to be told
+  for (const [k, s] of b.stories) if (!to.get(k)!.how && s.model !== false) out.push(`"${s.text}" the app tells, and it was never told: was it meant?`);
   const builtToo = new Set([...to.values()].flatMap((m) => (m.how ? [m.told] : []))); // told stories the app tells
   // the model's tellers are roles, the app's cast are people: who plays which, from the stories matched by number (cafe-e's feedback)
   const roleOf = new Map([...b.stories].flatMap(([bk, a]) => (to.get(bk)!.how === "number" ? [[a.actor, t.stories.get(to.get(bk)!.told)!.actor] as const] : [])));
@@ -108,7 +109,8 @@ export function gaps(t: Model, b: Model): string[] {
     if (d.root !== as.root) out.push(`${name} is rooted at ${d.root} as told, at ${as.root} as built: which is it?`);
     if (d.own !== as.own) out.push(`${name} is ${own(d.own)} as told, ${own(as.own)} as built: which is it?`);
     const holders = asRoles(as.held_by);
-    if (!same(d.held_by, holders)) out.push(`${name} is held by ${list([...d.held_by].sort())} as told, by ${list([...holders].sort())} as built: who holds it?`);
+    // each person's own is held by everyone, each their own: not a question of who
+    if (!d.own && !same(d.held_by, holders)) out.push(`${name} is held by ${list([...d.held_by].sort())} as told, by ${list([...holders].sort())} as built: who holds it?`);
     for (const [e, h] of d.holds) {
       const there = as.holds.get(e);
       if (!there) out.push(`${name} holds ${e} as told, and the app does not: still wanted?`);
@@ -122,7 +124,9 @@ export function gaps(t: Model, b: Model): string[] {
     for (const e of as.holds.keys()) if (!d.holds.has(e)) out.push(`${name} holds ${e} as built, and it was never told: was it meant?`);
     // a story only one side tells is said above, once
     const serves = as.serves.map((k) => to.get(k)!.told); // as built, in the told stories' words
-    for (const k of d.serves) if (builtToo.has(k) && !serves.includes(k)) out.push(`${name} serves "${t.stories.get(k)!.text}" as told, and not as built: still wanted?`);
+    // a story that posts a form is a route's, born into no document on either side
+    const posted = (k: string) => !!t.stories.get(k)?.post || !!b.stories.get(k)?.post;
+    for (const k of d.serves) if (builtToo.has(k) && !serves.includes(k) && ![...to].some(([bk, m]) => m.told === k && posted(bk)) && !posted(k)) out.push(`${name} serves "${t.stories.get(k)!.text}" as told, and not as built: still wanted?`);
     for (const k of as.serves) if (to.get(k)!.how && !d.serves.includes(to.get(k)!.told)) out.push(`${name} serves "${b.stories.get(k)!.text}" as built, and it was never told: was it meant?`);
   }
   for (const [name, d] of b.documents) if (!t.documents.has(name) && !met.has(d)) out.push(`${name} the app has, and it was never told: was it meant?`);
