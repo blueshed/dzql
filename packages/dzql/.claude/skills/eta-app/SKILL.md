@@ -50,6 +50,15 @@ kernel, [where-an-app-lives](reference/where-an-app-lives.md).
 
 ## The rules that matter most
 
+- **A page is the bento's, never hand-rolled.** Read [page](reference/page.md) and
+  [bento](reference/bento.md) before the first `render`: a page is a `collectionPage` or a
+  `boxPage` in `layers()`, a list is `rows()` of `row()`s (a lead, the words, a state, one tap),
+  a deed is a `tool()`; `styles.css` imports `bento.css` first and says only the app's tokens and
+  what the bento has no surface for. The result is a clean, simple interface: one thing to do per
+  row, nothing drawn that no story needs.
+- **Icons are lucide**, through the app's `icons.ts` (`svg(ICONS[name])`, as chat's): the bento asks
+  for its own marks by name (chevron-right, undo, redo, pencil, plus, x, and the leave tool's).
+  Never another icon set, inline SVG, or a word where an icon says it.
 - Asked to build or change something, build it. Never stop to wait for an answer: put the question
   in `todo.jsonl` with the reading you took, and go on.
 - Build nothing no story needs, and never write a story to justify what is built.

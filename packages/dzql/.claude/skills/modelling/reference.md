@@ -17,10 +17,10 @@ work in.
 
 | | Wherever dzql is installed | In a project (`bun create dzql`) | In dzql itself (`packages/dzql`) |
 |---|---|---|---|
-| The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), kept in `model.sqlite`, named for the project | `bun run model`, port 3001 | `bun run dev:modeling`, port 3005 |
+| The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), at `/model`, the model kept in `model.json`, named for the project; beside an app, `bunx dzql serve <app>` mounts it at `/model` in development | `bun run model`, port 3001 | `bun run dev:modeling`, port 3005 |
 | A verb | `bunx dzql model <verb>` | `bun run cli:model <verb>` | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
 | Sign in | `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) | `login claude@modeling.example claude-password` (or `.env`'s `MODEL_PASSWORD`) | `login claude@modeling.example claude-password` |
-| The definitions | `bunx dzql model export [--out model.ts]` | the same | the same, `bun src/cli/index.ts model export` |
+| What it makes | after every change, while no check is open, the app's (`--out`, default `app`) `types.ts`, `guards.ts`, migrations and stories; `bunx dzql model check` once, exit 1 while one is open | the same | the same, `bun src/cli/index.ts model check` |
 
 The CLI keeps its session in `.eta-session`. A refused write prints `refused: <why>` and exits 1:
 it is the model saying no. Everyone signs in as `<name, lower case>@modeling.example`; `.env`'s
@@ -45,7 +45,7 @@ numbered as made; the page shows each story's number.
 | Which stories it serves | `serves <doc> <story>...` |
 | Renamed, taken out | `rename <doc> <name>`, `drop <doc>`, `unhold <doc> <entity>` (never its root) |
 | A slip | `undo`, `redo` |
-| hjeli's audit | `bunx dzql model audit [model.sqlite]`: the six registers; exit 1 while one is open |
+| The checks, once | `bunx dzql model check [--out app]`: every check; exit 1, and nothing made, while one is open |
 | The model, read back | `show`: each story, numbered, who and does or cannot; each document, numbered, whose, what it serves, and what it holds under its root |
 
 Words with an apostrophe go in double quotes (`story ann does "Ann scans the table's QR code"`):
@@ -70,8 +70,9 @@ documents by who must be told, not by table.
 | *looked up, never held* (dashed) | Touched by a story, held by no document: right for a credential read at sign-in; otherwise, who is told when it changes? |
 | A document everyone holds and everyone writes | Every write tells every holder: is that what the stories ask for? |
 
-hjeli's six registers run on the model after every change (`examples/modeling/closure.ts`), across
-the top of the page and at the foot of `show`:
+The checks run on the model after every change (`examples/modeling/closure.ts`), across the top of
+the page and at the foot of `show`: hjeli's six, Easy's coverage, and playability from rights'
+`derive-ux.ts` (advice beneath it -- one way on, an end, a field no story changes -- never blocks):
 
 | Register | Open when |
 |---|---|
@@ -81,6 +82,8 @@ the top of the page and at the foot of `show`:
 | Precondition closure | a write changes a row no story adds (an own document's root is made by the visit); a story requires a state no write sets. Not asked until a story says `writes` or `requires` |
 | Referential closure | a story a document serves is not told; an entity hangs under one its document does not hold; a name no table or column can take; two documents of one name |
 | Authorization closure | a teller writes what no document they hold holds: you may write what you may read |
+| Coverage | someone holds what a write changes, and no story says whether they may make it (a `cannot` story decides it) |
+| Playability | it is someone's move on a state no document they hold shows; someone waits on a state they cannot see |
 
 ## Loading an app that exists
 
@@ -93,11 +96,13 @@ each, who is told, what permit lets through that no page offers) and hjeli's pre
 
 ## From the model to the app
 
-`bunx dzql model export --out model.ts` writes the model as delta's two definitions: a
-`defineSchema` of its entities (each with the fields documents give it, hanging from its parent)
-and a `defineDoc` for each document, saying in a comment which stories it is for. Every store takes
-them: delta's JSON file and SQLite, and dzql's Postgres; the file imports from the JSON file's, and
-moving changes that import. In code, `definitionsOf(model)` (`dzql/modelling/definitions`) does the
+While no check is open, `dzql model` writes into the app: `types.ts`, delta's two definitions (a
+`defineSchema` of its entities, each with the fields documents give it, hanging from its parent,
+and a `defineDoc` for each document, saying in a comment which stories it is for) with a row type
+per table and each document's shape; `guards.ts`, the guarded write layer; `migrations/`, the next
+step each time the schema says more (a step a diff cannot make -- a parent changed -- is written
+once with `// By hand:` lines to finish); `stories.ts` and `model.test.ts`, the proof on SQLite.
+Every store takes the definitions: delta's JSON file and SQLite, and dzql's Postgres. In code, `definitionsOf(model)` (`dzql/modelling/definitions`) does the
 same. Who owns a document that is each person's own is not in the model: the file says so, to be
 given with sign-in.
 
