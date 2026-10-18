@@ -1,0 +1,12 @@
+{"kind":"decided","what":"Saying what is on the menu adds and removes items; the cook alone changes the menu (told)."}
+{"kind":"decided","what":"A new table is not seated; a new invoice is not paid; a new order is 'ordered', then 'ready' (cook), then 'placed' (manager)."}
+{"kind":"decided","what":"'A table that already has an unpaid invoice' is kept as tables.seated: seating sets it, paying clears it."}
+{"kind":"decided","what":"Each order keeps the price it was ordered at, so the invoice adds up even if the menu changes later."}
+{"kind":"decided","what":"Nobody does another's job: one cannot story per person, naming the others' jobs."}
+{"kind":"question","q":"May the manager take a table away, or rename one? The story says only that they say what tables there are.","took":"Tables are added, never removed or renamed."}
+{"kind":"question","q":"Must every item be placed before the customer may pay?","took":"No: paying is allowed whatever the state of the orders."}
+{"kind":"question","q":"Does scanning the code tell the manager who is waiting, or does the manager seat whoever is at the table?","took":"The scan only tells the customer's own page which table they are at; the manager seats the table."}
+{"kind":"question","q":"Should a new customer at a table see the invoices of the people who sat there before?","took":"No: the customer's page shows only the table's unpaid invoice."}
+{"kind":"question","q":"Can a customer order before they are seated, or cancel an order before it is ready?","took":"Ordering needs an open invoice; no cancelling."}
+{"kind":"question","q":"Does an order carry a quantity, or is each item one order?","took":"One order per item ordered."}
+{"kind":"question","q":"How does each person come to be the manager, the cook or a customer?","took":"Staff sign in by a link; anyone else who scans a table is a customer."}

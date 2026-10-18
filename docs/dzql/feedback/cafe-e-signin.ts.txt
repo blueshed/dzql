@@ -1,0 +1,43 @@
+import { refuseOrigin } from "@blueshed/delta/server";
+import { serverWrite } from "dzql/rendering/documents";
+import { sessionCookie } from "dzql/rendering/server";
+import { db, sessions } from "./delta";
+
+// Coming in. This is a demo, so the home page is a way in for everyone: a button for each of the
+// staff, and one for each table. A staff member's posts `staff` to /login and starts a fresh session
+// with who it is written in; no password. A customer comes in by the code on their table: a link to
+// /scan, or the home page's button, which says which table, kept on their visit (the model's story
+// 3). Both send the browser home.
+
+const staffOf = db.query<{ name: string; role: string }, [string]>("SELECT name, role FROM cafe_staff WHERE id = ?");
+const tableOf = db.query<{ id: number }, [string]>(`SELECT id FROM "tables" WHERE id = ?`);
+
+/** The staff's ways in, for the home page (the tables' are the floor's, which a new table redraws). */
+export const doorways = () => db.query<{ id: number; name: string; role: string }, []>("SELECT id, name, role FROM cafe_staff ORDER BY id").all();
+
+const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/", ...(cookie ? { "Set-Cookie": sessionCookie(cookie) } : {}) } });
+const visitOf = (req: Request): string | undefined => /(?:^|;\s*)session_id=([^;]+)/.exec(req.headers.get("cookie") ?? "")?.[1];
+
+export async function signIn(req: Request): Promise<Response> {
+  if (req.method !== "POST") return home(); // the page signs in
+  const refused = refuseOrigin(req);
+  if (refused) return refused;
+  const staff = staffOf.get(String((await req.formData()).get("staff") ?? ""));
+  if (!staff) return new Response("There is no one by that name here.", { status: 404 });
+  return home((await sessions.start({ role: staff.role, name: staff.name })).cookie);
+}
+
+/** The code on a table: `/scan?table=1`, or a form posting `table`. The visitor is at that table now. */
+export async function scan(req: Request): Promise<Response> {
+  let table = new URL(req.url).searchParams.get("table");
+  if (req.method === "POST") {
+    const refused = refuseOrigin(req);
+    if (refused) return refused;
+    table = String((await req.formData()).get("table") ?? "");
+  }
+  if (!table || !tableOf.get(table)) return new Response("There is no such table here.", { status: 404 });
+  const visit = visitOf(req);
+  if (!visit) return home((await sessions.start({ table })).cookie);
+  await serverWrite(`visit:${await sessions.of(visit)}`, [{ op: "replace", path: "/visits/table", value: table }, { op: "replace", path: "/visits/page", value: "" }]);
+  return home();
+}
