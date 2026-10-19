@@ -1,7 +1,7 @@
-import { createTables, defineDoc, migrateSchema, defineSchema, registerDocs, migrate, fromFolder } from "@blueshed/delta/sqlite";
+import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
-import { db } from "dzql/rendering/db";
+import { db, openTables } from "dzql/rendering/db";
 import { sessionRows } from "dzql/rendering/sessions";
 
 // Chat's documents, in delta (`@blueshed/delta`). A session -- your name, your room, how far back you read --
@@ -17,11 +17,8 @@ export const schema = defineSchema({
   messages: { table: "chat_messages", columns: { room: "text", name: "text", text: "text", sent_at: "integer" } },
 });
 
-/** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
-export const migrating = { app: "chat", schema };
-await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating); // first, what the schema cannot say: a rename, a drop, data moved
-createTables(db, schema);
-migrateSchema(db, schema);
+/** Its tables: its own migrations (./migrations), then what the schema says beyond them. */
+export const migrating = await openTables(schema, "chat", `${import.meta.dir}/migrations`);
 
 export const delta = createLocal();
 

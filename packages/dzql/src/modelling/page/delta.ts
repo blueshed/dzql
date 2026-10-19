@@ -1,9 +1,9 @@
-import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
+import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import * as json from "@blueshed/delta/json";
 import { existsSync } from "node:fs";
 import { createLocal } from "@blueshed/delta/local";
 import { Database } from "bun:sqlite";
-import { db as appDb } from "dzql/rendering/db";
+import { db as appDb, openTables } from "dzql/rendering/db";
 import { sessionRows } from "dzql/rendering/sessions";
 
 // modeling's documents, in delta (`@blueshed/delta`). A model is one document, written by the two
@@ -12,9 +12,8 @@ import { sessionRows } from "dzql/rendering/sessions";
 // the states it presupposes -- and the documents they need -- each
 // with its root, what it holds (an entity at a time: what it hangs under, its fields), who holds
 // it, whether it is each person's own or lists every row of its root, and which stories it serves. The entities are worked out
-// from those (./heart.ts), never kept. A session is who you are; it is signed in by the sign-in
-// page (./signin.ts) and kept off the ledger. How someone signs in is a table no document
-// includes, so no hash crosses the wire. The tables are modeling's own (`mdl_`).
+// from those (./heart.ts), never kept. A session is who you are; it is signed in by a keeper's link
+// (./signin.ts) and kept off the ledger. The tables are modeling's own (`mdl_`).
 
 export const schema = defineSchema({
   models: { table: "mdl_models", columns: { name: "text" } },
@@ -22,31 +21,25 @@ export const schema = defineSchema({
   documents: { table: "mdl_documents", parent: "models", columns: { name: "text", root: "text", own: "integer", list: "integer?", holds: "json", held_by: "json", stories: "json" } },
   people: { table: "mdl_people", columns: { name: "text" } },
   sessions: { table: "mdl_sessions", columns: { person_id: "integer?", name: "text?", cookie: "text?" }, temporal: false }, // a visit is no history
-  logins: { table: "mdl_logins", columns: { person_id: "integer", email: "text", hash: "text" }, temporal: false }, // a credential's old versions are only a risk
 });
 
 // Beside an app (`MODEL_FILE`: the model is its file), the model keeps nothing in the app's
-// database: its sessions and sign-ins are in memory. On its own, as an example, the database is its.
+// database: its sessions are in memory. On its own, as an example, the database is its.
 // Kept on globalThis, so `bun --hot` running the modules again (the app beside it reloads as the model
 // writes its types) keeps who is signed in: a browser's cookie still names its session.
 const kept = globalThis as { __dzqlModelDb?: Database };
 const db = process.env.MODEL_FILE ? (kept.__dzqlModelDb ??= new Database(":memory:")) : appDb;
 
-/** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
-export const migrating = { app: "modeling", schema };
-await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating); // first, what the schema cannot say: a rename, a drop, data moved
-createTables(db, schema);
-migrateSchema(db, schema);
+/** Its tables: its own migrations (./migrations), then what the schema says beyond them. */
+export const migrating = await openTables(schema, "modeling", `${import.meta.dir}/migrations`, db);
 
-// The two who keep a model, and the model as it starts. Here, in eta: Peter and Claude, each with a
-// password made up for the example (a login is found by its email, `peter@modeling.example`), and
-// leave's model, as the modeller read it from leave's code and a run of its 23 stories -- the team
-// and each person's session, and the logins a sign-in looks up. In a project made with `bun create
-// blueshed/eta`, its `.env` says otherwise: `MODEL_NAME`, the project's own model, empty;
-// `MODEL_PEOPLE`, who keeps it; `MODEL_PASSWORD`, the one password they share.
+// The two who keep a model, each signed in by their own link, and the model as it starts. On its own,
+// as an example: Peter and Claude, and leave's model, as the modeller read it from leave's code and a
+// run of its 23 stories -- the team and each person's session, and the logins leave's sign-in looks
+// up. Beside an app (`dzql model`): `MODEL_NAME`, the project's own model, empty; `MODEL_PEOPLE`,
+// who keeps it.
 const NAME = process.env.MODEL_NAME;
 const PEOPLE = (process.env.MODEL_PEOPLE ?? "Peter,Claude").split(",").map((p) => p.trim()).filter(Boolean);
-const passwordOf = (login: string) => process.env.MODEL_PASSWORD ?? `${login}-password`;
 type Seeded = [actor: string, kind: "does" | "cannot", text: string, touches: string[], post?: string];
 const STORIES: Seeded[] = [
   ["ann", "does", "Ann drags across two days in Bo's week, and sees the clash before she asks", ["sessions"]],
@@ -77,11 +70,7 @@ const field = (name: string, type = "text") => ({ name, type });
 const ids = (...n: number[]) => JSON.stringify(n);
 
 if (!db.query("SELECT 1 FROM mdl_models").get()) {
-  PEOPLE.forEach((name, i) => {
-    const login = name.toLowerCase();
-    db.run("INSERT INTO mdl_people (id, name) VALUES (?, ?)", [i + 1, name]);
-    db.run("INSERT INTO mdl_logins (id, person_id, email, hash) VALUES (?, ?, ?, ?)", [i + 1, i + 1, `${login}@modeling.example`, Bun.password.hashSync(passwordOf(login))]);
-  });
+  PEOPLE.forEach((name, i) => db.run("INSERT INTO mdl_people (id, name) VALUES (?, ?)", [i + 1, name]));
   db.run("INSERT INTO mdl_models (id, name) VALUES (1, ?)", [NAME ?? "Leave"]);
   (NAME ? [] : STORIES).forEach(([actor, kind, text, touches, post], i) =>
     db.run("INSERT INTO mdl_stories (id, models_id, text, actor, kind, post, touches) VALUES (?, 1, ?, ?, ?, ?, ?)", [i + 1, text, actor, kind, post ?? null, JSON.stringify(touches)]),

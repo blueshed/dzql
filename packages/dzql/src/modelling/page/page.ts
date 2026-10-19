@@ -13,17 +13,9 @@ import { MODEL, raw, session as sessionOf } from "./model";
 // two light up. The server draws the first paint with the applet's own drawing (./heart.ts). Above
 // them, hjeli's six registers over the model (./closure.ts): a part, drawn again with every change.
 
-/** Signed out: the one thing to do, and why the last try did not work, if it did not. */
-function signInPage(sessionId: string): string {
-  return join(
-    `<section class="door"><h1 class="cap">Modeling</h1>`,
-    `<form class="sign-in" method="post" action="/model/login">`,
-    `<label class="modal-field"><span class="note">Email</span><input name="email" type="email" autocomplete="username" required autofocus></label>`,
-    `<label class="modal-field"><span class="note">Password</span><input name="password" type="password" autocomplete="current-password" required></label>`,
-    toldAt(sessionId, "session", "/login"),
-    `<button type="submit" class="tool">Sign in</button>`,
-    `</form><p class="note">Or open your sign-in link: \`dzql model\` prints one for each of you as it starts.</p></section>`,
-  );
+/** Signed out: the one thing to do. */
+function signInPage(): string {
+  return `<section class="door"><h1 class="cap">Modeling</h1><p class="note">Open your sign-in link: \`dzql model\` prints one for each of you as it starts.</p></section>`;
 }
 
 /** Why the last write to the model was refused, wherever in it, if it was: a write comes from the CLI, so there is no control to say it beside. */
@@ -48,5 +40,5 @@ function modelPage(sessionId: string): string {
 }
 
 export function render(sessionId: string): string {
-  return layers(sessionOf(sessionId).person ? modelPage(sessionId) : signInPage(sessionId), "", "");
+  return layers(sessionOf(sessionId).person ? modelPage(sessionId) : signInPage(), "", "");
 }

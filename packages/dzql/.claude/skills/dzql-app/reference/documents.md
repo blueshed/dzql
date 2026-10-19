@@ -10,9 +10,7 @@ export const schema = defineSchema({
   sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?", before: "integer?", cookie: "text?" }, temporal: false }, // a visit is no history
   messages: { table: "chat_messages", columns: { room: "text", name: "text", text: "text", sent_at: "integer" } }, // keeps its history, delta's default
 });
-await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), { app: "chat", schema }); // migrations.md
-createTables(db, schema);
-migrateSchema(db, schema);
+export const migrating = await openTables(schema, "chat", `${import.meta.dir}/migrations`); // dzql/rendering/db; migrations.md
 export const delta = createLocal();
 registerDocs(delta.server, db, schema, [
   defineDoc("session:", { root: "sessions", include: [], implied: true }),
@@ -34,8 +32,8 @@ synchronous; it throws `Pending` when the document is not held yet, and the kern
 again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server.
 
 - Prefix tables with the app's name (`chat_`). Seed only into empty tables.
-- At start-up `delta.ts` runs the app's migrations, then `createTables` (a missing table), then
-  `migrateSchema` (a missing column). That is all a new table or column needs. A field renamed or
+- At start-up `delta.ts` makes its tables (`openTables`, `dzql/rendering/db`): the app's migrations,
+  then a missing table (delta's `createTables`), then a missing column (`migrateSchema`). That is all a new table or column needs. A field renamed or
   dropped, or data moved, is a migration: [migrations.md](migrations.md). Never delete a database
   to change its shape: people keep real data in it.
 - Address a row by its id, never its position: others write between a write and its undo. Make ids

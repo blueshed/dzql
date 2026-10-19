@@ -327,10 +327,11 @@ describe("modeling, served", () => {
     server.stop(true);
   });
 
-  /** Posts the sign-in form, as a browser does: the answer, and the session its cookie names. */
-  async function signIn(email: string, password: string, headers: Record<string, string> = {}): Promise<{ res: Response; sessionId?: string }> {
-    const res = await fetch(new URL("/model/login", server.url), { method: "POST", body: new URLSearchParams({ email, password }), redirect: "manual", headers });
-    return { res, sessionId: /session_id_model=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1] };
+  /** Opens a keeper's sign-in link, as a browser does: the session its cookie names. */
+  async function signIn(name: string): Promise<string | undefined> {
+    const link = links.say(server.url.origin).find((l) => l.startsWith(`${name}: `))!.slice(`${name}: `.length);
+    const res = await fetch(link, { redirect: "manual" });
+    return /session_id_model=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
   }
 
   test("signing in by a link: each keeper's, said as the server starts; one that is no link signs nobody in", async () => {
@@ -344,16 +345,12 @@ describe("modeling, served", () => {
     expect(nobody.headers.get("set-cookie")).toBeNull();
   });
 
-  test("signing in: only by the form, from this site, with a password that matches the email", async () => {
-    expect((await fetch(new URL("/model/login", server.url), { redirect: "manual" })).headers.get("location")).toBe("/model");
-    expect((await signIn("peter@modeling.example", "peter-password", { origin: "https://elsewhere.example" })).res.status).toBe(403);
-    expect((await signIn("peter@modeling.example", "wrong")).sessionId).toBeUndefined();
-    expect((await signIn("nobody@modeling.example", "peter-password", { cookie: "session_id_model=a-visit" })).sessionId).toBeUndefined();
-    expect((await signIn(" Peter@Modeling.example ", "peter-password")).sessionId).toBeString();
+  test("signing in: by a link alone; there is no form", async () => {
+    expect((await fetch(new URL("/model/login", server.url), { method: "POST", body: new URLSearchParams({ email: "peter@modeling.example", password: "peter-password" }), redirect: "manual" })).headers.get("set-cookie")).toBeNull();
   });
 
   test("a session signs out, and then writes nothing", async () => {
-    const { sessionId } = await signIn("peter@modeling.example", "peter-password");
+    const sessionId = await signIn("Peter");
     const url = new URL("/model/ws", server.url); // the model is a route of its own, at /model
     url.protocol = "ws:";
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
@@ -382,7 +379,7 @@ describe("modeling, served", () => {
   test("`show` prints the model as the page shows it, read as the CLI is signed in; signed out, it says to sign in", async () => {
     const ws = `${server.url.href.replace(/^http/, "ws")}model`;
     const file = `${process.env.TMPDIR ?? "/tmp"}/session-${crypto.randomUUID()}`;
-    await Bun.write(file, (await signIn("claude@modeling.example", "claude-password")).sessionId!);
+    await Bun.write(file, (await signIn("Claude"))!);
     const { readPage } = await import("../../../src/modelling/page/loader/told");
     const raw = await readPage(ws, (await Bun.file(file).text()).trim());
     const page = plain(raw);

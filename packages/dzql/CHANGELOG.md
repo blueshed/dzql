@@ -25,6 +25,10 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **The model's page signs in by link alone** (20 October, #62): the email and password form, its
+  `/login` route, the `mdl_logins` table and `MODEL_PASSWORD` are gone. Each keeper's link is
+  printed as `dzql model` starts; the CLI signs in with it (`bun run cli login <link>`).
+
 - **Every app is `routes.ts` exporting `app`** (20 October): the examples (chat, leave, ticker,
   wedding) and the model's page moved from `index.ts` exporting `example`, as the cafe, the starter
   and every `bun create dzql` app already were; each serves itself (`bun examples/<name>/routes.ts`).
@@ -90,6 +94,10 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   instant it names, and a time no story says is a time (`valueOf`, `says`).
 
 ### Added
+
+- **`openTables`** (`dzql/rendering/db`, 20 October, #62): an app's tables as delta makes them at
+  start-up, in one call: its migrations, then a missing table, then a missing column. The examples'
+  `delta.ts` and the model's page use it.
 
 - **`cookieOf(req)` and `seeOther(to, cookie?)`** (`dzql/rendering/server`, 19 October): this app's
   session cookie on a request, and the 303 back to a page after a form (setting the cookie when a

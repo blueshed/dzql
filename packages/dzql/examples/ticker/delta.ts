@@ -1,6 +1,6 @@
-import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
+import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
-import { db } from "dzql/rendering/db";
+import { db, openTables } from "dzql/rendering/db";
 import { sessionRows } from "dzql/rendering/sessions";
 import { DEFAULT_TZ } from "./documents/clock";
 
@@ -34,11 +34,8 @@ export const schema = defineSchema({
   },
 });
 
-/** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
-export const migrating = { app: "ticker", schema };
-await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating); // first, what the schema cannot say: a rename, a drop, data moved
-createTables(db, schema);
-migrateSchema(db, schema);
+/** Its tables: its own migrations (./migrations), then what the schema says beyond them. */
+export const migrating = await openTables(schema, "ticker", `${import.meta.dir}/migrations`);
 
 // The market as it opens: made-up names, made-up prices, so nothing here is anyone's advice.
 const OPENING: [string, string, number][] = [

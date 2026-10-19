@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { signIn } from "dzql/rendering/cli/commands";
+import { sessionIn } from "dzql/rendering/scope";
+import { links } from "../../../../src/modelling/page/signin";
 import { assemble } from "dzql/rendering/resources/index";
 import { db } from "dzql/rendering/db";
 import { createServer } from "dzql/rendering/server";
@@ -117,7 +118,7 @@ describe("Peter tells leave's stories on the model page and Claude builds leave;
     load = writesOf((await extract("leave")).heart);
     server = createServer(example, 0);
     url = `${server.url.href.replace(/^http/, "ws")}model`; // the model is a route of its own, at /model
-    session = (await signIn(url, { email: "claude@modeling.example", password: "claude-password" }))!;
+    session = sessionIn((await fetch(links.say(server.url.origin)[1]!.slice("Claude: ".length), { redirect: "manual" })).headers.get("set-cookie"))!; // Claude's link
     db.exec("BEGIN"); // the seeded model comes back after
   }, 60000);
   afterAll(async () => {

@@ -8,11 +8,10 @@ import { plain } from "./heart";
 // modeling's own short verbs, loaded by src/cli.ts (ETA_EXAMPLE=modeling) after the kernel's own
 // (inspect, watch, undo, redo, write): how Claude keeps the model while Peter tells it. Each builds
 // a write to the model and nothing else -- no database here -- but `show`, which reads it. The CLI
-// signs in as the page does, by posting the sign-in form, and keeps the session it is given in its
-// session file:
+// signs in by the keeper's link the server printed as it started, and keeps the session it is given
+// in its session file:
 //
-//   curl -si -d email=claude@modeling.example -d password=... http://localhost:3005/login \
-//     | sed -n 's/.*session_id=\([^;]*\).*/\1/p' > .eta-session
+//   bun run cli login http://localhost:3005/model/in/<token>
 //
 //   bun run cli story ann does Ann asks for a week off        a story: who tells it, does or cannot, its words
 //   bun run cli story visitor does --post /login Bo signs in   one that posts a form to a route
