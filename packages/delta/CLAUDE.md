@@ -166,7 +166,7 @@ the new Bun, run `bun run test:slow` on it, then set `bun-version` in the root's
 - `src/server/logger.ts`: a copy of railroad's `logger.ts`, so a server needs no railroad (an
   optional peer only the client imports); `tests/server.test.ts` fails when the two differ.
 - `src/server/auth.ts`: the `DeltaAuth` contract (`wireAuth`, `upgradeWithAuth`).
-- `cli.ts`: `bunx @blueshed/delta` (open, watch, delta, call, migrate, migrations make, link,
+- `src/cli.ts`: `bunx @blueshed/delta` (open, watch, delta, call, migrate, migrations make, link,
   install-skills, stop;
   install-skills copies `@blueshed/*` skills and the packages `claudeSkills` names; migrate takes
   a SQLite file, and sends a `postgres://` URL or a folder to `dzql migrate`). The runtime

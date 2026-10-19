@@ -275,8 +275,8 @@ async function cmdMake(module: string | undefined, values: Record<string, unknow
   const name = ((values.name as string | undefined) ?? "changes").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "changes";
   const schema = (await import(path))[(values.export as string | undefined) ?? "schema"];
   if (!schema?.tables) usageError(`${module} exports no schema (${(values.export as string | undefined) ?? "schema"}): defineSchema(...)`);
-  const { diff, stateOf, writeMigration } = await import("./src/server/changes");
-  const { fromFolder } = await import("./src/server/migrate");
+  const { diff, stateOf, writeMigration } = await import("./server/changes");
+  const { fromFolder } = await import("./server/migrate");
   const { mkdirSync, readdirSync, writeFileSync } = await import("node:fs");
   mkdirSync(dir, { recursive: true });
   const list = await fromFolder(dir);
@@ -310,7 +310,7 @@ async function cmdLink(target: string | undefined, person: string | undefined, v
   if (/^postgres(ql)?:\/\//.test(target) || (existsSync(path) && statSync(path).isDirectory())) usageError(`${target} is Postgres: dzql link makes its links`);
   if (!existsSync(path)) usageError(`no database at ${target}`);
   const { Database } = await import("bun:sqlite");
-  const { makeLink, siteOrigin, sqliteLinkStore } = await import("./src/server/auth-link");
+  const { makeLink, siteOrigin, sqliteLinkStore } = await import("./server/auth-link");
   let origin: string;
   try { origin = (values.origin as string | undefined) ?? siteOrigin(); }
   catch (err) { usageError(`${(err as Error).message}, or pass --origin`); }
@@ -337,7 +337,7 @@ async function cmdLink(target: string | undefined, person: string | undefined, v
  */
 async function cmdMigrate(target: string | undefined, values: Record<string, unknown>) {
   if (!target) usageError("migrate takes a <database>: a SQLite file (Postgres: dzql migrate)", true);
-  const { setLogLevel } = await import("./src/server/logger");
+  const { setLogLevel } = await import("./server/logger");
   setLogLevel(json ? "silent" : "warn");
   const dir = resolve(process.cwd(), (values.dir as string | undefined) ?? "migrations");
   const status = !!values.status;
@@ -349,7 +349,7 @@ async function cmdMigrate(target: string | undefined, values: Record<string, unk
 
   let answer: unknown;
   const { Database } = await import("bun:sqlite");
-  const sqlite = await import("./src/server/sqlite/migrate");
+  const sqlite = await import("./server/sqlite/migrate");
   const db = new Database(path);
   try {
     const list = await sqlite.fromFolder(dir);
@@ -357,14 +357,14 @@ async function cmdMigrate(target: string | undefined, values: Record<string, unk
   } finally { db.close(); }
   if (json) return print(answer);
   if (status) {
-    const s = answer as import("./src/server/migrate").MigrationStatus;
+    const s = answer as import("./server/migrate").MigrationStatus;
     if (s.fresh) process.stdout.write("new database: migrate records every migration as run, and runs none\n");
     for (const r of s.ran) process.stdout.write(`ran      ${r.id}  ${r.ran_at}\n`);
     for (const id of s.pending) process.stdout.write(`pending  ${id}\n`);
     for (const id of s.unknown) process.stdout.write(`unknown  ${id}  (ran here, not in ${dir})\n`);
     return;
   }
-  const r = answer as import("./src/server/migrate").MigrateResult;
+  const r = answer as import("./server/migrate").MigrateResult;
   if (r.fresh) process.stdout.write("new database: every migration recorded as run, none run\n");
   for (const id of r.ran) process.stdout.write(`ran      ${id}\n`);
   if (!r.fresh && r.ran.length === 0) process.stdout.write("nothing to run\n");
@@ -411,8 +411,8 @@ async function main() {
   const arg2 = positionals[2];
 
   switch (cmd) {
-    case "install-skills":  return (await import("./src/cli/skills")).installSkills(values);
-    case "stop":            return console.log(await (await import("./src/server/serve")).stop());
+    case "install-skills":  return (await import("./cli/skills")).installSkills(values);
+    case "stop":            return console.log(await (await import("./server/serve")).stop());
     case "open":            return cmdOpen(arg, values);
     case "watch":           return cmdWatch(arg, values);
     case "delta":           return cmdDelta(arg, arg2, values);

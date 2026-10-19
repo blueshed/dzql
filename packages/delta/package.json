@@ -6,7 +6,7 @@
   "main": "src/core.ts",
   "types": "src/core.ts",
   "bin": {
-    "delta": "./cli.ts"
+    "delta": "./src/cli.ts"
   },
   "exports": {
     ".": "./src/core.ts",
@@ -29,7 +29,6 @@
     "./backend": "./src/backend.ts"
   },
   "files": [
-    "cli.ts",
     "src/**/*.ts",
     "src/pointer-vectors.json",
     "src/walk-vectors.json",

@@ -16,7 +16,7 @@ import { setLogLevel } from "../src/server/logger";
 
 setLogLevel("silent");
 
-const CLI = resolve(import.meta.dir, "..", "cli.ts");
+const CLI = resolve(import.meta.dir, "..", "src", "cli.ts");
 const schema = defineSchema({ items: { columns: { name: "text" } } });
 const items = defineDoc("items:", { root: "items", include: [] });
 

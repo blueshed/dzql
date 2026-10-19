@@ -51,7 +51,7 @@ describe("the list", () => {
 });
 
 describe("the CLI: delta migrate", () => {
-  const CLI = resolve(import.meta.dir, "..", "cli.ts");
+  const CLI = resolve(import.meta.dir, "..", "src", "cli.ts");
   const run = async (...args: string[]) => {
     const proc = Bun.spawn(["bun", CLI, "migrate", ...args], { stdout: "pipe", stderr: "pipe" });
     const [code, out, err] = await Promise.all([proc.exited, new Response(proc.stdout).text(), new Response(proc.stderr).text()]);

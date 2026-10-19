@@ -33,6 +33,8 @@ test("setup turns the template into an app", async () => {
   // delta, as bun install leaves it: setup runs its install-skills, which finds railroad's skills beside it
   mkdirSync(join(root, "node_modules/@blueshed"), { recursive: true });
   symlinkSync(join(import.meta.dir, "../../delta"), join(root, "node_modules/@blueshed/delta"));
+  mkdirSync(join(root, "node_modules/.bin"));
+  symlinkSync("../@blueshed/delta/src/cli.ts", join(root, "node_modules/.bin/delta")); // its bin, as bun install links it
   try {
     await setup(root);
 

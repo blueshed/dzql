@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The command is `src/cli.ts`** (19 October), so `src/` is everything that ships: the monorepo's
+  one shape for a library (`docs/plan.md`). `bunx @blueshed/delta` and the `delta` bin are the
+  same; a script that ran `node_modules/@blueshed/delta/cli.ts` by path runs the bin instead
+  (paintbrush's setup does).
+
 ## [1.3.0] - 2026-10-19
 
 - `@blueshed/railroad` 0.17.0: the peer range takes it (`|| ^0.17.0`), and the dev dependency is `^0.17.0`.

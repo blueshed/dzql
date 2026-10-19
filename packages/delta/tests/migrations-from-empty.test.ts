@@ -145,7 +145,7 @@ test("delta migrations make: writes the next file from a module's schema, then n
     writeFileSync(mod, `import { defineSchema } from ${JSON.stringify(join(import.meta.dir, "../src/schema.ts"))};\nexport const schema = defineSchema({ people: { columns: { name: "text" }, temporal: false } });\n`);
     const migrations = join(dir, "migrations");
     const run = async (...args: string[]) => {
-      const proc = Bun.spawn(["bun", join(import.meta.dir, "../cli.ts"), "migrations", "make", ...args], { stdout: "pipe", stderr: "pipe", env: { ...process.env, DELTA_MIGRATIONS_FROM: join(import.meta.dir, "../src/server/changes.ts") } });
+      const proc = Bun.spawn(["bun", join(import.meta.dir, "../src/cli.ts"), "migrations", "make", ...args], { stdout: "pipe", stderr: "pipe", env: { ...process.env, DELTA_MIGRATIONS_FROM: join(import.meta.dir, "../src/server/changes.ts") } });
       const [code, out, err] = await Promise.all([proc.exited, new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
       return { code, out, err };
     };

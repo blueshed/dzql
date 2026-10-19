@@ -6,7 +6,7 @@ As `tests/cli.test.ts` drives it: watch a document until an item is added, as an
 DELTA_TOKEN=$T bunx @blueshed/delta watch items: --json --until "add /items" --for 10000
 ```
 
-Always the scoped name: `bunx delta` runs an unrelated npm package. The code is `cli.ts`.
+Always the scoped name: `bunx delta` runs an unrelated npm package. The code is `src/cli.ts`.
 
 ## Talking to a running server
 

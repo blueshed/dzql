@@ -119,7 +119,7 @@ describe("run and stop", () => {
   test("`delta stop` is stop, at the command line", async () => {
     const proc = start();
     await readUntil(proc, /Listening on/);
-    const cli = Bun.spawn([process.execPath, join(import.meta.dir, "../cli.ts"), "stop"], { cwd: dir, env: { ...process.env, PID_FILE: file }, stdout: "pipe" });
+    const cli = Bun.spawn([process.execPath, join(import.meta.dir, "../src/cli.ts"), "stop"], { cwd: dir, env: { ...process.env, PID_FILE: file }, stdout: "pipe" });
     expect((await new Response(cli.stdout).text()).trim()).toBe(`stopped ${proc.pid}`);
     expect(await proc.exited).toBe(0);
   });

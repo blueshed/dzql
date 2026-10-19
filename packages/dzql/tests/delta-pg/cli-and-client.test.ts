@@ -15,7 +15,7 @@ import { openPglite } from "../../src/postgres/pglite";
 
 setLogLevel("silent");
 
-const DELTA_CLI = join(dirname(require.resolve("@blueshed/delta/package.json")), "cli.ts");
+const DELTA_CLI = join(dirname(require.resolve("@blueshed/delta/package.json")), "src", "cli.ts");
 const DZQL_CLI = resolve(import.meta.dir, "..", "..", "src", "cli", "index.ts");
 
 async function run(cli: string, cwd: string, ...args: string[]) {

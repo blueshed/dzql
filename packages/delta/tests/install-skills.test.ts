@@ -13,7 +13,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-const CLI = resolve(import.meta.dir, "..", "cli.ts");
+const CLI = resolve(import.meta.dir, "..", "src", "cli.ts");
 
 function makeSkill(root: string, pkgName: string, skillName: string, files: Record<string, string>): void {
   const dir = join(root, "node_modules", ...pkgName.split("/"), ".claude", "skills", skillName);

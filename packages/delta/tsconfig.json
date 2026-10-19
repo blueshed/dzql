@@ -4,5 +4,5 @@
     "jsx": "preserve",
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["cli.ts", "src/**/*.ts", "tests/**/*.ts", "examples/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "examples/**/*.ts"]
 }
