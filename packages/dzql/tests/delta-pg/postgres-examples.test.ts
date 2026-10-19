@@ -12,13 +12,15 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
 import { setLogLevel } from "@blueshed/delta/logger";
 import { newPool, PG_URL } from "./setup";
-import { bboxStory, runExample, stop, until } from "./helpers/examples";
+import { join } from "node:path";
+import { bboxStory, runExample, stop, until } from "../../../delta/tests/helpers/examples"; // delta's, as the example is
 import { setup, ALICE, BOB, CAROL, type Identity } from "../../examples/delta/todos-vs-rls/setup";
 import * as raw from "../../examples/delta/todos-vs-rls/raw-rls";
 import { serveTodos } from "../../examples/delta/todos-vs-rls/delta";
 
 setLogLevel("silent");
 const env = { DATABASE_URL: PG_URL };
+const dzql = join(import.meta.dir, "../..");
 
 let pool: Pool;
 beforeAll(async () => { pool = await newPool(); });
@@ -28,7 +30,7 @@ describe("sites-bbox", () => {
   const fresh = () => pool.query(`DO $$ BEGIN
     IF to_regclass('worlds') IS NOT NULL THEN EXECUTE 'TRUNCATE worlds, sites RESTART IDENTITY'; END IF; END $$`);
   const serve = async () => {
-    const p = runExample("sites-bbox/server-pg.ts", env);
+    const p = runExample("sites-bbox/server-pg.ts", env, dzql, join(dzql, "examples/delta"));
     const [, url, world] = await until(p, /(ws:\S+)[\s\S]*"(world:\d+)"/);
     return { p, url: url!, world: world! };
   };

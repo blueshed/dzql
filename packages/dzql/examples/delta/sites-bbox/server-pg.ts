@@ -1,6 +1,6 @@
 /**
- * sites-bbox on Postgres: the same documents as server.ts, the rows in the
- * database. Every process serving it hears every write (LISTEN/NOTIFY), so a
+ * sites-bbox on Postgres: delta's example (packages/delta/examples/sites-bbox),
+ * its schema and documents, the rows in the database. Every process serving it hears every write (LISTEN/NOTIFY), so a
  * box open on one is told of a site moved through another.
  *
  *   PORT=3100 bun examples/delta/sites-bbox/server-pg.ts
@@ -13,7 +13,7 @@ import {
 } from "../../../src/postgres";
 import { createWs } from "@blueshed/delta/server";
 import { serve } from "@blueshed/delta/serve";
-import { schema, worldDoc, parse, matches, type BBox } from "./schema";
+import { schema, worldDoc, parse, matches, type BBox } from "../../../../delta/examples/sites-bbox/schema";
 
 const sitesInBbox = defineCustomDoc<BBox>("sites-in-bbox:", {
   watch: ["sites"],

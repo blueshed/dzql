@@ -29,10 +29,10 @@ export async function until(proc: Proc, pattern: RegExp): Promise<RegExpExecArra
 const root = join(import.meta.dir, "../..");
 let runs = 0;
 
-/** `bun examples/<file>` with PORT=0, run from `cwd` (the repo by default); one that `run`s keeps its pid file in the temp folder. */
-export function runExample(file: string, env: Record<string, string> = {}, cwd = root): Proc {
+/** `bun <examples>/<file>` with PORT=0, run from `cwd` (the repo by default); one that `run`s keeps its pid file in the temp folder. `examples` is delta's, or another's: dzql runs its Postgres server of sites-bbox by this, and the story below. */
+export function runExample(file: string, env: Record<string, string> = {}, cwd = root, examples = join(root, "examples")): Proc {
   const pidFile = join(tmpdir(), `delta-example-${process.pid}-${++runs}.pid`);
-  return Bun.spawn(["bun", join(root, "examples", file)], {
+  return Bun.spawn(["bun", join(examples, file)], {
     cwd, env: { ...process.env, PORT: "0", PID_FILE: pidFile, ...env }, stdout: "pipe", stderr: "pipe",
   });
 }

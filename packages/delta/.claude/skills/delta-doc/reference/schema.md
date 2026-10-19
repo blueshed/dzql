@@ -48,7 +48,9 @@ The contract is `TableDef`, `ColumnDef`, `ColumnShorthand` and `DocDef` in `src/
   server. Rows that become parts of another move under it (a migration's `up`, `migrations.md`).
 - **A fact that comes from other rows is worked out, never stored**: whether a room is taken, from
   its open stays. A recompute document reads it (`custom-docs.md`); a column written beside each
-  stay is a second copy the app must keep honest.
+  stay is a second copy the app must keep honest. Its limit: a value a person may change (a due
+  date someone extends), or one from a rule that may change, is the row's own and is stored, set as
+  the row is written; when the rule changes, a migration fills it for the rows before.
 
 ## Validating before a write
 

@@ -56,7 +56,14 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
   A package that packs a sibling's folder (`prepack`: create-blueshed copies paintbrush) runs
   when that sibling changes.
 - **What is going on** is `CHANGELOG.md` (what changed, across packages) and `todo.jsonl` (what is
-  open across them) here; keep both current with every change, as each package keeps its own.
+  open across them) here, and each package's own pair beside its code: the changelog is where it
+  has been, the ledger what is open now. Read both before starting, and keep them current together,
+  as the work lands: what you find or leave open goes into `todo.jsonl`; what lands goes under
+  `## [Unreleased]` (Keep a Changelog), breaking changes first, each with how to move across, and
+  the item it settles becomes `fixed` (or `not fixed`, saying why) with a dated `note`. A release
+  turns `[Unreleased]` into a version, and the settled items leave `todo.jsonl`. A line of
+  `todo.jsonl` is one JSON object: `n`, `status` (open / fixed / not fixed), `severity`, `area`,
+  `file`, `summary`, `detail`, and a dated `note` once worked on. Code comments cite only open items.
 - Bun only, on the one the root package.json's `packageManager` names (CI reads it;
   `scripts/ranges.ts` holds each package's `@types/bun` to it, and each README's "or later" to its floor).
 

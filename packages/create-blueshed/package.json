@@ -12,7 +12,7 @@
     "README.md"
   ],
   "scripts": {
-    "prepack": "bun pack.ts",
+    "prepack": "bun pack.ts ../paintbrush",
     "postpack": "rm -rf template",
     "test:fast": "bun test tests/",
     "test": "bun run test:fast",

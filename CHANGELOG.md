@@ -13,6 +13,14 @@ what is open across them. Newest first.
 - **One way to install a package's skills** (#100, #101): `delta install-skills`, which delta's
   `prepare` now is too; railroad's README teaches it; the starters' words point at the one list.
 - **paintbrush's leave-behind list, once** (#109): `UNCOPIED`, read by create-blueshed's copy and pack.
+- **sites-bbox once** (#62): dzql's Postgres server of it runs over delta's schema, and its test over
+  delta's story.
+- **One way to start a store on Postgres** (#108): dzql's `openStore`, which now serves on a socket
+  too, is what every snippet teaches.
+- **The changelog and ledger rules, once** (#106): in the root CLAUDE.md; railroad's and delta's
+  point at it. **The gate, named** (#98): each CLAUDE.md names its scripts, never their contents.
+- **A value someone may change is stored** (#39): delta-doc's and evolve's rule against storing what
+  is worked out says its limit.
 
 - **One Bun, said in one place** (#97): the root's `packageManager`. `scripts/ranges.ts`, in the
   gate, holds each package's `@types/bun` and a new app's `packageManager` to it, and each README's

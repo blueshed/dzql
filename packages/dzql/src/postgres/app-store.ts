@@ -1,15 +1,19 @@
 /**
- * An app's store on Postgres, for dzql's thin client: a server at DATABASE_URL, else PGlite in this
- * process, kept in PGLITE_DIR (in memory without one: the tests and the stories). The model's
- * migrations run first, when it has made them; then the framework; then, at `open()`, every document
- * the app's resources registered is compiled from its definitions and one listener answers for them
- * all, each on the ledger unless it says not (a session is no one's history). `stories` is the
- * app's `Example.store`, so its stories run on this store and are put back after each.
+ * An app's store on Postgres, the one way to start one: a server at DATABASE_URL, else PGlite in this
+ * process, kept in PGLITE_DIR (in memory without one: the tests and the stories), or the `database`
+ * it is given. The migrations run first (a folder, when it is there, or a list); then the framework;
+ * then, at `open()`, every document the app's resources registered is compiled from its definitions
+ * and one listener answers for them all, each on the ledger unless it says not (a session is no
+ * one's history): in this process (`delta`, as dzql's thin client reads them), or on the socket it
+ * is given (`ws`, delta's `createWs`, as a page drawn in the browser reads them). `stories` is the
+ * app's `Example.store`, so its stories run on this store and are put back after each; `close()`
+ * ends the listener, then the pool.
  */
 import { existsSync } from "node:fs";
 import type { Pool } from "pg";
 import { createLocal } from "@blueshed/delta/local";
-import type { DocDef, Schema } from "@blueshed/delta/backend";
+import type { DocDef, Migration, Schema } from "@blueshed/delta/backend";
+import type { WsServer } from "@blueshed/delta/server";
 import { applyFramework, applySql } from "./bootstrap";
 import { generateSql } from "./codegen";
 import { createDocListener } from "./listener";
@@ -21,19 +25,25 @@ import { storyStore } from "./story-store";
 export type StoreOptions = {
   /** The app's tables: the model's (`model/types.ts`'s `tables`), and its own beside them. */
   schema: Schema;
-  /** The model's migrations (`model/migrations`), run first when the folder is there; `app` names them in `delta_migrations`, `schema` is the model's. */
-  migrations?: { dir: string; app?: string; schema?: Schema };
+  /** Where it is kept: a Postgres URL, or a PGlite folder. Without it, DATABASE_URL, else PGLITE_DIR, else in memory. */
+  database?: string;
+  /** The migrations, run first: a folder (`dir`, run when it is there; the model's `model/migrations`) or a `list`. `app` names them in `delta_migrations`; `schema` is theirs (the model's), so the run knows a new database from one before them, and fences only their ledger entries. */
+  migrations?: { app?: string; schema?: Schema } & ({ dir: string } | { list: Migration[] });
+  /** The socket the documents are served on (`createWs()`); without one, they are served in this process (`delta`). */
+  ws?: WsServer;
 };
 
-export async function openStore({ schema, migrations }: StoreOptions) {
-  const pool: Pool = await openDatabase(process.env.DATABASE_URL || process.env.PGLITE_DIR || undefined);
-  if (migrations && existsSync(migrations.dir)) await migrate(pool, await fromFolder(migrations.dir), { app: migrations.app ?? "model", ...(migrations.schema && { schema: migrations.schema }) });
+export async function openStore({ schema, database, migrations, ws }: StoreOptions) {
+  const pool: Pool = await openDatabase(database ?? (process.env.DATABASE_URL || process.env.PGLITE_DIR || undefined));
+  const history = !migrations ? undefined : "list" in migrations ? migrations.list : existsSync(migrations.dir) ? await fromFolder(migrations.dir) : undefined;
+  if (history) await migrate(pool, history, { app: migrations!.app ?? "model", ...(migrations!.schema && { schema: migrations!.schema }) });
   await applyFramework(pool);
 
   /** The documents, in delta, in this process. */
   const delta = createLocal();
   const registered: DocDef[] = [];
   const offLedger: string[] = [];
+  let listener: Awaited<ReturnType<typeof createDocListener>> | undefined;
 
   return {
     pool,
@@ -51,7 +61,12 @@ export async function openStore({ schema, migrations }: StoreOptions) {
     async open(prepare?: () => void | Promise<void>): Promise<void> {
       await applySql(pool, generateSql(schema, registered));
       await prepare?.();
-      await createDocListener(delta.server, pool, { types: registered.map((def) => docTypeFromDef(def, pool)), ledger: { except: offLedger }, schema });
+      listener = await createDocListener(ws ?? delta.server, pool, { types: registered.map((def) => docTypeFromDef(def, pool)), ledger: { except: offLedger }, schema });
+    },
+    /** The listener ended (it holds a client for LISTEN), then the pool: a PGlite folder is left as it was, for the next start. */
+    async close(): Promise<void> {
+      await listener?.destroy();
+      await pool.end();
     },
     /** The stories begin and end each story on this store (`Example.store`). */
     stories: storyStore(pool, schema),

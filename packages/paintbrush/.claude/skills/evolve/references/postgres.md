@@ -11,13 +11,11 @@ bun add -d @types/pg
 // src/resources/order/order-api.ts
 /** Order: the catalogue, each order and the kitchen, kept by Postgres: DATABASE_URL's server, else PGlite in pg/ in the data folder. */
 import { Database } from "bun:sqlite";
-import { existsSync, mkdirSync } from "node:fs";
-import { Pool } from "pg";
+import { existsSync } from "node:fs";
 import type { WsServer } from "@blueshed/delta/server";
 import { exportTables as jsonRows, type Snapshot } from "@blueshed/delta/json";
 import { exportTables as sqliteRows } from "@blueshed/delta/sqlite";
-import { openPglite } from "dzql/pglite";
-import { applyFramework, applySql, createDocListener, defineDoc, defineSchema, docTypeFromDef, generateSql, importTables, migrate } from "dzql/postgres";
+import { defineDoc, defineSchema, importTables, openStore } from "dzql/postgres";
 import { migrations } from "./migrations";
 
 export type Item = { id: number; name: string; price: number };
@@ -50,19 +48,15 @@ function keptBefore(dataDir: string): Snapshot {
 
 // Answers what closes it: the server calls that when it stops
 export async function orderDocs(ws: WsServer, dataDir: string) {
-  const url = process.env.DATABASE_URL;
-  if (!url) mkdirSync(dataDir, { recursive: true }); // PGlite makes pg/, not the folder it is in
-  const pool = url ? new Pool({ connectionString: url }) : await openPglite(`${dataDir}/pg`); // one process owns a PGlite folder
-  // the same history as on SQLite makes the tables: a migration's changes are the same on every backend
-  await migrate(pool, migrations, { app: "order", schema });
-  await applyFramework(pool); // delta's own tables and functions
-  await applySql(pool, generateSql(schema, docs)); // each document's reads and writes compiled
-  if (!(await pool.query("SELECT 1 FROM items")).rowCount) await importTables(pool, schema, keptBefore(dataDir));
-  const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)), ledger: true });
-  return async () => {
-    await listener.destroy();
-    await pool.end(); // closed cleanly, the next start opens the folder as it was left
-  };
+  // the same history as on SQLite makes the tables (a migration's changes are the same on every
+  // backend), then delta's own tables and functions; one process owns a PGlite folder
+  const store = await openStore({ schema, database: process.env.DATABASE_URL || `${dataDir}/pg`, migrations: { list: migrations, app: "order", schema }, ws });
+  store.register(docs);
+  // each document compiled; a new database takes the rows kept before, then the documents are served
+  await store.open(async () => {
+    if (!(await store.pool.query("SELECT 1 FROM items")).rowCount) await importTables(store.pool, schema, keptBefore(dataDir));
+  });
+  return store.close; // the listener, then the pool: closed cleanly, the next start opens the folder as it was left
 }
 ```
 

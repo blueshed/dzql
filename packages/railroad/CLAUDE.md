@@ -82,12 +82,8 @@ so after a dependency change run `bun install` and commit `bun.lock`.
   real browser. `tests/readme.test.ts` runs what README.md promises as
   written: `tests/fixtures/readme/` is its files byte for byte (checked
   there), served, built with `--compile`, and loaded with no DOM.
-- **`CHANGELOG.md`** — Keep a Changelog. Add to `## [Unreleased]` as work
-  lands, breaking changes first, each with how to move across. `/publish`
-  promotes it.
-- **`todo.jsonl`** — what is known and not done, one JSON object per line
-  (`n, status, severity, area, file, summary, detail, note`), the same shape
-  as delta's and eta's. Close an item in the commit that does it.
+- **`CHANGELOG.md`** and **`todo.jsonl`**: railroad's own, kept as the root
+  CLAUDE.md says (What is going on).
 
 ## Invariants that must not break
 

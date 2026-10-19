@@ -39,7 +39,7 @@ Bun only: never `npm`, `npx` or `node`.
 | Typecheck | `bun check` (Bun's type check, TypeScript 7; no `check` script, which would shadow it), and `bun check -p examples/kanban` for its JSX |
 | Tests | `bun run test`: the fast tier (fewer law seeds); `bun run test:slow`: every test, every seed (no database server, no Docker; about 17 s) |
 | One file | `bun test tests/local.test.ts` |
-| **The gate** | **`bun run test:slow`**: `bun check` (and kanban's) → `bun test tests/` |
+| **The gate** | **`bun run affected`** at the root (this tier and what depends on delta); **`bun run test:slow`** before a release. `package.json` says what each tier runs |
 | Release | the monorepo's `/publish` (the root's `.claude/commands/publish.md`, delta's row in its table), only on Peter's explicit word |
 
 delta lives in the bluetools monorepo, the blueshed/dzql repository (`packages/delta`), beside railroad and dzql, as Bun
@@ -120,8 +120,7 @@ exact version, or the setup stops reading it).
   `src/server/ledger.ts`). A socket client never names another's.
 - **`who`** is `client.data.identity`, named by `registerDocs`' `who` when given (`ledgerWho` in
   `src/server/ledger.ts`).
-- **Changelog**: Keep a Changelog, with `## [Unreleased]` at the top written as work lands;
-  `/publish` promotes it. The skill's `metadata.version` is stamped by `/publish`; don't bump it by hand.
+- **The skill's `metadata.version`** is stamped by `/publish`; don't bump it by hand.
 
 ## Where the contracts live
 
@@ -189,9 +188,7 @@ exact version, or the setup stops reading it).
 
 ## Notes
 
-- `todo.jsonl` holds what is open, one JSON object per line (`n, status, severity, area, file,
-  summary, detail, note`). An item settled is marked `fixed` with its entry in the CHANGELOG, and
-  leaves at the next release. Code comments cite only open items.
+- `CHANGELOG.md` and `todo.jsonl` are delta's own, kept as the root CLAUDE.md says (What is going on).
 
 ## In a remote container
 

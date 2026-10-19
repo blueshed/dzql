@@ -29,14 +29,7 @@ Open `http://localhost:3000` in two windows. You get a message, a shared documen
 
 ## Routes, resources and documents
 
-Here is where each part of [the shape](https://github.com/blueshed/dzql#how-an-app-is-made) lives in paintbrush:
-
-| | Server | Client |
-|---|---|---|
-| Routes | Bun routes, given to delta's `serve` in `src/routes.ts` | where you are, the address: the bento's `here` and `go`, in `src/app.tsx` |
-| Resources | `<name>-api.ts`: the document it registers, or HTTP | `<name>.ts`, the handle, and `<name>-view.tsx` |
-| Joined by | the document, on the socket | |
-| Behind it | entities (`defineSchema`) | |
+Here is where each part of [the shape](https://github.com/blueshed/dzql#how-an-app-is-made) lives in paintbrush (CLAUDE.md has it as a table):
 
 - **Server routes** are in `src/routes.ts`. HTTP routes serve what isn't communication: the health check, files, the server's status. Everything people share is a document on `/ws`.
 - **Client routes** are the address, in `src/app.tsx`: the bento's `here` says the page and what is open over it (a drawer, a modal), `go` moves there, and Back closes what is open.

@@ -35,6 +35,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The evolve skill's Postgres step opens its store in one call** (20 October): dzql's
+  `openStore`, given the socket, the data folder and the history of migrations, in place of the
+  pool, the migrations, the framework, the compiled SQL and the listener by hand; `close` is
+  what the server calls when it stops. It needs dzql's next release (`openStore`'s `ws`).
+
 - **A built app runs its migrations** (19 October): each resource imports its history from
   `migrations/index.ts` (written by `delta migrations make`), which the bundle carries; build.md's
   test builds an app with a history and starts it from `dist/`. `icon.tsx` is gone: the app draws its

@@ -8,12 +8,12 @@ The app keeps its definitions (`defineSchema` and `defineDoc` from delta), its c
 migrations and each document's `owns`. What changes is the server's storage:
 
 ```ts
-import { applyFramework, applySql, createDocListener, docTypeFromDef, fromFolder, generateSql, migrate } from "dzql/postgres";
+import { openStore } from "dzql/postgres";
 
-await migrate(pool, await fromFolder("migrations"), { app: "board", schema });   // the same history as on SQLite
-await applyFramework(pool);
-await applySql(pool, generateSql(schema, docs));   // each document compiled
-const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)) });
+// the same history as on SQLite makes the tables; DATABASE_URL's server, else PGlite in this process
+const store = await openStore({ schema, migrations: { dir: "migrations", app: "board", schema }, ws });
+store.register(docs);
+await store.open();   // each document compiled, then served on `ws`; `store.close` on shutdown
 ```
 
 Carry the rows with `exportTables` / `importTables` (`backends.md`). Link sign-in keeps its links

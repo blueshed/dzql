@@ -4,30 +4,31 @@ The imports are `dzql/postgres`, `dzql/pglite`, `dzql/auth-link` and `dzql/auth-
 are `dzql sql`, `dzql init`, `dzql migrate` and `dzql link`. The definitions are delta's, and so is
 its manual (the `delta-doc` skill): this page is what Postgres adds.
 
-An app's documents, the same definitions it had on SQLite: its history of migrations makes the
-tables, the framework and the compiled SQL follow, and the listener serves the documents.
+An app's documents, the same definitions it had on SQLite, in one call, `openStore`: its history of
+migrations makes the tables, the framework and the compiled SQL follow, and the listener serves the
+documents.
 
 ```ts
-import { Pool } from "pg";
 import { createWs } from "@blueshed/delta/server";
 import { serve } from "@blueshed/delta/serve";
-import { applyFramework, applySql, generateSql, createDocListener, docTypeFromDef, fromFolder, migrate } from "dzql/postgres";
+import { openStore } from "dzql/postgres";
 import { schema, docs } from "./schema";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });   // or: await openPglite(dir) in tests
-await migrate(pool, await fromFolder("migrations"), { app: "board", schema });   // the history makes the tables
-await applyFramework(pool);                          // 001a–001g, idempotent
-await applySql(pool, generateSql(schema, docs));     // each document compiled
-
 const ws = createWs();
-const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)) });
+// DATABASE_URL's server, else PGlite in PGLITE_DIR (in memory without it), or `database`: a URL or a folder
+const store = await openStore({ schema, migrations: { dir: "migrations", app: "board", schema }, ws });
+store.register(docs);
+await store.open();   // each document compiled, then served on the socket
 // delta's one server: the socket on its path, and on shutdown the listener (it holds a pool client for LISTEN), then the pool
-serve({ routes: { "/": index }, ws, close: [() => listener.destroy(), () => pool.end()] });
+serve({ routes: { "/": index }, ws, close: [store.close] });
 ```
 
-Options: `createDocListener` and `docTypeFromDef` in `packages/dzql/src/postgres/listener.ts` and
-`registry.ts`. Signing in: delta-doc's `auth.md` (on Postgres, `postgresLinkStore` from
-`dzql/auth-link`); who may open what: below, and `rls.md`.
+Without `ws`, the documents are served in the process (`store.delta`), as dzql's thin client reads
+them. `open(prepare)` runs `prepare` between the tables made and the documents served: a seed, a
+guard put in front. The steps it takes are below, for a database something else sets up; their
+options are `createDocListener` and `docTypeFromDef` in `packages/dzql/src/postgres/listener.ts` and
+`registry.ts`, and `openStore` in `app-store.ts`. Signing in: delta-doc's `auth.md` (on Postgres,
+`postgresLinkStore` from `dzql/auth-link`); who may open what: below, and `rls.md`.
 
 ## Setting up the database
 

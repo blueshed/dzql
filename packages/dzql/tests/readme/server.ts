@@ -1,16 +1,13 @@
 import { createWs } from "@blueshed/delta/server";
 import { run, serve } from "@blueshed/delta/serve";
-import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "dzql/postgres";
-import { openPglite } from "dzql/pglite";
+import { openStore } from "dzql/postgres";
 import { docs, schema } from "./types";
 
 // The same definitions, compiled to Postgres: every write is a stored function, and every server
-// on the database hears every change. PGlite runs Postgres in this process; on a Postgres server,
-// `new Pool({ connectionString })` from `pg` takes its place.
-const pool = await openPglite(process.env.PGLITE_DIR);
-await applyFramework(pool);
-await applySql(pool, generateSql(schema, docs));
-
+// on the database hears every change. PGlite runs Postgres in this process (in PGLITE_DIR, else in
+// memory); DATABASE_URL names a Postgres server in its place.
 const ws = createWs();
-const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)) });
-await run(() => serve({ ws, routes: {}, close: [() => listener.destroy(), () => pool.end()] }));
+const store = await openStore({ schema, ws });
+store.register(docs);
+await store.open();
+await run(() => serve({ ws, routes: {}, close: [store.close] }));

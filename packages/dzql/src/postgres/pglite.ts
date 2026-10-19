@@ -4,13 +4,9 @@
  * The same stored functions, the same listener, the same documents as a
  * Postgres server, on PGlite (Postgres compiled to WASM): no database to run,
  * the data in a directory (or in memory). `openPglite()` answers the slice of
- * `pg`'s Pool delta uses, so everything in `dzql/postgres` runs on
- * it unchanged:
- *
- *   const pool = await openPglite("./data");        // or openPglite() in memory
- *   await applyFramework(pool);
- *   await applySql(pool, generateSql(schema, docs));
- *   await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)), ledger: true });
+ * `pg`'s Pool delta uses, so everything in `dzql/postgres` runs on it
+ * unchanged. An app opens it through `openStore` (`database`: a folder, or
+ * PGLITE_DIR, else in memory); `openPglite("./data")` is the pool alone.
  *
  * Outgrow it and move to a server: `exportTables(pool, schema)` here,
  * `importTables(server, schema, rows)` there -- the ids and sequences carry.

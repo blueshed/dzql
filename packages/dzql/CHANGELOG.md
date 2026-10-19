@@ -95,6 +95,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **`openStore` is the one way to start a store on Postgres** (`dzql/postgres`, 20 October, root
+  #108): it takes `database` (a URL or a PGlite folder; else `DATABASE_URL`, then `PGLITE_DIR`),
+  `migrations` as a folder (`dir`) or a `list`, and `ws`, the socket to serve the documents on
+  (without one, they are served in the process, as before); and it gives `close()`, the listener
+  then the pool. The README's server, `docs/postgres/postgres.md`, delta-doc's and the evolve
+  skill's Postgres pages teach it in place of the five calls it makes.
+
 - **`openTables`** (`dzql/rendering/db`, 20 October, #62): an app's tables as delta makes them at
   start-up, in one call: its migrations, then a missing table, then a missing column. The examples'
   `delta.ts` and the model's page use it.
