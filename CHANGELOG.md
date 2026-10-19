@@ -15,6 +15,7 @@ what is open across them. Newest first.
 - **paintbrush's leave-behind list, once** (#109): `UNCOPIED`, read by create-blueshed's copy and pack.
 - **sites-bbox once** (#62): dzql's Postgres server of it runs over delta's schema, and its test over
   delta's story.
+- **The plans of 19 October, done, are the record** (#70): `docs/history/`.
 - **One way to start a store on Postgres** (#108): dzql's `openStore`, which now serves on a socket
   too, is what every snippet teaches.
 - **The changelog and ledger rules, once** (#106): in the root CLAUDE.md; railroad's and delta's

@@ -5,9 +5,6 @@ person deciding whether to use it; CLAUDE.md is Claude's entry point; the skills
 `.claude/skills/`) are the manual. Where any of these disagree, the code is right, then the skill;
 fix the other.
 
-- [plan.md](plan.md): what the toolset is, what is decided, and what comes next.
-- [client-plan.md](client-plan.md): one look for both clients, the bento drawn in Paintbrush's
-  look by the server and by railroad: what Peter chose, and its build in stages.
 - [stories.md](stories.md): what the stories are for, and how they drive an app, from paintbrush to dzql.
 - [rendering.md](rendering.md): the thin client, dzql's pages drawn on the server, and what a write
   costs, measured (kept true by dzql's `bun run costs`).
@@ -17,5 +14,6 @@ fix the other.
 - [why-railroad.md](why-railroad.md): the reasons behind railroad.
 - [history/](history/documents-history.md): the lineage, from documents and paintbrush to dzql on delta.
 
-Finished plans, change requests, reviews and the feedback from blank-agent runs are in git's history,
-not here; CHANGELOG.md says what each changed.
+Finished plans, change requests, reviews and the feedback from blank-agent runs are in git's history
+or in `history/` (the plan of 19 October and the client plan, both done), not here; CHANGELOG.md
+says what each changed, and `todo.jsonl` what is still open.

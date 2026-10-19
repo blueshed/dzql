@@ -19,23 +19,14 @@ change that first needs it.
 
 Before working on this codebase, read:
 - the root `README.md`, *How an app is made* - **the one statement of the vision**: stories, documents, the storage path, routes and resources, and the compiled step
-- `docs/` (at the root): `stories.md` (what the stories are for), `rendering.md` (the thin client, its measured costs), `bento/` (how a page looks and moves), `postgres/` (delta on Postgres), `plan.md` (what is decided, what is next)
+- `docs/` (at the root): `stories.md` (what the stories are for), `rendering.md` (the thin client, its measured costs), `bento/` (how a page looks and moves), `postgres/` (delta on Postgres)
 - `examples/cafe/` and its README: an app built from its model, the path the `dzql-app` skill follows
 - `packages/create-dzql/README.md` - `bun create dzql`: the thin client's starter
 
 ## Where the Project Is
 
-`CHANGELOG.md` and `todo.jsonl` are the project's memory between sessions. The
-changelog is where dzql has been; `todo.jsonl` is what is open now. Read both
-before starting. As you work, keep them current together: what you find or leave
-open goes into `todo.jsonl`; what lands goes under `## [Unreleased]` in the
-changelog, breaking changes first, and the item it settles becomes `fixed` with a
-dated `note`. A release turns `[Unreleased]` into a version, and the settled items
-leave `todo.jsonl`.
-
-`todo.jsonl` has one JSON object per line: `n`, `status` (open / fixed / not
-fixed), `severity`, `area`, `file`, `summary`, `detail`, plus a dated `note` once
-an item is worked on. Same shape as duckdown's.
+`CHANGELOG.md` and `todo.jsonl` are dzql's memory between sessions: where it has been, and what
+is open now. Read both before starting, and keep them as the root CLAUDE.md says (What is going on).
 
 ## Project Structure
 
