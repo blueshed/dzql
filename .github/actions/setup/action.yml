@@ -1,0 +1,25 @@
+name: setup
+description: "Bun (the version the root package.json's packageManager names), the workspace installed, and Chrome for Bun.WebView"
+
+runs:
+  using: composite
+  steps:
+    # one place says which Bun: packageManager in the root package.json
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version-file: package.json
+
+    - run: bun install --frozen-lockfile
+      shell: bash
+
+    # Bun.WebView needs a Chrome or Chromium, and ubuntu-latest ships google-chrome. Its sandbox does
+    # not start under the runner's AppArmor rules, which hangs the browser tests, so Chrome is wrapped
+    # without it: fine here, where the whole runner is thrown away.
+    - name: Chrome for Bun.WebView
+      shell: bash
+      run: |
+        chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium || true)"
+        if [ -z "$chrome" ]; then echo "No Chrome or Chromium on the runner" >&2; exit 1; fi
+        printf '#!/bin/sh\nexec %s --no-sandbox "$@"\n' "$chrome" | sudo tee /usr/local/bin/chrome-no-sandbox >/dev/null
+        sudo chmod +x /usr/local/bin/chrome-no-sandbox
+        echo "BUN_CHROME_PATH=/usr/local/bin/chrome-no-sandbox" >> "$GITHUB_ENV"

@@ -1,0 +1,38 @@
+name: ci
+
+# The gate, as on a Mac: `bun scripts/affected.ts --slow` runs the docs and ranges checks, then each
+# package a change touches, and each that depends on one, through its fast and slow tiers (browsers,
+# dzql's Postgres in Docker, the stories, the costs). One workflow: the dependency graph is
+# affected.ts's, never a path filter's.
+#
+# Paused, on Peter's word since 17 October: it runs only when started by hand (Actions → ci → Run
+# workflow). To unpause, add the triggers:
+#   push: { branches: [main] }
+#   pull_request:
+# and the base becomes github.event.before (a push) or origin/${{ github.base_ref }} (a pull request).
+
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "The commit to compare with (empty: every package)"
+        required: false
+        default: ""
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # affected.ts diffs against the base
+      - uses: ./.github/actions/setup
+      - name: The gate
+        env:
+          BASE: ${{ inputs.base }}
+        run: bun scripts/affected.ts --slow $([ -n "$BASE" ] && echo --base "$BASE" || echo --all)

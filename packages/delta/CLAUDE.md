@@ -44,14 +44,14 @@ Bun only: never `npm`, `npx` or `node`.
 
 delta lives in the bluetools monorepo, the blueshed/dzql repository (`packages/delta`), beside railroad and dzql, as Bun
 workspaces: its `@blueshed/railroad` is `packages/railroad`'s source, not npm's. GitHub Actions
-(the root's `.github/workflows/delta.yml`, when delta or railroad changes; `publish.yml` on a
-pushed tag `delta@x.y.z`) runs the same steps.
+(the root's `ci.yml`, `bun scripts/affected.ts --slow`; `publish.yml` on a pushed tag
+`delta@x.y.z`, delta's `test:fast` then `test:slow`) runs the same steps.
 
-**CI runs one Bun, pinned**: `bun-version: 1.4.3` in every workflow, the Bun the repo is
-developed on, so a Bun release cannot turn the gate red with no change here. To move it: install
-the new Bun, run `bun run test:slow` on it, then set `bun-version` in the root's workflows to
-`bun --version` in one commit (`tests/package-exports.test.ts` fails if `delta.yml`'s says
-`latest`, or `publish.yml` stops running it).
+**CI runs one Bun, pinned**: `packageManager` in the root `package.json`, the Bun the repo is
+developed on, read by every workflow (`.github/actions/setup`), so a Bun release cannot turn the
+gate red with no change here. To move it: install the new Bun, run `bun run test:slow` on it, then
+set `packageManager` to `bun@<bun --version>` (`tests/package-exports.test.ts` fails if it is not an
+exact version, or the setup stops reading it).
 
 ## Invariants
 

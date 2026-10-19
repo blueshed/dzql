@@ -19,12 +19,12 @@ moved or pushed again -- until he says.
 
 Released in this order, a sibling before what depends on it.
 
-| Package | npm | Gate (in its folder) | End to end | Skills stamped | Also |
+| Package | npm | Gate (in its folder, `bun run` each, as `publish.yml` runs it) | End to end | Skills stamped | Also |
 |---|---|---|---|---|---|
-| `railroad` | `@blueshed/railroad` | `bun check && bun run check:consumer && bun test --coverage` | -- | `railroad`, `bun-route` | |
-| `delta` | `@blueshed/delta` | `bun run test:slow` | -- | `delta-doc` | |
-| `dzql` | `dzql` and `create-dzql`, one version | `bun check && bun run test:pg` (Docker; port 5433 free) | `cd packages/create-dzql && bun run test:fast`: a new app from the local template, the workspace's packages linked in, type-checks, passes its own tests at 100% (its stories on PGlite) and starts | `modelling`, `dzql-app` | the template's `dzql` is `^<new>` |
-| `create-blueshed` | `create-blueshed` | `bun run test:fast`, and paintbrush's `bun run test:slow` (the evolve skill applied) | -- | -- | it packs `packages/paintbrush` (`prepack`): paintbrush, never published itself, takes the same level -- its `version` bumped and its changelog promoted -- since an app made from it records "Started from paintbrush <version>" |
+| `railroad` | `@blueshed/railroad` | `test:fast`, `test:slow` | -- | `railroad`, `bun-route` | |
+| `delta` | `@blueshed/delta` | `test:fast`, `test:slow` | -- | `delta-doc` | |
+| `dzql` | `dzql` and `create-dzql`, one version | `test:fast`, `test:slow` (Docker; port 5433 free) | `cd packages/create-dzql && bun run test:fast`: a new app from the local template, the workspace's packages linked in, type-checks, passes its own tests at 100% (its stories on PGlite) and starts | `modelling`, `dzql-app` | the template's `dzql` is `^<new>` |
+| `create-blueshed` | `create-blueshed` | `test:fast`, `test:slow` (paintbrush's: the evolve skill applied) | -- | -- | it packs `packages/paintbrush` (`prepack`): paintbrush, never published itself, takes the same level -- its `version` bumped and its changelog promoted -- since an app made from it records "Started from paintbrush <version>" |
 
 ## 1. Preflight, once
 

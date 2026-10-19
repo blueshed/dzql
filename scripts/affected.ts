@@ -18,8 +18,12 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(import.meta.dir, "..");
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const args = new Set(argv);
 const slow = args.has("--slow");
+// `--base <commit>`: what changed since that commit (CI names the one before a push); else since this
+// branch left origin/main
+const given = args.has("--base") ? argv[argv.indexOf("--base") + 1] : undefined;
 
 type Pkg = { dir: string; name: string; deps: string[]; scripts: Record<string, string> };
 const pkgs: Pkg[] = readdirSync(join(root, "packages")).filter((dir) => existsSync(join(root, "packages", dir, "package.json"))).map((dir) => {
@@ -32,7 +36,7 @@ const pkgs: Pkg[] = readdirSync(join(root, "packages")).filter((dir) => existsSy
 const byName = new Map(pkgs.flatMap((p) => [[p.name, p], [`packages/${p.dir}`, p]] as const));
 
 const changed = async (): Promise<string[]> => {
-  const base = (await $`git merge-base HEAD origin/main`.cwd(root).nothrow().quiet().text()).trim() || "HEAD";
+  const base = given ?? ((await $`git merge-base HEAD origin/main`.cwd(root).nothrow().quiet().text()).trim() || "HEAD");
   const lines = [
     await $`git diff --name-only ${base}`.cwd(root).quiet().text(),
     await $`git ls-files --others --exclude-standard`.cwd(root).quiet().text(),
@@ -60,7 +64,10 @@ while (grew) {
 
 /** The scripts a package runs for this change. */
 function plan(p: Pkg): string[] {
-  return [...(p.scripts["test:fast"] ? ["test:fast"] : []), ...(slow && p.scripts["test:slow"] ? ["test:slow"] : [])];
+  // a slow tier that is a sibling's (`bun run --cwd ../paintbrush test:slow`) runs once, as the sibling's, when it is in the run too
+  const sibling = /--cwd \.\.\/([\w-]+) test:slow$/.exec(p.scripts["test:slow"] ?? "")?.[1];
+  const once = !(sibling && touched.has(sibling));
+  return [...(p.scripts["test:fast"] ? ["test:fast"] : []), ...(slow && p.scripts["test:slow"] && once ? ["test:slow"] : [])];
 }
 
 // what people and Claude read, held to the code, whatever changed: under a second (scripts/docs.ts)

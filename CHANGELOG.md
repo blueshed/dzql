@@ -6,6 +6,17 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### One CI workflow; each release through its package's own gate
+
+On Peter's word (19 October). The seven per-package workflows, whose path filters were a hand copy
+of the dependency graph and had drifted, are one: `.github/workflows/ci.yml` runs `bun
+scripts/affected.ts --slow`, the graph the Mac's gate uses (`affected.ts` takes `--base <commit>`).
+CI stays paused: `ci.yml` runs only when started by hand, and says how to unpause. `publish.yml`
+releases a package through its own `test:fast` and `test:slow`, so a create-dzql release runs
+create-dzql's end-to-end test (it ran dzql's Postgres suite instead); create-blueshed's `test:slow`
+is paintbrush's, which it packs. Bun, the install and Chrome are one composite action,
+`.github/actions/setup`, and Bun's version is read from `packageManager` in the root package.json.
+
 ### The ledgers sorted
 
 Every `todo.jsonl` read through (19 October, Peter: "ones that affect more than one package are
