@@ -8,6 +8,9 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **One look for both clients, begun** (19 October, todo #51; `docs/client-plan.md`): the bento's
+  stylesheet is a frame with two looks, the tray it had and the plain one drawn for Paintbrush
+  (`docs/bento/paintbrush/`); `bun create dzql`'s starter is drawn plain (packages/dzql/CHANGELOG.md).
 - **Every package publishes from this repository** (19 October): npm's trusted publisher for
   @blueshed/railroad, @blueshed/delta and create-blueshed is now blueshed/dzql's `publish.yml`
   (allowed: npm publish), in place of blueshed/railroad, blueshed/delta and blueshed/invoket, as

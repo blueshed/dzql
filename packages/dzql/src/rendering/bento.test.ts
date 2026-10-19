@@ -349,6 +349,17 @@ describe("the stylesheet", () => {
     }
     expect(nested).toEqual([]);
   });
+
+  test("the plain look is tokens: bento-plain.css imports the frame and sets only bento.css's own custom properties, on :root", async () => {
+    const frame = await Bun.file(new URL("./bento.css", import.meta.url)).text();
+    const plain = (await Bun.file(new URL("./bento-plain.css", import.meta.url)).text()).replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(plain.trim().startsWith('@import "./bento.css";')).toBe(true);
+    const selectors = [...plain.matchAll(/([^{};]+)\{/g)].map((m) => m[1]!.trim()).filter((s) => !s.startsWith("@"));
+    expect(new Set(selectors)).toEqual(new Set([":root"]));
+    const said = [...plain.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]!);
+    const named = new Set([...frame.matchAll(/(--[\w-]+)/g)].map((m) => m[1]!)); // read, defaulted, or listed in its header (--paper, --well: the page's)
+    expect(said.filter((t) => !named.has(t))).toEqual([]); // a token the frame does not know would be a look of the look's own
+  });
 });
 
 // The surfaces as a person meets them: drawn in a real browser with the kernel's stylesheet and its

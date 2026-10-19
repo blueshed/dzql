@@ -34,7 +34,7 @@ renameSync(join(dest, "env.test"), join(dest, ".env.test"));
 
 // The starter's look imports the kernel's bento by a path inside dzql; in an app it is by name
 const styles = join(dest, "src/styles.css");
-writeFileSync(styles, readFileSync(styles, "utf8").replace(/@import "[^"]*src\/rendering\/bento\.css";/, '@import "dzql/rendering/bento.css";'));
+writeFileSync(styles, readFileSync(styles, "utf8").replace(/@import "[^"]*src\/rendering\/(bento(?:-plain)?\.css)";/, '@import "dzql/rendering/$1";'));
 
 // The app's name in place of {{name}}, and of the starter's own, in every file
 const title = name.replace(/(^|-)(\w)/g, (_, dash: string, c: string) => (dash ? " " : "") + c.toUpperCase());

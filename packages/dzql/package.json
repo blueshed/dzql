@@ -22,6 +22,7 @@
     "./model": "./src/cli/model.ts",
     "./rendering": "./src/rendering/index.ts",
     "./rendering/bento.css": "./src/rendering/bento.css",
+    "./rendering/bento-plain.css": "./src/rendering/bento-plain.css",
     "./rendering/server": "./src/rendering/server.ts",
     "./rendering/documents": "./src/rendering/documents.ts",
     "./rendering/html": "./src/rendering/html.ts",

@@ -37,6 +37,14 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The bento has two looks** (19 October, Peter: "the colors and style of paintbrush was clean and
+  simple - bento made beige monsters"). `bento.css` is the frame, and every look decision in it is
+  a token, its default today's look (the tray: padded, rounded, shadows, small capitals), so an app
+  that imports it is drawn as before, element for element. `dzql/rendering/bento-plain.css` is the
+  other, Paintbrush's (`docs/bento/paintbrush/`): white cells split by a hairline, black ink, 4px,
+  no shadows, plain words, a field's label above it; it imports the frame and is only tokens
+  (`bento.test.ts` holds it so). The starter, and so `bun create dzql`, is drawn in it.
+
 - **What cafe-e found, built by a blank Claude from the skills alone** (18 October,
   `cafe-e/feedback.md`: it built the whole cafe, 18 stories at 100%, and played it in Chrome). The
   generated proof's setup makes and sets, never removes (a story that adds and removes tables took
