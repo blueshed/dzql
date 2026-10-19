@@ -28,6 +28,10 @@ what is open across them. Newest first.
 
 ### Added
 
+- **The thin client on Postgres** (19 October): `bun create dzql` and the cafe keep their documents
+  in Postgres, PGlite in the process or a server at `DATABASE_URL`, through dzql's `openStore`
+  (packages/dzql/CHANGELOG.md). create-dzql's template takes `@electric-sql/pglite` and `pg`.
+
 - **dzql's worked example: the cafe, from its model** (18 October): `packages/dzql/examples/cafe`,
   told, made and built as routes and resources, read back with no gaps; the skills point at it.
 - **dzql's tools agree** (18 October): one reading of a model (`dzql/modelling/reading`) taken by

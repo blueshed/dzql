@@ -62,4 +62,4 @@ test("a code for no table here is refused, and so is a scan posted from another 
 test("every story passes", async () => {
   const report = await run(app, stories);
   expect(report.failed).toBe(0);
-});
+}, 60_000); // on Postgres in this process, the store put back after each story

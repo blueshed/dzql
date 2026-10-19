@@ -34,9 +34,13 @@ least that makes the next story pass; `bun run stories` after each.
    page now is no reason to skip it. If the stories were modelled, `dzql model` has already made
    `model/` (the definitions, the guards, the migrations), and each story names the model story it
    tells (`model: 6`; `model: false` for the app's own). → [stories](reference/stories.md)
-2. **The store**, `store.ts`: the tables (`defineSchema`: the model's `tables`, and the app's own
-   beside them), the migrations, `delta` (`createLocal()`), and the model's guards on it before any
-   document. → [documents](reference/documents.md), [migrations](reference/migrations.md)
+2. **The store**, `store.ts`: Postgres, through dzql's `openStore({ schema, migrations })` -- PGlite
+   in the process (in `PGLITE_DIR`; in memory for the tests), or a server at `DATABASE_URL`. The
+   tables (`defineSchema`: the model's `tables`, and the app's own beside them), the model's
+   migrations, `delta`, `register` for each resource's documents, `open()` to compile them all and
+   seed (the model's guards put on `delta` there, before the listener), and `stories`, the app's
+   `Example.store`, which puts the store back between stories. → [documents](reference/documents.md),
+   [migrations](reference/migrations.md)
 3. **A document, a folder**, `resources/floor/`: `floor-api.ts` registers its definition, `read()`s
    it for the page, and keeps the pure rules a write follows; `floor.ts` is its **resource**, which
    says which document a session is on (`resolveDoc`; a list's is `""`), what may be sent

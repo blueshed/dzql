@@ -57,7 +57,6 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
   await applyFramework(pool); // delta's own tables and functions
   await applySql(pool, generateSql(schema, docs)); // each document's reads and writes compiled
   if (!(await pool.query("SELECT 1 FROM items")).rowCount) await importTables(pool, schema, keptBefore(dataDir));
-  // last: it answers 404 for a name it does not own
   const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)), ledger: true });
   return async () => {
     await listener.destroy();

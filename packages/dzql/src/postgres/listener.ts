@@ -163,8 +163,13 @@ export async function createDocListener<I = unknown>(
     types?: DocType<any, I>[];
     auth?: DeltaAuth<I>;
     custom?: CustomDocDef<any>[];
-    /** Keep the ledger (001g): every write with its inverse, who made it and the cursor undo walks; and `undo`, `redo`, `history`. */
-    ledger?: boolean;
+    /**
+     * Keep the ledger (001g): every write with its inverse, who made it and the cursor undo walks; and
+     * `undo`, `redo`, `history`. `{ except: [prefix...] }` keeps it for every document but those: a
+     * session that is no one's history (where a person is) stays off it, as a SQLite registration
+     * without `ledger: true` does.
+     */
+    ledger?: boolean | { except: string[] };
     /** How an identity is written in the ledger. Default: a string or number as it is, anything else as JSON. */
     who?: (identity: I) => string;
     /**
@@ -194,6 +199,9 @@ export async function createDocListener<I = unknown>(
     r && def ? { ...r, ...(r.ops ? { ops: shownOps(def, r.ops) } : {}), ...(r.inverse ? { inverse: shownOps(def, r.inverse) } : {}) } : r;
   const resolveDoc = registry.resolve;
   const ledger = !!opts?.ledger;
+  const offLedger = new Set(typeof opts?.ledger === "object" ? opts.ledger.except : []);
+  /** Is a write to this document's type on the ledger? */
+  const onLedger = (prefix: string): boolean => ledger && !offLedger.has(prefix);
   const whoOf = (identity: I | undefined): string | null => ledgerWho(identity, opts?.who);
   // The cursor undo walks: named by a caller in this process, and over the
   // socket the connection itself -- signed in, the person and the connection
@@ -509,9 +517,9 @@ export async function createDocListener<I = unknown>(
         return respond({ error: { code: 400, message: "doc is required" } });
       }
       const found = resolveDoc(docName);
-      if (!found) {
-        return respond({ error: { code: 404, message: `No handler for ${docName}` } });
-      }
+      // not one of this listener's: left to the socket's other handlers (a memory document beside
+      // it, as SQLite's registrations leave one), and 404 from the socket when none answers
+      if (!found) return;
       try {
         // The document's name is its channel: one this identity does not own is
         // not there for it (404, as a missing one), so it never subscribes.
@@ -615,9 +623,10 @@ export async function createDocListener<I = unknown>(
 
   ws.on("delta", withDoc("delta", async ({ docName, type, ctx, msg, client, respond, identity }) => {
     const writer = writerOf(identity, client);
-    const by = ledger ? { who: whoOf(writer), cursor: cursorOf(msg, client, writer), undoable: msg.undoable !== false } : undefined;
+    const kept = onLedger(type.prefix);
+    const by = kept ? { who: whoOf(writer), cursor: cursorOf(msg, client, writer), undoable: msg.undoable !== false } : undefined;
     const result = shownAnswer(type.def, await type.apply(ctx, docName, msg.ops, identity, by, declared));
-    respond({ result: ledger ? { ack: true, version: Number(result.version), ops: result.ops, inverse: result.inverse, entry: result.entry == null ? undefined : Number(result.entry) } : { ack: true, version: Number(result.version), ...(msg.inverse ? { ops: result.ops } : {}) } });
+    respond({ result: kept ? { ack: true, version: Number(result.version), ops: result.ops, inverse: result.inverse, entry: result.entry == null ? undefined : Number(result.entry) } : { ack: true, version: Number(result.version), ...(msg.inverse ? { ops: result.ops } : {}) } });
     log.info(`delta ${docName} v${result.version}`);
   }));
 

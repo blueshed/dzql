@@ -5,7 +5,7 @@ import { serverWrite } from "dzql/rendering/documents";
 import { appOf, compose, sessionCookie } from "dzql/rendering/server";
 import { scope } from "dzql/rendering/scope";
 import homepage from "./index.html";
-import { db, delta } from "./store";
+import { delta, open, pool, stories } from "./store";
 import { links } from "./links";
 import { render } from "./page";
 import { floor } from "./resources/floor/floor";
@@ -22,7 +22,8 @@ import { read as visitOf, sessions } from "./resources/visit/visit-api";
 // resources, each document a folder of ./resources/, its stories ./stories.ts, each naming the
 // model story it tells. ./README.md walks the path.
 
-const tableIs = db.query<{ id: number }, [string]>(`SELECT id FROM "tables" WHERE id = ?`);
+// every resource has registered its documents (the imports above): compile them, and open the listener
+await open();
 
 /** The code on a table: `/scan?table=1`, or the door's button. The visitor is at that table now (the model's story 3). */
 async function scan(req: Request): Promise<Response> {
@@ -32,7 +33,7 @@ async function scan(req: Request): Promise<Response> {
     if (refused) return refused;
     table = String((await req.formData()).get("table") ?? "");
   }
-  if (!table || !tableIs.get(table)) return new Response("There is no such table here.", { status: 404 });
+  if (!table || !/^\d+$/.test(table) || (await pool.query(`SELECT 1 FROM "tables" WHERE id = $1`, [table])).rows.length === 0) return new Response("There is no such table here.", { status: 404 });
   const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/", ...(cookie ? { "Set-Cookie": sessionCookie(cookie) } : {}) } });
   const visit = new RegExp(`(?:^|;\\s*)${scope().cookie.name}=([^;]+)`).exec(req.headers.get("cookie") ?? "")?.[1];
   if (!visit) return home((await sessions.start({ table })).cookie);
@@ -51,6 +52,7 @@ export const app: Example = {
   address: { doc: "visit", path: "/page" }, // a screen's URL is where the visit goes
   routes: { "/in/:token": links.route as never, "/scan": scan },
   session: sessions.of,
+  store: stories, // the stories begin and end each story on the store, Postgres (./store.ts)
 };
 
 /** The server: on `PORT` (3000), and with `--model` (`bun dev`) the model's page beside the app. */

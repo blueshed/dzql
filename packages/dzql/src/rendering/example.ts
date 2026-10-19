@@ -2,6 +2,7 @@ import type { HTMLBundle } from "bun";
 import type { Local } from "@blueshed/delta/local";
 import type { ConnectionData } from "./connection";
 import type { Resource } from "./resources/resource";
+import type { PatchOp } from "./json-patch";
 
 /** A route handler in the same shape server.ts already hands Bun.serve's `routes` (e.g. the "/ws" upgrade handler). */
 type RouteHandler = (
@@ -74,4 +75,22 @@ export type Example = {
   at?: string;
   /** Extra HTTP routes this example needs (e.g. serving uploaded pictures). Merged into the kernel's routes; a kernel route of the same path wins. */
   routes?: Record<string, Bun.Serve.BaseRouteValue | RouteHandler>;
+  /**
+   * Where the stories find the app's store, when it is not dzql's SQLite (`dzql/rendering/db`), in
+   * which each story runs in a transaction rolled back after it. A store of its own begins and ends
+   * each story on it, put back as it stood before the stories, and its ledger is read to check undo
+   * and redo. On Postgres (PGlite included), `storyStore(pool, schema)` from `dzql/postgres`.
+   */
+  store?: StoryStore;
+};
+
+/** A store as the stories see it: each story begun and ended on it, and its ledger read. */
+export type StoryStore = {
+  begin(): Promise<void>;
+  /** The story over: the store as it stood before the stories. */
+  end(): Promise<void>;
+  /** The ledger's last entry's id, 0 with none. */
+  last(): Promise<number>;
+  /** The ledger's entries after `id` that undo nothing, in order. */
+  since(id: number): Promise<{ id: number; doc: string; undoable: boolean; ops: PatchOp[]; inverse: PatchOp[] }[]>;
 };

@@ -25,7 +25,8 @@ test("every dzql path the examples, skills and docs name is exported", async () 
   ] as const;
   for (const [dir, pattern] of where)
     for await (const file of new Bun.Glob(pattern).scan({ cwd: dir, dot: true })) {
-      if (file.includes("node_modules")) continue;
+      // never node_modules, nor a test's own scratch folder (`.conformance-*`, made and gone during a run): `.claude` alone of the dot folders
+      if (file.includes("node_modules") || file.split("/").some((part) => part.startsWith(".") && part !== ".claude")) continue;
       for (const m of readFileSync(join(dir, file), "utf8").matchAll(/["'`](dzql\/[a-z][a-zA-Z0-9_./-]*?)(?:\.ts)?["'`]/g)) said.set(m[1]!, file);
     }
   const missing = [...said].filter(([path]) => !names.has(path) && !path.startsWith("dzql/examples/"));

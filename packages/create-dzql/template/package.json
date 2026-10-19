@@ -8,8 +8,8 @@
     "bun": ">=1.4.3"
   },
   "scripts": {
-    "dev": "bun --hot src/routes.ts --model",
-    "start": "NODE_ENV=production bun src/routes.ts",
+    "dev": "PGLITE_DIR=data/pg bun --hot src/routes.ts --model",
+    "start": "NODE_ENV=production PGLITE_DIR=data/pg bun src/routes.ts",
     "stop": "delta stop",
     "stories": "ETA_EXAMPLE=./src bun node_modules/dzql/src/modelling/stories-run.ts",
     "cli": "ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/cli.ts",
@@ -23,11 +23,14 @@
   },
   "dependencies": {
     "@blueshed/delta": "^1.2.0",
+    "@electric-sql/pglite": "^0.5.4",
     "dzql": "^0.13.0",
-    "lucide": "^1.46.0"
+    "lucide": "^1.46.0",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.3"
+    "@types/bun": "^1.4.3",
+    "@types/pg": "^8.20.0"
   },
   "claudeSkills": [
     "dzql"

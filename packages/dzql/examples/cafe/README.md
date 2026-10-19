@@ -25,10 +25,12 @@ it presupposes, stood in front of the store), `migrations/` (the newest rewritte
 committed) and `model.test.ts`, the proof: each story's write made through the guards as its
 teller and seen by everyone it tells, and each `cannot` refused in its own words.
 
-**3. The store: [store.ts](store.ts).** The model's migrations first, then the app's own tables
-beside them (who the staff are; what a visit holds beyond the model's `table`), and the guards on
-`delta` before any document is registered. A resource's `permit` then says only what its page
-sends; who may send it is the guards'.
+**3. The store: [store.ts](store.ts).** Postgres, through dzql's `openStore`: PGlite in the process
+(in memory unless `PGLITE_DIR` names a folder), or a server at `DATABASE_URL`. The model's migrations
+first, then the app's own tables beside them (who the staff are; what a visit holds beyond the
+model's `table`); at `open()` the cafe is seeded and the guards go on `delta`, before the listener.
+A resource's `permit` then says only what its page sends; who may send it is the guards'. The
+stories run on the same store (`Example.store`), put back after each.
 
 **4. A resource for each document: [resources/](resources/).** Each folder is one document:
 `<name>-api.ts` registers the model's definition and reads it for the page, with the pure rules a

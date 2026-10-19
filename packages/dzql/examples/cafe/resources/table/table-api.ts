@@ -1,16 +1,15 @@
-import { registerDocs } from "@blueshed/delta/sqlite";
 import { splitPath } from "@blueshed/delta/core";
 import { read as readDoc } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { refuse } from "dzql/rendering/refusal";
 import { docs, type TableDoc } from "../../model/types";
-import { db, delta, schema } from "../../store";
+import { register } from "../../store";
 import { invoiceOf, orderOf, tableOf, type Invoice, type Order, type Table } from "../floor/floor-api";
 import type { Item } from "../menu/menu-api";
 
 // A table, as the customer at it reads it: the table, its invoices and their orders. One row
 // (`table:1`), on the ledger. Which table is the customer's, their visit says (they scanned it).
-registerDocs(delta.server, db, schema, docs.filter((d) => d.prefix === "table:"), [], { ledger: true });
+register(docs.filter((d) => d.prefix === "table:"));
 
 export type TableView = { table: Table; invoices: Invoice[]; orders: Order[] };
 

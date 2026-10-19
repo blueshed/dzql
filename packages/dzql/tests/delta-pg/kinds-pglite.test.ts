@@ -1,7 +1,8 @@
 /**
  * Each kind registers on the same server: a memory document beside a Postgres
- * one (in process, PGlite), opened the same way. The Postgres listener answers
- * 404 for any name it does not own, so it registers last.
+ * one (in process, PGlite), opened the same way, whichever registers first: the
+ * Postgres listener leaves a name it does not own to the others, as SQLite's
+ * registrations do (dzql's thin client keeps its memory documents beside it).
  */
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
@@ -44,9 +45,9 @@ describe("a memory document and a Postgres one on one server", () => {
     expect((await local.call("open", { doc: "lists:" })).result.lists).toEqual({ 1: { id: 1, title: "Shopping" } });
   });
 
-  test("the listener registered first answers 404 for the memory document's name, as documented", async () => {
+  test("the listener registered first leaves the memory document's name to it: both names open", async () => {
     const local = await serve(true);
-    expect((await local.call("open", { doc: "here:general" })).error?.code).toBe(404);
+    expect((await local.call("open", { doc: "here:general" })).result).toEqual({ people: {}, _v: 0 });
     expect((await local.call("open", { doc: "lists:" })).error).toBeUndefined();
   });
 });
