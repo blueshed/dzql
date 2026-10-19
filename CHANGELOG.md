@@ -6,6 +6,12 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The shape of a package, said once
+
+The plan's shape is done (`docs/plan.md`, steps 1 to 6): railroad's and delta's code in `src/`,
+dzql's tests out of `src/` and its model's page into it, the starters alike, one app shape. The root
+CLAUDE.md says it (*The shape of a package*), and each package's CLAUDE.md points there.
+
 ### The starters alike; one `model` script; one app shape
 
 An app from `bun create dzql` is laid out as one from `bun create blueshed`: `stories.ts` at its root,

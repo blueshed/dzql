@@ -153,7 +153,7 @@ names, into `.claude/skills`.
 
 Then features resume, `ref` first, each checked against this plan before it is built. *`ref`: done* (19 October): a field that names a row of a list document by its path (`dish:menu:/items`), checked, guarded and proved on every store, over tables that keep their history so it never dangles; dzql's CHANGELOG has it.
 
-## The shape of each package (planned 19 October; started the same day, after the review below)
+## The shape of each package (planned and done 19 October; the root CLAUDE.md says it now, *The shape of a package*)
 
 Peter: "look at the shape of each package and determine the best and easiest to understand,
 adopt and adapt each to use it." The three libraries were shaped three ways: railroad's code loose

@@ -58,6 +58,25 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
   open across them) here; keep both current with every change, as each package keeps its own.
 - Bun only, pinned in CI to 1.4.3.
 
+## The shape of a package
+
+Every package is laid out one way, so one is read like another:
+
+```
+<package>/
+  README.md CLAUDE.md CHANGELOG.md todo.jsonl package.json tsconfig.json
+  src/        what ships: each public entry a file named in package.json's exports (files: src)
+  tests/      what proves it, in folders after src/'s where there are many
+  examples/   what runs, each with its README; src/ never imports them
+  evals/      the skills' evaluations, where a package has them
+  .claude/skills/<name>/   the manual
+```
+
+A command is `src/cli.ts` (dzql's, three files, `src/cli/`); a starter's is `cli.ts`, beside the
+`template/` it copies. An app, as `bun create blueshed` and `bun create dzql` make it, is
+`stories.ts`, `src/routes.ts`, `src/resources/<name>/` and `tests/`. Each package's CLAUDE.md says
+only what is its own.
+
 ## Releasing
 
 **The law of this repo: nothing is released without Peter's explicit say-so.** Never a version

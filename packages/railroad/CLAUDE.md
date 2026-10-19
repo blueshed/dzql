@@ -56,8 +56,7 @@ so after a dependency change run `bun install` and commit `bun.lock`.
 
 ## Where the contracts live
 
-- **The layout is the monorepo's** (`docs/plan.md`, *The shape of each package*): `src/` is what
-  ships, each public entry a file named in `package.json`'s `exports`; `tests/` proves it.
+- **The layout is the monorepo's** (the root CLAUDE.md, *The shape of a package*).
 - **The JSDoc header of each source file** (in `src/`) is the authoritative API. Read it
   before changing behaviour, and update it with the behaviour.
 

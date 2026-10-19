@@ -125,6 +125,8 @@ exact version, or the setup stops reading it).
 
 ## Where the contracts live
 
+- **The layout is the monorepo's** (the root CLAUDE.md, *The shape of a package*).
+
 - `src/core.ts`: `applyOps`, `DeltaOp`, `splitPath`, `joinPath`, `escapeSegment`,
   `changedFields` (no dependencies).
 - `src/client/`: `client.ts` (reconnecting socket with `onConnect`, reactive `openDoc`,

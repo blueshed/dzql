@@ -41,7 +41,7 @@ an item is worked on. Same shape as duckdown's.
 
 ```
 packages/
-├── dzql/                # The dzql package on npm. src/ is what ships; tests/ proves it (docs/plan.md, The shape)
+├── dzql/                # The dzql package on npm, shaped as the root CLAUDE.md says (The shape of a package)
 │   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told), by-hand.ts (in a browser), costs.ts,
 │   │                    #   reading, definitions, guards; page/ is the model's page, an app dzql ships (`dzql model` serves it)
 │   ├── src/rendering/   # dzql/rendering: the kernel: server.ts, resources/, client/ (the browser's), bento, island.ts (railroad)
