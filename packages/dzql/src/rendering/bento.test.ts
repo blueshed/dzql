@@ -220,8 +220,8 @@ describe("the surfaces", () => {
     expect(out).toContain('<header class="page-head headed"><nav class="crumbs cap" aria-label="Where you are">');
     expect(out).toContain(`</nav><div class="heading"><img src="logo.png" alt=""><h1>Corner Café</h1>${add}<div class="stack page-tools across"`);
     const windowed = b.boxPage([{ label: "Corner Café" }], [], [b.cell({ name: "menu", opens: open })], { key: "menu", body: "" }, {});
-    expect(windowed).toContain('<header class="page-head headed" inert><nav'); // behind the window, with the rest
-    expect(windowed).toContain("<h1>Corner Café</h1></div></header>"); // its tools are the window's now
+    expect(windowed).toContain('<header class="page-head headed" inert><div class="heading"><h1>Corner Café</h1></div></header>'); // behind the window, with the rest; its tools are the window's now
+    // at the root the heading alone: a trail of one crumb would say the name twice
   });
 
   test("the drawer and its properties; a choice among a few", () => {

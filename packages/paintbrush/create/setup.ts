@@ -153,7 +153,7 @@ A test named from the story, in \`tests/message.test.ts\`: its proof.
 
 \`\`\`ts
 // tests/message.test.ts
-test(\`\${stories.follows.name} -- the message is in the box, and a change made anywhere else shows in it\`, async () => {
+test(\`\${stories.follows.name} -- the message is on the box and in its drawer, and a change made anywhere else shows in both\`, async () => {
 \`\`\`
 
 ## What you get

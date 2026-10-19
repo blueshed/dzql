@@ -50,7 +50,8 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   its own (`row({ act })`: its name the button that opens it, the deed at the end, never a button
   in a button) and a total (`row({ total })`); a pin (`pin()`), in a cell's head (`cell({ pins })`)
   or on a line; a cell two rows tall (`cell({ rows })`). Each is an addition: a page that does not
-  ask for one is drawn as it was.
+  ask for one is drawn as it was. At the root, a heading stands alone: a trail of one crumb would
+  say the name twice.
 
 - **What cafe-e found, built by a blank Claude from the skills alone** (18 October,
   `cafe-e/feedback.md`: it built the whole cafe, 18 stories at 100%, and played it in Chrome). The

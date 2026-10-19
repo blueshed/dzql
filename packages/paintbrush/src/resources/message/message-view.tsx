@@ -1,11 +1,27 @@
 import { effect, signal } from "@blueshed/railroad";
 import { joinPath } from "@blueshed/delta/core";
 import { Save } from "lucide";
-import { Icon } from "../icon";
+import { bento, go, here } from "../bento";
 import { toast } from "../toast";
 import { message } from "./message";
 
-export function MessageView() {
+const { cell, drawer, tool } = bento();
+
+/** Where the message's drawer opens: over the box, by its address (`#/?message`). */
+const OPEN = "message";
+
+/** The message on the box: what it says, and ✎ to change it in its drawer. */
+export function MessageCell() {
+  return cell({
+    name: "Message",
+    span: 2,
+    thing: { open: go("", OPEN), chosen: () => here.get().what === OPEN },
+    summary: () => message.data.get()?.messages.text ?? "",
+  });
+}
+
+/** The message's drawer: the box it is typed in, and Save. */
+export function MessageDrawer() {
   const text = signal(message.data.peek()?.messages.text ?? "");
   let shown = text.peek(); // what the box last took from the document
 
@@ -29,22 +45,28 @@ export function MessageView() {
     }
   }
 
-  return (
+  return drawer(
+    "message",
+    "Message",
     <>
-      <h1>Message</h1>
-      <textarea
-        value={text}
-        oninput={(e: Event) => text.set((e.currentTarget as HTMLTextAreaElement).value)}
-        onkeydown={(e: KeyboardEvent) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void onsave(); // Cmd+Enter, or Ctrl+Enter
-        }}
-      ></textarea>
-      <div class="toolbar">
-        <button class="primary" onclick={onsave}>
-          <Icon icon={Save} /> Save
-        </button>
+      <div class="prop">
+        <label class="prop-name cap" for="message-text">Text</label>
+        <div class="prop-value">
+          <textarea
+            class="field"
+            id="message-text"
+            rows="6"
+            value={text}
+            oninput={(e: Event) => text.set((e.currentTarget as HTMLTextAreaElement).value)}
+            onkeydown={(e: KeyboardEvent) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void onsave(); // Cmd+Enter, or Ctrl+Enter
+            }}
+          ></textarea>
+        </div>
       </div>
-      <p class="help">Edit the message above and hit <strong>Save</strong>: every open page shows it.</p>
-    </>
+      <div class="drawer-foot">{tool("Save", { kind: "add", icon: Save, on: onsave })}</div>
+      <p class="help">Change the message and hit <strong>Save</strong>: every open page shows it.</p>
+    </>,
+    go(""),
   );
 }

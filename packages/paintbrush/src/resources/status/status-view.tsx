@@ -1,7 +1,11 @@
 import { signal, when } from "@blueshed/railroad";
+import { bento } from "../bento";
 import { load, status } from "./status";
 
-export function StatusView() {
+const { cell } = bento();
+
+/** The server's status on the box: where the data is kept, and how long it has been up. */
+export function StatusCell() {
   const failed = signal(false);
 
   load().then(
@@ -9,7 +13,7 @@ export function StatusView() {
     () => failed.set(true),
   );
 
-  return (
+  const body = (
     <div id="status">
       {when(failed, () => <p class="help">The status could not be loaded.</p>)}
       {when(status, (s$) => (
@@ -26,4 +30,5 @@ export function StatusView() {
       ))}
     </div>
   );
+  return cell({ name: "Status", body });
 }

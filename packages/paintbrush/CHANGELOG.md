@@ -19,6 +19,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Breaking: the page is a bento box, in the plain look** (Peter, 19 October: "the colors and
+  style of paintbrush was clean and simple"; the look drawn in `docs/bento/paintbrush/`).
+  `styles.css` imports dzql's `bento-plain.css` (white cells split by a hairline, black ink, 4px, no
+  shadows) and keeps the page, `.help`, `.meta` and the toast, now black. `app.tsx` mounts the box:
+  the app's name as its heading (from the page's title), the message and the status its cells. The
+  message is a cell showing its text; its ✎ opens its drawer (`#/?message`), where the box and Save
+  are, and its ×, Escape or Back close it. The views export `MessageCell`, `MessageDrawer` and
+  `StatusCell` in place of `MessageView` and `StatusView`. To move an app across: copy
+  `src/resources/bento.tsx` and the new `styles.css`, draw each view as a cell (and its drawer),
+  and open the drawer in a test before typing in it.
+
 - **A new app opens with what it offers, and with the model's page.** Its README says it in one
   sentence (you write your stories, a schema and documents; you get a live page and proof that every
   story holds, on a JSON file today and SQLite or Postgres later) and quotes the three things you

@@ -63,6 +63,7 @@ const cases: [name: string, server: string, browser: () => Node][] = [
     const ourOpen = () => ({ key: "kitchen", reading: <p>reading</p>, tools: [<p>tool</p>], filter: <p>filter</p>, body: <p>orders</p>, note: "5 open" });
     return [
       ["a box", s.boxPage(trail, ["<p>in place</p>"], cells()), () => b.boxPage(ourTrail, [<p>in place</p>], ours())],
+      ["a box with a heading, at the root", s.boxPage([{ label: "Corner Café" }], [], cells(), undefined, {}), () => b.boxPage([{ label: "Corner Café" }], [], ours(), undefined, {})],
       ["a box with a heading", s.boxPage(trail, [], cells(), undefined, { logo: '<img src="logo.png" alt="">', actions: [s.tool("Add to the menu", { icon: "plus", write: w })] }), () => b.boxPage(ourTrail, [], ours(), undefined, { logo: <img src="logo.png" alt="" />, actions: [b.tool("Add to the menu", { icon: Plus })] })],
       ["a box, a cell open", s.boxPage(trail, ["<p>in place</p>"], cells(), open), () => b.boxPage(ourTrail, [<p>in place</p>], ours(), ourOpen())],
       ["a box, a cell open, its way back found", s.boxPage([{ label: "Corner Café" }], [], cells(), { key: "kitchen", body: "" }), () => b.boxPage([{ label: "Corner Café" }], [], ours(), { key: "kitchen", body: <></> })],

@@ -87,17 +87,19 @@ test("unknown paths return 404", async () => {
 
 // --- The page, in a real browser ---
 
-test("home page loads", async () => {
+test("home page loads: a box, its name the page's heading, the message and the status its cells", async () => {
   await open();
   expect(await view.evaluate<string>("document.title")).toBe("Paintbrush");
-  await waitFor(`document.querySelector("h1")?.textContent === "Message"`);
+  await waitFor(`document.querySelector("h1")?.textContent === "Paintbrush"`);
+  expect(await view.evaluate<string[]>(`[...document.querySelectorAll(".cells > .cell")].map((c) => c.dataset.key)`)).toEqual(["message", "status"]);
 });
 
 test("the Save button has its lucide icon, hidden from screen readers", async () => {
   await open();
-  await waitFor(`document.querySelector("button.primary svg.icon")`);
-  expect(await view.evaluate<string | null>(`document.querySelector("button.primary svg").getAttribute("aria-hidden")`)).toBe("true");
-  expect(await view.evaluate<string>(`document.querySelector("button.primary").textContent.trim()`)).toBe("Save");
+  await view.evaluate(`location.hash = "#/?message"`);
+  await waitFor(`document.querySelector(".drawer .tool.add svg.icon")`);
+  expect(await view.evaluate<string | null>(`document.querySelector(".drawer .tool.add svg").getAttribute("aria-hidden")`)).toBe("true");
+  expect(await view.evaluate<string>(`document.querySelector(".drawer .tool.add").textContent.trim()`)).toBe("Save");
 });
 
 test("an Icon with a label is read out as an image, and one without is hidden", async () => {
@@ -150,7 +152,7 @@ test(`${stories.health.name} -- a page that is not found links home`, async () =
   await view.evaluate(`location.hash = "#/nowhere"`);
   await waitFor(`document.body.textContent.includes("Page not found!")`);
   await view.click("#app a");
-  await waitFor(`document.querySelector("h1")?.textContent === "Message"`);
+  await waitFor(`document.querySelector("h1")?.textContent === "Paintbrush"`);
 });
 
 // --- The entry point and the sandbox hook ---

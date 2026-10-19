@@ -10,7 +10,7 @@
 > `setup()` refuses to run in a clone of this repo (its `origin` is the template's), because it deletes things.
 <!-- /template -->
 
-A Bun website where people share documents. **Documents are how people communicate**: a document is what you need in front of you to take an action. Open one and you're subscribed: every change anyone makes reaches you as it happens, with nothing to poll, fetch or refresh. Change it with add, replace or remove on a path, and everyone holding it sees it at once. delta keeps the documents, railroad draws the page, Bun serves it and Railway deploys it. Every route and document is written out, so `src/routes.ts` and `src/app.tsx` say what the app does. The approach is settled: build on it.
+A Bun website where people share documents. **Documents are how people communicate**: a document is what you need in front of you to take an action. Open one and you're subscribed: every change anyone makes reaches you as it happens, with nothing to poll, fetch or refresh. Change it with add, replace or remove on a path, and everyone holding it sees it at once. delta keeps the documents, railroad draws the page as a bento (a box of cells, a drawer to change a thing, a modal for new or delete), Bun serves it and Railway deploys it. Every route and document is written out, so `src/routes.ts` and `src/app.tsx` say what the app does. The approach is settled: build on it.
 
 **How it grows.** Anything people share is a document from the start: think in documents, not entities, and ask "what does someone need in front of them to do this?" rather than "what are the tables?" The tables follow from the documents. What grows is where they're kept. Every document is a schema (`defineSchema`, the rows) and a `defineDoc` (what someone has in front of them) from the start, kept in a JSON file: documents over the same rows, undo and history all work there. SQLite earns its place when the file is too much to rewrite after every change, or the schema must change on data in use (a migration); Postgres when servers share the data, or people should see only their own. Moving changes the import, never the definitions: the page and its documents stay the same as the storage grows. HTTP routes serve what isn't communication: the health check, files, the server's status. The app is what is listed below; add what the user asks for, with its tests, and coverage stays at 100%. The `evolve` skill has each step, with code and tests.
 
@@ -28,8 +28,8 @@ An app is routes and resources, on both sides of the socket. A document joins a 
 
 | | Server | Client |
 |---|---|---|
-| Routes | Bun routes, given to delta's `serve` in `src/routes.ts` | railroad's `routes()`, in `src/app.tsx` |
-| Resources | `<name>-api.ts`: the document it registers, or HTTP | `<name>.ts`, the handle, and `<name>-view.tsx` |
+| Routes | Bun routes, given to delta's `serve` in `src/routes.ts` | where you are, the URL: the page and what is open over it, in `src/app.tsx` |
+| Resources | `<name>-api.ts`: the document it registers, or HTTP | `<name>.ts`, the handle, and `<name>-view.tsx`: its cell, and its drawer |
 | Joined by | the document, on the socket | |
 | Behind it | entities (`defineSchema`) | |
 
@@ -42,24 +42,26 @@ stories.ts             what the app was asked to make true, each story told by a
 src/
   routes.ts            the app: its routes and the documents on one WebSocket (startServer, for tests); run, it is the server
   index.html           the page; Bun bundles what it references, no build step in development
-  app.tsx              the socket every document rides, and railroad's routes: each draws a resource's view
-  styles.css           the design, with its rules at the top
-  resources/           a folder per resource (<name>-api.ts, <name>.ts, <name>-view.tsx), toast.ts, icon.tsx
+  app.tsx              the socket every document rides, and the page: a bento box of each resource's cell, its drawers over it
+  styles.css           the design, with its rules at the top: the bento's plain look (dzql's bento-plain.css), then the page
+  resources/           a folder per resource (<name>-api.ts, <name>.ts, <name>-view.tsx), bento.tsx, toast.ts, icon.tsx
 tests/
   site.test.ts         the status, the page's shell and the entry point
   message.test.ts      the message document: refused changes, and in the browser, saving and following
   browser.ts           railroad's browser() (@blueshed/railroad/webview, whose header has the Bun.WebView rules) and refuseWrites
   icon-page.*          a small page with both kinds of <Icon>, for site.test.ts
+  bento.test.ts        the bento drawn by railroad is the HTML dzql's bento.ts draws (bento-page.*), and what it does when pressed
 .railway/railway.ts    the deploy; its rules are at its top
 ```
 
-- `message` is a document: `message:1`, one row of `messages`, kept by delta in `message.json` in the data folder (`DATA_PATH`, else `data/`, git-ignored). It opens as Hello before anyone has saved, and the first save makes the row. The page opens it and changes it with `send`, so every open page follows; a write the schema does not take (a field it does not declare, a value that is not text) is refused (400), and an empty one writes nothing.
+- `message` is a document: `message:1`, one row of `messages`, kept by delta in `message.json` in the data folder (`DATA_PATH`, else `data/`, git-ignored). It opens as Hello before anyone has saved, and the first save makes the row. The page shows it as a cell on the box; its ✎ opens its drawer (`#/?message`), where it is changed with `send`, so every open page follows; a write the schema does not take (a field it does not declare, a value that is not text) is refused (400), and an empty one writes nothing.
 - `status` is an HTTP route, since it isn't communication: whether `DATA_PATH` is set, never where the folder is.
 
 ## Rules
 
 - **Use Bun.** Before adding a package, check what Bun has: its docs are in `node_modules/bun-types/docs/`. Server, WebSocket, SQLite, S3, files, hashing, `.env` and a test browser (`Bun.WebView`) are all built in.
 - **The page is railroad, not React.** Read the `railroad` skill before writing JSX: `onclick` and `class`, never `.get()` in JSX children, `list()` for an array that changes length.
+- **The page is the bento's.** Draw it with `src/resources/bento.tsx` (its header says how): a page is a box of cells (`boxPage`, `cell`), a thing is changed in a drawer and made or removed in a modal (`layers`), a list is `rows` of `row`s. Where you are is the URL (`here`, `go`), so Back closes a drawer and a link opens one. It draws the same HTML as dzql's `bento.ts`, the page a server draws, and `tests/bento.test.ts` holds it so: change one, change the other. Its look is `bento-plain.css`'s tokens; say the app's own after the import in `styles.css`, never a rule over the bento's.
 - **Documents are delta's.** Read the `delta-doc` skill before changing one. A document is never set in the page: `send` the change, and it comes back to every window holding it, this one included, which draws it.
 - **Icons are lucide.** Import the icon by name and draw it with `<Icon>`: `<Icon icon={Save} />` beside a label, `<Icon icon={X} label="Close" />` on its own. Never another icon set or inline SVG.
 - **Tests.** `bun test` fails below 100% coverage. Never lower the threshold; write the missing test. The client isn't in the coverage table, so the browser tests are what cover it. `bun run typecheck` is Bun's own `bun check` (TypeScript 7) and checks everything.

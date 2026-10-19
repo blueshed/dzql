@@ -495,7 +495,7 @@ export function bento(o: { undo?: Act; redo?: Act; leave?: { text: string; icon:
     return (
       <>
         <header class={cls("page-head", heading && "headed")} inert={behind}>
-          {crumbs(trail)}
+          {heading && trail.length === 1 ? null : crumbs(trail)}
           {heading ? (
             <div class="heading">
               {heading.logo ?? null}

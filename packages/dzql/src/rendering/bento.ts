@@ -408,7 +408,8 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
    * which of the tray's corners it sits in, for three columns and for one. While a window is open,
    * what is behind it -- the trail, the other cells, what is in place -- is `inert`: not to be
    * reached or heard until it closes. Given a `heading`, the place's name stands large under the
-   * trail (its `<h1>`), the logo before it, and after it the page's own deeds and its tools.
+   * trail (its `<h1>`), the logo before it, and after it the page's own deeds and its tools; at the
+   * root, with no way back to show, the heading stands alone.
    */
   /**
    * A window always has a way back to its box. A trail with no crumb going back (the box's own,
@@ -433,8 +434,9 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     });
     const areas = (t: Grid): string => t.areas.replace(/\n/g, " ");
     const tools = open ? "" : pageTools("across");
+    // under a heading, a trail of one crumb would say the name twice: the heading alone says it
     const head = heading
-      ? `${crumbs(trail)}<div class="heading">${heading.logo ?? ""}<h1>${esc(trail[trail.length - 1]!.label)}</h1>${(heading.actions ?? []).join("")}${tools}</div>`
+      ? `${trail.length > 1 ? crumbs(trail) : ""}<div class="heading">${heading.logo ?? ""}<h1>${esc(trail[trail.length - 1]!.label)}</h1>${(heading.actions ?? []).join("")}${tools}</div>`
       : `${crumbs(trail)}${tools}`;
     return join(
       `<header class="page-head${heading ? " headed" : ""}"${behind}>${head}</header>`,
