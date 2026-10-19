@@ -23,7 +23,7 @@ Released in this order, a sibling before what depends on it.
 |---|---|---|---|---|---|
 | `railroad` | `@blueshed/railroad` | `bun check && bun run check:consumer && bun test --coverage` | -- | `railroad`, `bun-route` | |
 | `delta` | `@blueshed/delta` | `bun run test:slow` | -- | `delta-doc` | |
-| `dzql` | `dzql` and `create-dzql`, one version | `bun check && bun run test:pg` (Docker; port 5433 free) | `cd packages/create-dzql && bun run test:fast`: a new app from the local template, the workspace's packages linked in, type-checks, passes its own tests at 100% (its stories on PGlite) and starts | -- | the template's `dzql` is `^<new>`; settled items leave `packages/dzql/todo.jsonl` |
+| `dzql` | `dzql` and `create-dzql`, one version | `bun check && bun run test:pg` (Docker; port 5433 free) | `cd packages/create-dzql && bun run test:fast`: a new app from the local template, the workspace's packages linked in, type-checks, passes its own tests at 100% (its stories on PGlite) and starts | -- | the template's `dzql` is `^<new>` |
 | `create-blueshed` | `create-blueshed` | `bun run test:fast`, and paintbrush's `bun run test:slow` (the evolve skill applied) | -- | -- | it packs `packages/paintbrush` (`prepack`): paintbrush, never published itself, takes the same level -- its `version` bumped and its changelog promoted -- since an app made from it records "Started from paintbrush <version>" |
 
 ## 1. Preflight, once
@@ -48,7 +48,11 @@ Stop at the first failure; nothing is committed until every package has passed.
    `version:` moves under `metadata:`: the Agent Skills spec allows only `name`, `description`,
    `license`, `compatibility`, `metadata` and `allowed-tools` at the top.
 4. **Promote** its CHANGELOG: `## [Unreleased]` becomes `## [<new version>] - <YYYY-MM-DD>`, with a
-   fresh, empty `## [Unreleased]` above it. Then the table's *Also*.
+   fresh, empty `## [Unreleased]` above it, and the settled items (`fixed`, `not fixed`) leave its
+   `todo.jsonl`: the changelog keeps what they were. Then the table's *Also*.
+
+The root's `todo.jsonl` (what is open across packages) is settled the same way, once a round: its
+`fixed` and `not fixed` items leave it, the root CHANGELOG keeping what they were.
 
 ## 3. What depends on what was released
 

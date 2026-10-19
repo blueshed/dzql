@@ -6,6 +6,18 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The ledgers sorted
+
+Every `todo.jsonl` read through (19 October, Peter: "ones that affect more than one package are
+raised to root, and make sure they are consistent and correct"). The root keeps what is open across
+packages: 36 items that were one package's alone moved to that package's ledger, each noting its
+root number (`docs/history/review-2026-10-19.md` lists where), and two of paintbrush's that are not
+paintbrush's (duckdown's bun-create entry, shinko) came up to the root. Each item has the same eight
+fields, in order; severities are low, medium or high; paths name where the files are now. Delta's two
+fixed items, released in 1.3.0, left its ledger, and `/publish` settles every ledger alike: each
+package's at its release, the root's once a round (it said so only of dzql's). #74 (paintbrush's old
+scaffolding) is fixed.
+
 ### The review's four bugs
 
 A read-only DRY/YAGNI/KISS review of the whole repository (its findings, in the order they are done,
