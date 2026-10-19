@@ -196,6 +196,7 @@ the new Bun, run `bun run test:slow` on it, then set `bun-version` in the root's
 Claude Code on the web runs in an ephemeral container. The monorepo's
 `.claude/hooks/session-start.sh` provisions it when `CLAUDE_CODE_REMOTE=true`: the Bun CI pins, then
 `bun install` at the root, and a browser. By hand, from the root, the same is
-`CLAUDE_CODE_REMOTE=true .claude/hooks/session-start.sh`; it is idempotent. The gate, `bun run test:slow`,
+`CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR="$PWD" CLAUDE_ENV_FILE=/dev/null .claude/hooks/session-start.sh`
+(the hook expects both, as Claude Code sets them); it is idempotent. The gate, `bun run test:slow`,
 runs there as it does locally: no database server, no Docker. Nothing in the container survives
 reclamation: commit what is worth keeping.

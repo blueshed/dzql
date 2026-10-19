@@ -6,7 +6,8 @@
  * Postgres server. `--slow` runs the slow tier too (the browser tests, dzql's Postgres suite in
  * Docker, eta's stories and costs): CI runs it on every push, and it runs before a release.
  * `--all` runs every package. `--dry-run` says what would run. Whatever changed, it first holds the
- * docs to the code (scripts/docs.ts): every link and every path a README, CLAUDE.md, skill or doc names.
+ * docs to the code (scripts/docs.ts): every link and every path a README, CLAUDE.md, skill or doc names;
+ * and the sibling ranges to the workspace's versions (scripts/ranges.ts).
  *
  * A package says its tiers in its package.json: `test:fast`, and `test:slow`. Within dzql, a change
  * only to eta's half (src/rendering, src/modelling, its examples) runs that half's fast tier
@@ -73,7 +74,9 @@ function plan(p: Pkg): string[] {
 }
 
 // what people and Claude read, held to the code, whatever changed: under a second (scripts/docs.ts)
-const docs = args.has("--dry-run") ? 0 : await Bun.spawn(["bun", join(root, "scripts", "docs.ts")], { cwd: root, stdout: "inherit", stderr: "inherit" }).exited;
+// and every range a package gives a sibling includes the sibling's version here (scripts/ranges.ts)
+const check = (script: string) => Bun.spawn(["bun", join(root, "scripts", script)], { cwd: root, stdout: "inherit", stderr: "inherit" }).exited;
+const docs = args.has("--dry-run") ? 0 : (await check("docs.ts")) || (await check("ranges.ts"));
 
 const runs = pkgs.filter((p) => touched.has(p.dir)).map((p) => ({ p, scripts: plan(p) })).filter((r) => r.scripts.length);
 if (runs.length === 0) {

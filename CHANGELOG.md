@@ -6,6 +6,17 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The DRY sweep's three breakages
+
+A sweep for things said in more than one place found three copies that had drifted far enough to
+break: create-dzql's own `dzql ^0.13.0` (and `@blueshed/delta ^1.2.0`) no longer took the
+workspace's 0.14.0, so its tests ran against npm's dzql 0.13.0 (now `^0.14.0` and `^1.3.0`, and
+`scripts/ranges.ts`, run by `bun run affected` beside the docs check, fails any sibling range that
+leaves out the workspace's version); the sites-bbox README named a server and a script that are not
+there (now delta's `server.ts` and `bun run test:setup`); and delta's CLAUDE.md gave a by-hand run
+of the session hook without the two variables it needs. The hook's header points at railroad's
+CLAUDE.md, where its section is.
+
 ### Released 19 October
 
 railroad 0.17.0, delta 1.3.0, dzql 0.14.0, create-dzql 0.14.0 and create-blueshed 0.4.0, each

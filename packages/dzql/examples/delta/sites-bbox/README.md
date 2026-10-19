@@ -19,6 +19,8 @@ rows are kept differs.
 
 ## Run on SQLite
 
+From `packages/delta`, where the SQLite server is:
+
 ```sh
 PORT=3100 bun examples/sites-bbox/server.ts
 ```
@@ -27,9 +29,12 @@ In memory, in one process.
 
 ## Run on Postgres
 
+From `packages/dzql`: `bun run test:setup` starts the compose Postgres on 5433 (`PG_URL` names
+another).
+
 ```sh
-bun run db:up
-PORT=3100 bun examples/sites-bbox/server-pg.ts
+bun run test:setup
+PORT=3100 bun examples/delta/sites-bbox/server-pg.ts
 ```
 
 It makes its tables and a world, and prints the world's name (`world:1` in a fresh database).

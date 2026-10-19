@@ -5,7 +5,7 @@
 # Self-contained and project-agnostic: copy this file + the SessionStart entry
 # in .claude/settings.json into any Bun project (railroad, delta, eta, ...).
 # Web sandbox only — locally you already have Bun and a browser, so it exits
-# immediately. See CLAUDE.md › "The Claude Code web sandbox".
+# immediately. See packages/railroad/CLAUDE.md › "The Claude Code web sandbox".
 #
 # Runs synchronously so dependencies and the browser are ready before the
 # agent loop starts.
