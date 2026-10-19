@@ -11,6 +11,19 @@ clients and three stores, and nothing else to choose. They live in one repositor
 ([blueshed/dzql](https://github.com/blueshed/dzql)) as Bun workspaces. This page is the one
 statement of how an app is made; each package's README says only its own part.
 
+## Start light, grow into performance
+
+| | `bun create blueshed` | `bun create dzql` |
+|---|---|---|
+| For | **prototyping**: light, and quick to change | **performance**: many pages kept live, cheaply |
+| The page | drawn in the browser by railroad ([paintbrush](packages/paintbrush)) | drawn on the server, with applets where a page holds state of its own |
+| Storage | delta's: a JSON file, then SQLite | Postgres, compiled from the same documents' definitions |
+| Built with Claude by | the `evolve` skill | the `modelling` and `dzql-app` skills |
+
+It is one path, not a choice made once: a prototype grows into performance. The documents are
+delta's all along, so they carry over unchanged, and the `evolve` skill takes a paintbrush app's
+storage from a JSON file to SQLite to Postgres compiled by dzql.
+
 ## How an app is made
 
 - **Stories first.** An app is a set of stories, each a sentence someone using it could call true
@@ -58,8 +71,8 @@ statement of how an app is made; each package's README says only its own part.
 | [`packages/delta`](packages/delta) | `@blueshed/delta` | Documents: open one and you're subscribed. JSON file and SQLite, the wire, the client, and the one server (`/serve`) |
 | [`packages/dzql`](packages/dzql) | `dzql` | Stories to documents to pages: `dzql/modelling`, `dzql/rendering`, and the compiled Postgres step |
 | [`packages/paintbrush`](packages/paintbrush) | (private) | The starting website: routes and resources, a railroad page, delta documents |
-| [`packages/create-blueshed`](packages/create-blueshed) | `create-blueshed` | `bun create blueshed my-app`: a paintbrush app |
-| [`packages/create-dzql`](packages/create-dzql) | `create-dzql` | `bun create dzql my-app`: the thin client's starter |
+| [`packages/create-blueshed`](packages/create-blueshed) | `create-blueshed` | `bun create blueshed my-app`: a paintbrush app, for prototyping |
+| [`packages/create-dzql`](packages/create-dzql) | `create-dzql` | `bun create dzql my-app`: the thin client, for performance |
 
 Each package keeps its npm name, its version and its CHANGELOG. In the workspace each uses its
 siblings' source, not npm's. `/publish` releases what has changed in one round, a tag per package

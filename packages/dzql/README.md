@@ -1,9 +1,16 @@
 # DZQL
 
-**Stories to documents to pages, and delta's compiled Postgres step.**
+**Live apps for a few people at once, built from their stories.** You tell what each person does
+and who then sees it; dzql works out the documents each needs in front of them, checks the model,
+and makes the app's types, guards and migrations. The server draws every page from those
+documents, and redraws only what changed for everyone holding one. The data lives in a JSON file,
+SQLite or Postgres, and the app is the same on each.
 
-Three things you can say, each standing alone. Each file below is run as written by
-`readme/readme.test.ts`.
+Choose it for performance: the server draws the pages, with applets where a page holds state of
+its own, and the documents are compiled to Postgres. To prototype, start lighter with
+[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush) (`bun create
+blueshed`): railroad and delta, the page drawn in the browser.
+Each example below is run as written by `readme/readme.test.ts`.
 
 ### Install dzql and use rendering: the server draws the page
 
@@ -68,71 +75,26 @@ bun routes.ts
 ```
 
 Two windows on http://localhost:3000 show the same message; a save in one shows in both, and it is
-kept in `data/message.json`. Growing it: the `dzql-app` skill.
+kept in `data/message.json`.
 
 ### Install dzql and use modelling, for a JSON file, SQLite or Postgres
 
-Modelling records the stories, derives from them the documents each person needs in front of them,
-and builds the entities from those. Tell it on the model's page; after every change it is checked
-(hjeli's six, Easy's coverage, playability), and while nothing is open it makes the app's types,
-migrations and tests. `dzql model check` does the same once:
+The stories are told on the model's page, live, while Claude writes them down (the `modelling`
+skill). After every change the model is checked, and while nothing is open it makes the app's
+types, guards, migrations and a proof:
 
 ```sh
 bun add dzql @blueshed/delta
 bunx dzql model
-bunx dzql model login claude@modeling.example claude-password
-bunx dzql model story ann does Ann asks for two days off, and Mo sees them waiting
-bunx dzql model story mo does Mo approves them, and Ann sees it
-bunx dzql model touches 1 requests
-bunx dzql model touches 2 requests
-bunx dzql model document team teams 1 2
-bunx dzql model holds 1 teams name
-bunx dzql model holds 1 requests under teams starts:date days:number status
-bunx dzql model heldby 1 ann mo
-bunx dzql model check
 ```
 
-The model's page is http://localhost:3001/model, watched live as the stories land; the model is
-`model.json`, which the page edits, signed in by the link each keeper gets as it starts. What it
-makes goes in a folder of its own, `model/`: `types.ts` (below), `guards.ts`, the migrations from
-empty and `model.test.ts`, the proof. Beside an app, its `routes.ts` composes `modelRoute()` (`dzql/model`) at `/model`
-in development (the starter's `bun dev`); without it the model is never registered. `model/types.ts`:
-
-```ts
-// The model, now: delta's definitions, a row type per table and each document's shape. Written by `dzql model` from the model's page; never edited by hand.
-// Every store takes them: change the import to move to SQLite (`@blueshed/delta/sqlite`) or Postgres (`dzql/postgres`).
-import { defineDoc, defineSchema } from "@blueshed/delta/json";
-
-// The model's tables: an app that keeps more (who signs in, its sessions) defines them beside these,
-// `defineSchema({ ...tables, ... })`, and runs its own migrations after the model's.
-export const tables: Parameters<typeof defineSchema>[0] = {
-  teams: { columns: { name: "text?" }, temporal: false },
-  requests: { columns: { starts: "text?", days: "real?", status: "text?" }, temporal: false, parent: "teams" },
-};
-
-export const schema = defineSchema(tables);
-
-export const docs = [
-  // for: Ann asks for two days off, and Mo sees them waiting
-  // for: Mo approves them, and Ann sees it
-  defineDoc("team:", { root: "teams", include: ["requests"], implied: true }),
-];
-
-export type TeamsRow = { id: number; name: string | null; };
-export type RequestsRow = { id: number; teams_id: number; starts: string | null; days: number | null; status: string | null; };
-
-export type TeamDoc = { teams: TeamsRow; requests: Record<string, RequestsRow>; };
-```
-
-`registerDocs(ws, "data/app.json", schema, docs)` from `@blueshed/delta/json` keeps it in a file;
-the same from `@blueshed/delta/sqlite` with a database; the next section, Postgres. In code,
-`definitionsOf(model)` (`dzql/modelling/definitions`) does the same from the model's document.
-Telling the stories: the `modelling` skill.
+The page is http://localhost:3001/model, signed in by the link each keeper is given as it starts.
+[examples/cafe](examples/cafe) is an app told this way and built from what it made.
 
 ### Install dzql and compile a Postgres server, for scale and performance
 
 The same definitions compiled to SQL: every document's reads and writes are stored functions, and
-every server on the database hears every change. `server.ts`:
+every server on the database hears every change. `server.ts`, over the `types.ts` the model made:
 
 ```ts
 import { createWs } from "@blueshed/delta/server";
@@ -164,41 +126,14 @@ SQLite, and `exportTables` / `importTables` carry the rows across.
 
 ## The parts
 
-- **`dzql/modelling`**: the stories an app is for, each saying who does what and who then sees it,
-  told against the app by a harness, and by hand in a phone-sized browser.
-- **`dzql/rendering`**: pages the server draws as HTML from the documents they read, each sent only
-  the parts a write changed. An applet is the piece of a page that holds state of its own; one
-  written with railroad is an island (`dzql/rendering/island`), the one thing that needs the
-  optional `@blueshed/railroad`. Six apps show it in [examples/](examples).
-- **`dzql/postgres`**, **`dzql/pglite`**: the compiled Postgres step, below.
+- **`dzql/modelling`**: the stories, the model's checks, and what it makes.
+- **`dzql/rendering`**: pages the server draws from the documents they read.
+- **`dzql/postgres`**, **`dzql/pglite`**: the same documents compiled to Postgres. Its database
+  packages are optional: `bun add pg` for a server, `@electric-sql/pglite` for `dzql/pglite`, `jose`
+  for `dzql/auth-jwt`.
 
-How an app is made, from its stories to its storage: [bluetools](https://github.com/blueshed/dzql#how-an-app-is-made).
-
-An app built on [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps its definitions
-(`defineSchema`, `defineDoc`), its client and its wire. On Postgres, dzql keeps its documents and
-compiles those definitions to SQL, each piece held equal to delta's own cases.
-
-## delta's Postgres step
-
-dzql is the Postgres step for apps built on [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta):
-a delta app grows from a JSON file to SQLite to Postgres, and on Postgres its documents are kept by
-dzql. Since 0.8.0 dzql carries delta's Postgres backend, with the same names, so moving is an
-import change. Its database packages are optional peers, so an app that only models or renders
-pulls none of them: `bun add pg` for a Postgres server, `@electric-sql/pglite` for `dzql/pglite`,
-`jose` for `dzql/auth-jwt`.
-
-```ts
-import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "dzql/postgres";
-import { openPglite } from "dzql/pglite";   // Postgres in this process
-import { jwtAuth } from "dzql/auth-jwt";
-```
-
-Its tests run delta's own cases (`@blueshed/delta/testing`) against it. `generateSql` writes the
-SQL for each of your documents and collections, compiled from their definitions (opening a
-document, reading its name, who holds a row, a write's scope and rows, what each document is told,
-the fan-out, the ledger's reads): nothing interprets a definition at run time. Apply it after the
-framework, every time, one app per database (`docs/dzql/postgres/postgres.md` in blueshed/dzql, "Compiled SQL"). The plan
-is `docs/dzql/postgres-split-plan.md` in blueshed/dzql.
+Documents and their storage are [@blueshed/delta](https://github.com/blueshed/dzql/tree/main/packages/delta)'s.
+How an app is made, from stories to storage: [bluetools](https://github.com/blueshed/dzql#how-an-app-is-made).
 
 ## Start
 
@@ -214,14 +149,12 @@ bun test
 bun dev
 ```
 
-From 0.13 dzql is only this step. The framework it was before delta (a `domain.ts` compiled to SQL,
-a typed client, Pinia stores) is retired; its story is in the [changelog](https://github.com/blueshed/dzql/blob/main/CHANGELOG.md).
+## With Claude
 
-## Documentation
-
-- [delta on Postgres](https://github.com/blueshed/dzql/blob/main/docs/dzql/postgres/postgres.md): setting up, and what is compiled
-- [Stored functions](https://github.com/blueshed/dzql/blob/main/docs/dzql/postgres/sql.md) and [row-level security](https://github.com/blueshed/dzql/blob/main/docs/dzql/postgres/rls.md)
-- `owns` as a path, and every other definition: delta's `delta-doc` skill
+dzql is made to be built with by Claude. The manual is its skills: `dzql-app` (building an app),
+`modelling` (taking the stories down) and delta's `delta-doc` (documents). A project made with `bun
+create dzql` installs them, and `bunx delta install-skills` copies them into any other. Working on
+dzql itself starts at its [CLAUDE.md](CLAUDE.md).
 
 ## License
 

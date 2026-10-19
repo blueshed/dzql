@@ -6,6 +6,9 @@ A Bun website where people share documents: open one and you're subscribed, and 
 
 [Bun](https://bun.sh) is the runtime, the bundler, the test runner and the server. [delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents, [railroad](https://github.com/blueshed/dzql/tree/main/packages/railroad) draws the page, and [Railway](https://railway.com) deploys it.
 
+It is the light way in, for prototyping. For performance (pages drawn on the server, documents
+compiled to Postgres), start with `bun create dzql` instead.
+
 Requires Bun 1.4.3 or later.
 
 ```sh

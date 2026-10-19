@@ -1,6 +1,9 @@
 # CLAUDE.md
 
-Guidance for a Claude session working on **@blueshed/delta**: JSON-Patch document sync. Three op
+For a Claude session working on delta itself. What delta is and why: [README.md](README.md). How
+to build with it: the `delta-doc` skill, the manual. This file is the rules for changing it.
+
+**@blueshed/delta**: JSON-Patch document sync. Three op
 verbs, one WebSocket, documents kept where their truth lives (JSON file, SQLite, memory, an
 outside source, static), a ledger for undo, and `createLocal()` for running it in-process.
 delta's storage path is the JSON file, then SQLite; Postgres is the next step, and it is dzql's

@@ -126,4 +126,10 @@ delta is not harder than those, it is smaller, and it can be read in full before
 written. It grew from dzql, seiro, paintbrush's delta-sync and the clean venue manager
 ([CHANGELOG.md](CHANGELOG.md), 0.1.0).
 
+## With Claude
+
+delta is made to be built with by Claude. The manual is its skill, `delta-doc` (in the package,
+`.claude/skills/delta-doc/`); `bunx delta install-skills` copies it, and those of the packages
+beside it, into a project. Working on delta itself starts at its [CLAUDE.md](CLAUDE.md).
+
 MIT licence.

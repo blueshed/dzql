@@ -73,9 +73,9 @@ async function socket(url: URL, path = "/ws") {
 }
 
 test("the README's files are these files, byte for byte", () => {
-  for (const name of ["rendering/routes.ts", "rendering/main.ts", "types.ts", "server.ts"]) expect(readme).toContain("```ts\n" + file(name) + "```");
+  for (const name of ["rendering/routes.ts", "rendering/main.ts", "server.ts"]) expect(readme).toContain("```ts\n" + file(name) + "```");
   expect(readme).toContain("```html\n" + file("rendering/index.html") + "```");
-  expect(blocks.map((b) => b.length)).toEqual([1, 11, 2]);
+  expect(blocks.map((b) => b.length)).toEqual([1, 1, 2]);
 });
 
 describe("Install dzql and use rendering", () => {
@@ -106,12 +106,10 @@ describe("Install dzql and use modelling", () => {
   });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-  test("the stories told on the model's page, checked, make model/types.ts", async () => {
-    const [start, ...told] = blocks[1]!;
+  test("the model's page is served", async () => {
+    const [start] = blocks[1]!;
     const page = await serving(start!, dir, { MODEL_PORT: "0" });
-    expect(await (await fetch(page)).text()).toContain("<html");
-    for (const cmd of told) ran(cmd, dir, { MODEL_PORT: page.port });
-    expect(readFileSync(join(dir, "model", "types.ts"), "utf8")).toBe(file("types.ts"));
+    expect(await (await fetch(new URL("/model", page))).text()).toContain("<html");
   }, 30_000);
 
   test("types.ts runs on delta's JSON file and on SQLite", async () => {

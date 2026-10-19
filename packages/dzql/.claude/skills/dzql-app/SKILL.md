@@ -13,9 +13,10 @@ person's page from the documents they hold, and sends only what changed. Routes 
 are on the server: a resource looks after one document (who may write it, what a write becomes);
 an island is the only client resource.
 
-dzql's rendering is the thin client: the server draws the page. The thick one is paintbrush (`bun create
-blueshed`, its evolve skill), where the browser draws it; an applet works in either, and the
-documents are the same. Pick for ease or performance.
+dzql's rendering is the thin client, for performance: the server draws the page, with applets
+where a page holds state, and the documents are compiled to Postgres. The light one, for
+prototyping, is paintbrush (`bun create blueshed`, its evolve skill), where the browser draws it;
+the documents are the same.
 
 The types in dzql's `src/rendering/` (`node_modules/dzql/` in a project) are the contract: read
 them, not prose about them. Only while someone is telling you the stories, there to answer, does

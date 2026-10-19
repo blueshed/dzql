@@ -1,5 +1,9 @@
 # CLAUDE.md - Rules for Working on DZQL
 
+For a Claude session working on dzql itself. What dzql is and why: [README.md](README.md). How to
+build with it: the `dzql-app` skill (an app) and the `modelling` skill (taking the stories down),
+the manual. This file is the rules for changing dzql.
+
 dzql is the path an app takes from its stories to its documents to its pages, and its last storage
 step: **modelling** (`dzql/modelling`: the stories, told against the app), **rendering**
 (`dzql/rendering`: pages the server draws, the thin client's kernel) and **the compiled Postgres step**

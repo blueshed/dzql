@@ -5,6 +5,26 @@ The bluetools monorepo: railroad, delta, dzql (modelling, rendering and the Post
 that package's contracts, gate and docs (dzql's paths are written from this root). This file is
 only what is shared.
 
+## What each document is for
+
+This must be obvious, in every package (Peter, 19 October):
+
+- **A README is for a person deciding whether to use it**: what it is, who it is for, the smallest
+  example that shows it, and where to go next. Never a manual.
+- **CLAUDE.md is your entry point**: what the package is for, which skill to load for which job,
+  its rules, its gate. This file, then the package's own.
+- **The skills, and their `reference/` pages, are the manual**: how to build with it, step by step.
+  They ship with the package and are installed into an app.
+- `docs/` goes deeper or keeps the record; CHANGELOG.md and todo.jsonl say what changed and what is
+  open. Where two disagree, the code is right, then the skill; fix the other.
+
+## Start light, grow into performance
+
+`bun create blueshed` is paintbrush, the light one, for prototyping: railroad and delta, the page
+drawn in the browser. `bun create dzql` is for performance: the thin client, with applets, its
+documents compiled to Postgres. It is one path: a prototype grows into performance, its documents
+delta's all along (the `evolve` skill takes its storage to Postgres).
+
 ## The layout
 
 | Package | Depends on (in the workspace) | Fast, from the root | Slow (CI, a release) |
