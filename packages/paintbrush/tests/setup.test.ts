@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DELETED, NAMED, readme, setup } from "../create/setup";
+import { DELETED, NAMED, UNCOPIED, readme, setup } from "../create/setup";
 
 // A scratch "template" folder named like an app, with just enough of the template in it
 async function scratchTemplate(files: Record<string, string>) {
@@ -18,11 +18,9 @@ test("setup turns the template into an app", async () => {
     "todo.jsonl": '{"n": 1}\n',
     gitignore: "data/\n",
     "CHANGELOG.md": "# the template's changelog\n",
-    "logo.png": "the template's logo",
     "create/setup.ts": "// this script",
     "tests/setup.test.ts": "// this script's test",
     "tests/evolve.ts": "// the evolve skill's test",
-    "evals/evolve.json": "[]",
     ".github/workflows/ci.yml": "      - run: bun test\n\n      # The evolve skill's sections, each applied to a new app and run.\n      # setup deletes this step.\n      - run: bun run test:evolve\n",
     "src/index.html": "<title>Paintbrush</title>",
     "package.json": '{\n  "name": "paintbrush",\n  "version": "0.5.0",\n  "private": true,\n  "scripts": {\n    "test": "bun run test:fast",\n    "test:evolve": "bun test ./tests/evolve.ts",\n    "start": "bun src/routes.ts",\n    "test:fast": "bun check && bun test",\n    "test:slow": "bun run test:evolve"\n  }\n}\n',
@@ -44,8 +42,8 @@ test("setup turns the template into an app", async () => {
     expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("## [Unreleased]");
     // the template's version, so the app knows which of the template's changes it has
     expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("- Started from [paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush) 0.5.0. To bring this app up to date,");
-    // what is about the template goes: its logo, this script and its test, the skill's test and evals
-    for (const path of ["logo.png", "create/setup.ts", "tests/setup.test.ts", "tests/evolve.ts", "evals/evolve.json"]) {
+    // what is about the template goes: this script and its test, the skill's test
+    for (const path of ["create/setup.ts", "tests/setup.test.ts", "tests/evolve.ts"]) {
       expect(await Bun.file(join(root, path)).exists()).toBe(false);
     }
     expect(await Bun.file(join(root, "README.md")).text()).toContain("# my-app");
@@ -120,9 +118,9 @@ test("every file setup renames exists, and the template's name is nowhere else",
   const root = `${import.meta.dir}/..`;
   for (const path of NAMED) expect(await Bun.file(`${root}/${path}`).exists()).toBe(true);
 
-  // Files that may say "paintbrush": the ones setup renames, replaces or deletes (a deleted folder whole), and package.json (setup names the app in it)
+  // Files that may say "paintbrush": the ones setup renames, replaces or deletes (a deleted folder whole), those a new app never gets (UNCOPIED), and package.json (setup names the app in it)
   const allowed = new Set([...NAMED, "README.md", "package.json"]);
-  const deleted = (path: string) => DELETED.some((d) => path === d || path.startsWith(`${d}/`));
+  const deleted = (path: string) => [...DELETED, ...UNCOPIED].some((d) => path === d || path.startsWith(`${d}/`));
   const listed = Bun.spawnSync(["git", "ls-files", "--cached", "--others", "--exclude-standard"], { cwd: root }).stdout.toString();
   const strays: string[] = [];
   for (const path of listed.split("\n").filter((p) => p && !p.endsWith(".png") && !allowed.has(p) && !deleted(p))) {

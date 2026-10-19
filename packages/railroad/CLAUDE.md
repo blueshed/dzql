@@ -31,7 +31,7 @@ bun test --coverage      # unit suite (happy-dom) + coverage table
 bun run test:webview     # real-browser suite, by explicit path
 ```
 
-The release gate is `bun check && bun run check:consumer && bun test --coverage`.
+The release gate is the two tiers, `bun run test:fast` then `bun run test:slow`, as `publish.yml` runs them.
 CI (the root's `.github/workflows/ci.yml`, `bun scripts/affected.ts --slow`) runs railroad's tiers
 and every package that depends on it when railroad changes; a release (`publish.yml`) also runs
 `bun test` without the browser file on the Bun that `engines` names, its floor (`publish.yml` reads

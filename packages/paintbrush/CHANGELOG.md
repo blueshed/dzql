@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **What a new app never gets is said once** (20 October): `UNCOPIED` in `create/setup.ts`
+  (what running the template makes, its logo, the evolve skill's evaluations), read by
+  create-blueshed as it copies the template and as it packs it, so the tarball no longer carries
+  233 KB only to have setup delete it. `DELETED` keeps what setup needs while it runs. The README
+  names the skills a new app gets by pointing at CLAUDE.md, which says which.
+
 - **A new app is named, and keeps only its own scripts** (19 October, the DRY/YAGNI/KISS review): it
   kept `"name": "paintbrush"`, a `bun-create` entry to the setup it had just deleted, and a
   `test:slow` that ran the evolve test setup removes. Setup names it in `package.json`, and its

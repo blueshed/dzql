@@ -19,12 +19,14 @@ test("--local takes railroad, delta and dzql from this checkout, held by overrid
   expect(existsSync(join(parent, "app/node_modules"))).toBe(false); // --no-install
 });
 
-test("without --local the app's packages are npm's, and a name already there is refused", () => {
+test("without --local the app's packages are npm's, what a new app never gets is not copied, and a name already there is refused", () => {
   const made = Bun.spawnSync([process.execPath, cli, "plain", "--no-install", "--no-git"], { cwd: parent, stdout: "pipe", stderr: "pipe" });
   expect(made.exitCode).toBe(0);
   const pkg = require(join(parent, "plain/package.json"));
   expect(pkg.overrides).toBeUndefined();
   expect(pkg.dependencies["@blueshed/delta"]).toStartWith("^");
+  for (const never of ["logo.png", "evals", "node_modules"]) expect(existsSync(join(parent, "plain", never))).toBe(false); // UNCOPIED: never copied
+  expect(existsSync(join(parent, "plain/create/setup.ts"))).toBe(true); // DELETED by setup, which needs it first
   const again = Bun.spawnSync([process.execPath, cli, "plain", "--no-install"], { cwd: parent, stderr: "pipe" });
   expect(again.exitCode).toBe(1);
   expect(again.stderr.toString()).toContain('"plain" already exists');

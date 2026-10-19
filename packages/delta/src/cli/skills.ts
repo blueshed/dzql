@@ -100,8 +100,10 @@ function discoverSkillSources(): SkillSource[] {
   const add = (s: SkillSource) => void (sources.has(s.name) || sources.set(s.name, s));
   const allowed = allowedSkillPackages();
 
-  // Our own skill — always present, ships in this package.
-  listSkillsIn(join(packageRoot, ".claude/skills"), "@blueshed/delta").forEach(add);
+  // Our own skills: those this package ships (its package.json `files`). In development its
+  // .claude/skills holds railroad's too, put there by this command (`prepare`): that one is railroad's.
+  const shipped = (JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8")).files as string[]).flatMap((f) => /^\.claude\/skills\/([^/]+)\//.exec(f)?.[1] ?? []);
+  listSkillsIn(join(packageRoot, ".claude/skills"), "@blueshed/delta").filter((s) => shipped.includes(s.name)).forEach(add);
 
   // Sibling packages. Look in both: the consumer's cwd-rooted node_modules first (what
   // it installed wins a name), then the package the CLI lives in (its own node_modules during dev).

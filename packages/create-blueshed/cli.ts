@@ -5,7 +5,7 @@
  * for the deploy. The app is `packages/paintbrush` in blueshed/dzql, a working app with its own
  * tests; publishing this package copies it in as `template/`. This copies it to the new folder,
  * installs, then runs paintbrush's own setup (`create/setup.ts`): the app's name, a fresh ledger
- * and changelog, railroad's and delta's skills, and one first commit.
+ * and changelog, the skills its packages ship, and one first commit.
  *
  *   --no-install   copy only: then `bun install && bun create/setup.ts` in the new folder
  *   --no-git       no repository
@@ -30,8 +30,10 @@ if (existsSync(dest)) {
 
 // published, paintbrush is beside this file; in blueshed/dzql it is its sibling package
 const template = [join(import.meta.dir, "template"), join(import.meta.dir, "../paintbrush")].find((dir) => existsSync(dir))!;
-const skip = /^\/(node_modules|data|tests\/out)(\/|$)|^\/\.server\.pid$/;
-cpSync(template, dest, { recursive: true, filter: (src) => !skip.test(src.slice(template.length)) });
+// what a new app never gets a copy of, as paintbrush's setup says it (UNCOPIED)
+const { UNCOPIED } = (await import(join(template, "create/setup.ts"))) as { UNCOPIED: string[] };
+const copied = (src: string) => !UNCOPIED.some((path) => src === join(template, path) || src.startsWith(`${join(template, path)}/`));
+cpSync(template, dest, { recursive: true, filter: copied });
 
 // --local: the app takes railroad, delta and dzql from this checkout's packages, and keeps them when a
 // step adds one again (`bun add dzql`): overrides win over what npm has

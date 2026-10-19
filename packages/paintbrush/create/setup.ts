@@ -4,11 +4,11 @@
 // after `bun install`; it makes the first commit.
 //
 // It turns the template into an app. What is about developing the template goes (its
-// ledger, changelog and logo, this script, the template's own tests, the evolve skill's test
-// with its script and CI step, and evals/); the app starts with a fresh ledger, changelog and
-// README; its name replaces "Paintbrush"; and railroad's and delta's skills are copied into
-// .claude/skills, so a session starts knowing how railroad's JSX behaves and how a document
-// is kept and changed.
+// ledger and changelog, this script, the template's own tests, the evolve skill's test with its
+// script and CI step; its logo and evals/ were never copied, UNCOPIED); the app starts with a
+// fresh ledger, changelog and README; its name replaces "Paintbrush"; and the skills its packages ship are copied into
+// .claude/skills (delta's install-skills, below), so a session starts knowing how railroad's JSX
+// behaves, how a document is kept and changed, and how stories are told.
 
 import { existsSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -23,8 +23,13 @@ export const NAMED = [
   ".railway/railway.ts",
 ];
 
-// What is about the template, not the app: deleted from a new app (a folder whole)
-export const DELETED = ["todo.jsonl", "CHANGELOG.md", "logo.png", "create", "tests/setup.test.ts", "tests/evolve.ts", "evals"];
+// What a new app never gets a copy of: what running the template makes, and what is about the
+// template alone and setup does not need (its logo, the evolve skill's evaluations). create-blueshed
+// leaves them out as it copies (cli.ts) and as it packs (pack.ts).
+export const UNCOPIED = ["node_modules", "data", "tests/out", ".server.pid", "logo.png", "evals"];
+
+// What is about the template, not the app, that setup needs as it runs: copied, then deleted (a folder whole)
+export const DELETED = ["todo.jsonl", "CHANGELOG.md", "create", "tests/setup.test.ts", "tests/evolve.ts"];
 
 
 // The template's own clone is the one place this must never run: it deletes things

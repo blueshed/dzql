@@ -38,7 +38,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "prepare": "bun -e \"import { cpSync, existsSync, rmSync } from 'node:fs'; const from = ['../railroad', 'node_modules/@blueshed/railroad'].map((p) => p + '/.claude/skills/railroad').find((p) => existsSync(p)); if (from) { rmSync('.claude/skills/railroad', { recursive: true, force: true }); cpSync(from, '.claude/skills/railroad', { recursive: true }); }\"",
+    "prepare": "rm -rf .claude/skills/railroad && bun src/cli.ts install-skills --skip bun-route",
     "test": "bun run test:fast",
     "test:fast": "bun check && bun check -p examples/kanban && DELTA_LAW_SEEDS=1 DELTA_LAW_STEPS=50 bun test tests/",
     "test:slow": "bun check && bun check -p examples/kanban && bun test tests/"

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`install-skills` in development installs railroad's skill from railroad** (20 October): delta's
+  own skills are the ones its `package.json` ships (`files`), so the copy of railroad's skill that
+  `prepare` puts beside them is no longer taken for delta's, and no longer stays at the version it
+  was copied at. `prepare` is `install-skills` itself (`--skip bun-route`), not a script of its own.
+
 - **`uniqueCases` asks the words too**: a refused duplicate says "Already there: another row has the
   same ...", on every backend (dzql answers it on Postgres).
 - **The JSON file keeps what its schema does not declare** (19 October): an older app saving the

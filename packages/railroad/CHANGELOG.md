@@ -8,6 +8,9 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **The README installs the skills one way** (20 October): `bunx @blueshed/delta install-skills`,
+  as every blueshed package does, in place of copying the folders by hand.
+
 - **One browser-testing manual** (19 October): bun-route's `webview` reference teaches the kit
   (`browser()` from `@blueshed/railroad/webview`, one view per file) and points at its header for
   Bun.WebView's rules instead of restating them; the realtime reference points at dzql's skill for

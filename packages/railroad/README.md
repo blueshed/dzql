@@ -145,13 +145,9 @@ a worker with no DOM and no JSX.
 - [Why railroad](https://github.com/blueshed/dzql/blob/main/docs/why-railroad.md): the reasons behind it.
 - [What changed](CHANGELOG.md).
 
-Both skills ship in the package. To use them with Claude Code, copy them in:
-
-```sh
-mkdir -p .claude/skills
-cp -r node_modules/@blueshed/railroad/.claude/skills/* .claude/skills/
-# or for every project, use ~/.claude/skills in both lines
-```
+Both skills ship in the package. To use them with Claude Code, `bunx @blueshed/delta
+install-skills` copies the skills of every `@blueshed` package installed into `.claude/skills`
+(`--user` for `~/.claude/skills`, every project's).
 
 `railroad` covers the library; `bun-route` scaffolds Bun HTML routes and
 `Bun.WebView` tests.

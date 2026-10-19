@@ -8,6 +8,12 @@ what is open across them. Newest first.
 
 ### The Bun, the hook and the root's statements, said once (20 October)
 
+- **/publish moves the sibling ranges `scripts/ranges.ts` names** (#78), rather than a list kept by
+  hand; railroad's CLAUDE.md gives its release gate as its two tiers, as `publish.yml` runs them.
+- **One way to install a package's skills** (#100, #101): `delta install-skills`, which delta's
+  `prepare` now is too; railroad's README teaches it; the starters' words point at the one list.
+- **paintbrush's leave-behind list, once** (#109): `UNCOPIED`, read by create-blueshed's copy and pack.
+
 - **One Bun, said in one place** (#97): the root's `packageManager`. `scripts/ranges.ts`, in the
   gate, holds each package's `@types/bun` and a new app's `packageManager` to it, and each README's
   "Bun x or later" to its own package's floor (`engines.bun`: railroad's is lower, on purpose).

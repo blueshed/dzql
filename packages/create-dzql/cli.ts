@@ -110,7 +110,7 @@ if (repo) {
 console.log(`
 Done. To start:
 
-  cd ${name}${flags.has("--no-install") ? "\n  bun install        # and the skills: dzql-app, modelling, delta-doc" : ""}
+  cd ${name}${flags.has("--no-install") ? "\n  bun install        # and the skills: CLAUDE.md says which" : ""}
   bun dev            # http://localhost:3000: the page, waiting for its first story;
                      # and /model, the model's page, where the stories are told first
   bun test           # the page is served and drawn, and every story passes

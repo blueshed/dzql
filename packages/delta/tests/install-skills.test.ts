@@ -62,6 +62,14 @@ describe("install-skills", () => {
     expect(res.stderr).toContain("@blueshed/delta");
   });
 
+  test("delta's own skills are those it ships: railroad's, put beside them in development (prepare), is railroad's", async () => {
+    makeSkill(dir, "@blueshed/railroad", "railroad", { "SKILL.md": "---\nname: railroad\n---\nas installed\n" });
+    const res = await runInstall(dir);
+    expect(res.code).toBe(0);
+    expect(readFileSync(join(dir, ".claude/skills/railroad/SKILL.md"), "utf8")).toContain("as installed");
+    expect(res.stderr).toMatch(/railroad\s+\[@blueshed\/railroad\]/);
+  });
+
   test("--skip leaves out the skills it names", async () => {
     const res = await runInstall(dir, "--skip", "delta-doc, railroad");
     expect(res.code).toBe(0);

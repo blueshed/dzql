@@ -56,12 +56,14 @@ The root's `todo.jsonl` (what is open across packages) is settled the same way, 
 
 ## 3. What depends on what was released
 
-A sibling's range moves up to the version just made when it no longer includes it: delta's
-`@blueshed/railroad` (dev; its peer is every railroad before 1.0); dzql's `@blueshed/delta` (peer and dev) and
-`@blueshed/railroad` (dev, and its optional peer widened); paintbrush's three; the create-dzql
-template's `dzql`. Each move is a line under the dependent's new version in its CHANGELOG (under
-`[Unreleased]` for paintbrush when create-blueshed is not in the round). Then `bun install` at the
-root, so `bun.lock` names the new versions, and `bun run affected` on the bumped tree.
+A sibling's range moves up to the version just made when it no longer includes it. Run `bun
+scripts/ranges.ts` at the root: it names every range in the workspace (a package's dependencies,
+dev dependencies and peers, and create-dzql's template) that leaves out its sibling's version now,
+and each it names moves to `^<new version>` (a peer widened rather than narrowed: an app on the older
+sibling still installs). Each move is a line under the dependent's new version in its CHANGELOG
+(under `[Unreleased]` for paintbrush when create-blueshed is not in the round). Then `bun install`
+at the root, so `bun.lock` names the new versions, and `bun run affected` on the bumped tree, which
+runs `ranges.ts` again.
 
 ## 4. Commit, tag, push
 
