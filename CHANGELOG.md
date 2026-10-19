@@ -6,6 +6,14 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### Released 19 October
+
+railroad 0.17.0, delta 1.3.0, dzql 0.14.0, create-dzql 0.14.0 and create-blueshed 0.4.0, each
+published from this repository by `publish.yml` with provenance (the first from here for railroad,
+delta and create-blueshed, whose trusted publishers now stand). Two things the round found, fixed:
+GitHub makes no event for a tag pushed with more than three others, so each release tag goes on its
+own; and the publish job needed Bun for delta's `prepare` script.
+
 ### Changed
 
 - **Every package publishes from this repository** (19 October): npm's trusted publisher for
