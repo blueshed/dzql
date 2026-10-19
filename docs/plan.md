@@ -152,3 +152,55 @@ names, into `.claude/skills`.
    create-dzql 0.14.0, create-blueshed 0.4.0, published from this repository by `publish.yml`.
 
 Then features resume, `ref` first, each checked against this plan before it is built. *`ref`: done* (19 October): a field that names a row of a list document by its path (`dish:menu:/items`), checked, guarded and proved on every store, over tables that keep their history so it never dangles; dzql's CHANGELOG has it.
+
+## The shape of each package (planned 19 October; starts when the DRY/YAGNI/KISS review has reported and dzql's Postgres suite has run)
+
+Peter: "look at the shape of each package and determine the best and easiest to understand,
+adopt and adapt each to use it." The three libraries were shaped three ways: railroad's code loose
+at its root with tests beside it; delta's in `src/` with every test in `tests/`; dzql's in
+`src/<part>/` with 26 tests beside the code, more in `tests/` and more in `readme/`. delta's is the
+easiest to say in a line, so every library takes it:
+
+```
+<package>/
+  README.md CLAUDE.md CHANGELOG.md todo.jsonl package.json tsconfig.json
+  src/        what ships: each public entry a file, named in package.json's exports
+  src/cli.ts  the command, where the package has one
+  tests/      what proves it, in folders after src/'s where there are many
+  examples/   what runs, each with its README; never imported by src/
+  evals/      the skills' evaluations, where a package has them
+  .claude/skills/<name>/   the manual
+```
+
+The rule each step holds: `src/` is what ships and nothing else does, so `files` in package.json
+is `src` and the skills (and README, CHANGELOG, LICENSE); every public name in `exports` stays
+the same, so no consumer notices. The review's findings about layout are folded in before step 1.
+
+One package a step, in dependency order; each ends with `bun run affected` green (the docs check
+catches every path a doc names), its CHANGELOG under `[Unreleased]`, its CLAUDE.md's layout section
+said again, and a commit pushed. No release.
+
+1. **railroad**: the loose `*.ts` at its root move to `src/` (index, signals, jsx, jsx-runtime,
+   jsx-dev-runtime, routes, shared, logger, webview); `*.test.ts(x)` and `happy-dom.setup.ts` to
+   `tests/`; `exports` and `files` point at `src/`; `bunfig.toml`'s preload and tsconfig's excludes
+   follow. delta's and paintbrush's imports are by package name, so nothing outside moves.
+2. **delta**: `cli.ts` to `src/cli.ts` (`bin`, `files`, CLAUDE.md's *Where the contracts live*);
+   otherwise it is the shape already.
+3. **dzql**: the 26 tests in `src/` move to `tests/<part>/` (modelling, rendering, postgres);
+   `readme/` (the tests that hold the docs and the exports) to `tests/readme/`; `scripts/eta.ts`,
+   `fast-eta.ts` and the `test:eta` scripts named for what they do now; `docs/delta`, `docs/eta`
+   and stray `src/modelling/.model-*` folders (empty, left by tests) removed, and the test that
+   leaves them fixed. **The model's page and its checks ship from `examples/modeling/`**: `dzql
+   model` imports `examples/modeling/closure.ts`, `src/modelling/reading.ts` names it, and `files`
+   publishes `examples/modeling` and `examples/cafe`. What ships moves into `src/modelling/` (the
+   checks, the page's server), and `examples/modeling/` keeps only what is an example, or goes;
+   `files` drops the examples. The bin is `src/cli.ts`.
+4. **The starters**: create-dzql's `index.ts` becomes `cli.ts`, as create-blueshed's is; both
+   copy a template the same way (`template/`, packed by `prepack`), and their READMEs and tests
+   say it alike.
+5. **paintbrush and dzql's starter**: paintbrush is an app, and its shape is the app's
+   (`src/routes.ts`, `src/resources/<name>/`, `stories.ts`, `tests/`); `examples/starter` (what
+   `bun create dzql` makes) takes it wherever the two still differ, so a prototype and a
+   performance app look alike from the first day.
+6. **The root**: CLAUDE.md's layout table and docs/plan.md say the shape once; each package's
+   CLAUDE.md links there rather than repeating it.
