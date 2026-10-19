@@ -29,14 +29,12 @@ export const schema = defineSchema({
   weddings: {
     table: "wedding_weddings",
     columns: { day: "text", deadline: "text?", name1: "text", name2: "text", venue: "text?", message: "text?", picture_key: "text?" },
-    temporal: false,
   },
-  couples: { table: "wedding_couples", parent: "weddings", columns: { code: "text" }, temporal: false },
+  couples: { table: "wedding_couples", parent: "weddings", columns: { code: "text" } },
   households: {
     table: "wedding_households",
     parent: "weddings",
     columns: { code: "text", email: "text", plus_ones: withDefault("integer", 0), answer: "text?", message: "text?" },
-    temporal: false,
   },
   guests: {
     table: "wedding_guests",
@@ -51,27 +49,25 @@ export const schema = defineSchema({
       // by course id: the dish and the drink chosen; delta fills in {} on a new row (SQL can't)
       choices: { type: "json", nullable: true, default: {} } as never,
     },
-    temporal: false,
   },
-  asks: { table: "wedding_asks", parent: "households", columns: { name: "text", asked_at: "text", reply: "text?", guest_id: "integer?" }, temporal: false },
-  claims: { table: "wedding_claims", parent: "households", columns: { gift_id: "integer", claimed_at: "text" }, temporal: false },
-  courses: { table: "wedding_courses", parent: "weddings", columns: { name: "text", seq: "integer" }, temporal: false },
-  dishes: { table: "wedding_dishes", parent: "courses", columns: { name: "text", dietary: "text?", seq: "integer" }, temporal: false },
-  drinks: { table: "wedding_drinks", parent: "courses", columns: { name: "text", seq: "integer" }, temporal: false },
+  asks: { table: "wedding_asks", parent: "households", columns: { name: "text", asked_at: "text", reply: "text?", guest_id: "integer?" } },
+  claims: { table: "wedding_claims", parent: "households", columns: { gift_id: "integer", claimed_at: "text" } },
+  courses: { table: "wedding_courses", parent: "weddings", columns: { name: "text", seq: "integer" } },
+  dishes: { table: "wedding_dishes", parent: "courses", columns: { name: "text", dietary: "text?", seq: "integer" } },
+  drinks: { table: "wedding_drinks", parent: "courses", columns: { name: "text", seq: "integer" } },
   gifts: {
     table: "wedding_gifts",
     parent: "weddings",
     columns: { name: "text", description: "text?", link: "text?", picture_key: "text?", seq: "integer", shared: withDefault("integer", 0) },
-    temporal: false,
   },
-  events: { table: "wedding_events", parent: "weddings", columns: { name: "text", when_at: "text?", where_at: "text?", notes: "text?", seq: "integer" }, temporal: false },
-  places: { table: "wedding_places", parent: "weddings", columns: { name: "text", notes: "text?", link: "text?", picture_key: "text?", seq: "integer" }, temporal: false },
+  events: { table: "wedding_events", parent: "weddings", columns: { name: "text", when_at: "text?", where_at: "text?", notes: "text?", seq: "integer" } },
+  places: { table: "wedding_places", parent: "weddings", columns: { name: "text", notes: "text?", link: "text?", picture_key: "text?", seq: "integer" } },
   // the venues the couple are choosing between: a page nobody wrote, drawn from these columns (`derived`, below)
-  venues: { table: "wedding_venues", parent: "weddings", columns: { name: "text", notes: "text?", picture_key: "text?" }, temporal: false },
+  venues: { table: "wedding_venues", parent: "weddings", columns: { name: "text", notes: "text?", picture_key: "text?" } },
   visits: {
     table: "wedding_visits",
     columns: { code: "text?", page: "text?", reading: "json?", filter: "json?", hide: "json?", note: "text?", cookie: "text?" },
-    temporal: false,
+    temporal: false, // a visit is no history
   },
 });
 
@@ -83,9 +79,11 @@ migrateSchema(db, schema);
 
 // A gift that is not shared takes one claim: the store refuses a second, so it is the store that
 // says "taken" when two households claim at once.
-db.run(`CREATE TRIGGER IF NOT EXISTS wedding_one_claim BEFORE INSERT ON wedding_claims BEGIN
+// The claims keep their history, so a claim taken back is a closed version: only a standing one counts.
+db.run("DROP TRIGGER IF EXISTS wedding_one_claim");
+db.run(`CREATE TRIGGER wedding_one_claim BEFORE INSERT ON wedding_claims BEGIN
   SELECT RAISE(ABORT, 'taken: this gift is already claimed')
-  WHERE (SELECT shared FROM wedding_gifts WHERE id = NEW.gift_id) = 0 AND EXISTS (SELECT 1 FROM wedding_claims WHERE gift_id = NEW.gift_id);
+  WHERE (SELECT shared FROM current_wedding_gifts WHERE id = NEW.gift_id) = 0 AND EXISTS (SELECT 1 FROM current_wedding_claims WHERE gift_id = NEW.gift_id);
 END`);
 
 // The pictures the couple keep, by key: bytes beside everything else, served by ../routes.ts.

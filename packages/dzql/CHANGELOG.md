@@ -46,6 +46,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The examples keep their tables' history** (20 October, #52): chat, the wedding and the ticker
+  no longer turn it off; what is no history says so beside it (a session or a visit, a login or a
+  token, the ticker's quotes). Hand-written SQL reads the standing rows, `current_<table>` (the
+  wedding's one-claim trigger too), and the model's page reads `current_<table>` as the table.
+  Leave keeps its tables as its migrations made them. The dzql-app skill's documents and scope
+  pages quote chat as it is. The cafe's orders naming their dish is #79.
+
 - **The compiler says each case once** (19 October, the review): one `caseOf` and one
   `prefixDispatch` for every dispatcher it writes, so a case with no branches is never written to be
   repaired after (`noEmptyCases` is gone); the serial, the standing view and the name-clash check

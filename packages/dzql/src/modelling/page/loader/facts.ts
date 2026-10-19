@@ -87,12 +87,13 @@ export function squared(rows: StoryRow[], person: (member: string) => string): M
 
 /**
  * Whether a line of code names `table` as SQL does: after FROM, JOIN, INTO, UPDATE or TABLE, or in
- * a string handed to a query (`.query(`, `.prepare(`, `.run(`). A property (`Object.keys`), a word
- * in the code, a comment: none of them is the table.
+ * a string handed to a query (`.query(`, `.prepare(`, `.run(`). Its standing rows, `current_<table>`
+ * (the view delta makes for a table that keeps history), are the table too. A property
+ * (`Object.keys`), a word in the code, a comment: none of them is the table.
  */
 export function inSql(line: string, table: string): boolean {
   if (/^\s*(\/\/|\/\*|\*|--)/.test(line)) return false;
-  const name = `["'\`]?(?<![.\\w])${table}\\b`;
+  const name = `["'\`]?(?<![.\\w])(?:current_)?${table}\\b`;
   if (new RegExp(`\\b(?:FROM|JOIN|INTO|UPDATE|TABLE(?:\\s+IF(?:\\s+NOT)?\\s+EXISTS)?)\\s+${name}`, "i").test(line)) return true;
   if (!/\.(?:query|prepare|run)\s*(?:<[^(]*>)?\(/.test(line)) return false;
   return [...line.matchAll(/(["'`])((?:(?!\1).)*)\1/g)].some((m) => new RegExp(name).test(m[2]!));

@@ -7,9 +7,8 @@ and `documents/<thing>.ts`). Who may write them is [resource.md](resource.md).
 ```ts
 // examples/chat/delta.ts
 export const schema = defineSchema({
-  sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?", before: "text?" }, temporal: false },
-  rooms: { table: "chat_rooms", columns: {}, temporal: false },
-  messages: { table: "chat_messages", parent: "rooms", columns: { name: "text", text: "text", sent_at: "integer" }, temporal: false },
+  sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?", before: "integer?", cookie: "text?" }, temporal: false }, // a visit is no history
+  messages: { table: "chat_messages", columns: { room: "text", name: "text", text: "text", sent_at: "integer" } }, // keeps its history, delta's default
 });
 await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), { app: "chat", schema }); // migrations.md
 createTables(db, schema);

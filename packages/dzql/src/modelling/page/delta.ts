@@ -17,12 +17,12 @@ import { sessionRows } from "dzql/rendering/sessions";
 // includes, so no hash crosses the wire. The tables are modeling's own (`mdl_`).
 
 export const schema = defineSchema({
-  models: { table: "mdl_models", columns: { name: "text" }, temporal: false },
-  stories: { table: "mdl_stories", parent: "models", columns: { text: "text", actor: "text", kind: "text", post: "text?", touches: "json", writes: "json?", requires: "json?" }, temporal: false },
-  documents: { table: "mdl_documents", parent: "models", columns: { name: "text", root: "text", own: "integer", list: "integer?", holds: "json", held_by: "json", stories: "json" }, temporal: false },
-  people: { table: "mdl_people", columns: { name: "text" }, temporal: false },
-  sessions: { table: "mdl_sessions", columns: { person_id: "integer?", name: "text?", cookie: "text?" }, temporal: false },
-  logins: { table: "mdl_logins", columns: { person_id: "integer", email: "text", hash: "text" }, temporal: false },
+  models: { table: "mdl_models", columns: { name: "text" } },
+  stories: { table: "mdl_stories", parent: "models", columns: { text: "text", actor: "text", kind: "text", post: "text?", touches: "json", writes: "json?", requires: "json?" } },
+  documents: { table: "mdl_documents", parent: "models", columns: { name: "text", root: "text", own: "integer", list: "integer?", holds: "json", held_by: "json", stories: "json" } },
+  people: { table: "mdl_people", columns: { name: "text" } },
+  sessions: { table: "mdl_sessions", columns: { person_id: "integer?", name: "text?", cookie: "text?" }, temporal: false }, // a visit is no history
+  logins: { table: "mdl_logins", columns: { person_id: "integer", email: "text", hash: "text" }, temporal: false }, // a credential's old versions are only a risk
 });
 
 // Beside an app (`MODEL_FILE`: the model is its file), the model keeps nothing in the app's

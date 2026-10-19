@@ -87,9 +87,9 @@ let minted = 0;
  */
 export const newId = (): string => String((minted = Math.max(Date.now() * 1000, minted + 1)));
 
-const claimedStmt = db.query<{ n: number }, [number]>("SELECT COUNT(*) AS n FROM wedding_claims WHERE gift_id = ?");
+const claimedStmt = db.query<{ n: number }, [number]>("SELECT COUNT(*) AS n FROM current_wedding_claims WHERE gift_id = ?");
 /** A household's claim of a gift: the row's own number, which a giving back removes. */
-const claimOf = db.query<{ id: number }, [number, number]>("SELECT id FROM wedding_claims WHERE households_id = ? AND gift_id = ?");
+const claimOf = db.query<{ id: number }, [number, number]>("SELECT id FROM current_wedding_claims WHERE households_id = ? AND gift_id = ?");
 
 /** What a household may choose from and claim: the courses, and the gifts that are there and shared or not yet taken. */
 export type Offer = { courses: Course[]; gifts: { id: number; shared: boolean }[] };

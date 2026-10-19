@@ -12,9 +12,9 @@ import { sessionRows } from "dzql/rendering/sessions";
 
 export const schema = defineSchema({
   // `cookie`: the hash of the cookie that names the session (dzql/rendering/sessions), never in its document
-  sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?", before: "integer?", cookie: "text?" }, temporal: false },
+  sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?", before: "integer?", cookie: "text?" }, temporal: false }, // a visit is no history
   // numbered as they are said, so the number is the order
-  messages: { table: "chat_messages", columns: { room: "text", name: "text", text: "text", sent_at: "integer" }, temporal: false },
+  messages: { table: "chat_messages", columns: { room: "text", name: "text", text: "text", sent_at: "integer" } },
 });
 
 /** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */

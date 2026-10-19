@@ -14,8 +14,8 @@ import { DEFAULT_TZ } from "./documents/clock";
 // numbered, and a quote says its symbol.
 
 export const schema = defineSchema({
-  markets: { table: "ticker_markets", columns: {}, temporal: false },
-  quotes: { table: "ticker_quotes", parent: "markets", columns: { symbol: "text", name: "text", price: "real", prev: "real" }, temporal: false },
+  markets: { table: "ticker_markets", columns: {} },
+  quotes: { table: "ticker_quotes", parent: "markets", columns: { symbol: "text", name: "text", price: "real", prev: "real" }, temporal: false }, // prices tick many times a second: no history kept
   desks: {
     table: "ticker_desks",
     columns: {
@@ -30,7 +30,7 @@ export const schema = defineSchema({
       // the hash of the cookie that names the session (dzql/rendering/sessions), in none of its documents
       cookie: "text?",
     },
-    temporal: false,
+    temporal: false, // a visit is no history
   },
 });
 
@@ -59,7 +59,7 @@ const OPENING: [string, string, number][] = [
   ["OSCR", "Oscar Media", 33.6],
   ["PAPA", "Papa Retail", 121.15],
 ];
-db.run("INSERT OR IGNORE INTO ticker_markets (id) VALUES (1)");
+db.run("INSERT INTO ticker_markets (id) SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM ticker_markets WHERE id = 1)"); // its one market: kept with its history, so made once, never again
 const open = db.query("INSERT INTO ticker_quotes (id, markets_id, symbol, name, price, prev) SELECT ?1, 1, ?2, ?3, ?4, ?4 WHERE NOT EXISTS (SELECT 1 FROM ticker_quotes WHERE symbol = ?2)");
 OPENING.forEach(([symbol, name, price], i) => open.run(i + 1, symbol, name, price));
 

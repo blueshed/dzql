@@ -49,8 +49,8 @@ export type SessionDocument = { code: string | null; kind: Kind | null; id: stri
 
 type Visit = { code: string | null; page: string | null; reading: Ui["reading"] | null; filter: Ui["filter"] | null; hide: Ui["hide"] | null; note: string | null };
 
-const householdOf = db.query<{ id: string }, [string]>("SELECT id FROM wedding_households WHERE code = ?");
-const coupleOf = db.query<{ id: string }, [string]>("SELECT weddings_id AS id FROM wedding_couples WHERE code = ?");
+const householdOf = db.query<{ id: string }, [string]>("SELECT id FROM current_wedding_households WHERE code = ?");
+const coupleOf = db.query<{ id: string }, [string]>("SELECT weddings_id AS id FROM current_wedding_couples WHERE code = ?");
 
 /**
  * Whose code this is, and the id of the document it opens: a household's own, or the couple's

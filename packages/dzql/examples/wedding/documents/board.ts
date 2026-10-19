@@ -129,7 +129,7 @@ const isEmail = (value: unknown): value is string => typeof value === "string" &
 /** Two ids the same: the store keeps a serial as a number, a path carries it as text. */
 const same = (a: unknown, b: unknown): boolean => a != null && b != null && String(a) === String(b);
 
-const codeTaken = db.query<{ 1: number }, [string]>("SELECT 1 FROM wedding_households WHERE code = ?");
+const codeTaken = db.query<{ 1: number }, [string]>("SELECT 1 FROM current_wedding_households WHERE code = ?");
 
 export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()): PatchOp[] {
   // a working copy: each op sees the ones before it in the message

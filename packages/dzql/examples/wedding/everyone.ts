@@ -11,10 +11,10 @@ import { inPhoto, namesRevealed, WEDDING, type Everyone, type Figure } from "./d
 // increments that could drift, and written as the difference.
 
 const guestsStmt = db.query<Record<string, unknown> & { id: string; name: string; coming: number | null; households_id: string; answer: "yes" | "maybe" | "no" | null }, []>(`
-  SELECT g.*, h.answer FROM wedding_guests g JOIN wedding_households h ON h.id = g.households_id
+  SELECT g.*, h.answer FROM current_wedding_guests g JOIN current_wedding_households h ON h.id = g.households_id
 `);
-const takenStmt = db.query<{ gift_id: string; n: number }, []>("SELECT gift_id, COUNT(*) AS n FROM wedding_claims GROUP BY gift_id");
-const dayStmt = db.query<{ day: string }, [string]>("SELECT day FROM wedding_weddings WHERE id = ?");
+const takenStmt = db.query<{ gift_id: string; n: number }, []>("SELECT gift_id, COUNT(*) AS n FROM current_wedding_claims GROUP BY gift_id");
+const dayStmt = db.query<{ day: string }, [string]>("SELECT day FROM current_wedding_weddings WHERE id = ?");
 
 /** Everyone, as it is now. */
 export function everyoneNow(): Everyone {

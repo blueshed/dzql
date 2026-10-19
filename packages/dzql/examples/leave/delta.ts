@@ -12,12 +12,12 @@ import { sessionRows } from "dzql/rendering/sessions";
 // and every row is numbered: who a row is about is a person's number.
 
 export const schema = defineSchema({
-  teams: { table: "leave_teams", columns: { name: "text" }, temporal: false },
-  people: { table: "leave_people", parent: "teams", columns: { name: "text", role: "text" }, temporal: false },
-  requests: { table: "leave_requests", parent: "teams", columns: { person_id: "integer", starts: "text", ends: "text", status: "text", answered_by: "integer?" }, temporal: false },
+  teams: { table: "leave_teams", columns: { name: "text" }, temporal: false }, // an app from before tables kept their history: its migrations made them so (upgrade.test.ts holds such a database); keeping it is a migration of its own
+  people: { table: "leave_people", parent: "teams", columns: { name: "text", role: "text" }, temporal: false }, // an app from before tables kept their history: its migrations made them so (upgrade.test.ts holds such a database); keeping it is a migration of its own
+  requests: { table: "leave_requests", parent: "teams", columns: { person_id: "integer", starts: "text", ends: "text", status: "text", answered_by: "integer?" }, temporal: false }, // an app from before tables kept their history: its migrations made them so (upgrade.test.ts holds such a database); keeping it is a migration of its own
   // `cookie`: the hash of the cookie that names the session (dzql/rendering/sessions), never in its document
-  sessions: { table: "leave_sessions", columns: { person_id: "integer?", page: "text?", draft: "json?", cookie: "text?" }, temporal: false },
-  logins: { table: "leave_logins", columns: { person_id: "integer", email: "text", hash: "text" }, temporal: false },
+  sessions: { table: "leave_sessions", columns: { person_id: "integer?", page: "text?", draft: "json?", cookie: "text?" }, temporal: false }, // a visit is no history
+  logins: { table: "leave_logins", columns: { person_id: "integer", email: "text", hash: "text" }, temporal: false }, // a credential's old versions are only a risk
   tokens: { table: "leave_tokens", columns: { person_id: "integer", hash: "text" }, temporal: false }, // a token kept as its SHA-256: the CLI's
 });
 

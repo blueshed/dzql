@@ -80,6 +80,8 @@ describe("an entity: red, who reads it, where it sits", () => {
     expect(inSql('db.query("SELECT * FROM keys");', "keys")).toBe(true);
     expect(inSql("  SELECT g.*, h.answer FROM guests g JOIN keys h ON h.id = g.keys_id", "keys")).toBe(true);
     expect(inSql('INSERT INTO "keys" (id) VALUES (1);', "keys")).toBe(true);
+    expect(inSql('db.query("SELECT id FROM current_keys WHERE code = ?");', "keys")).toBe(true); // its standing rows are the table
+    expect(inSql('db.query("SELECT 1 FROM unkeys");', "keys")).toBe(false);
     expect(inSql("db.run(`update keys set hash = ?`, [h]);", "keys")).toBe(true);
     expect(inSql("CREATE TABLE IF NOT EXISTS keys (id TEXT)", "keys")).toBe(true);
     expect(inSql('db.prepare<{ n: number }, []>("SELECT keys.id, n FROM sums")', "keys")).toBe(true); // in the query's string

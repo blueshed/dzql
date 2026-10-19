@@ -14,9 +14,9 @@ A single document is one root row and its children, by their parent keys
 wedding's). So give the day, or the shift, a row, and hang what happens in it beneath it:
 
 ```ts
-shifts: { table: "cafe_shifts", columns: { opened_at: "text", closed_at: "text?" }, temporal: false },
-bills: { table: "cafe_bills", parent: "shifts", columns: { table_no: "integer", paid: "boolean" }, temporal: false },
-orders: { table: "cafe_orders", parent: "bills", columns: { item: "text" }, temporal: false },
+shifts: { table: "cafe_shifts", columns: { opened_at: "text", closed_at: "text?" } },
+bills: { table: "cafe_bills", parent: "shifts", columns: { table_no: "integer", paid: "boolean" } },
+orders: { table: "cafe_orders", parent: "bills", columns: { item: "text" } },
 
 defineDoc("shift:", { root: "shifts", include: ["bills", "orders"] }), // shift:7 is its bills and their orders, nothing older
 ```
