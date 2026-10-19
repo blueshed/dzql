@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { createLocal } from "@blueshed/delta/local";
 import { createTables, registerDocs } from "@blueshed/delta/sqlite";
-import { closureOf } from "../../examples/modeling/closure";
+import { closureOf } from "../../src/modelling/page/closure";
 import { definitionsOf } from "../../src/modelling/definitions";
 import { check, guardSource, guardsOf, guardWrites, rowsIn, rowsInPostgres, type GuardModel, type RowOf } from "../../src/modelling/guards";
 

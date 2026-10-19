@@ -1,5 +1,5 @@
 // `dzql model`: the command that is not Postgres's (src/postgres/cli.ts has those). It runs what is
-// already there: the model's page, an app of its own (examples/modeling).
+// already there: the model's page, an app of its own (src/modelling/page).
 //
 // The model is one file, `model.json` (delta's JSON file: its stories, with what each writes, and
 // the documents they need), which the page edits and a person can read. `dzql model` serves the
@@ -46,7 +46,7 @@ export async function make(file: string, out: string, options: { drops?: boolean
 }
 
 async function making(file: string, out: string, { drops = false }: { drops?: boolean }): Promise<{ ok: boolean; said: string }> {
-  const { closureOf, plainClosure } = await import("../../examples/modeling/closure");
+  const { closureOf, plainClosure } = await import("../modelling/page/closure");
   const model = modelIn(file);
   const registers = closureOf({ models: { name: model.name }, ...model } as Parameters<typeof closureOf>[0]);
   const checks = plainClosure(registers);
@@ -124,7 +124,7 @@ function projectName(): string {
 
 /** Each keeper of the model's link to sign in, where the server starts: no email, no password. */
 async function sayLinks(port: string): Promise<void> {
-  const { links } = await import("../../examples/modeling/signin");
+  const { links } = await import("../modelling/page/signin");
   console.log(["The model's page, signed in by a link:", ...links.say(`http://localhost:${port}`).map((l) => `  ${l}`)].join("\n"));
 }
 
@@ -155,7 +155,7 @@ export async function modelRoute({ file = process.env.MODEL_FILE ?? "model.json"
   process.env.MODEL_FILE = file;
   process.env.MODEL_NAME ??= projectName();
   const { appOf } = await import("../rendering/server");
-  const app = appOf((await import("../../examples/modeling/index.ts")).example);
+  const app = appOf((await import("../modelling/page/index.ts")).example);
   await sayLinks(String(port));
   watchModel(file, out);
   return app;
@@ -177,7 +177,7 @@ export async function run(argv: string[]): Promise<boolean> {
     process.stdout.write(`${said}\n`);
     process.exit(ok ? 0 : 1);
   }
-  process.env.ETA_EXAMPLE = "modeling";
+  process.env.ETA_EXAMPLE = `${import.meta.dir}/../modelling/page`;
   if (!sub || sub.startsWith("--")) {
     const out = flag("--out", "model");
     process.env.PORT = port;

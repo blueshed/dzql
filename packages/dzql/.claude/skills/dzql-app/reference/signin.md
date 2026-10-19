@@ -2,7 +2,7 @@
 
 A session is anonymous until the app says who it is. Sign people in **by a link**, one per person:
 no email, no password. The `Example` it hangs on is [example.md](example.md); the model's page
-(`examples/modeling/signin.ts`) is a whole one.
+(`src/modelling/page/signin.ts`) is a whole one.
 
 ```ts
 // src/routes.ts (or the resource that keeps the people)
@@ -71,7 +71,7 @@ with a `reason`); a route that did what a form asked says so (`said`).
 - `Stories.signIn(name)` gives the route and form for a member of the cast; the harness posts it and
   starts them from the page it signs them into. By links, it is their link's path:
   `signIn: (name) => { const way = links.ways().find((w) => w.name.toLowerCase() === name); return way && post(way.path); }`
-  (the model's `examples/modeling/stories.ts`); a visitor has none.
+  (the model's `src/modelling/page/stories.ts`); a visitor has none.
 - `does: post(path, form)` posts as the author's browser does, follows the 303 as theirs, and checks
   `seen` and `untold`. No undo follows. The author's page must offer a plain
   `<form method="post" action="<path>">` with a field for each key, or the story says `offPage`.

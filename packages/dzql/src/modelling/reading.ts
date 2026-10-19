@@ -1,5 +1,5 @@
 // One reading of a model: what it says, worked out once, for everything that takes a model -- the
-// checks (examples/modeling/closure.ts), the heart the page draws (examples/modeling/heart.ts), the
+// checks (src/modelling/page/closure.ts), the heart the page draws (src/modelling/page/heart.ts), the
 // definitions and the proof (./definitions.ts), the guards (./guards.ts). Each once worked these out
 // for itself, and they came apart (cafe-e's feedback: the checks said closed and the proof failed;
 // the guards refused what the checks called decided). ./conformance.test.ts holds them to each other.

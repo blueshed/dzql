@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { writesOf } from "./writes";
-import { heartOf } from "./facts";
+import { writesOf } from "../../../../src/modelling/page/loader/writes";
+import { heartOf } from "../../../../src/modelling/page/loader/facts";
 
 // What loading leave writes is told.test.ts's, which runs leave's stories once for it and for its own.
 describe("what loading an app into a model writes", () => {

@@ -15,8 +15,8 @@
     "cli": "ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/cli.ts",
     "model": "bun node_modules/dzql/src/cli/index.ts model",
     "cli:model": "bun node_modules/dzql/src/cli/index.ts model",
-    "model:load": "LOG_LEVEL=warn bun node_modules/dzql/examples/modeling/loader/load.ts ./src",
-    "model:check": "LOG_LEVEL=warn bun node_modules/dzql/examples/modeling/loader/check.ts ./src",
+    "model:load": "LOG_LEVEL=warn bun node_modules/dzql/src/modelling/page/loader/load.ts ./src",
+    "model:check": "LOG_LEVEL=warn bun node_modules/dzql/src/modelling/page/loader/check.ts ./src",
     "typecheck": "bun check",
     "test": "bun test",
     "prepare": "delta install-skills"

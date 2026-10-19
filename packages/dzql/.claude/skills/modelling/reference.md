@@ -1,6 +1,6 @@
 # modelling reference
 
-The model's page is dzql's modeling app (`examples/modeling`, shipped in the package). The
+The model's page is dzql's modeling app (`src/modelling/page`, shipped in the package). The
 model is one delta document: its stories, and the documents they need. `SKILL.md` is the order to
 work in.
 
@@ -28,7 +28,7 @@ it is the model saying no. Everyone signs in as `<name, lower case>@modeling.exa
 
 ## The verbs
 
-`examples/modeling/cli.ts` (in a project, under `node_modules/dzql/`). Stories and documents are
+`src/modelling/page/cli.ts` (in a project, under `node_modules/dzql/`). Stories and documents are
 numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by name); the page shows each number.
 
 | Said | Verb |
@@ -72,7 +72,7 @@ by table.
 | *looked up, never held* (dashed) | Touched by a story, held by no document: right for a credential read at sign-in; otherwise, who is told when it changes? |
 | A document everyone holds and everyone writes | Every write tells every holder: is that what the stories ask for? |
 
-The checks run on the model after every change (`examples/modeling/closure.ts`), across the top of
+The checks run on the model after every change (`src/modelling/page/closure.ts`), across the top of
 the page and at the foot of `show`: hjeli's six, Easy's coverage, and playability from rights'
 `derive-ux.ts` (advice beneath it -- one way on, an end, a field no story changes -- never blocks):
 

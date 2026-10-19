@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { closureOf, drawClosure, plainClosure, type Register } from "./closure";
-import type { Raw } from "./heart";
+import { closureOf, drawClosure, plainClosure, type Register } from "../../../src/modelling/page/closure";
+import type { Raw } from "../../../src/modelling/page/heart";
 
 // hjeli's six registers over the model as the page keeps it, each gap as the page would read it.
 const field = (name: string, type = "text") => ({ name, type });
@@ -131,12 +131,12 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
     const { mkdtempSync, rmSync, existsSync, readdirSync, symlinkSync } = await import("node:fs");
     // outside any repository, every step is its own (inside one, the newest is rewritten until committed: below)
     const dir = mkdtempSync(`${(await import("node:os")).tmpdir()}/dzql-check-`);
-    symlinkSync(`${import.meta.dir}/../../../../node_modules`, `${dir}/node_modules`);
+    symlinkSync(`${import.meta.dir}/../../../../../node_modules`, `${dir}/node_modules`);
     const file = `${dir}/model.json`;
     const story = { id: 1, models_id: 1, text: "Ann asks", actor: "ann", kind: "does", post: null, touches: [], writes: [{ entity: "requests", op: "add" }], requires: null };
     const write = (documents: unknown[], more: unknown[] = []) => Bun.write(file, JSON.stringify({ tables: { models: [{ id: 1, name: "Team" }], stories: [story, ...more], documents } }));
     const check = async () => {
-      const p = Bun.spawn(["bun", `${import.meta.dir}/../../src/cli/index.ts`, "model", "check", "--out", `${dir}/app`], { stdout: "pipe", env: { ...process.env, MODEL_FILE: file } });
+      const p = Bun.spawn(["bun", `${import.meta.dir}/../../../src/cli/index.ts`, "model", "check", "--out", `${dir}/app`], { stdout: "pipe", env: { ...process.env, MODEL_FILE: file } });
       return { out: await new Response(p.stdout).text(), code: await p.exited };
     };
     try {
@@ -175,7 +175,7 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
 
 describe("a story's writes and requires: kept by the model, said by the CLI, shown in plain text", () => {
   test("the model takes them in hjeli's shape, and refuses a write with no entity or verb, or a state half said", async () => {
-    const { model, shape, may } = await import("./model");
+    const { model, shape, may } = await import("../../../src/modelling/page/model");
     const m = model({ models: { name: "x" }, stories: { "1": { id: 1, text: "t", actor: "a", kind: "does" } } });
     expect(may(m, { op: "replace", path: "/stories/1/writes", value: [] })).toBe(true);
     expect(may(m, { op: "replace", path: "/stories/1/requires", value: [] })).toBe(true);
@@ -192,7 +192,7 @@ describe("a story's writes and requires: kept by the model, said by the CLI, sho
   });
 
   test("the CLI says them: a verb and its target each, and the states as entity.field=value", async () => {
-    const { aliases } = await import("./cli");
+    const { aliases } = await import("../../../src/modelling/page/cli");
     expect(aliases.writes!(["2", "add", "requests", "replace", "requests.status=approved", "remove", "requests"])).toEqual({
       doc: "model",
       ops: [{ op: "replace", path: "/stories/2/writes", value: [{ op: "add", entity: "requests" }, { op: "replace", entity: "requests", path: "status", to: "approved" }, { op: "remove", entity: "requests" }] }],
@@ -204,7 +204,7 @@ describe("a story's writes and requires: kept by the model, said by the CLI, sho
   });
 
   test("plain text shows what a story writes and presupposes, and the heart lights what it writes", async () => {
-    const { plain, heartOf } = await import("./heart");
+    const { plain, heartOf } = await import("../../../src/modelling/page/heart");
     const raw: Raw = { models: { name: "L" }, stories: { "1": { id: 1, text: "Mo approves", actor: "mo", kind: "does", touches: ["teams"], writes: [{ entity: "requests", op: "replace", path: "status", to: "approved" }, { entity: "requests", op: "add" }], requires: [{ entity: "requests", path: "status", value: "waiting" }] } } };
     expect(plain(raw)).toContain("1. mo does, no document: Mo approves; writes replace requests.status=approved, add requests; requires requests.status=waiting");
     expect(heartOf(raw).stories[0]!.touches).toEqual(["teams", "requests"]);
@@ -307,7 +307,7 @@ describe("a name the app cannot take is caught before anything is made (cafe-c's
 
   test("making the model's files fails out loud: nothing made, and why", async () => {
     const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
-    const { make } = await import("../../src/cli/model");
+    const { make } = await import("../../../src/cli/model");
     const dir = mkdtempSync(`${import.meta.dir}/.make-`);
     try {
       const story = { id: 1, models_id: 1, text: "Ann sits", actor: "ann", kind: "does", post: null, touches: [], writes: [{ entity: "visits", op: "add" }], requires: null };
@@ -326,7 +326,7 @@ describe("a name the app cannot take is caught before anything is made (cafe-c's
 test("while modelling, the newest step not yet committed is rewritten in place; once committed, a change is the next step", async () => {
   const { mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
-  const { make } = await import("../../src/cli/model");
+  const { make } = await import("../../../src/cli/model");
   const dir = mkdtempSync(`${tmpdir()}/dzql-steps-`);
   const git = (...args: string[]) => Bun.spawnSync(["git", "-c", "user.email=t@example.com", "-c", "user.name=t", ...args], { cwd: dir });
   const model = (...fields: string[]) => {
@@ -336,7 +336,7 @@ test("while modelling, the newest step not yet committed is rewritten in place; 
     return make(`${dir}/model.json`, `${dir}/model`);
   };
   const steps = () => readdirSync(`${dir}/model/migrations`).sort();
-  symlinkSync(`${import.meta.dir}/../../../../node_modules`, `${dir}/node_modules`); // a step imports delta, as an app's does
+  symlinkSync(`${import.meta.dir}/../../../../../node_modules`, `${dir}/node_modules`); // a step imports delta, as an app's does
   try {
     git("init", "-q");
     writeFileSync(`${dir}/.gitignore`, "node_modules\n");

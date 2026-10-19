@@ -86,9 +86,12 @@ export function count({ text, points }: Bundle, functions: Script["functions"], 
   }
 }
 
-/** A file this check holds: the kernel's own code (src/; an example's is not gated), not a package's or a test's, and not one bun's own table holds. */
+/** An app's own code, said and not held: an example's, and the model's page (src/modelling/page). */
+const appCode = (file: string): boolean => file.startsWith(`file://${root}/examples/`) || file.startsWith(`file://${root}/src/modelling/page/`);
+
+/** A file this check holds: the kernel's own code (src/, but an app's), not a package's or a test's, and not one bun's own table holds. */
 export const judged = (file: string, loaded: string[] = Object.keys(require.cache)): boolean =>
-  file.startsWith(`file://${root}/src/`) && /\.tsx?$/.test(file) && !/\/node_modules\/|\.test[.-]/.test(file) && !loaded.includes(Bun.fileURLToPath(file));
+  file.startsWith(`file://${root}/src/`) && !appCode(file) && /\.tsx?$/.test(file) && !/\/node_modules\/|\.test[.-]/.test(file) && !loaded.includes(Bun.fileURLToPath(file));
 
 /** Lines as runs, as bun's table says them: "12, 40-42". */
 export function spans(lines: number[]): string {
@@ -136,7 +139,7 @@ export function judge(kept: Kept[], tests: string[]): { held: number; missed: st
   }
   const held = (file: string) => judged(file, [...loaded]);
   // an example's own lines are said, not held: 100% guards the kernel
-  const example = (file: string) => file.startsWith(`file://${root}/examples/`) && /\.tsx?$/.test(file) && !/\/node_modules\/|\.test[.-]/.test(file) && !loaded.has(Bun.fileURLToPath(file));
+  const example = (file: string) => appCode(file) && /\.tsx?$/.test(file) && !/\/node_modules\/|\.test[.-]/.test(file) && !loaded.has(Bun.fileURLToPath(file));
   return { held: [...ran.keys()].filter(held).length, missed: gaps(ran, held), shown: gaps(ran, example) };
 }
 

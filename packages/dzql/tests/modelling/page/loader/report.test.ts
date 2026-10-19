@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { story, type Stories } from "dzql/modelling/stories";
-import { entityOf, fromStories, locate, noticing, pascal, readOp, singular } from "./from-stories";
-import { format, judge } from "./report";
-import { extract, rulesIn } from "./extract";
-import { documentsIn } from "./documents";
-import { stories as chat } from "../../chat/stories";
+import { entityOf, fromStories, locate, noticing, pascal, readOp, singular } from "../../../../src/modelling/page/loader/from-stories";
+import { format, judge } from "../../../../src/modelling/page/loader/report";
+import { extract, rulesIn } from "../../../../src/modelling/page/loader/extract";
+import { documentsIn } from "../../../../src/modelling/page/loader/documents";
+import { stories as chat } from "../../../../examples/chat/stories";
 import { stories as londons } from "./londons/stories";
 
 describe("names", () => {

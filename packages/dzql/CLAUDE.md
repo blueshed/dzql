@@ -41,18 +41,20 @@ an item is worked on. Same shape as duckdown's.
 
 ```
 packages/
-├── dzql/                # The dzql package on npm
-│   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told), by-hand.ts (in a browser), costs.ts
+├── dzql/                # The dzql package on npm. src/ is what ships; tests/ proves it (docs/plan.md, The shape)
+│   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told), by-hand.ts (in a browser), costs.ts,
+│   │                    #   reading, definitions, guards; page/ is the model's page, an app dzql ships (`dzql model` serves it)
 │   ├── src/rendering/   # dzql/rendering: the kernel: server.ts, resources/, client/ (the browser's), bento, island.ts (railroad)
-│   ├── examples/<app>/  # the examples: cafe (the worked one), chat, leave, modeling (the model's page), starter, ticker, wedding
-│   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt
+│   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt; cli.ts: dzql sql | init | migrate | link
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
 │   ├── src/compile/     # the compiler from delta's definitions, a module per kind of function (generateSql runs them all)
-│   ├── .claude/skills/  # modelling (someone telling the stories), dzql-app (building an app on dzql/rendering)
-│   ├── src/postgres/cli.ts  # dzql sql | init | migrate | link (src/cli/index.ts, the bin, runs it)
+│   ├── src/cli/         # the bin (index.ts): dzql model (model.ts, model-tools.ts), then the Postgres commands
+│   ├── examples/<app>/  # the examples: cafe (the worked one, shipped beside the skills), chat, leave, starter, ticker, wedding
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
+│   ├── .claude/skills/  # modelling (someone telling the stories), dzql-app (building an app on dzql/rendering)
 │   ├── bench/           # delta's bench (bun run bench), todo #25
-│   └── tests/           # delta/ (delta's cases), delta-pg/ (delta's Postgres tests), compile/ (compiled, to the framework's recorded answers; the path grammar over modeling-dzql's 204 rules)
+│   └── tests/           # modelling/ (its page/ too), rendering/, readme/ (bun run test:coverage, scripts/tests.ts);
+│                        #   compile/, delta/, delta-pg/ (bun run test:pg: the compiler, delta's cases on Postgres)
 └── create-dzql/         # bun create dzql: the starter (examples/starter) as an app, tests/ makes one and starts it
 ```
 
@@ -93,7 +95,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
   dzql as an app does (`dzql/rendering/...`); examples never import from each other.
   `examples/starter/` is laid out as `bun create dzql` makes an app: routes and resources, its
   `routes.ts` exporting `app` and serving it (`appIn`, `src/rendering/names.ts`, finds either).
-  `examples/modeling/` is the model's page; its `loader/` reads an app that exists.
+  `src/modelling/page/` is the model's page, an app dzql ships (`dzql model` serves it); its `loader/` reads an app that exists.
 - railroad only in `src/rendering/island.ts`; the examples add `lucide`; the kernel imports no icon set.
 - Documents are delta's: rendering owns people and pages, delta owns documents, their ledger and
   their one stream of changes. A **resource** owns one `docType` (the server side; the server draws the page) and has no place on the page; a

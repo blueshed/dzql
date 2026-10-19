@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { mcpHandler, tools, type Runner } from "../../src/cli/mcp";
-import type { Raw } from "./heart";
-import { requireSentence, siteOf, writeSentence } from "./site";
+import { mcpHandler, tools, type Runner } from "../../../src/cli/mcp";
+import type { Raw } from "../../../src/modelling/page/heart";
+import { requireSentence, siteOf, writeSentence } from "../../../src/modelling/page/site";
 
 // hjeli's three that `dzql model` lacked: the site a customer reads, the model's verbs over MCP, and
 // the guards written from the model (the guards themselves: tests/modelling/guards.test.ts).
@@ -127,7 +127,7 @@ describe("dzql model mcp: the model's verbs as tools", () => {
 });
 
 describe("over a model's file, from the command line and over stdio", () => {
-  const cli = `${import.meta.dir}/../../src/cli/index.ts`;
+  const cli = `${import.meta.dir}/../../../src/cli/index.ts`;
   // the model's file as the page keeps it: delta's JSON file, its rows by collection
   const saved = (file: string, name: string | undefined, stories: unknown[], documents: unknown[]) =>
     Bun.write(file, JSON.stringify({ tables: { ...(name ? { models: [{ id: 1, name }] } : {}), stories, documents } }));

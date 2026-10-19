@@ -1,5 +1,5 @@
 // hjeli's three that `dzql model` lacked, each over the model's file (`model.json`, which the page
-// edits): `dzql model site` (the model read back for a customer, ../../examples/modeling/site.ts),
+// edits): `dzql model site` (the model read back for a customer, ../modelling/page/site.ts),
 // `dzql model guards` (the guarded write layer, ../modelling/guards.ts: written only once the six
 // registers are closed) and `dzql model mcp` (every model verb as a tool, over stdio, ./mcp.ts).
 // Apart from ./model.ts, which `dzql model` and `dzql model check` keep.
@@ -35,12 +35,12 @@ export async function run(argv: string[]): Promise<boolean> {
   const file = fileOf(rest);
   const raw = rawIn(file);
   if (sub === "site") {
-    const { siteOf } = await import("../../examples/modeling/site");
+    const { siteOf } = await import("../modelling/page/site");
     emit(rest, siteOf(raw));
     process.exit(0);
   }
   // guards: the checks first, then the generation -- never guards over a model with a register open
-  const { closureOf, plainClosure } = await import("../../examples/modeling/closure");
+  const { closureOf, plainClosure } = await import("../modelling/page/closure");
   const registers = closureOf(raw);
   if (registers.some((r) => r.gaps.length > 0)) {
     process.stderr.write(`Not generated: close every check first.\n\n${plainClosure(registers)}\n`);

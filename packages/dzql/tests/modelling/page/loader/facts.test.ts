@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import type { StoryRow, Told } from "./documents";
-import { bornInto, inSql, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "./facts";
-import { extract } from "./extract";
-import { documentsIn } from "./documents";
+import type { StoryRow, Told } from "../../../../src/modelling/page/loader/documents";
+import { bornInto, inSql, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "../../../../src/modelling/page/loader/facts";
+import { extract } from "../../../../src/modelling/page/loader/extract";
+import { documentsIn } from "../../../../src/modelling/page/loader/documents";
 
 const told = (member: string, seen: boolean): Told => ({ member, how: "patch 1 op", bytes: 100, seen });
 const row = (over: Partial<StoryRow>): StoryRow => ({ n: 1, name: "a story", as: "ada", kind: "does", doc: "board", changes: [], ...over });

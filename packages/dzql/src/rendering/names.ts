@@ -29,5 +29,6 @@ export async function appIn(dir: string): Promise<Example | undefined> {
  * create blueshed/eta`), from where the command runs.
  */
 export function appDir(named = "chat"): string {
+  if (named.startsWith("/")) return named.replace(/\/$/, ""); // a whole path: the model's page, from dzql model
   return named.includes("/") ? `${process.cwd()}/${named}`.replace(/\/\.\//g, "/").replace(/\/$/, "") : `${import.meta.dir}/../../examples/${named}`;
 }

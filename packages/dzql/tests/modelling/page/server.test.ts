@@ -1,15 +1,16 @@
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
+import { resolve } from "node:path";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { createServer } from "dzql/rendering/server";
 import { run } from "dzql/modelling/harness";
 import { Refusal } from "dzql/rendering/refusal";
-import { BOX, boxHeight, drawHeart, heartOf, layout, picked, plain, reason, related, shape as shapeOf, singular, type Raw, type Ui } from "./heart";
-import { may, model, shape, type Model } from "./model";
-import { aliases, show, stdin } from "./cli";
-import { closureOf, plainClosure } from "./closure";
-import { stories } from "./stories";
-import { links } from "./signin";
-import { example } from "./index";
+import { BOX, boxHeight, drawHeart, heartOf, layout, picked, plain, reason, related, shape as shapeOf, singular, type Raw, type Ui } from "../../../src/modelling/page/heart";
+import { may, model, shape, type Model } from "../../../src/modelling/page/model";
+import { aliases, show, stdin } from "../../../src/modelling/page/cli";
+import { closureOf, plainClosure } from "../../../src/modelling/page/closure";
+import { stories } from "../../../src/modelling/page/stories";
+import { links } from "../../../src/modelling/page/signin";
+import { example } from "../../../src/modelling/page/index";
 
 // A model as delta keeps it: three stories -- one the team serves, one the inbox, one nothing --
 // the team rooted at teams holding requests (under teams) and notes (whose parent it does not
@@ -382,7 +383,7 @@ describe("modeling, served", () => {
     const ws = `${server.url.href.replace(/^http/, "ws")}model`;
     const file = `${process.env.TMPDIR ?? "/tmp"}/session-${crypto.randomUUID()}`;
     await Bun.write(file, (await signIn("claude@modeling.example", "claude-password")).sessionId!);
-    const { readPage } = await import("./loader/told");
+    const { readPage } = await import("../../../src/modelling/page/loader/told");
     const raw = await readPage(ws, (await Bun.file(file).text()).trim());
     const page = plain(raw);
     expect(page).toContain("\n21. visitor does, posts to /login: Bo signs in on another phone, and sees the team's calendar\n");
@@ -401,7 +402,7 @@ describe("modeling, served", () => {
     }
 
     // and as the CLI runs it: the kernel's, loading modeling's verbs
-    const cli = Bun.spawn(["bun", `${import.meta.dir}/../../src/rendering/cli.ts`, "show", "--session", file], { env: { ...process.env, ETA_EXAMPLE: "modeling", ETA_URL: ws }, stdout: "pipe" });
+    const cli = Bun.spawn(["bun", `${import.meta.dir}/../../../src/rendering/cli.ts`, "show", "--session", file], { env: { ...process.env, ETA_EXAMPLE: resolve(import.meta.dir, "../../../src/modelling/page"), ETA_URL: ws }, stdout: "pipe" });
     const out = await new Response(cli.stdout).text();
     expect(out).toBe(`${page}\n\n${plainClosure(closureOf(raw))}\n`);
     // hjeli's registers over the seed: the logins a sign-in looks up, no document holds

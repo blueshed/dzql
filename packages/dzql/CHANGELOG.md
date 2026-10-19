@@ -25,6 +25,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The model's page is in `src/modelling/page/`, out of `examples/`** (19 October, the monorepo's
+  one shape): `dzql model` serves it to every app, so it is shipped code, not an example. Its tests
+  are in `tests/modelling/page/`; `files` no longer ships `examples/modeling` (the cafe still ships,
+  the worked example the skills point at). An app's `model:check` and `model:load` run
+  `node_modules/dzql/src/modelling/page/loader/` (create-dzql's template says so). `ETA_EXAMPLE` takes
+  a whole path, which is how `dzql model` names the page; the stories run it beside the examples'.
+  Like an example, its lines are said, not held to the kernel's 100%.
 - **`model:check` keeps only the hjeli it uses** (19 October, the review): `--against` (comparing
   with another model of the same domain), and with it hjeli's migrations and document-first
   lowering, are gone, and so is what nothing called (`runAll`, `subscriptionClosure`,

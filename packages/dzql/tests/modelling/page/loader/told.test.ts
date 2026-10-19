@@ -4,11 +4,11 @@ import { assemble } from "dzql/rendering/resources/index";
 import { db } from "dzql/rendering/db";
 import { createServer } from "dzql/rendering/server";
 import { connect, opened } from "dzql/rendering/test-socket";
-import type { Raw } from "../heart";
-import { example } from "../index";
-import { extract } from "./extract";
-import { built, format, gaps, matched, readPage, told } from "./told";
-import { said, send, writesOf, type Load } from "./writes";
+import type { Raw } from "../../../../src/modelling/page/heart";
+import { example } from "../../../../src/modelling/page/index";
+import { extract } from "../../../../src/modelling/page/loader/extract";
+import { built, format, gaps, matched, readPage, told } from "../../../../src/modelling/page/loader/told";
+import { said, send, writesOf, type Load } from "../../../../src/modelling/page/loader/writes";
 
 const field = (name: string, type = "text") => ({ name, type });
 
@@ -129,7 +129,7 @@ describe("Peter tells leave's stories on the model page and Claude builds leave;
 
   // writes.test.ts's, here so leave's stories are run once: what loading leave writes
   test("leave: every story, the team and each person's session, as the model's seed has them by hand", async () => {
-    const { stories } = await import("../../leave/stories"); // leave's own, so a story added there moves nothing here
+    const { stories } = await import("../../../../examples/leave/stories"); // leave's own, so a story added there moves nothing here
     expect(load.stories.map((s) => s.text)).toEqual(stories.stories.map((s) => s.name));
     expect(load.stories.find((s) => s.post === "/login")).toMatchObject({ actor: "visitor", kind: "does" });
     expect(load.stories.some((s) => s.kind === "cannot")).toBe(true);

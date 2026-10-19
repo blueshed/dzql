@@ -1,13 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import { resolve } from "node:path";
 import { post, story, type Stories } from "dzql/modelling/stories";
 import { run } from "dzql/modelling/harness";
 import { serverWrite } from "dzql/rendering/documents";
 import type { Example } from "dzql/rendering/example";
-import { bornInto, toldNotAsked, touches } from "./facts";
+import { bornInto, toldNotAsked, touches } from "../../../../src/modelling/page/loader/facts";
 import { controlsOn, type Heard, type Trace } from "dzql/modelling/harness";
-import { attempt, documentsIn, documentsOf, importedDocs, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
-import { example as chat } from "../../chat/index";
-import { stories as chatStories } from "../../chat/stories";
+import { attempt, documentsIn, documentsOf, importedDocs, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "../../../../src/modelling/page/loader/documents";
+import { example as chat } from "../../../../examples/chat/index";
+import { stories as chatStories } from "../../../../examples/chat/stories";
 import { stories as londons } from "./londons/stories";
 
 const cell = (r: Reading, actor: string, doc: string) => r.grid[actor]![doc]!;
@@ -156,7 +157,7 @@ describe("from a run", () => {
   });
 
   test("a document delta.ts defines that no resource owns, and no story uses, is one nobody needs", async () => {
-    const src = (await Bun.file(`${import.meta.dir}/../../chat/delta.ts`).text()) + '\nregisterDocs(delta.server, db, schema, [defineDoc("archive:", { root: "rooms", include: [] })]);\n';
+    const src = (await Bun.file(`${import.meta.dir}/../../../../examples/chat/delta.ts`).text()) + '\nregisterDocs(delta.server, db, schema, [defineDoc("archive:", { root: "rooms", include: [] })]);\n';
     const defined = documentsIn(src, null).map((d) => d.name);
     expect(defined).toEqual(["session", "room", "archive", "here", "lobby"]);
     const r = read(chatStories, chat, { traces: [], controls: new Set(), allowed: new Map() }, defined);
@@ -228,8 +229,8 @@ describe("from a run", () => {
 
 describe("a post to a route, read from a run", () => {
   test("born into the documents its told members were told through, touching what delta wrote for the route, and told-not-asked as for a write", async () => {
-    const { example: leave } = await import("../../leave/index");
-    const { stories: told } = await import("../../leave/stories");
+    const { example: leave } = await import("../../../../examples/leave/index");
+    const { stories: told } = await import("../../../../examples/leave/stories");
     const rename = async (req: Request) => {
       await serverWrite("team:1", [{ op: "replace", path: "/teams/name", value: String((await req.formData()).get("name")) }]);
       return new Response(null, { status: 303, headers: { Location: "/" } });
@@ -259,7 +260,7 @@ describe("a post to a route, read from a run", () => {
 
 describe("exampleAt", () => {
   test("a name is one of eta's examples; a path is a project of its own, named by its last part", () => {
-    expect(exampleAt("wedding")).toEqual({ dir: `${import.meta.dir}/../../wedding`, name: "wedding" });
+    expect(exampleAt("wedding")).toEqual({ dir: resolve(import.meta.dir, "../../../../examples/wedding"), name: "wedding" });
     expect(exampleAt("/work/canyou-eta")).toEqual({ dir: "/work/canyou-eta", name: "canyou-eta" });
     expect(exampleAt("../canyou-eta/").name).toBe("canyou-eta");
   });

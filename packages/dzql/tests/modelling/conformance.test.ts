@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { make } from "../../src/cli/model";
 
 // The tools agree. Each part of the path from a model to an app reads the model: the checks
-// (examples/modeling/closure.ts), the proof (./definitions.ts, `testsOf`), the guards (./guards.ts)
+// (src/modelling/page/closure.ts), the proof (./definitions.ts, `testsOf`), the guards (./guards.ts)
 // and the read-back. Each was once fixed alone, after a model the checks called closed failed its
 // proof, or a guard refused what the checks called decided (cafe-e's feedback). So, for every model
 // here: the checks close; then `dzql model` makes it; then the proof it made passes -- each story's
@@ -45,11 +45,11 @@ describe("closed implies proved implies guarded", () => {
 });
 
 // And the read-back: the worked example, the cafe built from its model, is its model as told -- every
-// story matched, every document as the model says it (examples/modeling/loader/told.ts).
+// story matched, every document as the model says it (src/modelling/page/loader/told.ts).
 test("the read-back: the cafe built from its model is the model as told", async () => {
-  const { extract } = await import("../../examples/modeling/loader/extract");
-  const { writesOf } = await import("../../examples/modeling/loader/writes");
-  const { built, gaps, told } = await import("../../examples/modeling/loader/told");
+  const { extract } = await import("../../src/modelling/page/loader/extract");
+  const { writesOf } = await import("../../src/modelling/page/loader/writes");
+  const { built, gaps, told } = await import("../../src/modelling/page/loader/told");
   const { tables } = (await Bun.file(FIXTURES.cafe!).json()) as { tables: { stories: { id: number }[]; documents: { id: number }[] } };
   const byId = <T extends { id: number }>(rows: T[]) => Object.fromEntries(rows.map((r) => [String(r.id), r]));
   const page = { models: { name: "cafe" }, stories: byId(tables.stories), documents: byId(tables.documents) };
