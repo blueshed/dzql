@@ -1,6 +1,6 @@
 {
   "name": "create-blueshed",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "Start a Bun website from paintbrush: routes and resources, railroad for the page, delta for the documents, Railway for the deploy",
   "bin": {

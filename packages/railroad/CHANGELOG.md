@@ -6,6 +6,8 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-19
+
 ### Fixed
 
 - **`waitIn` (`./webview`) times out under `setSystemTime`**: it timed itself by `Date.now`, which a

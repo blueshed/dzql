@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **Its siblings as released on 2026-10-19**: `@blueshed/railroad` `^0.17.0`, `@blueshed/delta` `^1.3.0`, `dzql` `^0.14.0` (create-blueshed 0.4.0 packs it).
+
 ### Changed
 
 - **A new app opens with what it offers, and with the model's page.** Its README says it in one

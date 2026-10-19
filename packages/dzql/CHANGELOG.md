@@ -23,6 +23,10 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-19
+
+- `@blueshed/railroad` 0.17.0: the dev dependency is `^0.17.0`, and the optional peer takes it (`^0.16.2 || ^0.17.0`). `create-dzql` 0.14.0 with it: its template asks for `dzql` `^0.14.0`.
+
 ### Breaking
 
 - **dzql's public API is named**: `package.json`'s `exports` lists each module an app imports (41,

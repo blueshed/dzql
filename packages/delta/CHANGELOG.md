@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-19
+
+- `@blueshed/railroad` 0.17.0: the peer range takes it (`|| ^0.17.0`), and the dev dependency is `^0.17.0`.
+
 ### Fixed
 
 - **`delta stop` says "stopped" only once the server is gone** (18 October, cafe-c's feedback: it

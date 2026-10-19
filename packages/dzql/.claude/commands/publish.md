@@ -43,14 +43,11 @@ Run the gate command in the table. If it fails, stop -- no file has been edited 
 
 ## 4. End to end
 
-Follow CLAUDE.md's *Testing the create-dzql Template*: a new app from the local template, its
-`dzql` dependency set to `link:dzql` (so its runtime is the local one, not npm's), `bun check`
-clean and `bun test` passing. Its tests are the checks, in two real browsers: pick who you
-are, publish a post, see it arrive in the other window without a reload, edit it in the sheet,
-delete it; the other person sees it with no Edit or Delete; a write to everyone's posts is refused
-(403), another's posts are not there (404); someone new's link, made in one window, signs them in
-in the other, keeps them on a reload, and is used once. Then its
-*Cleanup*, the `bun unlink` included. If any check fails, stop.
+`cd packages/create-dzql && bun run test:fast`: it makes a new app from the local template, with
+the workspace's dzql and delta linked in for npm's, and checks it type-checks, passes its own
+tests at 100% coverage (its stories included, on PGlite), and starts on delta's one server: the
+page served and drawn over the socket, and `/health`. CLAUDE.md's *Testing the create-dzql
+Template* is the same by hand. If any check fails, stop.
 
 ## 5. Bump
 

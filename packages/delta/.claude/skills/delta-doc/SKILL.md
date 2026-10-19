@@ -1,7 +1,7 @@
 ---
 name: delta-doc
 metadata:
-  version: 1.2.0
+  version: 1.3.0
 description: "Use in a project that uses @blueshed/delta (it is in package.json): documents, their three op verbs, storage in a JSON file or SQLite (Postgres: dzql), migrations, sign-in by link, who may open what, the ledger and undo, createLocal(), and the wire a client speaks."
 ---
 

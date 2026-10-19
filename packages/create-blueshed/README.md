@@ -21,8 +21,8 @@ checkout, takes railroad, delta and dzql from it rather than npm, held by `overr
 packages as they are, before a release (the Shed eval is made so). Run `bun install` at the checkout's root
 first, or delta cannot find railroad's subpaths.
 
-## Next release
+## Releases
 
-paintbrush is published from [blueshed/dzql](https://github.com/blueshed/dzql) with railroad and
-delta, inside this package. 0.3.0 ran `bun create blueshed/paintbrush`, which fetched it from its
-own GitHub repository; that still works until the repository is archived.
+From 0.4.0 this package is published from [blueshed/dzql](https://github.com/blueshed/dzql) with
+railroad and delta, paintbrush inside it. 0.3.0 ran `bun create blueshed/paintbrush`, which fetched
+it from its own GitHub repository.

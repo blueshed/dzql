@@ -1,6 +1,6 @@
 {
   "name": "dzql",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Stories to documents to pages, and the compiled Postgres step: eta's modelling and rendering, and delta's definitions compiled to SQL",
   "repository": {
     "type": "git",
@@ -107,7 +107,7 @@
   "author": "Peter Bunyan",
   "license": "MIT",
   "devDependencies": {
-    "@blueshed/railroad": "^0.16.2",
+    "@blueshed/railroad": "^0.17.0",
     "@types/bun": "^1.4.3",
     "@types/pg": "^8.20.0",
     "@blueshed/delta": "^1.2.0",
@@ -118,7 +118,7 @@
   },
   "peerDependencies": {
     "@blueshed/delta": "^1.2.0",
-    "@blueshed/railroad": "^0.16.2",
+    "@blueshed/railroad": "^0.16.2 || ^0.17.0",
     "@electric-sql/pglite": "^0.5.4",
     "jose": "^6.2.4",
     "pg": "^8.22.0"

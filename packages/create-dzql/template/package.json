@@ -24,7 +24,7 @@
   "dependencies": {
     "@blueshed/delta": "^1.2.0",
     "@electric-sql/pglite": "^0.5.4",
-    "dzql": "^0.13.0",
+    "dzql": "^0.14.0",
     "lucide": "^1.46.0",
     "pg": "^8.22.0"
   },

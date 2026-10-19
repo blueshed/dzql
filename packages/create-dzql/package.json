@@ -1,6 +1,6 @@
 {
   "name": "create-dzql",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Create an app on dzql: eta's starter, its stories first, served by delta's one server",
   "repository": {
     "type": "git",
