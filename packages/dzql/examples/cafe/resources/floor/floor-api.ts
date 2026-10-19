@@ -1,15 +1,14 @@
-import { registerDocs } from "@blueshed/delta/sqlite";
 import { splitPath } from "@blueshed/delta/core";
 import { read as readDoc } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { refuse } from "dzql/rendering/refusal";
 import { docs, type FloorDoc, type InvoicesRow, type OrdersRow, type TablesRow } from "../../model/types";
-import { db, delta, schema } from "../../store";
+import { register } from "../../store";
 
 // The floor: every table, its invoices and their orders -- the manager's and the cook's. A list
 // (`floor:`, the model's `list`), on the ledger. Who may write it is the model's guards' (../../store.ts);
 // what a write becomes is here. Ids are text, as the wire says them.
-registerDocs(delta.server, db, schema, docs.filter((d) => d.prefix === "floor:"), [], { ledger: true });
+register(docs.filter((d) => d.prefix === "floor:"));
 
 export type Table = { id: string; name: string; seated: boolean };
 export type Invoice = { id: string; table: string; paid: boolean };

@@ -4,7 +4,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { createTables, registerDocs } from "@blueshed/delta/sqlite";
 import { closureOf } from "../../examples/modeling/closure";
 import { definitionsOf } from "./definitions";
-import { check, guardSource, guardsOf, guardWrites, rowsIn, type GuardModel, type RowOf } from "./guards";
+import { check, guardSource, guardsOf, guardWrites, rowsIn, rowsInPostgres, type GuardModel, type RowOf } from "./guards";
 
 // The leave app's model, told as a modeller tells it: who asks, who approves, and what each write
 // presupposes. Every check is closed (hjeli's six, Easy's coverage: each write decided for both), so its guards may be generated.
@@ -181,4 +181,14 @@ test("a document's root row, as delta also addresses it (/<root>/<field>), is th
   expect(await check(guards, { actor: "mo", doc: "team", docId: "1", op: { op: "replace", path: "/teams/open", value: "yes" }, rowOf: row })).toEqual({ ok: true, story: 2 });
   expect(await check(guards, { actor: "mo", doc: "team", docId: "1", op: { op: "replace", path: "/teams/1/open", value: "yes" }, rowOf: row })).toEqual({ ok: true, story: 2 });
   expect((await check(guards, { actor: "ann", doc: "team", docId: "1", op: { op: "replace", path: "/teams/open", value: "yes" }, rowOf: row })).ok).toBe(false);
+});
+
+test("rowsInPostgres reads a row as the schema names its table, by `pool.query`; an entity the schema lacks, or a row not there, is none", async () => {
+  const asked: unknown[][] = [];
+  const pool = { query: async (sql: string, params: unknown[]) => (asked.push([sql, ...params]), { rows: params[0] === "1" ? [{ id: 1, paid: false }] : [] }) };
+  const rowOf = rowsInPostgres(pool, { tables: { invoices: { name: "cafe_invoices" } } });
+  expect(await rowOf("invoices", "1")).toEqual({ id: 1, paid: false });
+  expect(await rowOf("invoices", "2")).toBeNull();
+  expect(await rowOf("nothing", "1")).toBeNull();
+  expect(asked).toEqual([['SELECT * FROM "cafe_invoices" WHERE id = $1', "1"], ['SELECT * FROM "cafe_invoices" WHERE id = $1', "2"]]);
 });

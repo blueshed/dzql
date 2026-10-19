@@ -170,13 +170,13 @@ type On = { on(action: string, handler: (msg: any, client: any, respond: (r: any
  *   undefined is someone not signed in, answered 401.
  * - `rowOf` reads a row as the store holds it, for `exists` and `requires`.
  */
-export function guardWrites(ws: On, guards: Guards, opts: { actorOf: (identity: unknown, client: unknown) => string | undefined; rowOf: RowOf }): void {
+export function guardWrites(ws: On, guards: Guards, opts: { actorOf: (identity: unknown, client: unknown) => string | undefined | Promise<string | undefined>; rowOf: RowOf }): void {
   /** The guards' answer to a write, or none when they let it by. */
   const refusal = async (msg: any, client: any): Promise<{ error: { code: number; message: string } } | undefined> => {
     const [doc = "", docId] = String(msg?.doc ?? "").split(":");
     if (!guards.documents.includes(doc) || !Array.isArray(msg.ops)) return; // not the model's, or the store's 400
     if (client?.data?.local && client.data.identity === undefined) return; // the server's own write (dzql's serverWrite), no person's
-    const actor = opts.actorOf(client?.data?.identity, client);
+    const actor = await opts.actorOf(client?.data?.identity, client);
     if (actor === undefined) return { error: { code: 401, message: `Sign in to write to ${msg.doc}` } };
     for (const op of msg.ops as Op[]) {
       const verdict = await check(guards, { actor, doc, docId, op, rowOf: opts.rowOf });
@@ -203,6 +203,18 @@ export function rowsIn(db: { query(sql: string): { get(...params: unknown[]): un
     const row = db.query(`SELECT * FROM "${t.name}" WHERE id = ?`).get(id) as Row | null;
     if (row) for (const [name, c] of Object.entries(t.columns)) if (c.type === "boolean" && row[name] != null) row[name] = !!row[name];
     return row;
+  };
+}
+
+/**
+ * A `rowOf` for a Postgres store (a server, or PGlite in this process): the row as the schema says
+ * it, read with `pool.query`. Postgres keeps booleans as booleans, so nothing is read again.
+ */
+export function rowsInPostgres(pool: { query(sql: string, params: unknown[]): Promise<{ rows: Row[] }> }, schema: { tables: Record<string, { name: string }> }): RowOf {
+  return async (entity, id) => {
+    const t = schema.tables[entity];
+    if (!t) return null;
+    return (await pool.query(`SELECT * FROM "${t.name}" WHERE id = $1`, [id])).rows[0] ?? null;
   };
 }
 

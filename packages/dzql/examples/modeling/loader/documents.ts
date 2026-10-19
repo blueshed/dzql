@@ -130,8 +130,11 @@ export function documentsIn(src: string, session: string | null, imported: Recor
       ? raw.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean).flatMap((s) => (s.startsWith("...") ? lists.get(s.slice(3)) ?? [] : [s.replace(/"/g, "")]))
       : lists.get(raw) ?? [];
   const documents: ReturnType<typeof documentsIn> = [];
-  src.split(/registerDocs\(/).forEach((call, i) => {
-    const kind = i === 0 ? "defined" : /ledger: true/.test(call.split("registerMemory(")[0]!) ? "stored" : "stored, no ledger";
+  // a registration: delta's `registerDocs(...)`, or an app's store collecting them (`register(docs)`,
+  // on the ledger unless it says `ledger: false`, as the cafe's store.ts does for Postgres)
+  src.split(/(?<![\w.])(registerDocs|register)\(/).reduce<string[][]>((calls, part, i) => (i % 2 ? calls.push([part]) : i ? calls.at(-1)!.push(part) : calls.push(["", part]), calls), []).forEach(([by, call], i) => {
+    const kept = by === "register" ? !/ledger: false/.test(call!.split("registerMemory(")[0]!) : /ledger: true/.test(call!.split("registerMemory(")[0]!);
+    const kind = i === 0 ? "defined" : kept ? "stored" : "stored, no ledger";
     // a document scoped by a column (`scope: { room: ":room" }`) is listed like any other; the one
     // scoped by `cookie` is how a cookie finds its session (dzql/rendering/sessions), the kernel's, not the app's
     // the call's own definitions, and any it passes from the model's types (`docs`, `docs.filter(...)`)

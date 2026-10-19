@@ -48,6 +48,7 @@ export { migrate, migrationStatus, renameColumn, dropColumn, renameTable, fromFo
 export type { Migration, MigrateOptions, MigrateResult, MigrationStatus } from "./migrate";
 
 export { createDocListener, defineCustomDoc } from "./listener";
+export { storyStore } from "./story-store";
 export type { CustomDocDef } from "./listener";
 
 export { docTypeFromDef } from "./registry";

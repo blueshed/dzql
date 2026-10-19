@@ -1,5 +1,5 @@
 import { db } from "../rendering/db";
-import type { Example } from "../rendering/example";
+import type { Example, StoryStore } from "../rendering/example";
 import { cookieNameFor } from "../rendering/scope";
 import { assemble, type Assembled } from "../rendering/resources";
 import { createServer } from "../rendering/server";
@@ -59,7 +59,7 @@ type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: s
 type Snapshot = Map<string, string>;
 
 
-type LedgerRow = { id: number; doc: string; undoable: number; ops: string; inverse: string };
+type LedgerRow = Awaited<ReturnType<StoryStore["since"]>>[number];
 
 /**
  * The ledger the stories read, to know whether a story has an undo to check and whether a refusal
@@ -67,11 +67,16 @@ type LedgerRow = { id: number; doc: string; undoable: number; ops: string; inver
  * undo's or a redo's -- a story's write starts. An app with no document on the ledger yet (a new
  * one, its stories told before anything is built) has none: nothing moves it.
  */
-function ledgerOf(): { max(): number; since(id: number): LedgerRow[] } {
+function sqliteStore(): StoryStore {
   const kept = db.query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'delta_ledger'").get() !== null;
   const max = kept ? db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM delta_ledger") : undefined;
-  const since = kept ? db.query<LedgerRow, [number]>("SELECT id, doc, undoable, ops, inverse FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id") : undefined;
-  return { max: () => max?.get()?.id ?? 0, since: (id) => since?.all(id) ?? [] };
+  const since = kept ? db.query<{ id: number; doc: string; undoable: number; ops: string; inverse: string }, [number]>("SELECT id, doc, undoable, ops, inverse FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id") : undefined;
+  return {
+    begin: async () => void db.exec("BEGIN"),
+    end: async () => void db.exec("ROLLBACK"),
+    last: async () => max?.get()?.id ?? 0,
+    since: async (id) => (since?.all(id) ?? []).map((e) => ({ id: e.id, doc: e.doc, undoable: e.undoable !== 0, ops: JSON.parse(e.ops) as PatchOp[], inverse: JSON.parse(e.inverse) as PatchOp[] })),
+  };
 }
 
 /** Is a document stored, in delta's tables (no `kind`), which `open_at` reads and the wire writes? */
@@ -654,7 +659,8 @@ type Run = {
   page: Assembled["page"];
   documents: Documents;
   byDocType: Map<string, Resource>;
-  ledger: ReturnType<typeof ledgerOf>;
+  /** The app's store, as the stories begin and end each story on it and read its ledger: dzql's SQLite unless the app says (`Example.store`). */
+  store: StoryStore;
   /** The refusals a control of the page's own sends, when told: tried by hand. */
   tryable: Set<Story>;
   /** Where what the kernel reports failing goes: the story being told's failures. */
@@ -1065,7 +1071,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
   const outcome: Outcome = { name: story.name, failures };
   r.failing = failures;
   r.telling = story.name;
-  db.exec("BEGIN");
+  await r.store.begin();
   const cast: Member[] = [];
   try {
     try {
@@ -1085,7 +1091,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
      */
     const step = async <T>(phase: Trace["phase"], write: Write | Post | undefined, cast: Member[], act: (from: Map<Member, number>) => Promise<T>): Promise<{ from: Map<Member, number>; done: T }> => {
       const from = mark(r, cast);
-      const seen = r.observe && { from: new Map(from), entry: r.ledger.max(), holds: inFront(r, cast) };
+      const seen = r.observe && { from: new Map(from), entry: await r.store.last(), holds: inFront(r, cast) };
       const done = await act(from);
       if (seen)
         r.observe!({
@@ -1095,7 +1101,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
           write,
           heard: cast.map((m) => ({ member: m.name, messages: sentSince(r, m, seen.from) })),
           holds: seen.holds,
-          ledger: r.ledger.since(seen.entry).map(({ doc, undoable, ops, inverse }) => ({ doc, undoable, ops: JSON.parse(ops) as PatchOp[], inverse: JSON.parse(inverse) as PatchOp[] })),
+          ledger: (await r.store.since(seen.entry)).map(({ doc, undoable, ops, inverse }) => ({ doc, undoable: undoable ? 1 : 0, ops, inverse })),
         });
       spent(r, story, outcome, phase, cast, from);
       return { from, done };
@@ -1108,7 +1114,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
     if (story.cannot !== undefined) {
       if (story.from !== undefined) await put(r, cast, who, story.from, failures);
       const before = await snapshot(r, cast, who);
-      const ledgerBefore = r.ledger.max();
+      const ledgerBefore = await r.store.last();
       const tried = story.cannot;
       let reason: string | undefined;
       let onPage = true; // where the refusal is told: on their page, or, for a route's 4xx, the page the browser shows in its place
@@ -1142,7 +1148,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
       }
       compare(r, before, after, cast, "refused, but", failures);
       await stale(r, cast, "after the refusal", failures);
-      if (r.ledger.max() !== ledgerBefore) failures.push("refused, but the ledger moved");
+      if ((await r.store.last()) !== ledgerBefore) failures.push("refused, but the ledger moved");
       return outcome;
     }
 
@@ -1185,7 +1191,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
     }
 
     const before = await snapshot(r, cast, who);
-    const ledgerBefore = r.ledger.max();
+    const ledgerBefore = await r.store.last();
     const stood = placeOf(who.page);
     let { from, done: unlanded } = isPost(does)
       ? await step("does", does, cast, async (from) => {
@@ -1207,7 +1213,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
     const after = await snapshot(r, cast);
     const wrote = await checkTold(r, who, "after the story", undefined, failures);
     const quietAfter = new Map(after).set(who.name, await unsaid(r, who.sessionId)); // what the undo and the redo are compared with
-    const entries = r.ledger.since(ledgerBefore);
+    const entries = await r.store.since(ledgerBefore);
     await stale(r, cast, "after the story", failures);
 
     noticed(r, before, quietAfter, cast, seen, failures, naming(r, "the write was to", changedSince(r, cast, from, entries))); // what the author was told is checked on its own (above); an `untold` member is further told of nothing
@@ -1220,7 +1226,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
       return outcome;
     }
 
-    const neverUndone = entries.every((e) => e.undoable === 0);
+    const neverUndone = entries.every((e) => !e.undoable);
     ({ from } = await sent("undo", UNDO, cast));
     const undid = await checkTold(r, who, "after undo", story.undone, failures, { line: wrote, what: "the write" }); // where the undo left them, before they are put back
     if (moved) await send(r, cast, who, r.stories.goTo!(stood!));
@@ -1259,7 +1265,7 @@ async function gather(r: Run, cast: Member[]): Promise<void> {
 async function disband(r: Run, cast: Member[]): Promise<void> {
   await Promise.all(cast.map((m) => closeTab(r, m)));
   await r.server.idle(); // every close handled, and what it set going
-  db.exec("ROLLBACK");
+  await r.store.end();
   await r.documents.release(new Set());
 }
 
@@ -1309,7 +1315,7 @@ async function waysFor(r: Run, state: State, name: string, start: string | undef
 async function walk(r: Run, story: Story, wanted: Map<string, Set<string>>, aside: boolean): Promise<{ state: State; ways: Map<string, Map<string, Step[]>> } | undefined> {
   const state: State = { pages: new Map(), starts: new Map() };
   const walking: Member[] = [];
-  db.exec("BEGIN");
+  await r.store.begin();
   try {
     await gather(r, walking);
     if ((await premise(r, walking, story)).length > 0) return undefined;
@@ -1405,7 +1411,7 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
   tally.stories++;
   const failures: string[] = [];
   const by = (what: string): string[] => (failures.push(`by hand, ${what}`), failures);
-  db.exec("BEGIN");
+  await r.store.begin();
   const cast: Member[] = [];
   let opened = false;
   try {
@@ -1555,7 +1561,7 @@ async function hiddenVerbs(r: Run): Promise<Warning[]> {
     const writes = [...anyone, ...Object.entries(r.stories.cast).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...r.stories.stories.flatMap((s) => [...Object.entries(s.premise ?? {}).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...(whose(s.as, name) ? [writeOf(s)] : [])])];
     return [...writes.flatMap((w) => (w && sameDoc(w.doc, doc) ? w.ops : [])), ...[...r.met].flatMap(([n, { offered }]) => (whose(n, name) ? [...offered.values()].filter((c) => sameDoc(c.doc, doc)) : []))];
   };
-  db.exec("BEGIN");
+  await r.store.begin();
   const cast: Member[] = [];
   try {
     await gather(r, cast);
@@ -1619,7 +1625,7 @@ export async function run(
     page,
     documents,
     byDocType,
-    ledger: ledgerOf(),
+    store: example.store ?? sqliteStore(),
     tryable: new Set(),
     warned: new Map(),
     met: new Map(),

@@ -1,13 +1,12 @@
-import { registerDocs } from "@blueshed/delta/sqlite";
 import { splitPath } from "@blueshed/delta/core";
 import { read as readDoc } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { refuse } from "dzql/rendering/refusal";
 import { docs, type ItemsRow, type MenuDoc } from "../../model/types";
-import { db, delta, schema } from "../../store";
+import { register } from "../../store";
 
 // The menu: every dish, the same for the cook and every customer. A list (`menu:`), on the ledger.
-registerDocs(delta.server, db, schema, docs.filter((d) => d.prefix === "menu:"), [], { ledger: true });
+register(docs.filter((d) => d.prefix === "menu:"));
 
 export type Item = { id: string; name: string; price: number };
 const itemOf = (i: ItemsRow): Item => ({ id: String(i.id), name: i.name ?? "", price: i.price ?? 0 });
