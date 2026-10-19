@@ -235,3 +235,24 @@ export function writeMigration(changes: Change[], byHand: string[] = [], from = 
     "",
   ].join("\n");
 }
+
+/**
+ * A folder's migrations as one module, `index.ts`: each imported by name, in order, so a bundle
+ * carries them (a built app has no folder to read: `fromFolder` reads files beside the source).
+ * `delta migrations make` writes it beside every migration it writes: `migrate(db, migrations, ...)`.
+ */
+export function writeIndex(files: string[]): string {
+  const ids = files.map((f) => f.replace(/\.\w+$/, "")).toSorted();
+  const name = (id: string) => `m${id.replace(/\W+/g, "_")}`;
+  return [
+    "// Made by `delta migrations make`: this folder's migrations, in order, as an import a bundle carries",
+    "// (`await migrate(db, migrations, ...)`). Never edited by hand: `make` writes it again.",
+    ...ids.map((id) => `import * as ${name(id)} from "./${id}";`),
+    "",
+    "export const migrations = [",
+    ...ids.map((id) => `  { id: ${JSON.stringify(id)}, ...${name(id)} },`),
+    "];",
+    "",
+  ].join("\n");
+}
+

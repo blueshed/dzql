@@ -57,7 +57,8 @@ test("the README's server has HMR in development and none in production", async 
 test("bun build --compile makes the README's server one binary", async () => {
   const dir = mkdtempSync(`${tmpdir()}/railroad-compile-`);
   try {
-    const built = Bun.spawnSync([process.execPath, "build", "--compile", "server.ts", "--outfile", `${dir}/app`], { cwd: readmeDir });
+    // built from its own temporary folder: a run cut off leaves its .bun-build files there, not in the fixture
+    const built = Bun.spawnSync([process.execPath, "build", "--compile", `${readmeDir}/server.ts`, "--outfile", `${dir}/app`], { cwd: dir });
     expect(built.exitCode).toBe(0);
     // Run from elsewhere, so nothing comes from the source tree.
     const script = await withServer([`${dir}/app`], { NODE_ENV: "production" }, dir, async (url) => {
@@ -87,3 +88,9 @@ test("each module loads with no DOM, and signals run there", () => {
   expect(run.stderr.toString()).toBe("");
   expect(run.stdout.toString().trim()).toBe("seen 4");
 });
+
+test("the README names the Bun floor package.json's engines says", async () => {
+  const floor = (await Bun.file(`${import.meta.dir}/../package.json`).json()).engines.bun.replace(/^>=/, "");
+  expect(await Bun.file(`${import.meta.dir}/../README.md`).text()).toContain(`You need Bun ${floor} or later.`);
+});
+

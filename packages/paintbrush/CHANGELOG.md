@@ -29,6 +29,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **A built app runs its migrations** (19 October): each resource imports its history from
+  `migrations/index.ts` (written by `delta migrations make`), which the bundle carries; build.md's
+  test builds an app with a history and starts it from `dist/`. `icon.tsx` is gone: the app draws its
+  marks through the bento. The README's client routes are the bento's `here` and `go`. The evolve
+  references say a document named by another moves with it, and a document is rows on Postgres.
 - **Its siblings as released on 2026-10-19**: `@blueshed/railroad` `^0.17.0`, `@blueshed/delta` `^1.3.0`, `dzql` `^0.14.0` (create-blueshed 0.4.0 packs it).
 
 - **Breaking: the page is a bento box, in the plain look** (Peter, 19 October: "the colors and

@@ -1,6 +1,6 @@
 /**
- * The examples, run as their READMEs say. (shared-state: tests/recipe.test.ts;
- * the Postgres ones are dzql's.)
+ * The examples, run as their READMEs say. (The recipe, the skill's runnable app:
+ * tests/recipe.test.ts; the Postgres ones are dzql's.)
  *
  *   kanban      -- two browsers on one board: a card one clicks moves on both;
  *                  and run.ts, the headless story, runs through

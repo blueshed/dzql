@@ -115,7 +115,7 @@ function SvgPage() {
   const cx = signal(50);
   const move = () => cx.update((n) => n + 10);
   // An <a> in an <svg> is made as HTML and adopted as its when() branch places it: its reactive
-  // href must live as long as that branch, through a new truthy value, and no longer (todo #9).
+  // href must live as long as that branch, through a new truthy value, and no longer.
   const link = signal(0);
   const href = signal(1);
   return (

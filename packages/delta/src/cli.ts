@@ -275,7 +275,7 @@ async function cmdMake(module: string | undefined, values: Record<string, unknow
   const name = ((values.name as string | undefined) ?? "changes").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "changes";
   const schema = (await import(path))[(values.export as string | undefined) ?? "schema"];
   if (!schema?.tables) usageError(`${module} exports no schema (${(values.export as string | undefined) ?? "schema"}): defineSchema(...)`);
-  const { diff, stateOf, writeMigration } = await import("./server/changes");
+  const { diff, stateOf, writeIndex, writeMigration } = await import("./server/changes");
   const { fromFolder } = await import("./server/migrate");
   const { mkdirSync, readdirSync, writeFileSync } = await import("node:fs");
   mkdirSync(dir, { recursive: true });
@@ -289,6 +289,8 @@ async function cmdMake(module: string | undefined, values: Record<string, unknow
   const next = 1 + Math.max(0, ...readdirSync(dir).map((f) => Number(/^(\d+)-/.exec(f)?.[1] ?? 0)));
   const file = join(dir, `${String(next).padStart(3, "0")}-${name}.ts`);
   writeFileSync(file, writeMigration(changes, byHand, process.env.DELTA_MIGRATIONS_FROM ?? "@blueshed/delta/migrations"));
+  // and the folder as one import, which a bundle carries (a built app has no folder to read)
+  writeFileSync(join(dir, "index.ts"), writeIndex(readdirSync(dir).filter((f) => /^\d+-.*\.(ts|js|mjs)$/.test(f) && !/\.(d|test)\.\w+$/.test(f))));
   if (json) return print({ made: file, changes: changes.length, byHand });
   process.stdout.write(`made ${file}: ${changes.length} change${changes.length === 1 ? "" : "s"}\n`);
   for (const b of byHand) process.stdout.write(`by hand: ${b}\n`);

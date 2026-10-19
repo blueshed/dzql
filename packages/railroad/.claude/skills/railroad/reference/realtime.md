@@ -73,26 +73,6 @@ await run(() => serve({ ws, routes: { "/": home } }));
 
 ## dzql: an applet in a page the server draws
 
-```tsx
-// dzql's examples/ticker/applets/, as an app imports it
-import { registerApplet } from "dzql/rendering/applets";
-import { applet } from "dzql/rendering/applet";
-
-type ClockProps = { tz: string };
-
-const picker = applet<ClockProps>((props, ctx, el) => {
-  const zones = [...el.querySelectorAll("option")].map((o) => o.value); // what the server drew
-  return (
-    <select onchange={(e) => ctx.send("clock", [{ op: "replace", path: "/tz", value: (e.target as HTMLSelectElement).value }])}>
-      {zones.map((tz) => <option value={tz} selected={props.map((p) => p.tz === tz)}>{tz}</option>)}
-    </select>
-  );
-});
-
-registerApplet("zone-picker", picker);
-```
-
-- dzql's server (`dzql/rendering`) draws the page; its client morphs it, never inside a `[data-applet]`. An applet draws that inside with `mount()`, disposed when eta removes the element.
-- Props are a signal, set by new `data-props` and by the document's patches through the optional `reduce(props, ops)`.
-- Read what the server drew inside `el` first: `render`'s result replaces it. Never bind `el`'s own attributes.
-- Write with `ctx.send(doc, ops)`, never by setting props. The rest is dzql's `dzql-app` skill.
+On a page dzql's server draws, the one piece with state of its own is an applet, and railroad can
+draw it: `applet(render, reduce?)` from `dzql/rendering/applet`, its props a signal. How, with the
+ticker's example, is dzql's `dzql-app` skill (`reference/applets.md`).

@@ -250,7 +250,8 @@ export async function statusOf<Tx>(store: Store<Tx>, migrations: Migration<Tx>[]
  * `001-…`, `002-…`.
  */
 export async function fromFolder<Tx = any>(dir: string): Promise<Migration<Tx>[]> {
-  const files = readdirSync(dir).filter((f) => /\.(ts|js|mjs)$/.test(f) && !/\.(d|test)\.\w+$/.test(f)).toSorted();
+  // index.ts is the folder as one import (`writeIndex`), not a migration of its own
+  const files = readdirSync(dir).filter((f) => /\.(ts|js|mjs)$/.test(f) && !/\.(d|test)\.\w+$/.test(f) && !/^index\.\w+$/.test(f)).toSorted();
   const out: Migration<Tx>[] = [];
   for (const file of files) {
     const mod = await import(resolve(join(dir, file)));

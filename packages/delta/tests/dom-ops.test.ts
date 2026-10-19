@@ -327,7 +327,7 @@ describe("applyOpsToCollection", () => {
 //
 // It used to default to a fresh `new Map()` per call, which silently broke
 // every 4-argument caller — including the skill's recipe (reference/recipe.md),
-// README.md and examples/shared-state. With an empty map each time, `remove`
+// README.md and the old shared-state example. With an empty map each time, `remove`
 // found no node to detach, and the reconnect root-replace missed every row and
 // re-created + re-appended the whole collection. A chat log duplicated itself
 // on every reconnect. These tests drive the 4-arg form the docs actually show.

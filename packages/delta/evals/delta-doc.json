@@ -1,6 +1,8 @@
 [
   {
-    "skills": ["delta-doc"],
+    "skills": [
+      "delta-doc"
+    ],
     "query": "Build a shared shopping list in a Bun app with @blueshed/delta: lists, each with items (text, done). Everyone with a list open sees the others' changes at once. Keep the data in a JSON file to start with. Then show the change that moves the same app to SQLite, keeping the browser code exactly as it is and carrying the existing lists across.",
     "files": [],
     "expected_behavior": [
@@ -11,11 +13,13 @@
       "The client uses connectWs and openDoc from @blueshed/delta/client and installs @blueshed/railroad beside delta",
       "New items are sent as add /items/- with the server naming the id; done is changed with replace /items/<id>/done",
       "No optimistic update and no fetch or reload: the page changes only through onOps or doc.data, and one keyed render path (applyOpsToCollection or railroad's list()) serves the first paint and every change",
-      "The server is Bun.serve with routes { [ws.path]: ws.upgrade }, websocket: ws.websocket, then ws.setServer(server)"
+      "The server is delta's one server: serve({ ws, routes }) from @blueshed/delta/serve (run() when it is the entry), never a hand-written Bun.serve with ws.setServer"
     ]
   },
   {
-    "skills": ["delta-doc"],
+    "skills": [
+      "delta-doc"
+    ],
     "query": "Our Bun app keeps a shared board in delta on SQLite (registerDocs with a board: document). Add Undo and Redo buttons to each browser. Two people edit the same board at once: my Undo must take back only my own last change, never someone else's, and must not overwrite an edit someone made after mine.",
     "files": [],
     "expected_behavior": [
@@ -27,7 +31,9 @@
     ]
   },
   {
-    "skills": ["delta-doc"],
+    "skills": [
+      "delta-doc"
+    ],
     "query": "With delta on SQLite: each venue has rooms, and each room has bookings. Opening venue:<n> should show the venue, its rooms and their bookings. A venue does not exist until someone first adds a room to it, and opening a new venue should show an empty one, not an error. Write the schema, the document, and client code that adds a room and then a booking in that room.",
     "files": [],
     "expected_behavior": [

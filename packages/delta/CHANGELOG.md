@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`delta migrations make` also writes `migrations/index.ts`** (19 October): the folder as one
+  import (`writeIndex` in `./migrations`), which a bundle carries, so a built app runs its history:
+  `migrate(db, migrations, ...)` with `import { migrations } from "./migrations"`. `fromFolder` skips
+  it. The shared-state example, which repeated the recipe, is gone: the recipe is the runnable app.
+  The server's header, an eval and CLAUDE.md's map no longer teach a `Bun.serve` of the app's own.
 - **The command is `src/cli.ts`** (19 October), so `src/` is everything that ships: the monorepo's
   one shape for a library (`docs/plan.md`). `bunx @blueshed/delta` and the `delta` bin are the
   same; a script that ran `node_modules/@blueshed/delta/cli.ts` by path runs the bin instead

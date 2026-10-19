@@ -44,12 +44,11 @@ src/
   index.html           the page; Bun bundles what it references, no build step in development
   app.tsx              the socket every document rides, and the page: a bento box of each resource's cell, its drawers over it
   styles.css           the design, with its rules at the top: the bento's plain look (dzql's bento-plain.css), then the page
-  resources/           a folder per resource (<name>-api.ts, <name>.ts, <name>-view.tsx), bento.tsx, toast.ts, icon.tsx
+  resources/           a folder per resource (<name>-api.ts, <name>.ts, <name>-view.tsx), bento.tsx, toast.ts
 tests/
   site.test.ts         the status, the page's shell and the entry point
   message.test.ts      the message document: refused changes, and in the browser, saving and following
   browser.ts           railroad's browser() (@blueshed/railroad/webview, whose header has the Bun.WebView rules) and refuseWrites
-  icon-page.*          a small page with both kinds of <Icon>, for site.test.ts
   bento.test.ts        the bento drawn by railroad is the HTML dzql's bento.ts draws (bento-page.*), and what it does when pressed
 .railway/railway.ts    the deploy; its rules are at its top
 ```
@@ -63,7 +62,7 @@ tests/
 - **The page is railroad, not React.** Read the `railroad` skill before writing JSX: `onclick` and `class`, never `.get()` in JSX children, `list()` for an array that changes length.
 - **The page is the bento's.** Draw it with `src/resources/bento.tsx` (its header says how): a page is a box of cells (`boxPage`, `cell`), a thing is changed in a drawer and made or removed in a modal (`layers`), a list is `rows` of `row`s. Where you are is the URL (`here`, `go`), so Back closes a drawer and a link opens one. It draws the same HTML as dzql's `bento.ts`, the page a server draws, and `tests/bento.test.ts` holds it so: change one, change the other. Its look is `bento-plain.css`'s tokens; say the app's own after the import in `styles.css`, never a rule over the bento's.
 - **Documents are delta's.** Read the `delta-doc` skill before changing one. A document is never set in the page: `send` the change, and it comes back to every window holding it, this one included, which draws it.
-- **Icons are lucide.** Import the icon by name and draw it with `<Icon>`: `<Icon icon={Save} />` beside a label, `<Icon icon={X} label="Close" />` on its own. Never another icon set or inline SVG.
+- **Icons are lucide, drawn by the bento.** Give a control its mark by name (`icon:`, as the bento's own marks are), or draw one alone with the bento's `mark(icon, size)`; a mark beside its label is hidden from a screen reader. Never another icon set or inline SVG.
 - **Tests.** `bun test` fails below 100% coverage. Never lower the threshold; write the missing test. The client isn't in the coverage table, so the browser tests are what cover it. `bun run typecheck` is Bun's own `bun check` (TypeScript 7) and checks everything.
 - **The server is delta's** (`@blueshed/delta/serve`). `src/routes.ts` gives it the routes and the documents; `serve` puts them on Bun.serve with `/health` and a 404, and its `stop()` stops serving, then closes what a resource opened (one that opens a database pushes its close onto `closing`). Run as the entry, `run` keeps `.server.pid` (`bun run stop` is `delta stop`), stops on SIGTERM and SIGINT, and closes before `bun --hot` runs it again. Tests read the `Listening on <url>` line.
 - **Assets.** Images (and a favicon) go in `src/` beside the HTML, referenced by a path relative to it, never `/static/...`.

@@ -39,6 +39,21 @@ export function up(db: Database) {
 }
 ```
 
+`make` writes `index.ts` again, with the new migration in it:
+
+```ts
+// src/resources/order/migrations/index.ts
+// Made by `delta migrations make`: this folder's migrations, in order, as an import a bundle carries
+// (`await migrate(db, migrations, ...)`). Never edited by hand: `make` writes it again.
+import * as m001_order from "./001-order";
+import * as m002_quantity from "./002-quantity";
+
+export const migrations = [
+  { id: "001-order", ...m001_order },
+  { id: "002-quantity", ...m002_quantity },
+];
+```
+
 A row an `up` adds takes its id from `nextId`, the collection's serial, never from `_delta_sequences`: `export async function up(db: Database, { nextId }: MigrationTools) { const id = await nextId("items"); db.run("INSERT INTO items (id, name, price, valid_from) VALUES (?, 'Scone', 2, datetime('now'))", [id]); }`. Rows that become parts of another (the toast and tea that become a breakfast's) move under it in an `up`: each inserted as a part with the whole's id as its parent key, and removed from where it was, so nothing can name it alone; a line that named one names the whole. Find a row by its id, never its name.
 
 Its story:

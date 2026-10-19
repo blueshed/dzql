@@ -4,16 +4,12 @@
  * (so `@blueshed/delta/...` resolves to this source, as from node_modules).
  * The server runs on a free port; each browser is a Bun process with
  * happy-dom for the page and Bun's own WebSocket. One types a message and
- * submits the form, and the other's `#log` shows it. And
- * `examples/shared-state/server.ts`, the recipe's full version, serves its
- * page and passes a message from one socket to another.
+ * submits the form, and the other's `#log` shows it.
  */
 import { expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { connectWs, openDoc, type DeltaOp } from "../src/client/client";
-import { runExample, until, type Proc } from "./helpers/examples";
+import { until, type Proc } from "./helpers/examples";
 import { waitFor } from "../src/testing";
 
 const skill = await Bun.file(new URL("../.claude/skills/delta-doc/reference/recipe.md", import.meta.url)).text();
@@ -81,35 +77,3 @@ test("the recipe (reference/recipe.md), as written: one browser sends a message,
     rmSync(dir, { recursive: true, force: true });
   }
 }, 20_000);
-
-test("bun examples/shared-state/server.ts serves its page, and passes a message from one socket to another", async () => {
-  const cwd = mkdtempSync(join(tmpdir(), "delta-shared-state-"));   // its chat-room.json lands here, not in the repo
-  const run = runExample("shared-state/server.ts", {}, cwd);
-  let a: ReturnType<typeof connectWs> | undefined;
-  let b: ReturnType<typeof connectWs> | undefined;
-  try {
-    const [, port] = await until(run, /localhost:(\d+)/);
-    const page = await fetch(`http://localhost:${port}/`);
-    expect(page.status).toBe(200);
-    const html = await page.text();
-    expect(html).toContain('id="log"');
-    expect(html).toMatch(/<script[^>]+src=/);
-
-    const url = `ws://localhost:${port}/ws`;
-    [a, b] = [connectWs(url), connectWs(url)];
-    const [mine, theirs] = [openDoc<any>("room:1", a), openDoc<any>("room:1", b)];
-    await Promise.all([mine.ready, theirs.ready]);
-    const heard: DeltaOp[][] = [];
-    theirs.onOps((ops) => heard.push(ops));
-    await mine.send([{ op: "add", path: "/messages/-", value: { author: "ada", text: "hi", at: "now" } }]);
-    for (let i = 0; i < 100 && heard.length === 0; i++) await Bun.sleep(10);
-    // the server names the message by number, in the path and the row
-    expect(heard[0]).toEqual([{ op: "add", path: "/messages/1", value: { id: 1, rooms_id: 1, author: "ada", text: "hi", at: "now" } }]);
-  } finally {
-    a?.close();
-    b?.close();
-    run.kill();
-    await run.exited;
-    rmSync(cwd, { recursive: true, force: true });
-  }
-});

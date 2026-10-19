@@ -19,7 +19,7 @@
  */
 import { computed, effect, list, navigate, signal, Signal, untrack, when, type ReadonlySignal } from "@blueshed/railroad";
 import { createElement as lucide, ChevronRight, Eye, EyeOff, Pencil, Plus, Redo2, Search, Trash2, Undo2, X } from "lucide";
-import { address, parseAddress, type Address } from "dzql/rendering/bento";
+import { address, CHOSEN, COLUMNS, parseAddress, type Address, type FieldKind } from "dzql/rendering/bento";
 import { grid, slug, type Grid } from "dzql/rendering/grid";
 
 /** Where you are: a path, and the one thing open over it (`what`, and `which` one). */
@@ -157,7 +157,7 @@ export interface Field {
   value?: string;
 }
 
-export type FieldKind = "text" | "textarea" | "number" | "date" | "email" | "select" | "checkbox";
+export type { FieldKind }; // the server's bento says them: one list of kinds, one of those that write as chosen, one tray width
 
 export interface FieldOptions {
   /** The document and the path it edits, as the server's field names them: its id and its name. */
@@ -219,7 +219,6 @@ export const prop = (name: string, value: Node | string): Node => (
   </div>
 );
 
-const CHOSEN = new Set<FieldKind>(["date", "select", "checkbox"]);
 
 /** A field that edits one value in place: written on its trigger, its label tied to it, read where it may not be changed. */
 export function field(o: FieldOptions): Node {
@@ -635,5 +634,3 @@ export function bento(o: { undo?: Act; redo?: Act; leave?: { text: string; icon:
   return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, pin, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal };
 }
 
-/** The tray is three across from 820px and one on a phone (bento.css picks); a box computes both. */
-const COLUMNS = 3;

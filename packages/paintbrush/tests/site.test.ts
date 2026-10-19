@@ -4,7 +4,6 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import { browser } from "./browser";
-import iconPage from "./icon-page.html";
 import { stories } from "../stories";
 
 // Routes are tested with fetch, the page in a real browser with Bun.WebView, entry points by
@@ -100,24 +99,6 @@ test("the Save button has its lucide icon, hidden from screen readers", async ()
   await waitFor(`document.querySelector(".drawer .tool.add svg.icon")`);
   expect(await view.evaluate<string | null>(`document.querySelector(".drawer .tool.add svg").getAttribute("aria-hidden")`)).toBe("true");
   expect(await view.evaluate<string>(`document.querySelector(".drawer .tool.add").textContent.trim()`)).toBe("Save");
-});
-
-test("an Icon with a label is read out as an image, and one without is hidden", async () => {
-  const fixture = Bun.serve({ port: 0, development: false, routes: { "/": iconPage } });
-  try {
-    await view.navigate(fixture.url.href);
-    await waitFor(`document.querySelector("#alone svg.icon")`);
-    const alone = await view.evaluate<[string | null, string | null, string | null]>(
-      `(() => { const svg = document.querySelector("#alone svg"); return [svg.getAttribute("role"), svg.getAttribute("aria-label"), svg.getAttribute("aria-hidden")]; })()`,
-    );
-    expect(alone).toEqual(["img", "Close", null]);
-    const beside = await view.evaluate<[string | null, string | null]>(
-      `(() => { const svg = document.querySelector("#beside svg"); return [svg.getAttribute("role"), svg.getAttribute("aria-hidden")]; })()`,
-    );
-    expect(beside).toEqual([null, "true"]);
-  } finally {
-    await fixture.stop(true);
-  }
 });
 
 test("the status line is shown", async () => {

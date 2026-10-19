@@ -157,7 +157,7 @@ export interface Field {
 }
 
 /** The tray is three across from 820px and one on a phone (bento.css picks); a box computes both. */
-const COLUMNS = 3;
+export const COLUMNS = 3;
 
 /** Whether find's word hits `text`; no word, or a blank one, hits everything. */
 export const matches = (text: string, word: string | undefined): boolean => !word?.trim() || text.toLowerCase().includes(word.trim().toLowerCase());
@@ -202,7 +202,7 @@ export interface FieldOptions {
 }
 
 /** The kinds that write as they are chosen, not as they are left. */
-const CHOSEN = new Set<FieldKind>(["date", "select", "checkbox"]);
+export const CHOSEN = new Set<FieldKind>(["date", "select", "checkbox"]);
 
 /**
  * A field that edits one value of a document in place, in one call: its own form that writes on

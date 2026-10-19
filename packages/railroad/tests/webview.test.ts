@@ -34,9 +34,9 @@ async function waitFor<T>(
   pred: (v: T) => boolean,
   ms = 10000,
 ): Promise<T> {
-  const start = Date.now();
+  const end = performance.now() + ms; // not Date.now: a test may fix that clock (the kit's rule, src/webview.ts)
   let last: T;
-  while (Date.now() - start < ms) {
+  while (performance.now() < end) {
     last = await fn();
     if (pred(last)) return last;
     await Bun.sleep(50);
@@ -303,7 +303,7 @@ describe.skipIf(noBrowser)("Bun.WebView — railroad fixture app", () => {
   });
 
   test("an <a> adopted into <svg> keeps its reactive href while its when() branch stands", async () => {
-    // Pinned under happy-dom too (jsx.test.tsx); here a real browser adopts it (todo #9).
+    // Pinned under happy-dom too (jsx.test.tsx); here a real browser adopts it.
     await using view = new Bun.WebView({ width: 800, height: 600 });
     await view.navigate(url);
     await waitFor(

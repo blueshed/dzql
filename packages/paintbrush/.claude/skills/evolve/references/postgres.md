@@ -17,7 +17,8 @@ import type { WsServer } from "@blueshed/delta/server";
 import { exportTables as jsonRows, type Snapshot } from "@blueshed/delta/json";
 import { exportTables as sqliteRows } from "@blueshed/delta/sqlite";
 import { openPglite } from "dzql/pglite";
-import { applyFramework, applySql, createDocListener, defineDoc, defineSchema, docTypeFromDef, fromFolder, generateSql, importTables, migrate } from "dzql/postgres";
+import { applyFramework, applySql, createDocListener, defineDoc, defineSchema, docTypeFromDef, generateSql, importTables, migrate } from "dzql/postgres";
+import { migrations } from "./migrations";
 
 export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
@@ -53,7 +54,7 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
   if (!url) mkdirSync(dataDir, { recursive: true }); // PGlite makes pg/, not the folder it is in
   const pool = url ? new Pool({ connectionString: url }) : await openPglite(`${dataDir}/pg`); // one process owns a PGlite folder
   // the same history as on SQLite makes the tables: a migration's changes are the same on every backend
-  await migrate(pool, await fromFolder(`${import.meta.dir}/migrations`), { app: "order", schema });
+  await migrate(pool, migrations, { app: "order", schema });
   await applyFramework(pool); // delta's own tables and functions
   await applySql(pool, generateSql(schema, docs)); // each document's reads and writes compiled
   if (!(await pool.query("SELECT 1 FROM items")).rowCount) await importTables(pool, schema, keptBefore(dataDir));
@@ -155,9 +156,10 @@ test(`${stories.moved.name} -- from SQLite to Postgres: order 1, a cake`, async 
 - Each server registers its own documents with its listener (`types`): two servers in one process each answer for theirs.
 - Rows come across with `exportTables` from where they were kept (SQLite, or the JSON file) and `importTables` here, so the story of the move to SQLite stays true.
 - **Deploy a Postgres server, never PGlite** (it needs far more memory than a small server has): on Railway a Postgres service, its `DATABASE_URL` set on the app. One app to a database.
+- **A document is rows, never a table of JSON.** Each document's rows become the tables its history makes; never a store of the app's own beside them (a table of JSON documents, writes through delta's internals). A document still kept as a JSON file moves to SQLite first ([sqlite.md](sqlite.md)), then here.
 - **The history moves with the app**: the migrations that made the SQLite tables make Postgres's. An `up` is the backend's SQL (`await tx.query(...)` here): [migrations.md](migrations.md).
 - **Who may open what is a path in the document**, `owns` in its `defineDoc`, registered as `docTypeFromDef(def, pool, { auth })` with `createDocListener(ws, pool, { types, auth })`: a member's own orders, `member:` rooted at their membership, `owns: "@person"`; a team's, for its members, `team:` rooted at the team, `owns: "@id->members[teams_id=$].person"`; the kitchen, every order, for the cooks, a list whose path starts at a table: `owns: "staff[cook=true].person"`. A function on the name is for what no path can say, and a path almost always can: delta-doc's `reference/ownership.md` has each shape and the grammar. SQLite and Postgres answer a path alike, and a write that would take a row out of the writer's reach is refused, 403.
-- **Rows hang under what decides who sees them.** A document holds what its parent chain reaches, so for a team to see its members' orders the orders hang under the members (`orders: { parent: "members" }`) and the members under the team (`members: { parent: "teams", columns: { person: "integer" } }`): `team:` roots at the team and includes both. An order that only names its team in a column is out of the team document's reach, and a custom document written to gather it is the sign it hangs in the wrong place. Row-level security and the rest: dzql's Postgres docs (https://github.com/blueshed/dzql/tree/main/docs/dzql/postgres).
+- **Rows hang under what decides who sees them.** A document holds what its parent chain reaches, so for a team to see its members' orders the orders hang under the members (`orders: { parent: "members" }`) and the members under the team (`members: { parent: "teams", columns: { person: "integer" } }`): `team:` roots at the team and includes both. An order that only names its team in a column is out of the team document's reach, and a custom document written to gather it is the sign it hangs in the wrong place. Row-level security and the rest: dzql's Postgres docs (https://github.com/blueshed/dzql/tree/main/docs/postgres).
 - A unique constraint (`unique` in the schema) is a unique index on Postgres too: two servers taking one seat's order at once, one is refused, 409. Never a trigger of your own beside the history.
 - Sign-in, with no passwords: [auth.md](auth.md); on Postgres its links and sessions are dzql's (`postgresLinkStore` from `dzql/auth-link`).
 - From a shell: `bunx dzql migrate <database> --app order --dir src/resources/order/migrations` runs the history, `bunx dzql link <database> <person>` prints someone's sign-in link.

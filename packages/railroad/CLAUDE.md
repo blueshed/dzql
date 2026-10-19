@@ -34,7 +34,8 @@ bun run test:webview     # real-browser suite, by explicit path
 The release gate is `bun check && bun run check:consumer && bun test --coverage`.
 CI (the root's `.github/workflows/ci.yml`, `bun scripts/affected.ts --slow`) runs railroad's tiers
 and every package that depends on it when railroad changes; a release (`publish.yml`) also runs
-`bun test` without the browser file on the Bun that `engines` names (1.3.14).
+`bun test` without the browser file on the Bun that `engines` names, its floor (`publish.yml` reads
+it there).
 Where no browser is found (no `BUN_CHROME_PATH`, nothing on `PATH`) and `CI` is
 unset, the browser tests skip with a warning, so a green bare `bun test` is not
 proof they ran; in CI a missing browser fails them.

@@ -2,13 +2,7 @@
 node_modules/
 
 # Build output / caches
-dist/
 coverage/
-.tsbuildinfo
-*.tsbuildinfo
-
-# Bun
-.bun/
 
 # Environment
 .env
@@ -20,17 +14,6 @@ coverage/
 .vscode/
 .idea/
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Test runtime artifacts
-test-results/
-playwright-report/
-handoff.md
-
 # SQLite databases (examples / test runs)
 *.sqlite
 *.sqlite-shm
@@ -38,9 +21,6 @@ handoff.md
 *.db
 *.db-shm
 *.db-wal
-
-# Demo persistence files
-examples/shared-state/chat-room.json
 
 # A README example a test writes and runs (tests/readme.test.ts)
 tests/.try-readme-*.ts

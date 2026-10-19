@@ -9,7 +9,8 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import type { WsServer } from "@blueshed/delta/server";
 import { exportTables } from "@blueshed/delta/json";
-import { defineDoc, defineSchema, fromFolder, importTables, migrate, registerDocs } from "@blueshed/delta/sqlite";
+import { defineDoc, defineSchema, importTables, migrate, registerDocs } from "@blueshed/delta/sqlite";
+import { migrations } from "./migrations";
 
 export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
@@ -34,7 +35,7 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
   mkdirSync(dataDir, { recursive: true }); // SQLite makes the file, not its folder
   const db = new Database(`${dataDir}/app.db`, { create: true });
   // the history makes the tables: each migration once, in order (a new database runs them all)
-  await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), { app: "order", schema });
+  await migrate(db, migrations, { app: "order", schema });
   // a new database takes the JSON file's rows, every order people made, or starts with the catalogue
   const file = `${dataDir}/order.json`;
   if (!db.query("SELECT 1 FROM items").get()) importTables(db, schema, existsSync(file) ? exportTables(file, schema) : catalogue);
@@ -57,6 +58,19 @@ export const changes = [
   createTable("items", { columns: { name: { type: "text" }, price: { type: "real" } }, temporal: true }),
   createTable("orders", { columns: {}, temporal: true }),
   createTable("lines", { columns: { item: { type: "integer" } }, parent: { collection: "orders", fk: "orders_id" }, temporal: true }),
+];
+```
+
+Beside it, `make` writes the folder as one import, which a built app carries (it has no folder to read):
+
+```ts
+// src/resources/order/migrations/index.ts
+// Made by `delta migrations make`: this folder's migrations, in order, as an import a bundle carries
+// (`await migrate(db, migrations, ...)`). Never edited by hand: `make` writes it again.
+import * as m001_order from "./001-order";
+
+export const migrations = [
+  { id: "001-order", ...m001_order },
 ];
 ```
 
@@ -176,6 +190,6 @@ test(`${stories.moved.name} -- from the JSON file to SQLite: order 1, a tea and 
 What the rows are, as the documents grow:
 
 - **A line or a part is a row under its parent**, as an order's `lines` are: a set's dishes are `parts` rows with `parent: "items"`. Never a JSON column of ids, and never a link column on the other row: a document includes the rows, and each holder is told the one that arrives or leaves. **A part goes where its whole goes**: a line names the set, never its dishes, and the dishes come with it, so nothing can order one alone. Dishes kept as items of their own, tied to the set by a column, can each still be ordered alone: the page would be what holds the set together, not the server. Items that become parts of another move under it in a migration ([migrations.md](migrations.md)).
-- **Rows that documents share move together.** When one document moves to SQLite, every document over the same rows moves with it, so their rows are in one database from the start: an id named in one is a row in the other.
+- **Rows that documents share move together.** When one document moves to SQLite, every document over the same rows moves with it, and so does every document whose rows another names (an id in a column, a ref): their rows are in one database from the start, and an id named in one is a row in the other. No document stays a JSON file while one on SQLite names its rows.
 - **A fact from other rows is worked out, never stored.** How many of an item are on order comes from the lines; a column on the item, written beside each line, is a second copy every write must keep honest. A row has one parent, so the catalogue cannot include the lines: a recompute document reads both (`defineCustomDoc` with `watch: ["items", "lines"]` and a `LEFT JOIN`), told again on every write to either, and registered beside the others in `registerDocs`. delta-doc's `reference/custom-docs.md` has it whole.
 - **"One at a time" is the schema's**: `unique: [{ columns: ["seat"], whereNull: ["paid"] }]` on the orders refuses a second open order at a seat, 409, on SQLite and Postgres alike; `unique: ["name"]` keeps names apart. `migrations make` writes it (`addUnique`). Never a trigger or an index written by hand beside the history.

@@ -14,11 +14,9 @@
  *   await registerDoc<Message>(ws, "message", { file: "./message.json", empty: { message: "" } });
  *   registerMethod(ws, "status", () => ({ bun: Bun.version }));
  *
- *   const server = Bun.serve({
- *     routes: { [ws.path]: ws.upgrade, ...myRoutes },
- *     websocket: ws.websocket,
- *   });
- *   ws.setServer(server);
+ *   // served by delta's one server (./serve), never a Bun.serve of the app's own
+ *   import { run, serve } from "@blueshed/delta/serve";
+ *   await run(() => serve({ ws, routes: myRoutes }));
  */
 import { clearStaleTemps, readJsonFile, writeFileAtomic } from "./file";
 import { createLogger } from "./logger";

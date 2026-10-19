@@ -8,6 +8,11 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **One browser-testing manual** (19 October): bun-route's `webview` reference teaches the kit
+  (`browser()` from `@blueshed/railroad/webview`, one view per file) and points at its header for
+  Bun.WebView's rules instead of restating them; the realtime reference points at dzql's skill for
+  an applet in a page dzql's server draws. The Bun floor is said once, `engines.bun`: the release's
+  floor job reads it, and a test holds the README to it.
 - **The source is in `src/`, the tests in `tests/`** (19 October), the monorepo's one shape for a
   library (`docs/plan.md`): `src/` is what ships. Every public name is the same (`exports` points
   into `src/`), so nothing that imports railroad changes.

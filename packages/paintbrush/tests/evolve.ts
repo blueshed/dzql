@@ -27,7 +27,7 @@ const SECTIONS: Record<string, string[]> = {
   "postgres.md": ["two-documents.md", "sqlite.md"],
   "auth.md": [],
   "http.md": [],
-  "build.md": [],
+  "build.md": ["two-documents.md", "sqlite.md"], // built with a history of migrations: they travel in the bundle
 };
 
 function run(cwd: string, cmd: string[]) {

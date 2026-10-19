@@ -52,5 +52,5 @@ test(`${stories.built.name} -- built, started from dist/, the page has no hot re
 ```
 
 - `--production` matters: without it the built server runs with hot reload on.
-- **Not with migrations yet**: a resource loads its history from the `migrations` folder beside its source (`import.meta.dir`), and in a bundle that is `dist/`, where none are. An app with a history (sqlite.md on) runs from source, `bun run start` (todo #11).
+- **Migrations travel in the bundle**: a resource imports its history as one module (`migrations/index.ts`, which `delta migrations make` writes), never reads a folder beside its source, which a bundle has none of.
 - `dist/` is git-ignored. In `.railway/railway.ts`: `build: "bun install && bun run build"`, `start: "bun run serve:dist"`.

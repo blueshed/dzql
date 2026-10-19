@@ -10,7 +10,8 @@ import { mkdirSync } from "node:fs";
 import type { WsServer } from "@blueshed/delta/server";
 import { wireAuth } from "@blueshed/delta/auth";
 import { linkAuth, sqliteLinkStore } from "@blueshed/delta/auth-link";
-import { defineDoc, defineSchema, fromFolder, migrate, registerDocs } from "@blueshed/delta/sqlite";
+import { defineDoc, defineSchema, migrate, registerDocs } from "@blueshed/delta/sqlite";
+import { migrations } from "./migrations";
 
 export type Person = { id: number; name: string };
 export type People = { people: Record<string, Person> };
@@ -22,7 +23,7 @@ export const docs = [defineDoc("people:", { root: "people", include: [] })]; // 
 export async function peopleDb(dataDir: string) {
   mkdirSync(dataDir, { recursive: true });
   const db = new Database(`${dataDir}/people.db`, { create: true });
-  await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), { app: "people", schema });
+  await migrate(db, migrations, { app: "people", schema });
   return db;
 }
 
@@ -47,6 +48,17 @@ import { createTable } from "@blueshed/delta/migrations";
 
 export const changes = [
   createTable("people", { columns: { name: { type: "text" } }, temporal: false }),
+];
+```
+
+```ts
+// src/resources/people/migrations/index.ts
+// Made by `delta migrations make`: this folder's migrations, in order, as an import a bundle carries
+// (`await migrate(db, migrations, ...)`). Never edited by hand: `make` writes it again.
+import * as m001_people from "./001-people";
+
+export const migrations = [
+  { id: "001-people", ...m001_people },
 ];
 ```
 

@@ -101,8 +101,8 @@ exact version, or the setup stops reading it).
   in `./testing` for dzql to answer on Postgres. A backend that answers differently is wrong.
 - **Fan-out is the same on every backend.** A write is told to every document that held or
   holds a row it changed, each what changed for it (arrived: add; stayed: its changed fields; left:
-  remove; the root: replaced, or null). It is worked out in `write()` (`holders`, `tell` in
-  `src/server/sqlite.ts`), over every registration on the database handle (`fanoutsOn`).
+  remove; the root: replaced, or null). It is worked out in the write path (`holders`, `tell` in
+  `src/server/sqlite/write.ts`), over every registration on the database handle (`fanoutsOn`).
   `tests/sqlite-isolation.test.ts` pins that nobody else is told.
 - **Rows carry from one backend to the next** with `exportTables` / `importTables` (the same
   `Snapshot` on each): every row, every temporal version, and each sequence, so the next serial
@@ -140,7 +140,8 @@ exact version, or the setup stops reading it).
   docs, `inverseOf`; with `{ ledger: true }`, `undo` / `redo` / `history`), and the package's
   `./sqlite` entry. Beside it, `src/server/sqlite/`: `ddl` (createTables, migrateSchema),
   `validate`, `rows` (writes and codecs), `keep` (a scope's values as columns keep them), `read`
-  (open and open_at), `carry` (`exportTables` / `importTables`).
+  (open and open_at), `write` (a write applied, recorded and told: the fan-out), `walk` (undo,
+  redo, history), `migrate` (SQLite's `migrate`), `carry` (`exportTables` / `importTables`).
 - `src/server/json.ts`: the JSON file, the same documents as SQLite (SQLite in memory, loaded
   from the file and saved to it after every change).
 - `src/server/scope.ts`: a doc name's scope (`resolveScope`), one rule for every backend.
@@ -150,10 +151,9 @@ exact version, or the setup stops reading it).
 - `src/server/ledger.ts`: the SQLite ledger (entries, the cursor's chains, `planWalk`).
 - `src/server/changes.ts` (`./migrations`): a migration's changes (`createTable`, `addColumn`, ...),
   the tables a history leads to (`stateOf`), what the schema says beyond them (`diff`), and the
-  file `make` writes (`writeMigration`). `src/server/migrate.ts`: the runner (`runMigrations`);
-  `sqlite/migrate.ts` is SQLite's `migrate` over it.
-- `src/paths.ts` (`./paths`): a document's `owns` as a path: `parsePath`, `checkPath` (thrown at
-  registration), `pathSql` (the SQL SQLite and dzql both run).
+  files `make` writes (`writeMigration`, and `writeIndex`: the folder as one import a bundle
+  carries). `src/server/migrate.ts`: the runner (`runMigrations`, `fromFolder`); `sqlite/migrate.ts`
+  is SQLite's `migrate` over it.
 - `src/server/auth-link.ts` (`./auth-link`) and `src/client/auth-link.ts` (`./auth-link/client`):
   link sign-in, a `DeltaAuth` with its routes, a `LinkStore` (`sqliteLinkStore`) and the page's side.
 - `src/server/file.ts`: how `registerDoc` and `./json` keep their file (a save whole or not
@@ -162,8 +162,8 @@ exact version, or the setup stops reading it).
 - `src/server/kinds.ts`: `registerMemory`, `registerStatic`, `registerSource`.
 - `src/schema.ts`: `defineSchema`, `defineDoc` (shared by every backend, dzql's too).
   `validateOps` is `sqlite/validate.ts`, asked of each op as it comes.
-- `src/paths.ts` (`./paths`): a document's `owns` as a path: `parsePath`, `checkPath`, `pathSql`
-  (the lowering both SQLite and dzql use), `startOf`. `permissionCases` (`src/cases/permissions.ts`)
+- `src/paths.ts` (`./paths`): a document's `owns` as a path: `parsePath`, `checkPath` (thrown at
+  registration), `pathSql` (the lowering both SQLite and dzql run), `startOf`. `permissionCases` (`src/cases/permissions.ts`)
   asks every backend.
 - `src/server/logger.ts`: a copy of railroad's `logger.ts`, so a server needs no railroad (an
   optional peer only the client imports); `tests/server.test.ts` fails when the two differ.
@@ -171,7 +171,7 @@ exact version, or the setup stops reading it).
 - `src/cli.ts`: `bunx @blueshed/delta` (open, watch, delta, call, migrate, migrations make, link,
   install-skills, stop;
   install-skills copies `@blueshed/*` skills and the packages `claudeSkills` names; migrate takes
-  a SQLite file, and sends a `postgres://` URL or a folder to `dzql migrate`). The runtime
+  a SQLite file, and refuses a `postgres://` URL or a folder, saying `dzql migrate` runs those). The runtime
   commands take `--token` / `DELTA_TOKEN` and `--json` for an agent; `tests/cli.test.ts` runs them.
 - `src/backend.ts` (`./backend`): what a backend outside the package (dzql) builds on: scope,
   showing, custom documents, the ledger's cursor, the migration runner, socket subscriptions. Change
@@ -180,11 +180,11 @@ exact version, or the setup stops reading it).
   `pointerVectors` and `walkVectors` (the pointer grammar and the walk guard as data,
   `src/*-vectors.json`, for dzql to answer), and the case suite every backend answers alike, for
   delta's tests and dzql's: `src/cases/` (`path`, `law`, `owns`, `permissions`, `isolation`,
-  `writes`, `migrations`, `link-store`). delta's
+  `writes`, `migrations`, `upgrades`, `link-store`). delta's
   own tests import it as `@blueshed/delta/testing`, as a consumer would; what is a backend's own
   (SQLite's adapters, the stand-ups in `tests/helpers/case-backends.ts`) stays beside the tests.
   `createLocal()` is the lighter harness for SQLite and the kinds.
-- `examples/`: `shared-state`, `sites-bbox`, `kanban`, each run as its README says by
+- `examples/`: `sites-bbox`, `kanban`, each run as its README says by
   `tests/recipe.test.ts` and `tests/examples.test.ts` (`tests/helpers/examples.ts`).
 
 ## Notes

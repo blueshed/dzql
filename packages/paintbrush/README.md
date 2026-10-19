@@ -33,13 +33,13 @@ Here is where each part of [the shape](https://github.com/blueshed/dzql#how-an-a
 
 | | Server | Client |
 |---|---|---|
-| Routes | Bun routes, given to delta's `serve` in `src/routes.ts` | railroad's `routes()`, in `src/app.tsx` |
+| Routes | Bun routes, given to delta's `serve` in `src/routes.ts` | where you are, the address: the bento's `here` and `go`, in `src/app.tsx` |
 | Resources | `<name>-api.ts`: the document it registers, or HTTP | `<name>.ts`, the handle, and `<name>-view.tsx` |
 | Joined by | the document, on the socket | |
 | Behind it | entities (`defineSchema`) | |
 
 - **Server routes** are in `src/routes.ts`. HTTP routes serve what isn't communication: the health check, files, the server's status. Everything people share is a document on `/ws`.
-- **Client routes** are railroad's hash router, in `src/app.tsx`. A route draws a resource's view.
+- **Client routes** are the address, in `src/app.tsx`: the bento's `here` says the page and what is open over it (a drawer, a modal), `go` moves there, and Back closes what is open.
 - **A resource** is a folder, `src/resources/<name>/`, with three files:
 
 | File | Role |
@@ -62,7 +62,7 @@ src/routes.ts        the routes, and the documents on one WebSocket; served by d
 src/app.tsx          the socket every document rides, and the page: a box of cells, drawers over it
 src/index.html       the page; Bun bundles the TypeScript and CSS it references
 src/styles.css       the design: dzql's plain look for the bento, then the page
-src/resources/       message/ and status/, three files each, the bento, a toast, and an Icon for lucide icons
+src/resources/       message/ and status/, three files each, the bento (and its lucide marks), a toast
 tests/               routes with fetch, documents with a client, the page in a real browser (Bun.WebView), the entry point
 .railway/            the deploy, as code, with a volume for the data
 ```
