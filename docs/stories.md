@@ -240,10 +240,8 @@ in `packages/dzql` (`packages/dzql/src/modelling/stories-run.ts`; `ETA_EXAMPLE` 
    declares exactly what it writes (`data-writes`: an op and a path each, `*` for any one
    member but `-`, the end of a list, which an append names), and one that declares nothing offers nothing, whatever
    document it reads (the ticker's clock face shows the clock and writes none of it). A control
-   the browser sends nothing from is none: drawn `disabled`, or `inert` (behind an open window or
-   modal), `hidden`, in a `<template>`, or in a disabled fieldset (but for its first legend),
-   itself or by what it is in, which ends where HTML says it does, end tag or none (a `<li>` with
-   no `</li>` ends at the next); and the page's address
+   a person could not press is none (the dzql-app skill says which:
+   [reference/stories.md](../packages/dzql/.claude/skills/dzql-app/reference/stories.md)); and the page's address
    (`data-page-write`) is the URL bar's and the back button's, not a control on the page. None is
    a failure: a story nobody can do from a page is not a story (`offPage` marks a write from a
    feed or the CLI).
@@ -354,7 +352,7 @@ checks:
   browser the harness reads the HTML, not what it looks like: a control under `display: none` by
   a class, `visibility: hidden`, `aria-hidden`, covered by something drawn over it, of no size,
   or off a phone's screen, is offered as if a person could press it. Only what HTML itself says
-  is looked at: `disabled`, `inert`, `hidden`, a `<template>`, a disabled fieldset. By hand
+  is looked at (the rule in step 2). By hand
   (step 7) each of those fails by name. By hand, a drag's pointer is not captured: its events go
   to what is under it, so an applet must allow `setPointerCapture` to refuse a test's pointer
   (leave's calendar does); and an applet's control no story says the gesture for is not worked.

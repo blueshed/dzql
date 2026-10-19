@@ -9,6 +9,7 @@
 // a browser sends; never a script's `element.click()`. The keyboard is not pressed: the WebView's
 // Enter is an editing command, not a key, so it presses no button.
 
+import { readFileSync } from "node:fs";
 import { isTest } from "../rendering/json-patch";
 import type { Gesture, Post, Write } from "./stories";
 import { CENTRED, MOUSE, NAMED, urlFor, waitFor } from "../rendering/webview";
@@ -35,9 +36,18 @@ type Plan = { how: "press" | "submit" | "edit" | "open"; control: string; fields
 /** The same document: named whole on one side and by its type alone on the other (`room`, `room:general`) counts. */
 export const sameDoc = (a: string, b: string): boolean => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
 
+/**
+ * The client's own rules for a control (src/rendering/client/form-value.ts), as its code says them:
+ * what can be pressed (`pressable`) and what a press sends (`pressed`). It imports nothing, so it
+ * runs whole in the page, taken from its source rather than imported: imported, it would be the
+ * server's to cover, and only a page calls it.
+ */
+const FORM_VALUE = new Bun.Transpiler({ loader: "ts" }).transformSync(readFileSync(new URL("../rendering/client/form-value.ts", import.meta.url), "utf8")).replace(/^export /gm, "");
+
 // The page's side, a string since it runs in the browser: the elements that send a write, as the
 // kernel's client sends them (src/rendering/client/app.ts), and why a person could not press one.
 const PAGE = `(() => {
+  const client = (() => { ${FORM_VALUE}; return { pressable, pressed }; })();
   const same = ${sameDoc};
   const specOf = (el) => { try { return JSON.parse(el.dataset.write); } catch { return undefined; } };
   const named = ${NAMED};
@@ -45,13 +55,12 @@ const PAGE = `(() => {
   const mark = (el) => { const id = String(++marks); el.setAttribute("data-hand", id); return '[data-hand="' + id + '"]'; };
   const text = (v) => (v === undefined || v === null ? "" : String(v));
   const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  const pressed = (el) => { try { return { value: el.dataset.value === undefined ? undefined : JSON.parse(el.dataset.value) }; } catch { return undefined; } };
+  const pressed = (el) => { try { return { value: client.pressed(el) }; } catch { return undefined; } };
 
-  // why a person could not press it, or "" when they could: the browser's own rules, then the eye's
+  // why a person could not press it, or "" when they could: the client's rule (pressable), said by
+  // which of it fails, then the eye's
   function why(el) {
-    if (el.closest("[inert]")) return "inert, behind what is open over it";
-    if (el.closest("[hidden]")) return "hidden";
-    if (el.matches(":disabled")) return "disabled"; // itself, or in a disabled fieldset but for its first legend
+    if (!client.pressable(el)) return el.closest("[inert]") ? "inert, behind what is open over it" : el.closest("[hidden]") ? "hidden" : "disabled";
     const { r, x, y } = ${CENTRED}(el);
     if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return "not to be seen";
     if (r.width < 1 || r.height < 1) return "of no size";

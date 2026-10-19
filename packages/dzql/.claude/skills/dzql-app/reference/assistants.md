@@ -16,7 +16,7 @@ import "dzql/rendering/client/tools"; // one line, for this app alone
 
 After each drawing the client reads the page into tools (`src/rendering/client/tools.ts`).
 
-- A tool is each labelled control a person could press now (not `inert`, `hidden` or disabled), so
+- A tool is each labelled control a person could press now ([stories.md](stories.md) says which), so
   an open modal's controls are the tools and the ground behind it offers none: a form that creates;
   an editing form (one tool, any of its fields, by name); the buttons of one label (one tool, told
   which by what differs between their writes); an applet's `appletWrites`; `undo` and `redo`, with

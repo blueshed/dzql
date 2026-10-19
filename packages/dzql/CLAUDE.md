@@ -42,8 +42,9 @@ an item is worked on. Same shape as duckdown's.
 ```
 packages/
 ├── dzql/                # The dzql package on npm, shaped as the root CLAUDE.md says (The shape of a package)
-│   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told), by-hand.ts (in a browser), costs.ts,
-│   │                    #   reading, definitions, guards; page/ is the model's page, an app dzql ships (`dzql model` serves it)
+│   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told; harness/: a page's controls, its applets,
+│   │                    #   a document's paths), by-hand.ts (in a browser), costs.ts, reading, definitions, guards;
+│   │                    #   page/ is the model's page, an app dzql ships (`dzql model` serves it)
 │   ├── src/rendering/   # dzql/rendering: the kernel: server.ts, resources/, client/ (the browser's), bento, applet.ts (an applet drawn by railroad)
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt; cli.ts: dzql sql | init | migrate | link
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles

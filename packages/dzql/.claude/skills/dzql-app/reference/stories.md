@@ -33,8 +33,12 @@ how a paintbrush app keeps its stories, so one format grows from there to here.
   answer."`); the harness compares pages without the line, and checks it alone.
 - `from` is where a person does it, and a control must lead there: build the button that opens the
   drawer, or the story fails (`no control leads ...`). Places are addresses ([bento.md](bento.md#where-you-are-the-address)).
-- A control counts only where a person could press it: not `disabled`, `inert`, `hidden` or in a
-  disabled fieldset, itself or by what it is in. A story told from a modal is done in the modal.
+- A control counts only where a person could press it: not drawn `disabled`, `inert` (behind an
+  open window or modal), `hidden`, in a `<template>`, or in a disabled fieldset (but for its first
+  legend), itself or by what it is in, which ends where HTML says it does, end tag or none (a `<li>`
+  with no `</li>` ends at the next). This is the rule wherever dzql asks it -- the stories, by hand
+  and as told, and an assistant's tools ([assistants.md](assistants.md)); the browser's code says it
+  once, `pressable` in `src/rendering/client/form-value.ts`. A story told from a modal is done in the modal.
 - An applet's control is the story's `gesture`: `{ drag: [from, to] }` or `{ press }`, CSS
   selectors. `STORY_BY_HAND=1 bun run stories` does each write and refusal by hand, in a browser the
   size of a phone.
