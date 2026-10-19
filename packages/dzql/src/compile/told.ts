@@ -9,7 +9,7 @@
  * document has.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { impliedRoot, lit, named, need, noDoc, scopeOf } from "./opens";
+import { impliedRoot, lit, named, need, noDoc, scopeOf, prefixDispatch } from "./opens";
 
 /** A document's telling function: `dzql_told__<slug>`. */
 export const toldFunction = (prefix: string): string => named("told", prefix);
@@ -81,10 +81,7 @@ export function compileTold(schema: Schema, docs: DocDef[]): string {
   const dispatch = `CREATE OR REPLACE FUNCTION _delta_told(p_def _delta_docs, p_target TEXT, p_rows JSONB)
 RETURNS JSONB AS $$
 BEGIN
-  CASE p_def.prefix
-${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${toldFunction(d.prefix)}(p_target, p_rows);`).join("\n")}
-    ELSE ${noDoc("p_target")}
-  END CASE;
+${prefixDispatch(docs, (d) => `${toldFunction(d.prefix)}(p_target, p_rows)`, noDoc("p_target"))}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
   return [...docs.map((d) => toldOf(schema, d)), dispatch, ""].join("\n\n");

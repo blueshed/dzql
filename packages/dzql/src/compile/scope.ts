@@ -10,7 +10,7 @@
  * sends each document to its own, and refuses a name no document has (`no doc def for`).
  */
 import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
-import { lit, named, need, noDoc, scopeOf, currentOnly } from "./opens";
+import { lit, named, need, noDoc, scopeOf, currentOnly, prefixDispatch } from "./opens";
 
 /** A document's write-scope function: `dzql_in_scope__<slug>`. */
 export const inScopeFunction = (prefix: string): string => named("in_scope", prefix);
@@ -73,10 +73,7 @@ export function compileInScope(schema: Schema, docs: DocDef[]): string {
   const dispatch = `CREATE OR REPLACE FUNCTION _delta_row_in_scope(p_def _delta_docs, p_doc_name TEXT, p_collection_key TEXT, p_id BIGINT)
 RETURNS BOOLEAN AS $$
 BEGIN
-  CASE p_def.prefix
-${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${inScopeFunction(d.prefix)}(p_doc_name, p_collection_key, p_id);`).join("\n")}
-    ELSE ${noDoc("p_doc_name")}
-  END CASE;
+${prefixDispatch(docs, (d) => `${inScopeFunction(d.prefix)}(p_doc_name, p_collection_key, p_id)`, noDoc("p_doc_name"))}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
   return [...docs.map((d) => inScopeOf(schema, d)), dispatch, ""].join("\n\n");

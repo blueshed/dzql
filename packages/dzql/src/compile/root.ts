@@ -8,7 +8,7 @@
  * no document has.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, named, need, noDoc, scopeOf, standingRows } from "./opens";
+import { lit, named, need, noDoc, scopeOf, standingRows, prefixDispatch } from "./opens";
 
 /** A document's root check: `dzql_root_there__<slug>`. */
 export const rootThereFunction = (prefix: string): string => named("root_there", prefix);
@@ -46,10 +46,7 @@ export function compileRootThere(schema: Schema, docs: DocDef[]): string {
   const dispatch = `CREATE OR REPLACE FUNCTION _delta_root_there(p_def _delta_docs, p_doc_name TEXT, p_scope JSONB, p_view TEXT, p_id BIGINT)
 RETURNS BOOLEAN AS $$
 BEGIN
-  CASE p_def.prefix
-${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${rootThereFunction(d.prefix)}(p_doc_name, p_id);`).join("\n")}
-    ELSE ${noDoc("p_doc_name")}
-  END CASE;
+${prefixDispatch(docs, (d) => `${rootThereFunction(d.prefix)}(p_doc_name, p_id)`, noDoc("p_doc_name"))}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
   return [...docs.map((d) => rootThereOf(schema, d)), dispatch, ""].join("\n\n");

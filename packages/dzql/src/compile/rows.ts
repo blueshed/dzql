@@ -20,7 +20,8 @@
  * A collection none was compiled for is refused (`unknown collection`), and a row of it is not there.
  */
 import { q, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
-import { lit, noCollection, standingRows } from "./opens";
+import { lit, noCollection, standingRows, caseOf } from "./opens";
+import { seqOf } from "../postgres/sql";
 
 /** A CASE over the collections, each branch from `branch`, any other collection to `fallback`. */
 function dispatch(schema: Schema, branch: (coll: string, table: Schema["tables"][string]) => string | null, fallback: string): string {
@@ -28,7 +29,7 @@ function dispatch(schema: Schema, branch: (coll: string, table: Schema["tables"]
     const b = branch(coll, table);
     return b === null ? [] : [`    WHEN ${lit(coll)} THEN\n      ${b}`];
   });
-  return branches.length ? `  CASE p_coll\n${branches.join("\n")}\n    ELSE ${fallback}\n  END CASE;` : `  ${fallback}`;
+  return caseOf("p_coll", branches, fallback);
 }
 
 /**
@@ -84,7 +85,7 @@ $$ LANGUAGE plpgsql;`;
   const next = `CREATE OR REPLACE FUNCTION _delta_next_id(p_coll TEXT, p_table TEXT)
 RETURNS BIGINT AS $$
 BEGIN
-${dispatch(schema, (_, t) => `RETURN nextval(${lit(`seq_${t.name}`)});`, noCollection("p_coll"))}
+${dispatch(schema, (_, t) => `RETURN nextval(${lit(seqOf(t.name))});`, noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql;`;
 

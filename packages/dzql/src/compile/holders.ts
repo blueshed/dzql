@@ -11,7 +11,7 @@
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
 import { chainRoot, holdsFunction } from "./holds";
-import { lit, need } from "./opens";
+import { lit, need, caseOf } from "./opens";
 
 /** One document's names that hold the row, for a collection it holds. */
 function askOf(schema: Schema, docs: DocDef[], doc: DocDef, coll: string): string {
@@ -52,7 +52,7 @@ BEGIN
       upper(current_setting('transaction_isolation')) USING ERRCODE = '0A000';
   END IF;
   IF p_row IS NULL THEN RETURN v_names; END IF;
-${branches.length ? `  CASE p_coll\n${branches.join("\n")}\n    ELSE NULL;\n  END CASE;\n` : ""}  RETURN v_names;
+${caseOf("p_coll", branches, "NULL;", { alone: "" })}${branches.length ? "\n" : ""}  RETURN v_names;
 END;
 $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 DO $$ BEGIN

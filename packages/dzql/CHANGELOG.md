@@ -40,6 +40,10 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The compiler says each case once** (19 October, the review): one `caseOf` and one
+  `prefixDispatch` for every dispatcher it writes, so a case with no branches is never written to be
+  repaired after (`noEmptyCases` is gone); the serial, the standing view and the name-clash check
+  said once. The compiled SQL is the same, to the byte.
 - **The model's page is in `src/modelling/page/`, out of `examples/`** (19 October, the monorepo's
   one shape): `dzql model` serves it to every app, so it is shipped code, not an example. Its tests
   are in `tests/modelling/page/`; `files` no longer ships `examples/modeling` (the cafe still ships,

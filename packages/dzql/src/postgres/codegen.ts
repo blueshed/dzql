@@ -23,7 +23,7 @@
  *   bunx dzql sql ./types.ts --out init_db/003-tables.sql
  */
 import type { Schema, DocDef } from "./schema";
-import { lit, columnSqlType, sqlDefault, findCascadeOn } from "./sql";
+import { lit, columnSqlType, currentViewSql, seqOf, sqlDefault, findCascadeOn } from "./sql";
 import { defaultForType, q, uniqueIndexSql } from "@blueshed/delta/backend";
 import { assertScopeKeys } from "@blueshed/delta/backend";
 import { compileOpens } from "../compile/opens";
@@ -117,15 +117,8 @@ export function generateSql(
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
   lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs));
-  return noEmptyCases(lines.join("\n"));
+  return lines.join("\n");
 }
-
-/**
- * A case over the documents or collections, with none of them: its fallback alone. Postgres refuses a
- * `CASE` with no `WHEN`, and an app with no documents yet (a new starter) still compiles. Only a
- * simple case (`CASE <name>` alone on its line) whose branches are all absent is rewritten.
- */
-const noEmptyCases = (sql: string): string => sql.replace(/^(\s*)CASE [\w.]+\n(?:\s*\n)*\s*ELSE ([^\n]*)\n\s*END CASE;/gm, "$1$2");
 
 /**
  * One table's SQL, as `generateSql` writes each: its serial, the table (if it is not there), the
@@ -134,7 +127,7 @@ const noEmptyCases = (sql: string): string => sql.replace(/^(\s*)CASE [\w.]+\n(?
  */
 export function tableSql(key: string, table: Schema["tables"][string]): string[] {
   const lines: string[] = [];
-  const seqName = `seq_${table.name}`;
+  const seqName = seqOf(table.name);
   lines.push(`-- ${key}`);
   lines.push(`CREATE SEQUENCE IF NOT EXISTS ${q(seqName)};`);
   lines.push("");
@@ -180,7 +173,7 @@ export function tableSql(key: string, table: Schema["tables"][string]): string[]
   if (table.temporal) {
     // security_invoker (Postgres 15+): the view reads as the caller, so the table's RLS holds through it
     lines.push(
-      `CREATE OR REPLACE VIEW ${q("current_" + table.name)} WITH (security_invoker = true) AS SELECT * FROM ${q(table.name)} WHERE valid_to IS NULL;`,
+      `${currentViewSql(table.name)};`,
     );
     lines.push(
       `CREATE INDEX IF NOT EXISTS ${q("idx_" + table.name + "_id_valid")} ON ${q(table.name)} (id, valid_to);`,

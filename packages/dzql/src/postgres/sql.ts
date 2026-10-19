@@ -1,4 +1,5 @@
 /** SQL helpers for codegen.ts (the schema's DDL) and carry.ts (export and import). */
+import { q } from "@blueshed/delta/backend";
 import type { ColumnDef, Schema } from "./schema";
 
 /**
@@ -6,6 +7,24 @@ import type { ColumnDef, Schema } from "./schema";
  * Use for ANY value interpolated into a `'…'` literal position so an
  * apostrophe in a name can't terminate the literal or inject SQL.
  */
+/** A table's serial, `seq_<table>`: named here, once. */
+export const seqOf = (table: string): string => `seq_${table}`;
+/** A temporal table's rows standing now, `current_<table>`: named here, once. */
+export const viewOf = (table: string): string => `current_${table}`;
+/** That view, made: by generateSql with the table, and again when a column it reads is dropped. */
+export const currentViewSql = (table: string): string => `CREATE OR REPLACE VIEW ${q(viewOf(table))} WITH (security_invoker = true) AS SELECT * FROM ${q(table)} WHERE valid_to IS NULL`;
+
+/** Each item its own function name, or `clash` says the two that would share one. */
+export function distinctNames<T>(items: T[], nameOf: (item: T) => string, clash: (first: T, second: T, name: string) => string): void {
+  const seen = new Map<string, T>();
+  for (const item of items) {
+    const name = nameOf(item);
+    const other = seen.get(name);
+    if (other !== undefined) throw new Error(clash(other, item, name));
+    seen.set(name, item);
+  }
+}
+
 export function lit(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }

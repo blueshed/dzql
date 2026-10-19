@@ -14,8 +14,8 @@
  *   refusing a name no document has.
  */
 import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
-import { findCascadeOn } from "../postgres/sql";
-import { lit, noDoc, openAtFunction } from "./opens";
+import { findCascadeOn, seqOf } from "../postgres/sql";
+import { lit, noDoc, openAtFunction, caseOf, prefixDispatch } from "./opens";
 
 /** The caller: the role set, else the session's. */
 const CALLER = "COALESCE(NULLIF(current_setting('role'), 'none'), session_user)";
@@ -34,8 +34,7 @@ export function compileLookups(schema: Schema, docs: DocDef[]): string {
   const collection = `CREATE OR REPLACE FUNCTION _delta_collection(p_key TEXT)
 RETURNS _delta_collections AS $$
 BEGIN
-  CASE p_key
-${tables.map(([key, t]) => {
+${caseOf("p_key", tables.map(([key, t]) => {
     const row = {
       collection_key: key,
       table_name: t.name,
@@ -46,9 +45,7 @@ ${tables.map(([key, t]) => {
       cascade_on: findCascadeOn(key, schema),
     };
     return `    WHEN ${lit(key)} THEN RETURN jsonb_populate_record(null::_delta_collections, ${lit(JSON.stringify(row))}::jsonb);`;
-  }).join("\n")}
-    ELSE RETURN NULL;   -- a collection there is not
-  END CASE;
+  }), "RETURN NULL;   -- a collection there is not")}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 
@@ -57,13 +54,10 @@ RETURNS BOOLEAN AS $$
 DECLARE
   v_new BOOLEAN;
 BEGIN
-  CASE p_table
-${tables.map(([, t]) => `    WHEN ${lit(t.name)} THEN
+${caseOf("p_table", tables.map(([, t]) => `    WHEN ${lit(t.name)} THEN
       IF NOT has_table_privilege(${CALLER}, p_table, 'SELECT') THEN RETURN FALSE; END IF;
-      SELECT p_id >= last_value + is_called::int INTO v_new FROM ${q(`seq_${t.name}`)};
-      RETURN v_new;`).join("\n")}
-    ELSE RETURN FALSE;   -- a table there is not: no id is new
-  END CASE;
+      SELECT p_id >= last_value + is_called::int INTO v_new FROM ${q(seqOf(t.name))};
+      RETURN v_new;`), "RETURN FALSE;   -- a table there is not: no id is new")}
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ${searchPath("_delta_serial_new(text, bigint)")}`;
@@ -71,12 +65,9 @@ ${searchPath("_delta_serial_new(text, bigint)")}`;
   const serialPast = `CREATE OR REPLACE FUNCTION _delta_serial_past(p_table TEXT, p_id BIGINT)
 RETURNS void AS $$
 BEGIN
-  CASE p_table
-${tables.map(([, t]) => `    WHEN ${lit(t.name)} THEN
+${caseOf("p_table", tables.map(([, t]) => `    WHEN ${lit(t.name)} THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(${CALLER}, p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval(${lit(`seq_${t.name}`)}, p_id) FROM ${q(`seq_${t.name}`)} WHERE p_id >= last_value + is_called::int;`).join("\n")}
-    ELSE NULL;   -- a table there is not: nothing to move
-  END CASE;
+      PERFORM setval(${lit(seqOf(t.name))}, p_id) FROM ${q(seqOf(t.name))} WHERE p_id >= last_value + is_called::int;`), "NULL;   -- a table there is not: nothing to move")}
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ${searchPath("_delta_serial_past(text, bigint)")}`;
@@ -99,10 +90,7 @@ RETURNS JSONB AS $$
 DECLARE
   v_def _delta_docs := _delta_find_doc(p_doc_name);
 BEGIN
-  CASE v_def.prefix
-${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${openAtFunction(d.prefix)}(p_doc_name, p_at);`).join("\n")}
-    ELSE ${noDoc("p_doc_name")}
-  END CASE;
+${prefixDispatch(docs, (d) => `${openAtFunction(d.prefix)}(p_doc_name, p_at)`, noDoc("p_doc_name"), "v_def.prefix")}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 

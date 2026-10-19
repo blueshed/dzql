@@ -15,10 +15,22 @@
  * compile is an error naming the document, never SQL that half works.
  */
 import { q, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
-import { columnSqlType } from "../postgres/sql";
+import { columnSqlType, distinctNames, lit, viewOf } from "../postgres/sql";
+export { lit };
 
-/** A string as an SQL literal. */
-export const lit = (s: string): string => `'${s.replace(/'/g, "''")}'`;
+/**
+ * A simple case, `CASE <on>`, its branches each a `WHEN` line, else `otherwise`; with no branches,
+ * `alone` (the fallback, unless said): Postgres refuses a `CASE` with no `WHEN`, and an app with no
+ * documents or tables yet still compiles. `indent` is where `CASE` stands.
+ */
+export function caseOf(on: string, branches: string[], otherwise: string, { indent = "  ", alone = otherwise }: { indent?: string; alone?: string } = {}): string {
+  if (!branches.length) return alone ? `${indent}${alone}` : "";
+  return `${indent}CASE ${on}\n${branches.join("\n")}\n${indent}  ELSE ${otherwise}\n${indent}END CASE;`;
+}
+
+/** The per-document dispatcher: each compiled document's prefix to its own function, `call` saying the call; any other name, `otherwise`. */
+export const prefixDispatch = (docs: DocDef[], call: (d: DocDef) => string, otherwise: string, on = "p_def.prefix"): string =>
+  caseOf(on, docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${call(d)};`), otherwise);
 
 /** A name no document compiled here holds: there is none. */
 export const noDoc = (name: string): string => `RAISE EXCEPTION 'no doc def for: %', ${name} USING ERRCODE = 'P0001';`;
@@ -46,7 +58,7 @@ export const named = (kind: string, name: string): string => {
 export const openFunction = (prefix: string): string => named("open", prefix);
 
 /** A table's rows as they stand: its current view where temporal, else the table. */
-export const standingRows = (table: ResolvedTable): string => q(table.temporal ? `current_${table.name}` : table.name);
+export const standingRows = (table: ResolvedTable): string => q(table.temporal ? viewOf(table.name) : table.name);
 
 /** A temporal table's rows as they stand, as a condition on `alias`: ` AND <alias>.valid_to IS NULL`; nothing for a table that is not. */
 export const currentOnly = (table: ResolvedTable, alias: string): string => (table.temporal ? ` AND ${alias}.valid_to IS NULL` : "");
@@ -146,7 +158,8 @@ interface CompiledScope {
 }
 
 const REAL = String.raw`^\s*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?\s*$`;
-const WHOLE = String.raw`^\s*[+-]?[0-9]+\s*$`;
+/** A whole number, as text: an id said in a name, or a person by their number. */
+export const WHOLE = String.raw`^\s*[+-]?[0-9]+\s*$`;
 const SAFE = String.raw`^\s*[+-]?0*[0-9]{1,16}\s*$`;
 const DAY = String.raw`^\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\s*$`;
 
@@ -364,13 +377,7 @@ ${readOf(schema, doc, true)}`;
 
 /** The SQL that reads each of `docs` over `schema`: its open and its open_at, each with an `_as` for a signed-in caller. */
 export function compileOpens(schema: Schema, docs: DocDef[]): string {
-  const names = new Map<string, string>();
-  for (const doc of docs) {
-    const fn = openFunction(doc.prefix);
-    const other = names.get(fn);
-    if (other !== undefined) throw new Error(`[dzql compile] documents ${other} and ${doc.prefix} would share the function ${fn}`);
-    names.set(fn, doc.prefix);
-  }
+  distinctNames(docs, (d) => openFunction(d.prefix), (a, b, fn) => `[dzql compile] documents ${a.prefix} and ${b.prefix} would share the function ${fn}`);
   return [
     "-- Compiled by dzql from the app's defineSchema / defineDoc. Do not edit: compile again.",
     ...docs.map((d) => openOf(schema, d)),

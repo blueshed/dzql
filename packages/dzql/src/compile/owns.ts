@@ -12,13 +12,12 @@
  */
 import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { assertPath, parsePath, pathSql } from "@blueshed/delta/paths";
-import { lit, named, need, scopeOf } from "./opens";
+import { lit, named, need, scopeOf, caseOf, WHOLE } from "./opens";
 
 /** A document's ownership function: `dzql_owns__<slug>`. */
 export const ownsFunction = (prefix: string): string => named("owns", prefix);
 
 type Pathed = DocDef & { owns: string };
-const WHOLE = String.raw`^\s*[+-]?[0-9]+\s*$`;
 
 /** One document's ownership function. */
 function ownsOf(schema: Schema, doc: Pathed): string {
@@ -67,10 +66,7 @@ DECLARE
   v_person BIGINT := CASE WHEN v_user ~ '${WHOLE}' THEN v_user::BIGINT END;
 BEGIN
   IF v_person IS NULL THEN RETURN TRUE; END IF;
-${pathed.length ? `  CASE p_def.prefix
-${pathed.map(keeps).join("\n")}
-    ELSE RETURN TRUE;
-  END CASE;` : "  RETURN TRUE;"}
+${caseOf("p_def.prefix", pathed.map(keeps), "RETURN TRUE;")}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
   return [...pathed.map((d) => ownsOf(schema, d)), dispatch, ""].join("\n\n");

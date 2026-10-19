@@ -13,7 +13,8 @@
  * each one's rows by id.
  */
 import { q, type Schema } from "@blueshed/delta/backend";
-import { lit, named, standingRows } from "./opens";
+import { lit, named, standingRows, caseOf } from "./opens";
+import { distinctNames } from "../postgres/sql";
 
 /** A collection's function: `dzql_<what>__<slug>`. */
 const fn = (what: string, coll: string): string => named(what, coll);
@@ -34,13 +35,7 @@ function reached(schema: Schema, coll: string): { children: [string, string][]; 
 
 /** Every collection of `schema` its own slug: two that would share a function name are refused. */
 function assertSlugs(schema: Schema): void {
-  const seen = new Map<string, string>();
-  for (const coll of Object.keys(schema.tables)) {
-    const slug = fn("", coll);
-    const other = seen.get(slug);
-    if (other) throw new Error(`[dzql compile] collections "${other}" and "${coll}" would share the function name ${slug}: rename one`);
-    seen.set(slug, coll);
-  }
+  distinctNames(Object.keys(schema.tables), (coll) => fn("", coll), (a, b, slug) => `[dzql compile] collections "${a}" and "${b}" would share the function name ${slug}: rename one`);
 }
 
 function removeOf(schema: Schema, coll: string): string {
@@ -115,12 +110,7 @@ $$ LANGUAGE plpgsql STABLE;`;
 /** A dispatcher: each collection of `schema` to its own; any other has nothing to take. */
 function dispatch(schema: Schema, name: string, what: string, volatility: string): string {
   const colls = Object.keys(schema.tables);
-  const body = colls.length
-    ? `  CASE p_collection_key
-${colls.map((c) => `    WHEN ${lit(c)} THEN RETURN ${fn(what, c)}(p_id);`).join("\n")}
-    ELSE RETURN '[]'::jsonb;   -- a collection there is not: nothing to take, nothing hangs from it
-  END CASE;`
-    : `  RETURN '[]'::jsonb;`;
+  const body = caseOf("p_collection_key", colls.map((c) => `    WHEN ${lit(c)} THEN RETURN ${fn(what, c)}(p_id);`), "RETURN '[]'::jsonb;   -- a collection there is not: nothing to take, nothing hangs from it", { alone: "RETURN '[]'::jsonb;" });
   return `CREATE OR REPLACE FUNCTION ${name}(p_collection_key TEXT, p_id BIGINT)
 RETURNS JSONB AS $$
 BEGIN

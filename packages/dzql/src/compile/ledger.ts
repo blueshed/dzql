@@ -13,7 +13,7 @@
  *   the schema; NULL for one there is not.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, noDoc, openFunction, openWholeFunction, readOf, standingRows } from "./opens";
+import { lit, noDoc, openFunction, openWholeFunction, readOf, standingRows, prefixDispatch, caseOf } from "./opens";
 
 /** The SQL the ledger reads by, for `schema` and each of `docs`. */
 export function compileLedger(schema: Schema, docs: DocDef[]): string {
@@ -24,10 +24,7 @@ RETURNS JSONB AS $$
 DECLARE
   v_def _delta_docs := _delta_find_doc(p_doc_name);
 BEGIN
-  CASE v_def.prefix
-${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN CASE WHEN p_whole THEN ${openWholeFunction(d.prefix)}(p_doc_name) ELSE ${openFunction(d.prefix)}(p_doc_name) END;`).join("\n")}
-    ELSE ${noDoc("p_doc_name")}
-  END CASE;
+${prefixDispatch(docs, (d) => `CASE WHEN p_whole THEN ${openWholeFunction(d.prefix)}(p_doc_name) ELSE ${openFunction(d.prefix)}(p_doc_name) END`, noDoc("p_doc_name"), "v_def.prefix")}
 END;
 $$ LANGUAGE plpgsql;`;
 
@@ -39,15 +36,12 @@ DECLARE
   v_type     TEXT;
 BEGIN
   IF jsonb_typeof(a) = 'string' AND jsonb_typeof(b) = 'string' THEN
-    CASE p_coll
-${colls.map(([coll, t]) => {
+${caseOf("p_coll", colls.map(([coll, t]) => {
     const times = Object.entries(t.columns).filter(([, d]) => d.type === "timestamptz").map(([c]) => c);
     return `      WHEN ${lit(coll)} THEN
         v_declared := NULLIF(current_setting('delta.declared', true), '')::jsonb -> ${lit(coll)};
         v_type := CASE WHEN v_declared IS NOT NULL THEN v_declared -> p_field ->> 'type'${times.length ? ` WHEN p_field IN (${times.map(lit).join(", ")}) THEN 'timestamptz'` : ""} END;`;
-  }).join("\n")}
-      ELSE NULL;   -- a collection there is not: its values the same as JSON
-    END CASE;
+  }), "NULL;   -- a collection there is not: its values the same as JSON", { indent: "    " })}
     IF v_type = 'timestamptz' THEN RETURN (a #>> '{}')::timestamptz = (b #>> '{}')::timestamptz; END IF;
   END IF;
   RETURN COALESCE(a, 'null'::jsonb) = COALESCE(b, 'null'::jsonb);
@@ -57,10 +51,7 @@ $$ LANGUAGE plpgsql STABLE;`;
   const standing = `CREATE OR REPLACE FUNCTION _delta_row_standing(p_coll TEXT, p_id BIGINT)
 RETURNS JSONB AS $$
 BEGIN
-  CASE p_coll
-${colls.map(([coll, t]) => `    WHEN ${lit(coll)} THEN RETURN jsonb_build_object('row', (SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM ${standingRows(t)} t WHERE t.id = p_id));`).join("\n")}
-    ELSE RETURN NULL;   -- a collection there is not
-  END CASE;
+${caseOf("p_coll", colls.map(([coll, t]) => `    WHEN ${lit(coll)} THEN RETURN jsonb_build_object('row', (SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM ${standingRows(t)} t WHERE t.id = p_id));`), "RETURN NULL;   -- a collection there is not")}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 

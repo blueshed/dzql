@@ -9,7 +9,7 @@
  * lookups. `_delta_doc_holds` sends each document to its own, and refuses a name no document has.
  */
 import { q, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
-import { lit, named, need, noDoc, scopeOf, currentOnly } from "./opens";
+import { lit, named, need, noDoc, scopeOf, currentOnly, prefixDispatch } from "./opens";
 
 /** A document's holds function: `dzql_holds__<slug>`. */
 export const holdsFunction = (prefix: string): string => named("holds", prefix);
@@ -75,10 +75,7 @@ export function compileHolds(schema: Schema, docs: DocDef[]): string {
   const dispatch = `CREATE OR REPLACE FUNCTION _delta_doc_holds(p_def _delta_docs, p_doc_name TEXT, p_coll TEXT, p_row JSONB)
 RETURNS BOOLEAN AS $$
 BEGIN
-  CASE p_def.prefix
-${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${holdsFunction(d.prefix)}(p_doc_name, p_coll, p_row);`).join("\n")}
-    ELSE ${noDoc("p_doc_name")}
-  END CASE;
+${prefixDispatch(docs, (d) => `${holdsFunction(d.prefix)}(p_doc_name, p_coll, p_row)`, noDoc("p_doc_name"))}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
   return [...docs.map((d) => holdsOf(schema, d)), dispatch, ""].join("\n\n");

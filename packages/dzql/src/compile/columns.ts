@@ -16,7 +16,7 @@
  *   by the columns given (`_delta_assert_fields_declared`).
  */
 import type { ColumnDef, DocDef, ResolvedTable, Schema } from "@blueshed/delta/backend";
-import { lit, named, need, noDoc } from "./opens";
+import { lit, named, need, noDoc, prefixDispatch, caseOf } from "./opens";
 
 /** A document's columns function: `dzql_columns__<slug>`. */
 export const columnsFunction = (prefix: string): string => named("columns", prefix);
@@ -97,10 +97,7 @@ export function compileColumns(schema: Schema, docs: DocDef[]): string {
   const dispatch = `CREATE OR REPLACE FUNCTION _delta_write_columns(p_def _delta_docs, p_coll TEXT, p_columns_def JSONB)
 RETURNS JSONB AS $$
 BEGIN
-  CASE p_def.prefix
-${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${columnsFunction(d.prefix)}(p_coll, p_columns_def);`).join("\n")}
-    ELSE ${noDoc("p_def.prefix")}
-  END CASE;
+${prefixDispatch(docs, (d) => `${columnsFunction(d.prefix)}(p_coll, p_columns_def)`, noDoc("p_def.prefix"))}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 
@@ -126,10 +123,7 @@ RETURNS void AS $$
 DECLARE
   v_bad TEXT;
 BEGIN
-  CASE p_collection
-${branches.join("\n")}
-    ELSE NULL;
-  END CASE;
+${caseOf("p_collection", branches, "NULL;")}
   -- another set of columns (a walk's, another version's): by the columns given
   PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value);
 END;

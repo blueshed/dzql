@@ -10,7 +10,7 @@
  * and refuses a name no document has.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, named, need, noDoc, scopeOf } from "./opens";
+import { lit, named, need, noDoc, scopeOf, prefixDispatch } from "./opens";
 
 /** A document's scope function: `dzql_scope__<slug>`. */
 export const resolveFunction = (prefix: string): string => named("scope", prefix);
@@ -61,10 +61,7 @@ export function compileResolve(schema: Schema, docs: DocDef[]): string {
   const dispatch = `CREATE OR REPLACE FUNCTION _delta_resolve_scope(p_def _delta_docs, p_doc_name TEXT, p_refuse BOOLEAN)
 RETURNS JSONB AS $$
 BEGIN
-  CASE p_def.prefix
-${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${resolveFunction(d.prefix)}(p_doc_name, p_refuse);`).join("\n")}
-    ELSE ${noDoc("p_doc_name")}
-  END CASE;
+${prefixDispatch(docs, (d) => `${resolveFunction(d.prefix)}(p_doc_name, p_refuse)`, noDoc("p_doc_name"))}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
   return [...docs.map((d) => resolveOf(schema, d)), dispatch, ""].join("\n\n");

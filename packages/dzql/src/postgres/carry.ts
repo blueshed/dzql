@@ -6,6 +6,7 @@
  */
 import type { Pool } from "pg";
 import { isoTime, lastId, q, type Schema, type Snapshot } from "@blueshed/delta/backend";
+import { seqOf } from "./sql";
 
 /** Every row of the schema's tables (every version of a temporal row), and each sequence's last id. */
 export async function exportTables(pool: Pool, schema: Schema): Promise<Snapshot> {
@@ -17,7 +18,7 @@ export async function exportTables(pool: Pool, schema: Schema): Promise<Snapshot
     tables[key] = rows.map(({ row }: { row: Record<string, unknown> }) =>
       table.temporal ? { ...row, valid_from: isoTime(row.valid_from), valid_to: isoTime(row.valid_to) } : row,
     );
-    const seq = (await pool.query(`SELECT last_value, is_called FROM ${q(`seq_${table.name}`)}`)).rows[0];
+    const seq = (await pool.query(`SELECT last_value, is_called FROM ${q(seqOf(table.name))}`)).rows[0];
     sequences[key] = seq ? Number(seq.last_value) - (seq.is_called ? 0 : 1) : 0;
   }
   return { tables, sequences };
@@ -35,6 +36,6 @@ export async function importTables(pool: Pool, schema: Schema, snapshot: Snapsho
       await pool.query(`INSERT INTO ${q(table.name)} SELECT * FROM jsonb_populate_record(null::${q(table.name)}, $1)`, [JSON.stringify(value)]);
     }
     const last = lastId(snapshot, key);
-    await pool.query(`SELECT setval($1, $2, $3)`, [`seq_${table.name}`, Math.max(last, 1), last > 0]);
+    await pool.query(`SELECT setval($1, $2, $3)`, [seqOf(table.name), Math.max(last, 1), last > 0]);
   }
 }
