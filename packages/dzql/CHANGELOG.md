@@ -23,6 +23,21 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **A ref: a field that names a row of a list document, by its path** (19 October). Said
+  `holds orders orders dish:menu:/items`: the order's `dish` is a row of the menu's `items`, its id
+  the path's last step, kept as `dish_id` (`refOf`, `columnOf`, `fieldOf` in `dzql/modelling/reading`).
+  A ref includes nothing, so the checks ask that whoever holds it holds the document it names into
+  (`unseen-ref`), that the document is there, holds what it names and is a list (`unknown-ref`), and
+  that some story adds the row it names (`unestablished-ref`). A story may presuppose the row a ref
+  names (`requires items.on=true` on an order): the guards climb to it along the ref's column, as
+  they climb to a parent. The guards say a story that changes a ref of its column, where the write
+  lands. `fixtures/orders.json` holds the whole path in the conformance test, and the definitions
+  test holds a ref on delta's JSON file, SQLite and dzql's compiled Postgres. The modelling CLI read
+  a field's type up to its second colon; it reads all after the first now (`fieldOf`, one place
+  for the CLI and the model's page).
+
 ### Fixed
 
 - **Two `cannot` stories on one write each refuse in their own words** (19 October, the Shed's

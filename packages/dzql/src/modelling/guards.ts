@@ -44,10 +44,13 @@ export type Rule = {
   /** The documents the teller holds that show the entity: the write must be to one of them. */
   docs: string[];
   /** What it presupposes, each with the rows climbed to reach it from the one written: `[]` is that row. */
-  requires: { entity: string; field: string; value: string; via: string[]; type?: string }[];
+  requires: { entity: string; field: string; value: string; via: Hop[]; type?: string }[];
   /** Why it cannot be checked from the write: then it is refused, saying so. */
   custom?: string;
 };
+/** A row climbed to: a parent, by its name (its key `<parent>_id`), or the row a ref names, by the ref's column. */
+export type Hop = string | { entity: string; key: string };
+
 /** The guards: the documents they stand in front of, and each write's rule. */
 export type Guards = {
   documents: string[];
@@ -72,15 +75,16 @@ export function guardsOf(model: GuardModel): Guards {
     if (s.post) continue; // a form posted to a route: the route's, not a document's
     // a requirement is checked on each write that can reach it (its row, or one it hangs under);
     // one that none of the story's writes reaches cannot be checked at all (cafe-c's feedback)
-    const reaches = (w: StoryWrite, r: { entity: string }) => m.above(w.entity).includes(r.entity);
+    const reaches = (w: StoryWrite, r: { entity: string }) => m.reach(w.entity).has(r.entity);
     for (const w of s.writes) {
-      const chain = m.above(w.entity);
+      const chain = m.reach(w.entity);
       const requires: Rule["requires"] = [];
       let custom: string | undefined;
       for (const r of s.requires) {
-        const at = chain.indexOf(r.entity);
-        if (at >= 0) requires.push({ entity: r.entity, field: r.path, value: r.value, via: chain.slice(1, at + 1), ...typed(m.typeOf(r.entity, r.path)) });
-        else if (!s.writes.some((x) => reaches(x, r))) custom ??= `it presupposes ${r.entity}.${r.path}=${r.value}, which none of its writes reaches (a row it writes, or one that hangs above it)`;
+        const hops = chain.get(r.entity);
+        // a parent by its name, as the guards always kept it; a ref by its column
+        if (hops) requires.push({ entity: r.entity, field: r.path, value: r.value, via: hops.map((h) => (h.key === `${h.entity}_id` ? h.entity : h)), ...typed(m.typeOf(r.entity, r.path)) });
+        else if (!s.writes.some((x) => reaches(x, r))) custom ??= `it presupposes ${r.entity}.${r.path}=${r.value}, which none of its writes reaches (a row it writes, one that hangs above it, or one a ref names)`;
       }
       rules.push({
         story: Number(s.id),
@@ -89,7 +93,7 @@ export function guardsOf(model: GuardModel): Guards {
         allow: s.kind !== "cannot",
         entity: w.entity,
         op: w.op,
-        ...(w.path && { field: w.path }),
+        ...(w.path && { field: m.columnIn(w.entity, w.path) }), // the column a write lands in: a ref's `<label>_id`
         ...(w.to !== undefined && { to: w.to }),
         ...(w.to !== undefined && typed(m.typeOf(w.entity, w.path))),
         docs: m.writable(s.actor, w.entity).map((d) => d.name),
@@ -156,7 +160,10 @@ async function unmet(guards: Guards, rule: Rule, at: { doc: string; op: Op; enti
   const start = row;
   for (const r of rule.requires) {
     row = start;
-    for (const up of r.via) row = row && row[`${up}_id`] != null ? await at.rowOf(up, String(row[`${up}_id`])) : undefined;
+    for (const up of r.via) {
+      const [entity, key] = typeof up === "string" ? [up, `${up}_id`] : [up.entity, up.key];
+      row = row && row[key] != null ? await at.rowOf(entity, String(row[key])) : undefined;
+    }
     if (!row || !saysWord(r.type, row[r.field], r.value)) return `presupposes ${r.entity}.${r.field}=${r.value}${row ? `, and it is ${JSON.stringify(row[r.field] ?? null)}` : ", and there is no such row"}`;
   }
   return undefined;

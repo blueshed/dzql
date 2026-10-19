@@ -13,6 +13,9 @@
 //   added       the entities a story that someone does adds
 //   who writes  a person writes an entity on a document that holds it and that they hold, or that
 //               is each person's own (you may write what you may read)
+//   a ref       a field whose type is a path into a document, its id the path's last step:
+//               `dish: menu:/items` names a row of the menu's items, kept as `dish_id`. It
+//               includes nothing: whoever reads it holds the document it names
 //   a value     a word a story says (`to`, `requires`), as its field's type has it: "false" on a
 //               boolean is false, "2" on an integer is 2
 //
@@ -49,10 +52,24 @@ const TYPES: Record<string, string> = {
   text: "text", integer: "integer", int: "integer", real: "real", number: "real", boolean: "boolean", bool: "boolean",
   json: "json", timestamptz: "timestamptz", timestamp: "timestamptz", time: "timestamptz", date: "text",
 };
-/** A type the modeller may say: each maps to one of delta's, and any other is a gap (referential closure), never guessed as text. */
-export const knownType = (type = "text"): boolean => type.trim().toLowerCase() in TYPES;
-/** delta's type for a modeller's word: text when it is not one. */
-export const typeOf = (type = "text"): string => TYPES[type.trim().toLowerCase()] ?? "text";
+/** A ref, as its type says it: a path into a document (`menu:/items`), the row's id its last step, not said. */
+export type Ref = { doc: string; collection: string };
+/** The ref a type says, if it is one. */
+export function refOf(type = ""): Ref | undefined {
+  const m = /^\s*(\w+):\/(\w+)\s*$/.exec(type);
+  return m ? { doc: m[1]!, collection: m[2]! } : undefined;
+}
+/** A field as the modeller says it, `name[:type]`: the type is all after the first colon, so a ref keeps its own (`dish:menu:/items`). */
+export function fieldOf(said: string): { name: string; type: string } {
+  const at = said.indexOf(":");
+  return at < 0 ? { name: said, type: "text" } : { name: said.slice(0, at), type: said.slice(at + 1) };
+}
+/** A field's column: its name, or a ref's label and `_id` (`dish` → `dish_id`), which keeps the row's id. */
+export const columnOf = (f: { name: string; type?: string }): string => (refOf(f.type) ? `${f.name}_id` : f.name);
+/** A type the modeller may say: each maps to one of delta's, or is a ref; any other is a gap (referential closure), never guessed as text. */
+export const knownType = (type = "text"): boolean => type.trim().toLowerCase() in TYPES || !!refOf(type);
+/** delta's type for a modeller's word: a ref keeps an id; text when it is not one. */
+export const typeOf = (type = "text"): string => (refOf(type) ? "integer" : (TYPES[type.trim().toLowerCase()] ?? "text"));
 
 /** Where an entity hangs, as one document says it: from nothing when it is that document's root, else under its parent (or the root). */
 export const parentIn = (d: Pick<ModelDocument, "root">, name: string, held: { parent: string | null }): string | null => (name === d.root ? null : (held.parent ?? d.root));
@@ -126,6 +143,22 @@ export function readingOf(model: AnyModel) {
     for (let x: string | undefined = e; x && !chain.includes(x); x = parentOf(x)) chain.push(x);
     return chain;
   };
+  /** Each ref an entity's fields make: its label, its column, and the path it names. */
+  const refsOf = (e: string) => [...(entities.get(e)?.fields ?? [])].flatMap(([label, type]) => {
+    const ref = refOf(type);
+    return ref ? [{ label, key: `${label}_id`, ...ref }] : [];
+  });
+  /** Every row a row of `e` reaches, and the hops to it, nearest first: up its parents (`<parent>_id`) and along its refs (`<label>_id`). */
+  const reach = (e: string): Map<string, { entity: string; key: string }[]> => {
+    const out = new Map<string, { entity: string; key: string }[]>([[e, []]]);
+    const queue = [e];
+    while (queue.length) {
+      const at = queue.shift()!;
+      const steps = [...(parentOf(at) ? [{ entity: parentOf(at)!, key: `${parentOf(at)}_id` }] : []), ...refsOf(at).map((r) => ({ entity: r.collection, key: r.key }))];
+      for (const step of steps) if (!out.has(step.entity)) (out.set(step.entity, [...out.get(at)!, step]), queue.push(step.entity));
+    }
+    return out;
+  };
   const doing = stories.filter((s) => s.kind === "does" && !s.post);
   const heldIn = (e: string) => documents.filter((d) => e in d.holds);
   const story = (id: string) => stories.find((s) => s.id === id);
@@ -138,6 +171,8 @@ export function readingOf(model: AnyModel) {
     clashes: [...parents].filter(([, by]) => by.size > 1),
     parentOf,
     above,
+    refsOf,
+    reach,
     heldIn,
     /** The stories someone does on a document (not a form posted to a route). */
     doing,
@@ -145,6 +180,8 @@ export function readingOf(model: AnyModel) {
     added: new Set(doing.flatMap((s) => s.writes.filter((w) => w.op === "add").map((w) => w.entity))),
     /** Is this entity's row there before any story adds it: an implied document's root, or each person's own (made by the visit)? */
     there: (e: string): boolean => documents.some((d) => d.root === e && (d.implied || d.own)),
+    /** The column an entity's field is kept in: its name, or a ref's `<label>_id`. */
+    columnIn: (e: string, field: string): string => columnOf({ name: field, type: entities.get(e)?.fields.get(field) }),
     /** The type of an entity's field, as the first document to give it said. */
     typeOf: (e: string, field: string | undefined): string | undefined => (field === undefined ? undefined : typeOf(entities.get(e)?.fields.get(field))),
     /** The documents a person may write an entity on: that hold it and that they hold, or that are each person's own. */

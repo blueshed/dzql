@@ -1,0 +1,241 @@
+{
+ "tables": {
+  "models": [
+   {
+    "id": 1,
+    "name": "orders"
+   }
+  ],
+  "stories": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "text": "The cook adds a dish to the menu",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "add",
+      "path": "name",
+      "to": "Soup"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 2,
+    "models_id": 1,
+    "text": "The cook puts a dish on",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "replace",
+      "path": "on",
+      "to": "true"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 3,
+    "models_id": 1,
+    "text": "The cook takes a dish off",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "replace",
+      "path": "on",
+      "to": "false"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 4,
+    "models_id": 1,
+    "text": "A customer orders a dish that is on",
+    "actor": "customer",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "orders",
+      "op": "add",
+      "path": "qty",
+      "to": "1"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "items",
+      "path": "on",
+      "value": "true"
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "models_id": 1,
+    "text": "A customer cannot order a dish that is off",
+    "actor": "customer",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "orders",
+      "op": "add"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "items",
+      "path": "on",
+      "value": "false"
+     }
+    ]
+   },
+   {
+    "id": 6,
+    "models_id": 1,
+    "text": "A customer changes the dish an order names",
+    "actor": "customer",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "orders",
+      "op": "replace",
+      "path": "dish"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 7,
+    "models_id": 1,
+    "text": "A customer cannot change the menu",
+    "actor": "customer",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "add",
+      "path": "name"
+     },
+     {
+      "entity": "items",
+      "op": "replace",
+      "path": "on"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 8,
+    "models_id": 1,
+    "text": "The cook cannot order for a customer",
+    "actor": "cook",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "orders",
+      "op": "add",
+      "path": "qty"
+     },
+     {
+      "entity": "orders",
+      "op": "replace",
+      "path": "dish"
+     }
+    ],
+    "requires": null
+   }
+  ],
+  "documents": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "name": "menu",
+    "root": "items",
+    "own": 0,
+    "list": 1,
+    "holds": {
+     "items": {
+      "parent": null,
+      "fields": [
+       {
+        "name": "name",
+        "type": "text"
+       },
+       {
+        "name": "on",
+        "type": "boolean"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "cook",
+     "customer"
+    ],
+    "stories": [
+     1,
+     2,
+     3,
+     7
+    ]
+   },
+   {
+    "id": 2,
+    "models_id": 1,
+    "name": "orders",
+    "root": "orders",
+    "own": 0,
+    "list": 1,
+    "holds": {
+     "orders": {
+      "parent": null,
+      "fields": [
+       {
+        "name": "dish",
+        "type": "menu:/items"
+       },
+       {
+        "name": "qty",
+        "type": "integer"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "customer",
+     "cook"
+    ],
+    "stories": [
+     4,
+     5,
+     6,
+     8
+    ]
+   }
+  ]
+ }
+}

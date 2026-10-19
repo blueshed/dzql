@@ -40,7 +40,7 @@ numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by n
 | The state it presupposes | `requires <n> <entity>.<field>=<value>...` |
 | A story taken back | `unsay <n>` |
 | A document | `document <name> <root> <story>...`: at least one story it serves; entities are plural (`invoices`) |
-| What it holds | `holds <doc> <entity> [under <parent>] <field[:type]>...`: the fields it holds, the whole list each time; types `text` (the default), `integer`, `real`, `boolean` |
+| What it holds | `holds <doc> <entity> [under <parent>] <field[:type]>...`: the fields it holds, the whole list each time; types `text` (the default), `integer`, `real`, `boolean`, or a ref: `dish:menu:/items`, a path into a list document, the row's id its last step, kept as `dish_id`. A ref names a row and includes nothing: whoever holds the order holds the menu too |
 | Who holds it | `heldby <doc> <actor>...`; `own <doc>` for one each person has alone (a session); `list <doc>` for every row of its root (`menu:`, the whole menu), not one (`menu:1`) |
 | Which stories it serves | `serves <doc> <story>...` |
 | Renamed, taken out | `rename <doc> <name>`, `drop <doc>`, `unhold <doc> <entity>` (never its root); `root <doc> <entity>` for a new root, the old one held under it, its number kept |
@@ -78,11 +78,11 @@ the page and at the foot of `show`: hjeli's six, Easy's coverage, and playabilit
 
 | Register | Open when |
 |---|---|
-| Reachability | an entity no document holds; a document nobody holds that is not each person's own, or that holds no field; a story no document serves |
+| Reachability | an entity no document holds; a document nobody holds that is not each person's own, or that holds no field; a story no document serves; someone holds a ref and not the document it names into |
 | Subscription closure | a story writes what reaches no document anyone holds; advice where another person's document holds what a story writes and does not serve it (are they told?) |
 | Actor closure | someone holds a document and tells no story |
-| Precondition closure | a write changes a row no story adds (an own document's root is made by the visit); a story requires a state no write sets. Not asked until a story says `writes` or `requires` |
-| Referential closure | a story a document serves is not told; an entity hangs under one its document does not hold; a name no table, column or document can take (a document's is one word: `my_table`); two documents of one name |
+| Precondition closure | a write changes a row no story adds (an own document's root is made by the visit), or names one by a ref; a story requires a state no write sets, or one none of its writes reaches (its row, a row above it, a row a ref names). Not asked until a story says `writes` or `requires` |
+| Referential closure | a story a document serves is not told; an entity hangs under one its document does not hold; a name no table, column or document can take (a document's is one word: `my_table`); two documents of one name; a ref into a document that is not there, does not hold what it names, or is one row and not a list |
 | Authorization closure | a teller writes what no document they hold holds: you may write what you may read |
 | Coverage | someone holds what a write changes, and no story says whether they may make it (a `cannot` story decides it); a `cannot` that the same teller's `does` already lets through, presupposing nothing, so it is never refused |
 | Playability | it is someone's move on a state no document they hold shows; someone waits on a state they cannot see |

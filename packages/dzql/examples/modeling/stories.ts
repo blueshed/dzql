@@ -1,4 +1,5 @@
 import { post, story, type Stories, type Write } from "dzql/modelling/stories";
+import { fieldOf } from "dzql/modelling/reading";
 import { links } from "./signin";
 
 // Modeling is a description of an application that two people keep while they talk: Peter tells
@@ -26,7 +27,7 @@ const touches = (id: number, entities: string[]): Write => model({ op: "replace"
 const unsay = (id: number): Write => model({ op: "remove", path: `/stories/${id}` });
 const describe = (name: string, root: string, stories: string[]): Write => model({ op: "add", path: "/documents/-", value: { name, root, stories } });
 const holds = (document: number, entity: string, under: string, fields: string[]): Write =>
-  model({ op: "replace", path: `/documents/${document}/holds/${entity}`, value: { under, fields: fields.map((f) => ({ name: f.split(":")[0], type: f.split(":")[1] ?? "text" })) } });
+  model({ op: "replace", path: `/documents/${document}/holds/${entity}`, value: { under, fields: fields.map(fieldOf) } });
 const unhold = (document: number, entity: string): Write => model({ op: "remove", path: `/documents/${document}/holds/${entity}` });
 const heldBy = (document: number, who: string[]): Write => model({ op: "replace", path: `/documents/${document}/held_by`, value: who });
 const serves = (document: number, stories: string[]): Write => model({ op: "replace", path: `/documents/${document}/stories`, value: stories });

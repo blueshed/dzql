@@ -1,6 +1,6 @@
 import { defineDoc, defineSchema, type ColumnShorthand, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { diff, stateOf, writeMigration, type Change } from "@blueshed/delta/migrations";
-import { readingOf, typeOf, valueOf, type AnyModel, type Document, type Entity, type Reading, type Story, type StoryWrite } from "./reading";
+import { columnOf, readingOf, typeOf, valueOf, type AnyModel, type Document, type Entity, type Reading, type Story, type StoryWrite } from "./reading";
 
 // From the model to the app: the stories, the documents they need and what each holds, as the
 // model's page keeps them, made into delta's two definitions -- a schema (`defineSchema`, the
@@ -26,13 +26,15 @@ export function definitionsOf(model: Model): { schema: Schema; docs: DocDef[] } 
   const m = readingOf(model);
   // the entities a document holds, each with its fields as columns -- but delta's own: the row's id, and the key to its parent
   const held = [...m.entities.values()].filter((e) => e.documents.length > 0);
-  const columnsOf = (e: Entity) => Object.fromEntries([...e.fields].filter(([f]) => f !== "id" && !(e.parent && f === `${e.parent}_id`)).map(([f, type]) => [f, `${typeOf(type)}?` as ColumnShorthand]));
+  // a ref keeps the id of the row it names, in `<label>_id`
+  const columnsOf = (e: Entity) =>
+    Object.fromEntries([...e.fields].map(([f, type]) => [columnOf({ name: f, type }), type] as const).filter(([c]) => c !== "id" && !(e.parent && c === `${e.parent}_id`)).map(([c, type]) => [c, `${typeOf(type)}?` as ColumnShorthand]));
   const schema = defineSchema(Object.fromEntries(held.map((e) => [e.name, { columns: columnsOf(e), temporal: false, ...(e.parent ? { parent: e.parent } : {}) }])));
   // a document that names fewer of an entity's fields than another gives it shows, is told and takes
   // only those (delta's `columns`); one that names none of them has not said, and keeps them all
   const columns = (d: Document) => {
     const fewer = Object.entries(d.holds).filter(([e, h]) => h.fields.length > 0 && [...m.entities.get(e)!.fields.keys()].some((f) => !h.fields.some((x) => x.name === f)));
-    return fewer.length ? { columns: Object.fromEntries(fewer.map(([e, h]) => [e, h.fields.map((f) => f.name)])) } : {};
+    return fewer.length ? { columns: Object.fromEntries(fewer.map(([e, h]) => [e, h.fields.map((f) => columnOf({ name: f.name, type: m.entities.get(e)!.fields.get(f.name) }))])) } : {};
   };
   const docs = m.documents.map((d) => defineDoc(`${d.name}:`, { root: d.root, include: Object.keys(d.holds).filter((e) => e !== d.root), ...(d.implied ? { implied: true } : {}), ...columns(d) }));
   return { schema, docs };
@@ -167,13 +169,15 @@ function planOf(m: Reading): Planned[] {
   // the row's own document addresses it by its id (delta: /<root>/<id>), a page of rows by /<collection>/<id>
   const opOf = (d: Document, w: StoryWrite) => {
     const parent = m.parentOf(w.entity);
-    const fields = { ...(parent ? { [`${parent}_id`]: 1 } : {}), ...(w.path ? { [w.path]: typed(w) } : {}) };
+    const col = w.path && m.columnIn(w.entity, w.path);
+    // a new row hangs under row 1 of its parent, and names row 1 of each document its refs point into
+    const fields = { ...(parent ? { [`${parent}_id`]: 1 } : {}), ...Object.fromEntries(m.refsOf(w.entity).map((r) => [r.key, 1])), ...(col ? { [col]: typed(w) } : {}) };
     // the document's own root is there once the document is open (made by the store, or by the proof
     // for one under a parent), so adding it is setting the field it says, if it says one
-    if (w.op === "add" && w.entity === d.root && !d.list) return w.path ? { op: "replace", path: `/${w.entity}/1/${w.path}`, value: typed(w) } : undefined;
+    if (w.op === "add" && w.entity === d.root && !d.list) return col ? { op: "replace", path: `/${w.entity}/1/${col}`, value: typed(w) } : undefined;
     if (w.op === "add") return { op: "add", path: `/${w.entity}/-`, value: fields };
     const row = `/${w.entity}/1`;
-    return w.op === "remove" ? { op: "remove", path: `${row}${w.path ? `/${w.path}` : ""}` } : { op: "replace", path: `${row}/${w.path}`, value: typed(w) };
+    return w.op === "remove" ? { op: "remove", path: `${row}${col ? `/${col}` : ""}` } : { op: "replace", path: `${row}/${col}`, value: typed(w) };
   };
   // a story's writes; as setup for another (`setup`), only what makes and sets, never what it takes
   // away: a premise that removes a row would take the one the later story stands on (cafe-e's feedback)
@@ -205,6 +209,8 @@ function planOf(m: Reading): Planned[] {
       if (w.op !== "add") rows.add(w.entity);
       const p = m.parentOf(w.entity);
       if (w.op === "add" && p) rows.add(p);
+      // a row it names: each ref a new row starts with, or the one a replace points it at
+      for (const r of m.refsOf(w.entity)) if (w.op === "add" || w.path === r.label) rows.add(r.collection);
     }
     const doing = m.doing.filter((o) => o !== s);
     const adders = doing.filter((o) => o.writes.some((w) => w.op === "add" && rows.has(w.entity)));
@@ -252,7 +258,7 @@ export function testsOf(model: Model, app = "model", types = "./types", guards?:
     const removed = new Set(s.writes.filter((w) => w.op === "remove" && !w.path).map((w) => w.entity));
     const checks = (s.kind === "cannot" ? [] : s.writes).filter((w) => !removed.has(w.entity)).flatMap((w) =>
       told.flatMap((who) =>
-        serving.filter((d) => d.held_by.includes(who) && holds(d, w)).map((d) => ({ who, doc: m.nameOf(d), entity: w.entity, ...(w.path ? { path: w.path, to: valueOf(m.typeOf(w.entity, w.path), w.to) } : {}), root: d.root === w.entity && !d.list })),
+        serving.filter((d) => d.held_by.includes(who) && holds(d, w)).map((d) => ({ who, doc: m.nameOf(d), entity: w.entity, ...(w.path ? { path: m.columnIn(w.entity, w.path), to: valueOf(m.typeOf(w.entity, w.path), w.to) } : {}), root: d.root === w.entity && !d.list })),
       ),
     );
     return [`  [${lit(s.text)}, ${lit(s.kind === "cannot")}, ${lit(premise)}, ${lit(writes)}, ${lit(checks)}],`];

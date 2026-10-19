@@ -6,6 +6,11 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### ref
+
+The first feature after the plan: in a dzql model a field may name a row of a list document by its
+path (`dish:menu:/items`, kept as `dish_id`). dzql's CHANGELOG has the detail.
+
 ### The DRY sweep's three breakages
 
 A sweep for things said in more than one place found three copies that had drifted far enough to

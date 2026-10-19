@@ -135,14 +135,14 @@ describe("the guarded write layer: the stories' writes, each with what it presup
       ],
     });
     expect(odd.rules.map((r) => r.story)).toEqual([1, 2, 3, 5]);
-    expect(odd.rules[0]!.custom).toBe("it presupposes rotas.live=yes, which none of its writes reaches (a row it writes, or one that hangs above it)");
+    expect(odd.rules[0]!.custom).toBe("it presupposes rotas.live=yes, which none of its writes reaches (a row it writes, one that hangs above it, or one a ref names)");
     expect(odd.rules[2]!.docs).toEqual([]);
     const rowOf: RowOf = () => ({ id: 1, teams_id: null });
     expect(await check(odd, { actor: "jo", doc: "desk", op: { op: "replace", path: "/teams/1/name", value: "x" }, rowOf })).toEqual({ ok: true, story: 2 });
     expect(await check(odd, { actor: "jo", doc: "desk", op: { op: "replace", path: "/teams/1", value: { name: "x" } }, rowOf })).toEqual({ ok: true, story: 2 });
     expect(await check({ ...odd, rules: [odd.rules[0]!] }, { actor: "jo", doc: "desk", op: { op: "replace", path: "/teams/1/name", value: "x" }, rowOf })).toEqual({
       ok: false,
-      reason: 'story 1 ("Jo renames a team") cannot be checked from the write: it presupposes rotas.live=yes, which none of its writes reaches (a row it writes, or one that hangs above it)',
+      reason: 'story 1 ("Jo renames a team") cannot be checked from the write: it presupposes rotas.live=yes, which none of its writes reaches (a row it writes, one that hangs above it, or one a ref names)',
     });
     expect(await check(odd, { actor: "jo", doc: "desk", op: { op: "add", path: "/holidays/-", value: {} }, rowOf })).toEqual({
       ok: false,
@@ -171,7 +171,7 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     expect(source).not.toContain("Refused until");
     const open = guardSource(guardsOf({ stories: [{ id: 7, text: "x", actor: "a", writes: [{ entity: "t", op: "add" }], requires: [{ entity: "u", path: "f", value: "1" }] }] }), "m.sqlite");
     expect(open).toContain("from m.sqlite");
-    expect(open).toContain("//   story 7: it presupposes u.f=1, which none of its writes reaches (a row it writes, or one that hangs above it)");
+    expect(open).toContain("//   story 7: it presupposes u.f=1, which none of its writes reaches (a row it writes, one that hangs above it, or one a ref names)");
   });
 });
 
@@ -210,4 +210,32 @@ test("two cannot stories on one write: each refuses in its own words, when its o
   expect(await borrow()).toEqual({ ok: false, reason: "A member cannot borrow a broken tool", story: 7 });
   Object.assign(tool, { out: true, broken: false });
   expect(await borrow()).toEqual({ ok: false, reason: "A member cannot borrow a tool someone else has out", story: 4 });
+});
+
+test("a requirement on the row a ref names is climbed to along the ref, by its column", async () => {
+  const guards = guardsOf({
+    stories: [{ id: 1, text: "Ann orders a dish still on", actor: "ann", writes: [{ entity: "orders", op: "add" }], requires: [{ entity: "items", path: "on", value: "true" }] }],
+    documents: [
+      { id: 1, name: "menu", root: "items", list: 1, holds: { items: { parent: null, fields: [{ name: "on", type: "boolean" }] } } as never, held_by: ["ann"] },
+      { id: 2, name: "bill", root: "invoices", holds: { invoices: { parent: null }, orders: { parent: "invoices", fields: [{ name: "dish", type: "menu:/items" }] } } as never, held_by: ["ann"] },
+    ],
+  });
+  expect(guards.rules[0]!.requires).toEqual([{ entity: "items", field: "on", value: "true", via: [{ entity: "items", key: "dish_id" }], type: "boolean" }]);
+  const rowOf: RowOf = (entity, id) => (entity === "items" ? { id: Number(id), on: id === "1" } : null);
+  const order = (dish: number) => check(guards, { actor: "ann", doc: "bill", op: { op: "add", path: "/orders/-", value: { invoices_id: 1, dish_id: dish } }, rowOf });
+  expect(await order(1)).toEqual({ ok: true, story: 1 });
+  expect(await order(2)).toEqual({ ok: false, reason: 'story 1 ("Ann orders a dish still on") presupposes items.on=true, and it is false' });
+});
+
+test("a story that changes a ref is said of its column, `<label>_id`, as the write lands there", async () => {
+  const guards = guardsOf({
+    stories: [{ id: 1, text: "Ann changes the dish she ordered", actor: "ann", writes: [{ entity: "orders", op: "replace", path: "dish" }] }],
+    documents: [
+      { id: 1, name: "menu", root: "items", list: 1, holds: { items: { parent: null, fields: [{ name: "on", type: "boolean" }] } } as never, held_by: ["ann"] },
+      { id: 2, name: "orders", root: "orders", list: 1, holds: { orders: { parent: null, fields: [{ name: "dish", type: "menu:/items" }] } } as never, held_by: ["ann"] },
+    ],
+  });
+  const rowOf: RowOf = (entity, id) => ({ id: Number(id), ...(entity === "orders" ? { dish_id: 1 } : {}) });
+  expect(await check(guards, { actor: "ann", doc: "orders", op: { op: "replace", path: "/orders/1/dish_id", value: 2 }, rowOf })).toEqual({ ok: true, story: 1 });
+  expect(await check(guards, { actor: "ann", doc: "orders", op: { op: "replace", path: "/orders/1/dish", value: 2 }, rowOf })).toMatchObject({ ok: false });
 });

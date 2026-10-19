@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { knownType, readingOf, says, touched, valueOf } from "./reading";
+import { columnOf, fieldOf, knownType, readingOf, refOf, says, touched, typeOf, valueOf } from "./reading";
 
 // One reading of a model, which the checks, the heart, the definitions, the proof and the guards take.
 const f = (name: string, type?: string) => ({ name, ...(type && { type }) });
@@ -58,4 +58,27 @@ test("a word as its field's type has it, and whether a stored value says it", ()
   expect([says("boolean", 0, "false"), says("boolean", 1, "yes"), says("boolean", true, "false"), says("boolean", "true", "true")]).toEqual([true, true, false, true]);
   expect([says("integer", 2, "2"), says("real", 2.5, "2.5"), says(undefined, "waiting", "waiting"), says("text", null, "x"), says("boolean", undefined, "false")]).toEqual([true, true, true, false, false]);
   expect([knownType("Bool"), knownType("money"), knownType()]).toEqual([true, false, true]);
+});
+
+test("a ref is a path into a list, its id the last step: kept as `<label>_id`, and reached along with the parents", () => {
+  expect(refOf("menu:/items")).toEqual({ doc: "menu", collection: "items" });
+  expect([refOf("text"), refOf("menu:items"), refOf("menu:/items/3")]).toEqual([undefined, undefined, undefined]);
+  expect([columnOf({ name: "dish", type: "menu:/items" }), columnOf({ name: "dish" })]).toEqual(["dish_id", "dish"]);
+  expect([knownType("menu:/items"), typeOf("menu:/items")]).toEqual([true, "integer"]);
+  const m = readingOf({
+    documents: [
+      { id: 1, name: "menu", root: "items", list: 1, holds: { items: { parent: null, fields: [f("name")] } } },
+      { id: 2, name: "bill", root: "invoices", holds: { invoices: { parent: null }, orders: { parent: "invoices", fields: [f("dish", "menu:/items")] } } },
+    ],
+  });
+  expect(m.refsOf("orders")).toEqual([{ label: "dish", key: "dish_id", doc: "menu", collection: "items" }]);
+  expect(m.columnIn("orders", "dish")).toBe("dish_id");
+  expect(m.typeOf("orders", "dish")).toBe("integer");
+  expect([...m.reach("orders")]).toEqual([["orders", []], ["invoices", [{ entity: "invoices", key: "invoices_id" }]], ["items", [{ entity: "items", key: "dish_id" }]]]);
+});
+
+test("a field as the modeller says it: its type is all after the first colon, so a ref keeps its own", () => {
+  expect(fieldOf("name")).toEqual({ name: "name", type: "text" });
+  expect(fieldOf("price:integer")).toEqual({ name: "price", type: "integer" });
+  expect(fieldOf("dish:menu:/items")).toEqual({ name: "dish", type: "menu:/items" });
 });

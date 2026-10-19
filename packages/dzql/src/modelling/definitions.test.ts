@@ -58,6 +58,9 @@ describe("the model as delta's definitions", () => {
     // a document that names fewer of an entity's fields than another gives it holds only those
     const named = definitionsOf({ documents: [...Object.values(model.documents!), { id: 3, name: "names", root: "people", holds: { people: { parent: null, fields: [{ name: "name" }] } } }] });
     expect(named.docs[2]!.columns).toEqual({ people: ["name"] });
+    // a ref keeps the id of the row it names, in `<label>_id`
+    const refs = definitionsOf({ documents: [{ id: 1, name: "menu", root: "items", list: 1, holds: { items: { parent: null, fields: [{ name: "name" }] } } }, { id: 2, name: "bill", root: "orders", holds: { orders: { parent: null, fields: [{ name: "dish", type: "menu:/items" }] } } }] });
+    expect(refs.schema.tables.orders!.columns.dish_id).toMatchObject({ type: "integer", nullable: true });
   });
 
   test("a document said with no holds holds its root, and a model with nothing in it is empty", () => {
@@ -86,31 +89,31 @@ describe("the source dzql model export writes", () => {
 
 // The same definitions on each store: the team opens before its row, its first write makes it,
 // a person added under it is held by it, and it reads back the same everywhere.
-const { schema, docs } = definitionsOf(model);
+const defs = definitionsOf(model);
 type Ws = ReturnType<typeof createWs>;
-const stores: [string, () => Promise<{ ws: Ws; end: () => Promise<void> }>][] = [
-  ["delta's JSON file", async () => {
+const stores: [string, (d?: typeof defs) => Promise<{ ws: Ws; end: () => Promise<void> }>][] = [
+  ["delta's JSON file", async (d = defs) => {
     const dir = mkdtempSync(join(tmpdir(), "dzql-model-"));
     const ws = createWs();
-    json.registerDocs(ws, join(dir, "app.json"), schema, docs);
+    json.registerDocs(ws, join(dir, "app.json"), d.schema, d.docs);
     // the file is saved after a write is answered
-    return { ws, end: async () => { await waitFor(() => existsSync(join(dir, "app.json"))); rmSync(dir, { recursive: true, force: true }); } };
+    return { ws, end: async (d = defs) => { await waitFor(() => existsSync(join(dir, "app.json"))); rmSync(dir, { recursive: true, force: true }); } };
   }],
-  ["SQLite", async () => {
+  ["SQLite", async (d = defs) => {
     const db = new Database(":memory:");
-    sqlite.createTables(db, schema);
+    sqlite.createTables(db, d.schema);
     const ws = createWs();
-    sqlite.registerDocs(ws, db, schema, docs);
+    sqlite.registerDocs(ws, db, d.schema, d.docs);
     return { ws, end: async () => db.close() };
   }],
-  ["dzql's compiled Postgres (PGlite)", async () => {
+  ["dzql's compiled Postgres (PGlite)", async (d = defs) => {
     const pool = await openPglite();
     await applyFramework(pool);
-    await applySql(pool, generateSql(schema, docs));
+    await applySql(pool, generateSql(d.schema, d.docs));
     const ws = createWs();
     ws.setServer({ publish() {} });
-    const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)) });
-    return { ws, end: async () => { await listener.destroy(); await pool.end(); } };
+    const listener = await createDocListener(ws, pool, { types: d.docs.map((def) => docTypeFromDef(def, pool)) });
+    return { ws, end: async (d = defs) => { await listener.destroy(); await pool.end(); } };
   }],
 ];
 
@@ -131,6 +134,26 @@ for (const [name, open] of stores) {
     }
   }, 30_000);
 }
+
+// A ref on each store: an order names a dish on the menu (`dish: menu:/items`), kept as `dish_id`,
+// and the orders document includes nothing of the menu: whoever reads it holds the menu too.
+const orders = definitionsOf({ documents: ((await Bun.file(`${import.meta.dir}/fixtures/orders.json`).json()) as { tables: { documents: Model["documents"] } }).tables.documents });
+for (const [name, open] of stores)
+  test(`on ${name}: an order names a dish by its id, and the orders document holds only the id`, async () => {
+    const { ws, end } = await open(orders);
+    try {
+      const ann = mockClient({ clientId: "ann" });
+      await sendAndAwait(ws, ann, { action: "open", doc: "menu:" });
+      expect((await sendAndAwait(ws, ann, { action: "delta", doc: "menu:", ops: [{ op: "add", path: "/items/-", value: { name: "Soup", on: true } }] })).error).toBeUndefined();
+      await sendAndAwait(ws, ann, { action: "open", doc: "orders:" });
+      expect((await sendAndAwait(ws, ann, { action: "delta", doc: "orders:", ops: [{ op: "add", path: "/orders/-", value: { dish_id: 1, qty: 2 } }] })).error).toBeUndefined();
+      const read = (await sendAndAwait(ws, mockClient({ clientId: "mo" }), { action: "open", doc: "orders:" })).result;
+      expect(Object.values(read.orders)).toEqual([expect.objectContaining({ dish_id: 1, qty: 2 })]);
+      expect(read.items).toBeUndefined();
+    } finally {
+      await end();
+    }
+  }, 30_000);
 
 describe("the rest of what the model makes: the snapshot, the trajectory, the tests", () => {
   // the cafe: the table document roots at tables; the kitchen puts tables under cafes

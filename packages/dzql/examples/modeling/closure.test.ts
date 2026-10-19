@@ -243,7 +243,7 @@ describe("what the cafe showed: checks that only a schema would have caught", ()
   test("referential closure: one table under two parents, and a type the model does not know -- never guessed as text", () => {
     const gaps = of(r, "referential-closure").gaps;
     expect(gaps).toContainEqual({ kind: "parent-clash", where: "tables", detail: "one table hangs from one parent, but kitchen puts tables under cafes and elsewhere puts tables under rooms" });
-    expect(gaps).toContainEqual({ kind: "unknown-type", where: "menu: items.price", detail: '"numeric" is not a type the model knows (text, integer, real, boolean, json, timestamptz, date)' });
+    expect(gaps).toContainEqual({ kind: "unknown-type", where: "menu: items.price", detail: '"numeric" is not a type the model knows (text, integer, real, boolean, json, timestamptz, date, or a ref: a path into a list, menu:/items)' });
   });
 });
 
@@ -430,4 +430,31 @@ test("advice: whose copy goes quiet once their own document names it, or a row i
   expect(of(cafe("table"), "actor-closure").advice).toEqual([]); // the floor hangs invoices under tables, and the seat names one
   expect(of(cafe("invoice_id"), "actor-closure").advice).toEqual([]);
   expect(of(cafe("colour"), "actor-closure").advice!.map((a) => a.where)).toEqual(["invoice (john)"]);
+});
+
+test("a ref: a path into a list its holders hold, naming a row some story adds; it says whose copy outright", () => {
+  const cafe = (dish: string, menuHolders: string[], adds = true) => closureOf({
+    models: { name: "Cafe" },
+    stories: {
+      "1": { id: 1, text: "The cook puts a dish on", actor: "cook", kind: "does", writes: adds ? [{ entity: "items", op: "add" }] : [{ entity: "items", op: "replace", path: "name" }] },
+      "2": { id: 2, text: "Ann orders it", actor: "ann", kind: "does", writes: [{ entity: "orders", op: "add" }] },
+      "3": { id: 3, text: "Ann sits at a table", actor: "ann", kind: "does", writes: [{ entity: "visits", op: "replace", path: "table" }] },
+    },
+    documents: {
+      "1": { id: 1, name: "menu", root: "items", list: 1, holds: { items: { parent: null, fields: [field("name")] } }, held_by: menuHolders, stories: [1] },
+      "2": { id: 2, name: "bill", root: "orders", list: 1, holds: { orders: { parent: null, fields: [field("dish", dish)] } }, held_by: ["ann"], stories: [2] },
+      "3": { id: 3, name: "visit", root: "visits", own: 1, holds: { visits: { parent: null, fields: [field("table", "door:/tables")] } }, stories: [3] },
+      "4": { id: 4, name: "door", root: "tables", list: 1, holds: { tables: { parent: null, fields: [field("name")] } }, held_by: ["ann"], stories: [3] },
+      "5": { id: 5, name: "table", root: "tables", holds: { tables: { parent: null, fields: [field("name")] } }, held_by: ["ann"], stories: [3] },
+    },
+  });
+  const kinds = (r: ReturnType<typeof cafe>, p: string) => of(r, p as never).gaps.map((g) => g.kind);
+  expect(kinds(cafe("menu:/items", ["cook", "ann"]), "reachability")).not.toContain("unseen-ref");
+  expect(of(cafe("menu:/items", ["cook"]), "reachability").gaps).toContainEqual({ kind: "unseen-ref", where: "bill: orders.dish", detail: "ann holds orders.dish, which names a row of menu:/items, and does not hold menu (heldby 1 ... ann)" });
+  expect(of(cafe("menu:/items", ["cook", "ann"], false), "precondition-closure").gaps).toContainEqual({ kind: "unestablished-ref", where: "story 2 (ann)", detail: "add orders names a row of menu:/items (orders.dish), but no story adds one" });
+  expect(of(cafe("nowhere:/items", ["cook", "ann"]), "referential-closure").gaps.map((g) => g.detail)).toContain("orders.dish names a row of nowhere:/items, and there is no document nowhere");
+  expect(of(cafe("menu:/plates", ["cook", "ann"]), "referential-closure").gaps.map((g) => g.detail)).toContain("orders.dish names a row of menu:/plates, and menu holds no plates");
+  expect(of(cafe("table:/tables", ["cook", "ann"]), "referential-closure").gaps.map((g) => g.detail)).toContain("orders.dish names a row of table:/tables, and table is one table, not a list: a ref names a row of a list (list 5)");
+  // the visit's ref names a table: whose copy is said, never asked
+  expect(of(cafe("menu:/items", ["cook", "ann"]), "actor-closure").advice!.map((a) => a.where)).not.toContain("table (ann)");
 });

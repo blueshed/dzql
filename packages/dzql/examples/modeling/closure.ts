@@ -16,7 +16,7 @@
 // A register that the model cannot answer says so, and is never counted as passed.
 
 import { esc } from "dzql/rendering/html";
-import { knownType, readingOf } from "dzql/modelling/reading";
+import { knownType, readingOf, refOf } from "dzql/modelling/reading";
 import { saidWrite, singular, touched, type Raw, type StoryWrite } from "./heart";
 
 export type Register = {
@@ -51,9 +51,16 @@ export function closureOf(raw: Raw): Register[] {
   // whose copy a role holds is said when their own document holds a field naming it, or a row it
   // hangs under: a seat's `table` says which table's invoice is theirs (cafe-c's feedback)
   const ownSays = (who: string, root: string): boolean => {
-    const names = new Set(above(root).flatMap((e) => [e, singular(e)].flatMap((n) => [n, `${n}_id`])));
-    return m.inFront(who).some((o) => o.own && Object.values(o.holds).some((h) => h.fields.some((f) => names.has(f.name))));
+    // a ref says it outright (the visit's `table: door:/tables`); a field named for one, the older way
+    const chain = new Set(above(root));
+    const names = new Set([...chain].flatMap((e) => [e, singular(e)].flatMap((n) => [n, `${n}_id`])));
+    return m.inFront(who).some((o) => o.own && Object.values(o.holds).some((h) => h.fields.some((f) => (refOf(f.type) ? chain.has(refOf(f.type)!.collection) : names.has(f.name)))));
   };
+  // each ref a document holds: the field, its entity, the path it names, and whoever holds it there
+  const holdersOf = (d: (typeof docs)[number]) => (d.own ? [...new Set(stories.filter((s) => d.serves.includes(String(s.id))).map((s) => s.actor))] : d.held_by);
+  const refsHeld = docs.flatMap((d) =>
+    Object.entries(d.holds).flatMap(([e, h]) => h.fields.flatMap((f) => (refOf(f.type) ? [{ d, e, label: f.name, ...refOf(f.type)! }] : []))),
+  );
   const impliedRoots = new Set(docs.filter((d) => d.implied).map((d) => d.root));
 
   const reachability: Register = {
@@ -64,6 +71,12 @@ export function closureOf(raw: Raw): Register[] {
       ...docs.filter((d) => !someoneHolds(d)).map((d) => ({ kind: "unheld-document", where: d.name, detail: `${d.name} is held by nobody, and is not each person's own` })),
       // a story no document serves happens in front of nobody (the page's "no document")
       ...stories.filter((s) => !s.post && !docs.some((d) => d.serves.includes(String(s.id)))).map((s) => ({ kind: "unserved-story", where: story(s), detail: `no document serves it: which document is it done on? (serves <document's number> ... ${s.id})` })),
+      // a ref names a row of another document: whoever holds it must hold that one too, or it names what they cannot see
+      ...refsHeld.flatMap((r) =>
+        holdersOf(r.d)
+          .filter((who) => docs.some((x) => x.name === r.doc) && !m.inFront(who).some((x) => x.name === r.doc))
+          .map((who) => ({ kind: "unseen-ref", where: `${r.d.name}: ${r.e}.${r.label}`, detail: `${who} holds ${r.e}.${r.label}, which names a row of ${r.doc}:/${r.collection}, and does not hold ${r.doc} (heldby ${docs.find((x) => x.name === r.doc)!.id} ... ${who})` })),
+      ),
       // a document with no field anywhere in it shows nobody anything: an empty model is never "closed"
       ...docs.filter((d) => !d.own && Object.values(d.holds).every((h) => !(h.fields ?? []).length)).map((d) => ({ kind: "empty-document", where: d.name, detail: `${d.name} holds no field: say what it holds (holds ${d.id} <entity> <field>...)` })),
       // asked once stories say what they write: an entity held and read, which no story ever writes, is always empty
@@ -135,6 +148,12 @@ export function closureOf(raw: Raw): Register[] {
       ...said
         .filter(({ w }) => w.op === "add" && parentOf(w.entity) && !added.has(parentOf(w.entity)!) && !there(parentOf(w.entity)!))
         .map(({ s, w }) => ({ kind: "unestablished-parent", where: story(s), detail: `${saidWrite(w)} adds under a ${parentOf(w.entity)} row, but no story adds one` })),
+      // a row a ref names: a new row starts naming one, and a replace of the ref names another
+      ...said.flatMap(({ s, w }) =>
+        m.refsOf(w.entity)
+          .filter((r) => (w.op === "add" || w.path === r.label) && !added.has(r.collection) && !there(r.collection))
+          .map((r) => ({ kind: "unestablished-ref", where: story(s), detail: `${saidWrite(w)} names a row of ${r.doc}:/${r.collection} (${w.entity}.${r.label}), but no story adds one` })),
+      ),
       ...stories.flatMap((s) =>
         (s.requires ?? [])
           .filter((r) => !produced.has(`${r.entity}.${r.path}=${r.value}`))
@@ -143,8 +162,8 @@ export function closureOf(raw: Raw): Register[] {
       // what a story presupposes is read from a row it writes or one above it: else the guards cannot check it
       ...stories.flatMap((s) =>
         (s.requires ?? [])
-          .filter((r) => (s.writes ?? []).length > 0 && !(s.writes ?? []).some((w) => above(w.entity).includes(r.entity)))
-          .map((r) => ({ kind: "unchecked-precondition", where: story(s), detail: `it presupposes ${r.entity}.${r.path}=${r.value}, which none of its writes reaches (a row it writes, or one that hangs above it), so it cannot be checked` })),
+          .filter((r) => (s.writes ?? []).length > 0 && !(s.writes ?? []).some((w) => m.reach(w.entity).has(r.entity)))
+          .map((r) => ({ kind: "unchecked-precondition", where: story(s), detail: `it presupposes ${r.entity}.${r.path}=${r.value}, which none of its writes reaches (a row it writes, one that hangs above it, or one a ref names), so it cannot be checked` })),
       ),
     ],
   };
@@ -169,11 +188,20 @@ export function closureOf(raw: Raw): Register[] {
           (h.fields ?? []).filter((f) => !IDENT.test(f.name)).map((f) => ({ kind: "invalid-name", where: `${d.name}: ${e}`, detail: `${JSON.stringify(f.name)} is not a name a column can take` })),
         ),
       ),
+      // a ref is a path into a list: the row's id its last step, so the document's name is whole without it
+      ...refsHeld.flatMap((r) => {
+        const target = docs.find((x) => x.name === r.doc);
+        const where = `${r.d.name}: ${r.e}.${r.label}`;
+        if (!target) return [{ kind: "unknown-ref", where, detail: `${r.e}.${r.label} names a row of ${r.doc}:/${r.collection}, and there is no document ${r.doc}` }];
+        if (!(r.collection in target.holds)) return [{ kind: "unknown-ref", where, detail: `${r.e}.${r.label} names a row of ${r.doc}:/${r.collection}, and ${r.doc} holds no ${r.collection}` }];
+        if (!target.list) return [{ kind: "unknown-ref", where, detail: `${r.e}.${r.label} names a row of ${r.doc}:/${r.collection}, and ${r.doc} is one ${singular(target.root)}, not a list: a ref names a row of a list (list ${target.id})` }];
+        return [];
+      }),
       ...docs.filter((d) => (seen.has(d.name) ? true : (seen.add(d.name), false))).map((d) => ({ kind: "duplicate-name", where: d.name, detail: `more than one document is named ${d.name}` })),
       ...m.clashes.map(([e, by]) => ({ kind: "parent-clash", where: e, detail: `one table hangs from one parent, but ${[...by].map(([p, ds]) => `${ds.join(", ")} put${ds.length === 1 ? "s" : ""} ${e} under ${p}`).join(" and ")}` })),
       ...docs.flatMap((d) =>
         Object.entries(d.holds).flatMap(([e, h]) =>
-          (h.fields ?? []).filter((f) => !knownType(f.type)).map((f) => ({ kind: "unknown-type", where: `${d.name}: ${e}.${f.name}`, detail: `${JSON.stringify(f.type)} is not a type the model knows (text, integer, real, boolean, json, timestamptz, date)` })),
+          (h.fields ?? []).filter((f) => !knownType(f.type)).map((f) => ({ kind: "unknown-type", where: `${d.name}: ${e}.${f.name}`, detail: `${JSON.stringify(f.type)} is not a type the model knows (text, integer, real, boolean, json, timestamptz, date, or a ref: a path into a list, menu:/items)` })),
         ),
       ),
     ],

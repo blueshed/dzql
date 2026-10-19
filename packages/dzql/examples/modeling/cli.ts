@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fieldOf } from "dzql/modelling/reading";
 import { extractSessionFile, savedServer, type Aliases } from "dzql/rendering/cli/commands";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { closureOf, plainClosure } from "./closure";
@@ -37,7 +38,6 @@ import { plain } from "./heart";
 
 type Write = { doc: string; ops: PatchOp[] };
 const model = (op: PatchOp): Write => ({ doc: "model", ops: [op] });
-const field = (said: string) => ({ name: said.split(":")[0]!, type: said.split(":")[1] ?? "text" });
 
 /** Where `-` reads a story's words from: what is piped in. */
 export const stdin = { path: "/dev/stdin" };
@@ -83,7 +83,7 @@ export const aliases: Aliases = {
   root: ([id, entity]) => model({ op: "replace", path: `/documents/${id}/root`, value: entity }),
   holds: ([id, entity, ...rest]) => {
     const under = rest[0] === "under" ? rest[1] : undefined;
-    return model({ op: "replace", path: `/documents/${id}/holds/${entity}`, value: { under, fields: (under ? rest.slice(2) : rest).map(field) } });
+    return model({ op: "replace", path: `/documents/${id}/holds/${entity}`, value: { under, fields: (under ? rest.slice(2) : rest).map(fieldOf) } });
   },
   unhold: ([id, entity]) => model({ op: "remove", path: `/documents/${id}/holds/${entity}` }),
   heldby: ([id, ...who]) => model({ op: "replace", path: `/documents/${id}/held_by`, value: who }),
