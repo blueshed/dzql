@@ -26,6 +26,9 @@
   --row-min: 0; --row-pad-y: 6px; --row-pad-x: 8px;
   --what-weight: 400; --state-size: 13px; --state-spacing: 0; --state-case: none;
   --prop-columns: minmax(0, 1fr); /* a field's label above it */
+  --cell-name-flex: 0 1 auto; /* "The kitchen ›" */
+  --pin-edge: #ddd;
+  --trail-weight: 400; --row-size: 14px; --name-mark: 12px;
 }
 /* a finger's size where the pointer is one: a pointer query, not a width */
 @media (pointer: coarse) { :root { --control: 44px; --touch: 44px; } }

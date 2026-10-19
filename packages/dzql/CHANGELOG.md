@@ -44,6 +44,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   other, Paintbrush's (`docs/bento/paintbrush/`): white cells split by a hairline, black ink, 4px,
   no shadows, plain words, a field's label above it; it imports the frame and is only tokens
   (`bento.test.ts` holds it so). The starter, and so `bun create dzql`, is drawn in it.
+- **The bento draws what Paintbrush's design has** (19 October): a box's heading
+  (`boxPage(..., heading)`: the place's name large under the trail, the logo, the page's own deeds
+  and its tools beside it); a run, the heading of a group of rows (`run()`); a row with a deed of
+  its own (`row({ act })`: its name the button that opens it, the deed at the end, never a button
+  in a button) and a total (`row({ total })`); a pin (`pin()`), in a cell's head (`cell({ pins })`)
+  or on a line; a cell two rows tall (`cell({ rows })`). Each is an addition: a page that does not
+  ask for one is drawn as it was.
 
 - **What cafe-e found, built by a blank Claude from the skills alone** (18 October,
   `cafe-e/feedback.md`: it built the whole cafe, 18 stories at 100%, and played it in Chrome). The

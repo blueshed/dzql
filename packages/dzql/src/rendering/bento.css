@@ -48,6 +48,12 @@
   --what-weight: 600; --state-size: 12px; --state-spacing: 0.1em; --state-case: uppercase;
   /* a property in a drawer: its name beside its value, or (one column) above it */
   --prop-columns: 6rem minmax(0, 1fr);
+  /* a cell's name takes its head's room (its › at the far side), or only its own (the › beside it) */
+  --cell-name-flex: 1;
+  /* a box's heading: the place's name, large; a pin's edge */
+  --heading-size: 20px; --pin-edge: var(--line);
+  /* the trail's weight; a row's words; the mark beside a name that opens */
+  --trail-weight: var(--cap-weight); --row-size: inherit; --name-mark: 16px;
 }
 /* ── the frame: what layers() draws (src/bento.ts), the ground and the layers over it. Its elements --
    every box, button and field in it -- are drawn as the bento's; an element anywhere else on an
@@ -108,8 +114,13 @@
 
 /* ── where am I: the trail, and the page's tools beside it on the box ── */
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); margin: 0 var(--space-lg) var(--space-lg); min-height: var(--control); }
+/* with a heading: the trail on its own line, the name large under it, the page's deeds and tools beside the name */
+.page-head.headed { flex-direction: column; align-items: stretch; gap: var(--space-sm); }
+.heading { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.heading > img { display: block; }
+.heading h1 { margin: 0 auto 0 0; min-width: 0; font-size: var(--heading-size); font-weight: 600; line-height: 1.25; }
 .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; row-gap: calc(var(--touch) - 1lh); } /* a trail that wraps keeps its lines a touch apart, so no crumb's press area lies over another's */
-nav.crumbs { color: var(--trail-ink); } /* over .cap's ink: the trail may be quieter than a label */
+nav.crumbs { color: var(--trail-ink); font-weight: var(--trail-weight); } /* over .cap's ink: the trail may be quieter than a label */
 .crumbs .crumb { display: inline-flex; align-items: center; }
 .crumbs .sep { display: inline-flex; align-items: center; justify-content: center; width: 22px; color: var(--muted); }
 .crumbs a { position: relative; color: var(--accent); text-decoration: none; }
@@ -128,7 +139,7 @@ nav.crumbs { color: var(--trail-ink); } /* over .cap's ink: the trail may be qui
 .cell-head > button.cell-name { text-align: start; letter-spacing: inherit; text-transform: inherit; }
 .cell-head > button.cell-name:focus-visible { outline: none; }
 .cell-head { display: flex; align-items: center; gap: 7px; }
-.cell-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell-name { flex: var(--cell-name-flex); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cell-icon, .chev { display: inline-flex; align-items: center; color: var(--accent); }
 .thing .pencil { color: var(--mark); }
 .cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--summary-ink); }
@@ -212,7 +223,7 @@ body:has(.page.windowed) { overflow: hidden; }
    the words, the state, the mark. A row is a figure: tap it and its drawer opens and the whole
    line shows it is chosen; what it can carry waits in its drawer, not on the line. ── */
 .rows { display: flex; flex-direction: column; }
-.row { display: flex; align-items: center; gap: var(--space-md); min-height: var(--row-min); padding: var(--row-pad-y) var(--row-pad-x); margin: 0 calc(-1 * var(--row-pad-x)); border-bottom: 1px solid var(--line); border-radius: var(--radius-inner); }
+.row { display: flex; align-items: center; gap: var(--space-md); font-size: var(--row-size); min-height: var(--row-min); padding: var(--row-pad-y) var(--row-pad-x); margin: 0 calc(-1 * var(--row-pad-x)); border-bottom: 1px solid var(--line); border-radius: var(--radius-inner); }
 .row:last-child { border-bottom: 0; }
 .row .lead { flex: 0 0 auto; display: inline-flex; }
 .row .words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -223,7 +234,20 @@ body:has(.page.windowed) { overflow: hidden; }
 .row.tap { width: calc(100% + 2 * var(--row-pad-x)); text-align: start; cursor: pointer; } /* a button, the whole line */
 .row.tap:hover { background: rgba(var(--ink-rgb), 0.04); }
 .row.tap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.row[aria-expanded="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.row[aria-expanded="true"], .row.acts:has(> .words > [aria-expanded="true"]) { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+/* a row with a deed of its own: its name is the button that opens it, the mark beside the name, the deed at the end */
+.row.acts .words { flex-direction: row; align-items: baseline; flex-wrap: wrap; column-gap: var(--space-sm); }
+.row.acts .what { display: inline-flex; align-items: center; gap: var(--space-xs); text-align: start; }
+.row.acts .what .mark { display: inline-flex; color: var(--mark); }
+.row.acts .what .mark > svg { width: var(--name-mark); height: var(--name-mark); }
+.row.acts > .tool { flex: 0 0 auto; }
+.row.total .what, .row.total .state { font-weight: 600; color: var(--ink); }
+/* a run: the heading of a group of rows in one list */
+.run { margin: var(--space-sm) 0 0; font-size: 12px; font-weight: 400; color: var(--muted); }
+/* a pin: a small fact of a thing, in a cell's head or on a line; a button when it opens what it pins */
+.pin { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 var(--space-sm); border: 1px solid var(--pin-edge); border-radius: var(--radius-control); background: var(--card); color: var(--ink); font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; white-space: nowrap; }
+button.pin:hover { background: var(--card-hover); }
+.cell-head > .cell-name + .pin { margin-left: auto; } /* the pins at the far side, however the name grows */
 
 
 /* ── the drawer: a figure's properties -- a panel at the right from 820px, a sheet from the foot below ── */
