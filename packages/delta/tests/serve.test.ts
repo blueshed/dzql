@@ -111,10 +111,10 @@ describe("run and stop", () => {
     const stubborn = Bun.spawn([process.execPath, "-e", "process.on('SIGTERM', () => {}); console.log('up'); setInterval(() => {}, 1000);"], { stdout: "pipe", stderr: "pipe" });
     await readUntil(stubborn, /up/);
     await Bun.write(file, String(stubborn.pid));
-    expect(await stop(file)).toBe(`killed ${stubborn.pid}: it did not stop when asked`);
+    expect(await stop(file, { grace: 300 })).toBe(`killed ${stubborn.pid}: it did not stop when asked`); // a short grace: the wait is not what is tested
     expect(await stubborn.exited).not.toBe(0);
     expect(await Bun.file(file).exists()).toBe(false);
-  }, 20_000);
+  });
 
   test("`delta stop` is stop, at the command line", async () => {
     const proc = start();

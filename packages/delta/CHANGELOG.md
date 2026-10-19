@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`stop(file, { grace })`** (`@blueshed/delta/serve`, 20 October): how long a server is given to
+  stop when asked before it is killed (10 seconds, as before). The test of a server that will not
+  stop gives it 300 ms, so delta's fast tier no longer waits ten seconds on it (21 s to 11 s).
+
 - **`delta migrations make` also writes `migrations/index.ts`** (19 October): the folder as one
   import (`writeIndex` in `./migrations`), which a bundle carries, so a built app runs its history:
   `migrate(db, migrations, ...)` with `import { migrations } from "./migrations"`. `fromFolder` skips

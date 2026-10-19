@@ -128,16 +128,16 @@ export async function run<S extends Runnable>(start: () => S | Promise<S>, { fil
   return served;
 }
 
-/** Stops the server the pid file names (`delta stop`): what it did, as a line. */
-export async function stop(file = pidFile()): Promise<string> {
+/** Stops the server the pid file names (`delta stop`): what it did, as a line. `grace`: how long it is given to stop when asked before it is killed. */
+export async function stop(file = pidFile(), { grace = 10_000 } = {}): Promise<string> {
   const f = Bun.file(file);
   if (!(await f.exists())) return "not running";
   const pid = Number(await f.text());
   try {
     if (!(pid > 0)) throw new Error("no pid");
     process.kill(pid, "SIGTERM");
-    // gone when it says so: a server waits at most seven seconds on itself; one still there is killed
-    for (const end = Date.now() + 10_000; Date.now() < end; await Bun.sleep(100)) if (!isAlive(pid)) return `stopped ${pid}`;
+    // gone when it says so: a server waits at most seven seconds on itself, inside the grace; one still there is killed
+    for (const end = Date.now() + grace; Date.now() < end; await Bun.sleep(100)) if (!isAlive(pid)) return `stopped ${pid}`;
     process.kill(pid, "SIGKILL");
     await f.delete();
     return `killed ${pid}: it did not stop when asked`;
