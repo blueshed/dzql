@@ -3,7 +3,8 @@
 An app made by `bun create dzql`: [dzql](https://github.com/blueshed/dzql/tree/main/packages/dzql)
 draws every page on the server and tells each one what changed, and
 [delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents and serves
-it. It begins as nothing but its page, waiting for its first story.
+it, in Postgres: PGlite in the process (`data/pg`) until `DATABASE_URL` names a server. It begins as
+nothing but its page, waiting for its first story.
 
 ```sh
 bun dev          # http://localhost:3000, and the model's page at /model, where the stories are told first

@@ -181,6 +181,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **The thin client on Postgres** (19 October, Peter: "create dzql is performance: thin client with
+  applets using compiled postgres for storage"). `bun create dzql`'s starter and the cafe keep their
+  documents in Postgres: PGlite in the process (`data/pg` for `bun dev`, in memory for `bun test`),
+  or a server at `DATABASE_URL`. `openStore({ schema, migrations })` (`dzql/postgres`) is an app's
+  store: the model's migrations, the framework, `register` for each resource's documents, `open()`
+  to compile them and open one listener, and `stories` for the harness. What it needed: the
+  listener keeps the ledger per document (`ledger: { except }`), and leaves a document it does not
+  know to the socket's other handlers, whichever registers first; `Example.store` (`StoryStore`),
+  so the stories begin and end on any store, SQLite's transaction the default and
+  `storyStore(pool, schema)` Postgres's; the guards read rows on Postgres (`rowsInPostgres`), and
+  `actorOf` may be async; an app with no documents yet compiles (a `CASE` with no `WHEN` is its
+  fallback alone); `openPglite` makes its folder; and the read-back reads an app's `register(...)`.
+
 - **The worked example: the cafe, from its model** (`examples/cafe/`, Peter's ask after cafe-e: "the
   learning was large up front"). The model told (13 stories, five documents: the floor and the
   menu lists, a table, the door, each person's visit), made by `dzql model` into `model/`, and

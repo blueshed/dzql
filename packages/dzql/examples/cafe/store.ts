@@ -1,7 +1,4 @@
-import { createLocal } from "@blueshed/delta/local";
-import type { DocDef } from "@blueshed/delta/backend";
-import { applyFramework, applySql, createDocListener, defineSchema, docTypeFromDef, fromFolder, generateSql, importTables, migrate, storyStore } from "dzql/postgres";
-import { openPglite } from "dzql/pglite";
+import { defineSchema, importTables, openStore } from "dzql/postgres";
 import { guardWrites, rowsInPostgres } from "dzql/modelling/guards";
 import { schema as modelSchema, tables } from "./model/types";
 import { guards } from "./model/guards";
@@ -12,8 +9,9 @@ import { guards } from "./model/guards";
 // `dzql model` from ./model.json) comes first, by its own migrations; then what the app keeps beside
 // it -- who the staff are, and what a visit holds beyond the table a customer scanned (who signed
 // in, where they are, the cookie's hash) -- made by the compiled SQL, which adds a missing table or
-// column. Each resource registers its documents (`register`, in `resources/<name>/<name>-api.ts`);
-// `open()` compiles them all and opens one listener over them, the model's guards in front.
+// column (dzql's `openStore`). Each resource registers its documents (`register`, in
+// `resources/<name>/<name>-api.ts`); `open()` compiles them all and opens one listener over them,
+// the cafe seeded and the model's guards in front.
 
 export const schema = defineSchema({
   ...tables,
@@ -21,21 +19,7 @@ export const schema = defineSchema({
   staff: { table: "cafe_staff", columns: { name: "text", role: "text" }, temporal: false },
 });
 
-/** The database: a Postgres server at DATABASE_URL, else PGlite in this process. */
-export const pool = process.env.DATABASE_URL ? new (await import("pg")).Pool({ connectionString: process.env.DATABASE_URL }) : await openPglite(process.env.PGLITE_DIR);
-await migrate(pool, await fromFolder(`${import.meta.dir}/model/migrations`), { app: "cafe-model", schema: modelSchema });
-await applyFramework(pool);
-
-/** The documents, in delta, in this process. */
-export const delta = createLocal();
-
-const registered: DocDef[] = [];
-const offLedger: string[] = [];
-/** A resource's documents, opened with the rest by `open()`; on the ledger (undo, history) unless it says not. */
-export function register(docs: DocDef[], { ledger = true } = {}): void {
-  registered.push(...docs);
-  if (!ledger) offLedger.push(...docs.map((d) => d.prefix));
-}
+export const { pool, delta, register, open: openDocuments, stories } = await openStore({ schema, migrations: { dir: `${import.meta.dir}/model/migrations`, app: "cafe-model", schema: modelSchema } });
 
 /** The staff, as the cafe starts: each comes in by a link (../links.ts). */
 export let staff: { id: number; name: string; role: string }[] = [];
@@ -46,24 +30,20 @@ export async function actorOf(sessionId: string): Promise<string | undefined> {
   return v?.role ?? (v?.table ? "customer" : undefined);
 }
 
-/** Every resource's documents compiled and opened, the guards in front: once, after the resources have registered. */
-export async function open(): Promise<void> {
-  await applySql(pool, generateSql(schema, registered));
-  // the cafe as it starts: four free tables, three things on the menu, a manager and a cook
-  if ((await pool.query(`SELECT 1 FROM "tables" LIMIT 1`)).rows.length === 0)
-    await importTables(pool, schema, {
-      tables: {
-        tables: [1, 2, 3, 4].map((n) => ({ id: n, name: `Table ${n}`, seated: false })),
-        items: [{ id: 1, name: "Soup", price: 5.5 }, { id: 2, name: "Toast", price: 3 }, { id: 3, name: "Coffee", price: 2.5 }],
-        staff: [{ id: 1, name: "Mo", role: "manager" }, { id: 2, name: "Kit", role: "cook" }],
-      },
-    });
-  staff = (await pool.query("SELECT id::int, name, role FROM cafe_staff ORDER BY id")).rows;
-  // The model's guards stand in front of the store: a write no story says is refused there, in the
-  // story's words. They are given the session (the app has no `who`), and look up who it is.
-  guardWrites(delta.server, guards, { actorOf: (identity) => actorOf(String(identity)), rowOf: rowsInPostgres(pool, schema) });
-  await createDocListener(delta.server, pool, { types: registered.map((def) => docTypeFromDef(def, pool)), ledger: { except: offLedger }, schema });
-}
-
-/** The stories begin and end each story on this store (`Example.store`). */
-export const stories = storyStore(pool, schema);
+/** Every resource's documents compiled and opened, the cafe seeded and the guards in front: once, after the resources have registered. */
+export const open = () =>
+  openDocuments(async () => {
+    // the cafe as it starts: four free tables, three things on the menu, a manager and a cook
+    if ((await pool.query(`SELECT 1 FROM "tables" LIMIT 1`)).rows.length === 0)
+      await importTables(pool, schema, {
+        tables: {
+          tables: [1, 2, 3, 4].map((n) => ({ id: n, name: `Table ${n}`, seated: false })),
+          items: [{ id: 1, name: "Soup", price: 5.5 }, { id: 2, name: "Toast", price: 3 }, { id: 3, name: "Coffee", price: 2.5 }],
+          staff: [{ id: 1, name: "Mo", role: "manager" }, { id: 2, name: "Kit", role: "cook" }],
+        },
+      });
+    staff = (await pool.query("SELECT id::int, name, role FROM cafe_staff ORDER BY id")).rows;
+    // The model's guards stand in front of the store: a write no story says is refused there, in the
+    // story's words. They are given the session (the app has no `who`), and look up who it is.
+    guardWrites(delta.server, guards, { actorOf: (identity) => actorOf(String(identity)), rowOf: rowsInPostgres(pool, schema) });
+  });

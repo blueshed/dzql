@@ -124,8 +124,15 @@ export function generateSql(
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
   lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs));
-  return lines.join("\n");
+  return noEmptyCases(lines.join("\n"));
 }
+
+/**
+ * A case over the documents or collections, with none of them: its fallback alone. Postgres refuses a
+ * `CASE` with no `WHEN`, and an app with no documents yet (a new starter) still compiles. Only a
+ * simple case (`CASE <name>` alone on its line) whose branches are all absent is rewritten.
+ */
+const noEmptyCases = (sql: string): string => sql.replace(/^(\s*)CASE [\w.]+\n(?:\s*\n)*\s*ELSE ([^\n]*)\n\s*END CASE;/gm, "$1$2");
 
 /**
  * One table's SQL, as `generateSql` writes each: its serial, the table (if it is not there), the

@@ -18,6 +18,7 @@
  *
  * Optional, like `pg`: `bun add @electric-sql/pglite` to use it.
  */
+import { mkdirSync } from "node:fs";
 import type { Pool } from "pg";
 
 /** The slice of PGlite this drives (structural: no hard import). */
@@ -140,6 +141,8 @@ export async function openPglite(dir?: string): Promise<Pool> {
   // pgcrypto, which dzql/auth-jwt hashes passwords with: PGlite has an extension only when it is
   // given one at start (loaded when a database creates it)
   const { pgcrypto } = await import("@electric-sql/pglite/contrib/pgcrypto");
+  // its folder made, parents and all, as a new app's `data/pg` needs (PGlite makes only the last)
+  if (dir) mkdirSync(dir, { recursive: true });
   const db: PGliteish = await PGlite.create(dir, { extensions: { pgcrypto } });
   return pglitePool(db);
 }

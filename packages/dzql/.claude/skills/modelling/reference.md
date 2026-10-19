@@ -113,12 +113,13 @@ README walks it; here is what each part of it says about the model.
    It writes no stories. A file in `model/` a person wrote is kept, the model's beside it
    (`types.model.ts`). Every store takes the same definitions: the JSON file, SQLite, dzql's
    Postgres.
-2. **The store: `store.ts`.** The model's migrations with the model's schema
-   (`migrate(db, ..., { app: "<name>-model", schema })`; the app's schema there would make delta
-   warn that the definitions say more than the migrations), then the app's own tables beside the
-   model's (`defineSchema({ ...tables, ... })`: who the staff are, what a session keeps), added by
-   `createTables` and `migrateSchema`. Then the guards, before any document:
-   `guardWrites(delta.server, guards, { actorOf, rowOf: rowsIn(db, schema) })`. `actorOf` is given
+2. **The store: `store.ts`.** Postgres, through dzql's `openStore`: the model's migrations with the
+   model's schema (`migrations: { dir, app: "<name>-model", schema }`; the app's schema there would
+   make delta warn that the definitions say more than the migrations), then the app's own tables
+   beside the model's (`defineSchema({ ...tables, ... })`: who the staff are, what a session keeps),
+   which the compiled SQL adds. Then, in `open()`, before the listener, the guards:
+   `guardWrites(delta.server, guards, { actorOf, rowOf: rowsInPostgres(pool, schema) })`
+   (`rowsIn(db, schema)` on SQLite). `actorOf` is given
    the identity the app's `who` returns (the session's id without one): look the teller up there,
    or have `who` return it, never both. The guards let a write through on the first `does` story
    of its writer whose requirements hold (read from the written row and the rows above it), and

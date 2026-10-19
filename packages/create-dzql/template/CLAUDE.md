@@ -21,8 +21,11 @@ page, so the routes and resources are the server's:
 - `src/routes.ts` is the server: the app (its page, its socket, its resources) composed with any
   HTTP route and, in development, the model's page at `/model`, on delta's one server (`serve`,
   `run`). `bun dev` and `bun start` run it; never a `Bun.serve` of the app's own.
-- `src/resources/<name>/` is one document: `<name>-api.ts` its schema and document, registered on
-  `delta`; `<name>.ts` its resource (who may write it, what a write becomes), listed in the app's
+- `src/store.ts` is where the documents are kept: Postgres, through dzql's `openStore` -- PGlite in
+  the process (`data/pg`; in memory for `bun test`), or a server at `DATABASE_URL`. Its schema takes
+  the model's `tables` once `dzql model` has made `model/`, and the app's own beside them.
+- `src/resources/<name>/` is one document: `<name>-api.ts` its document, registered with the store
+  (`register`); `<name>.ts` its resource (who may write it, what a write becomes), listed in the app's
   `resources`; `<name>-view.ts` its part of the page, drawn by `src/page.ts`.
 - An island is the only client resource.
 - People sign in by a link each, printed as the server starts (`signInLinks`, from

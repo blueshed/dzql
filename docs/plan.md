@@ -115,8 +115,9 @@ names, into `.claude/skills`.
    a prototype grows into performance, its documents delta's all along. *Done*: the root README
    and CLAUDE.md, each package's README, the dzql-app and evolve skills say so.
    *Open*: the evolve skill takes the storage to Postgres; moving the pages to the server (the
-   thin client) is not yet written as a step of it. And `bun create dzql`'s starter and the cafe
-   still keep their documents in SQLite.
+   thin client) is not yet written as a step of it. *Done* (19 October): `bun create dzql`'s
+   starter and the cafe keep their documents in Postgres -- PGlite in the process, or a server at
+   `DATABASE_URL` -- through dzql's `openStore`.
 2. **What each document is for** (Peter): a README is for a person deciding whether to use it;
    CLAUDE.md is Claude's entry point; the skills and their references are the manual. *Done*:
    stated in the root CLAUDE.md; delta's and dzql's CLAUDE.md open with it, as railroad's did;
