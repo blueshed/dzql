@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **The bento, drawn by railroad** (`src/resources/bento.tsx`): the trail and the heading, the box
+  and its cells, rows, runs and pins, the drawer, the modal, fields and tools, with the same HTML
+  and classes as dzql's `bento.ts`, the page the server draws, so one stylesheet draws both and a
+  page moves to the server by turning each handler into a write. Where you are is the URL (`here`,
+  `go`): Back closes a drawer, a link opens one, Escape puts away what opened last. The page is
+  drawn again only when you go elsewhere (`paged`), what is over it when it opens or closes
+  (`layers`), a list as it changes (`rowsOf`). `tests/bento.test.ts` draws every surface both ways
+  and holds the two to the same HTML.
+
 ### Changed
 
 - **A new app opens with what it offers, and with the model's page.** Its README says it in one
