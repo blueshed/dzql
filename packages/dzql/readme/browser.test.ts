@@ -1,5 +1,5 @@
 // The README's rendering section by hand, in a real browser: two windows on the page, a save typed
-// into one shows in both. (readme.test.ts runs the same over sockets, with `dzql serve`.)
+// into one shows in both. (readme.test.ts runs the same over sockets.)
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

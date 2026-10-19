@@ -212,20 +212,20 @@ in this order, each a commit with the gate green; an item done is struck through
 
 **First, what is broken today:**
 
-1. `scripts/affected.ts` splits dzql's fast tier in two, wrongly: `src/cli/` goes to the Postgres
+1. *Done (19 October).* `scripts/affected.ts` splits dzql's fast tier in two, wrongly: `src/cli/` goes to the Postgres
    half though only modelling's tests exercise it, and `src/postgres/` never runs cafe or the
    starter. The split goes (`test:fast:eta`, `test:fast:pg`, the bunfig's coverage excludes, the
    names of empty `docs/eta`, `docs/delta`): dzql's whole fast tier is 26 s.
-2. Importing `dzql/modelling` makes a `db.sqlite` in the folder (`rendering/db.ts` opens it as it
+2. *Done (19 October).* Importing `dzql/modelling` makes a `db.sqlite` in the folder (`rendering/db.ts` opens it as it
    loads; `harness.ts` imports it). It opens in `sqliteStore()`; `hear`, `applyOp` and `HtmlOp` move
    to where rendering keeps them, so rendering no longer imports modelling; the workaround in
    `stories-run.ts` goes.
-3. `dzql serve` fails in every app `bun create dzql` makes (it imports `index.ts`), and nothing runs
+3. *Done (19 October).* `dzql serve` fails in every app `bun create dzql` makes (it imports `index.ts`), and nothing runs
    it: it goes.
-4. A new paintbrush app keeps the name "paintbrush", a `bun-create` entry to a file setup deleted,
+4. *Done (19 October).* A new paintbrush app keeps the name "paintbrush", a `bun-create` entry to a file setup deleted,
    a `test:slow` that fails, and a `tsconfig` naming a missing folder; the scaffolding of `bun create
-   blueshed/paintbrush` (the commit retries, the nested `.github/ci.yml` GitHub never reads, its
-   tests) goes.
+   blueshed/paintbrush` (the commit retries and their tests) goes. (The review called paintbrush's
+   `.github/ci.yml` dead; it is a new app's CI, and stays.)
 
 **Then the shape (above), which takes in:** dzql's model checks and page move out of `examples/`
 into `src/modelling/`, and the 1,656-line copy of hjeli's checks under

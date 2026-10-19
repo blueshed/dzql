@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// `dzql`: `serve` and `model` (src/cli/model.ts), hjeli's `model site`, `model guards` and
+// `dzql`: `model` (src/cli/model.ts), hjeli's `model site`, `model guards` and
 // `model mcp` (src/cli/model-tools.ts), and delta's Postgres commands (sql, init, migrate, link),
 // in src/postgres/cli.ts.
 import { run } from "./model.ts";

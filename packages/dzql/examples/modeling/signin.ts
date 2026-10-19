@@ -36,7 +36,7 @@ export async function signIn(req: Request): Promise<Response> {
 }
 
 // Or a link: one for each person who keeps the model, printed where the server starts (`dzql model`,
-// `dzql serve --model`), so nobody needs an email or a password to get in. Opened, it starts a fresh
+// an app's `modelRoute()`), so nobody needs an email or a password to get in. Opened, it starts a fresh
 // session as that person, as the form does (dzql/rendering/links says how).
 const people = () => (db.query("SELECT id, name FROM mdl_people ORDER BY id").all() as { id: number; name: string }[]).map((p) => ({ name: p.name, value: { person_id: p.id, name: p.name } }));
 export const links = signInLinks("model", sessions, people, "/model");

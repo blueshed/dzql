@@ -23,7 +23,6 @@
   "include": [
     "src",
     "tests",
-    "scripts",
     "create",
     ".railway/railway.ts",
     "stories.ts"

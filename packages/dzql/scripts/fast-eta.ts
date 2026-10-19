@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// The modelling and rendering fast tier (`bun run test:fast:eta`): its tests that need no browser, in parallel. A part of
+// The modelling and rendering part of the fast tier (`bun run test:fast`): its tests that need no browser, in parallel. A part of
 // the suite cannot meet bunfig.toml's 100% coverage, which only the whole run (`test:eta`) is held
 // to, and Bun says so only by its exit code: so this passes on every test passing, and nothing else.
 import { EXAMPLES } from "./examples";

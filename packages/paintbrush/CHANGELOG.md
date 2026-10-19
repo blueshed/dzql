@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A new app is named, and keeps only its own scripts** (19 October, the DRY/YAGNI/KISS review): it
+  kept `"name": "paintbrush"`, a `bun-create` entry to the setup it had just deleted, and a
+  `test:slow` that ran the evolve test setup removes. Setup names it in `package.json`, and its
+  `test` is `bun check && bun test`; the template drops `bun-create`, and `tsconfig.json` no longer
+  includes a `scripts` folder there is none of. The scaffolding of the old way in (`bun create
+  blueshed/paintbrush`: retrying and amending bun create's own commit) goes: setup makes the first
+  commit, plainly.
+
 ### Added
 
 - **The bento, drawn by railroad** (`src/resources/bento.tsx`): the trail and the heading, the box

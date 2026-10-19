@@ -1,4 +1,6 @@
 import { describe, expect, setSystemTime, spyOn, test } from "bun:test";
+import { mkdtempSync as tempDir, readdirSync, rmSync as removeDir } from "node:fs";
+import { tmpdir as osTmp } from "node:os";
 import type { PatchOp } from "../rendering/json-patch";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
@@ -1308,5 +1310,16 @@ test("bun run stories never opens the app's own database: DB_PATH is set before 
     expect(existsSync(`${dir}/db.sqlite`)).toBe(false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("importing dzql/modelling, or a test's socket, opens no database: the harness opens the app's only when a run asks", () => {
+  const dir = tempDir(`${osTmp()}/dzql-import-`);
+  try {
+    const run = Bun.spawnSync(["bun", "-e", `await import(${JSON.stringify(`${import.meta.dir}/index.ts`)}); await import(${JSON.stringify(`${import.meta.dir}/../rendering/test-socket.ts`)});`], { cwd: dir, env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "DB_PATH")) });
+    expect(run.exitCode).toBe(0);
+    expect(readdirSync(dir)).toEqual([]);
+  } finally {
+    removeDir(dir, { recursive: true, force: true });
   }
 });

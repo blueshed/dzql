@@ -1,6 +1,5 @@
-// `dzql serve` and `dzql model`: the two commands that are not Postgres's (src/postgres/cli.ts has
-// those). Each runs what is already there: the page the server draws for an app's folder
-// (src/rendering/start.ts), and the model's page, an app of its own (examples/modeling).
+// `dzql model`: the command that is not Postgres's (src/postgres/cli.ts has those). It runs what is
+// already there: the model's page, an app of its own (examples/modeling).
 //
 // The model is one file, `model.json` (delta's JSON file: its stories, with what each writes, and
 // the documents they need), which the page edits and a person can read. `dzql model` serves the
@@ -17,8 +16,6 @@ import { stateOf } from "@blueshed/delta/migrations";
 import { nextMigrationOf, testsOf, typesOf, type Model } from "../modelling/definitions";
 import { extractSessionFile, savedServer } from "../rendering/cli/commands";
 
-/** An app's folder as `ETA_EXAMPLE` names it: a path, from here. */
-const folder = (dir = "./src") => (dir.includes("/") ? dir : `./${dir}`);
 
 /** The model in its file: its name, stories and documents, as the page's `model:1` holds them. */
 export function modelIn(file: string): Model & { name: string } {
@@ -164,29 +161,16 @@ export async function modelRoute({ file = process.env.MODEL_FILE ?? "model.json"
   return app;
 }
 
-/** Runs `dzql serve` or `dzql model`; false for any other command. */
+/** Runs `dzql model`; false for any other command. */
 export async function run(argv: string[]): Promise<boolean> {
   const [verb, sub, ...rest] = argv;
   const flag = (name: string, or: string) => (rest.includes(name) ? rest[rest.indexOf(name) + 1] ?? or : or);
   const file = process.env.MODEL_FILE ?? "model.json";
-  if (verb === "serve") {
-    // the app's routes and resources; with --model (development) the model's beside them, at /model, writing
-    // what it makes into its own folder (`model/`) -- without it the model is never registered
-    const dir = folder(sub);
-    process.env.ETA_EXAMPLE = dir;
-    const { run: running, serve } = await import("@blueshed/delta/serve");
-    const { appDir } = await import("../rendering/names");
-    const { appOf, compose } = await import("../rendering/server");
-    const { example } = await import(`${appDir(dir)}/index.ts`);
-    const model = rest.includes("--model") && (await modelRoute({ file }));
-    await running(() => serve(compose(appOf(example), model)));
-    return true;
-  }
   if (verb !== "model") return false;
   const port = process.env.MODEL_PORT ?? "3001";
   if (sub === "check") {
     if (!existsSync(file)) {
-      process.stderr.write(`No model in ${file}: start the model's page with \`dzql model\` (or \`dzql serve <app> --model\`), and tell it the stories.\n`);
+      process.stderr.write(`No model in ${file}: start the model's page with \`dzql model\`, and tell it the stories.\n`);
       process.exit(1);
     }
     const { ok, said } = await make(file, flag("--out", "model"), { drops: rest.includes("--drops") });

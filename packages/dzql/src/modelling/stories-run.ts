@@ -3,13 +3,13 @@
 // folder (`ETA_EXAMPLE=./src`, src/names.ts `appDir`). See docs/stories.md.
 // Stories come first, so an example may have them before it has an app: that is said, as the next
 // thing to do, not as a missing module.
-// a run's writes are thrown away: it never touches the app's own database, unless DB_PATH says one.
-// Set before anything opens the database: a static import is hoisted above this line, so the
-// harness (and the database under it) is imported after it (cafe-c's feedback).
-process.env.DB_PATH ??= ":memory:";
 import type { Stories } from "./stories";
 import { appDir, appIn } from "../rendering/names";
-const { print, run } = await import("./harness");
+import { print, run } from "./harness";
+
+// a run's writes are thrown away: it never touches the app's own database, unless DB_PATH says one
+// (the app opens it as it loads, below; the harness opens nothing until it runs)
+process.env.DB_PATH ??= ":memory:";
 
 const dir = appDir(process.env.ETA_EXAMPLE);
 const at = dir.slice(process.cwd().length + 1) || dir;

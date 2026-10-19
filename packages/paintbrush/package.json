@@ -7,9 +7,6 @@
   "engines": {
     "bun": ">=1.4.3"
   },
-  "bun-create": {
-    "postinstall": "create/setup.ts"
-  },
   "scripts": {
     "dev": "bun --hot src/routes.ts",
     "stop": "delta stop",

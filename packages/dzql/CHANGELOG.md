@@ -54,6 +54,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **Importing `dzql/modelling` (or `dzql/rendering/test-socket`) made a `db.sqlite` in the folder**
+  (19 October, the DRY/YAGNI/KISS review): the harness imported `dzql/rendering/db`, which opens the
+  database as it loads. The harness opens the app's SQLite only when a run asks for it, and `hear`,
+  `Heard` and applying a render op are rendering's (`src/rendering/resources/render.ts`, `HeardOp`),
+  so rendering no longer imports modelling; `dzql/modelling/harness` still exports `hear` and `Heard`.
+  `stories-run.ts`'s import-order workaround goes.
+- **`dzql serve` is gone**: it imported an app's `index.ts`, so it failed in every app `bun create dzql`
+  makes (`routes.ts`), and nothing ran it. An app serves itself (`bun dev`, its `routes.ts`); the
+  model's page beside it is `modelRoute()`.
+- **The fast tier is whole**: `test:fast:eta` and `test:fast:pg` are gone, with the root's
+  `bun run affected` choosing between them by path; the split sent `src/cli/` to the Postgres half,
+  which never ran its tests, and a change to `src/postgres/` never ran the cafe or the starter.
+  `test:fast` type-checks once.
 - **Two `cannot` stories on one write each refuse in their own words** (19 October, the Shed's
   feedback: a member borrowing a broken tool was refused as "a tool someone else has out"). The
   guards refuse in the words of the `cannot` whose requirements hold; with none holding, why the

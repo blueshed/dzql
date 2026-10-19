@@ -9,9 +9,9 @@
  * docs to the code (scripts/docs.ts): every link and every path a README, CLAUDE.md, skill or doc names;
  * and the sibling ranges to the workspace's versions (scripts/ranges.ts).
  *
- * A package says its tiers in its package.json: `test:fast`, and `test:slow`. Within dzql, a change
- * only to eta's half (src/rendering, src/modelling, its examples) runs that half's fast tier
- * (`test:fast:eta`), and one only to the Postgres half runs that half's (`test:fast:pg`).
+ * A package says its tiers in its package.json: `test:fast`, and `test:slow`; a package runs its whole
+ * fast tier, never a part chosen by path (dzql's two halves import each other: a split by folder
+ * missed both ways).
  */
 import { $ } from "bun";
 import { existsSync, readdirSync } from "node:fs";
@@ -60,17 +60,7 @@ while (grew) {
 
 /** The scripts a package runs for this change. */
 function plan(p: Pkg): string[] {
-  const own = files.filter((f) => f.startsWith(`packages/${p.dir}/`)).map((f) => f.slice(`packages/${p.dir}/`.length));
-  const fast = (() => {
-    if (p.scripts["test:fast:eta"] && p.scripts["test:fast:pg"] && own.length && !shared && own.length === files.filter((f) => f.startsWith("packages/")).length) {
-      const eta = own.every((f) => /^(src\/(rendering|modelling)\/|examples\/(?!delta\/)|docs\/eta\/|\.claude\/skills\/)/.test(f));
-      const pg = own.every((f) => /^(src\/(compile|postgres|sql|cli)\/|tests\/|examples\/delta\/|bench\/|docs\/delta\/)/.test(f));
-      if (eta) return ["test:fast:eta"];
-      if (pg) return ["test:fast:pg"];
-    }
-    return p.scripts["test:fast"] ? ["test:fast"] : [];
-  })();
-  return [...fast, ...(slow && p.scripts["test:slow"] ? ["test:slow"] : [])];
+  return [...(p.scripts["test:fast"] ? ["test:fast"] : []), ...(slow && p.scripts["test:slow"] ? ["test:slow"] : [])];
 }
 
 // what people and Claude read, held to the code, whatever changed: under a second (scripts/docs.ts)

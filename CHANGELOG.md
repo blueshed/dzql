@@ -6,6 +6,14 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The review's four bugs
+
+A read-only DRY/YAGNI/KISS review of the whole repository (its findings, in the order they are done,
+in `docs/plan.md`) found four bugs, fixed first: `bun run affected` ran a part of dzql's fast tier
+chosen by path, and missed both ways (each package now runs its whole fast tier); importing
+`dzql/modelling` made a `db.sqlite`; `dzql serve` failed in every app `bun create dzql` makes (it
+goes); and a new paintbrush app kept the template's name and a broken `test:slow`.
+
 ### ref
 
 The first feature after the plan: in a dzql model a field may name a row of a list document by its

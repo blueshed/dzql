@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-// Post-create setup: `bun create blueshed my-app` runs this as the
-// template's postinstall, after `bun install` and before the first commit.
+// Post-create setup: `bun create blueshed my-app` (create-blueshed) runs this in the new folder,
+// after `bun install`; it makes the first commit.
 //
 // It turns the template into an app. What is about developing the template goes (its
 // ledger, changelog and logo, this script, the template's own tests, the evolve skill's test
@@ -33,26 +33,14 @@ function isTemplateClone(root: string) {
   return /blueshed\/(paintbrush|dzql)(\.git)?\s*$/.test(origin); // its old repository, or its home now
 }
 
-// bun create commits on a thread of its own while this script runs. Its `git add` can meet a
-// file this script has just deleted ("unable to stat") and give up, leaving no commit at all,
-// or commit before the skills are copied. So the last thing setup does is leave the repository
-// committed, whatever bun create managed: no commit yet, make it; bun create's, amend it with
-// everything; anything else is somebody's history, and is left alone.
-async function commitEverything(root: string) {
-  if (!existsSync(join(root, ".git"))) return; // bun create's git step has not started: it will see the finished folder
+// create-blueshed makes the repository (`git init`) and leaves the first commit to this, the last
+// step: everything setup wrote is in it. A repository with history is somebody's, and is left alone.
+function commitEverything(root: string) {
+  if (!existsSync(join(root, ".git"))) return; // --no-git
   const git = (...args: string[]) => Bun.spawnSync(["git", ...args], { cwd: root });
-
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const last = git("log", "-1", "--format=%s");
-    const subject = last.exitCode === 0 ? last.stdout.toString().trim() : null; // null: no commits yet
-    if (subject !== null && !/^initial commit/i.test(subject)) return;
-
-    git("add", "-A");
-    const committed =
-      subject === null ? git("commit", "-q", "-m", "Initial commit (via bun create)") : git("commit", "-q", "--amend", "--no-edit");
-    if (committed.exitCode === 0 || git("status", "--porcelain").stdout.toString() === "") return;
-    await Bun.sleep(300); // an index.lock: bun create's own git step is still running
-  }
+  if (git("rev-parse", "--verify", "-q", "HEAD").exitCode === 0) return;
+  git("add", "-A");
+  git("commit", "-q", "-m", "Initial commit");
 }
 
 export async function setup(root: string) {
@@ -68,11 +56,21 @@ export async function setup(root: string) {
   }
   // The template's version goes in the changelog, so the app knows which of the template's changes
   // it has. The app's own version starts at 0.0.0, so its first `/release minor` makes 0.1.0.
-  const pkg = Bun.file(join(root, "package.json"));
-  const pkgText = (await pkg.exists()) ? await pkg.text() : "";
-  const from = pkgText.match(/"version": "([^"]*)"/)?.[1];
-  // The evolve skill's test goes with its script and its CI step
-  if (pkgText) await Bun.write(pkg, pkgText.replace(/"version": "[^"]*"/, '"version": "0.0.0"').replace(/\n *"test:evolve": .*/, ""));
+  // The app's package.json: its name, its own version, and only the app's scripts. The template's
+  // fast and slow tiers are the monorepo's (its slow one is the evolve skill's test, which goes);
+  // an app's `bun test` is its whole proof.
+  const pkgFile = Bun.file(join(root, "package.json"));
+  const pkg = (await pkgFile.exists()) ? ((await pkgFile.json()) as { name?: string; version?: string; scripts?: Record<string, string> }) : undefined;
+  const from = pkg?.version;
+  if (pkg) {
+    pkg.name = name;
+    pkg.version = "0.0.0";
+    if (pkg.scripts) {
+      for (const script of ["test:evolve", "test:fast", "test:slow"]) delete pkg.scripts[script];
+      pkg.scripts.test = "bun check && bun test";
+    }
+    await Bun.write(pkgFile, `${JSON.stringify(pkg, null, 2)}\n`);
+  }
   const ci = Bun.file(join(root, ".github/workflows/ci.yml"));
   if (await ci.exists()) await Bun.write(ci, (await ci.text()).replace(/\n\n *# The evolve skill's sections[\s\S]*?run: bun run test:evolve\n/, "\n"));
 
@@ -98,7 +96,7 @@ export async function setup(root: string) {
   const installed = existsSync(cli) && Bun.spawnSync([process.execPath, cli, "install-skills", "--skip", "bun-route,dzql-app"], { cwd: root, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
   if (!installed) console.warn("  the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route,dzql-app`");
 
-  await commitEverything(root);
+  commitEverything(root);
 
   console.log(`
   ${name} is ready!

@@ -1,7 +1,9 @@
-import { db } from "../rendering/db";
 import type { Example, StoryStore } from "../rendering/example";
 import { cookieNameFor } from "../rendering/scope";
 import { assemble, type Assembled } from "../rendering/resources";
+import { hear, type Heard, type HeardOp } from "../rendering/resources/render";
+// a page as the browser keeps it is rendering's; said here too, as the stories hold pages so
+export { hear, type Heard };
 import { createServer } from "../rendering/server";
 import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
 import { isTest, isVerb, applyPatch, type PatchOp, type Test, type WriteId } from "../rendering/json-patch";
@@ -55,7 +57,6 @@ export type Report = { outcomes: Outcome[]; passed: number; failed: number; warn
 export type ByHand = { stories: number; presses: number; applets: number; ms: number };
 
 type Member = { name: string; cookie: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
-type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: string; html?: string };
 type Snapshot = Map<string, string>;
 
 
@@ -67,7 +68,9 @@ type LedgerRow = Awaited<ReturnType<StoryStore["since"]>>[number];
  * undo's or a redo's -- a story's write starts. An app with no document on the ledger yet (a new
  * one, its stories told before anything is built) has none: nothing moves it.
  */
-function sqliteStore(): StoryStore {
+async function sqliteStore(): Promise<StoryStore> {
+  // the app's own SQLite, opened only when a run asks for it: importing the harness opens nothing
+  const { db } = await import("../rendering/db");
   const kept = db.query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'delta_ledger'").get() !== null;
   const max = kept ? db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM delta_ledger") : undefined;
   const since = kept ? db.query<{ id: number; doc: string; undoable: number; ops: string; inverse: string }, [number]>("SELECT id, doc, undoable, ops, inverse FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id") : undefined;
@@ -87,32 +90,6 @@ const AFTER_EVERY_WRITE = "9999-12-31T23:59:59.999Z";
 const UNDO: Write = { doc: "ledger", ops: [{ op: "remove", path: "/latest" }] };
 const REDO: Write = { doc: "ledger", ops: [{ op: "add", path: "/latest" }] };
 
-/** One fragment op applied to a page as the client applies it: the first element the selector names is replaced, put beside, or removed, or given a new opening tag. */
-function applyOp(page: string, op: HtmlOp): string {
-  if (op.op === "tag") {
-    // the part's opening tag, swapped as text, so the page reads exactly as a fresh render would
-    const at = page.indexOf(op.target.slice(1, -1)); // `data-eta-part="<key>"`, as the tag carries it
-    if (at < 0) return page;
-    const start = page.lastIndexOf("<", at);
-    const [old] = splitTag(page.slice(start));
-    return page.slice(0, start) + op.html! + page.slice(start + old.length);
-  }
-  let done = false;
-  return new HTMLRewriter()
-    .on(op.target, {
-      element(el) {
-        if (done) return;
-        done = true;
-        if (op.op === "replace") el.replace(op.html!, { html: true });
-        else if (op.op === "after") el.after(op.html!, { html: true });
-        else if (op.op === "before") el.before(op.html!, { html: true });
-        else el.remove();
-      },
-    })
-    .transform(page);
-}
-
-export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string; version?: number; id?: WriteId; reason?: string };
 
 // The patch stream, checked: what an applet holds must be what a fresh render gives it (`unheld`).
 
@@ -463,7 +440,7 @@ export function holding(t: Taken): { value: unknown } | { error: string } {
 }
 
 /** The part a render op is about: the one its HTML carries (a part replaced, put in, or given a new tag), or the last its target names (one taken out). */
-function partOf(op: HtmlOp): string {
+function partOf(op: HeardOp): string {
   const carried = /data-eta-part="([^"]*)"/.exec(op.html ?? "");
   if (carried) return decoded(carried[1]!);
   const named = [...op.target.matchAll(/data-eta-part="((?:\\.|[^"\\])*)"/g)].at(-1);
@@ -487,12 +464,6 @@ export function largest(raws: string[]): Part {
 /** A page without the versions its watching mounts say they hold (`data-v`): each change moves one on, an undo too, and nobody sees it. */
 export const unversioned = (page: string): string => page.replace(/\sdata-v="\d+"/g, "");
 
-/** A member's open page after one more message: only renders change it. */
-export function hear(page: string, message: Heard): string {
-  if (message.type !== "render") return page;
-  if (message.html !== undefined) return message.html;
-  return (message.ops ?? []).reduce(applyOp, page);
-}
 
 // A hidden verb: a write the server takes that no story tells and no page offers.
 
@@ -1625,7 +1596,7 @@ export async function run(
     page,
     documents,
     byDocType,
-    store: example.store ?? sqliteStore(),
+    store: example.store ?? (await sqliteStore()),
     tryable: new Set(),
     warned: new Map(),
     met: new Map(),

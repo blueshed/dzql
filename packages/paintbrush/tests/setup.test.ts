@@ -25,7 +25,7 @@ test("setup turns the template into an app", async () => {
     "evals/evolve.json": "[]",
     ".github/workflows/ci.yml": "      - run: bun test\n\n      # The evolve skill's sections, each applied to a new app and run.\n      # setup deletes this step.\n      - run: bun run test:evolve\n",
     "src/index.html": "<title>Paintbrush</title>",
-    "package.json": '{\n  "name": "my-app",\n  "version": "0.5.0",\n  "private": true,\n  "scripts": {\n    "test": "bun test",\n    "test:evolve": "bun test ./tests/evolve.ts",\n    "start": "bun src/routes.ts"\n  }\n}\n',
+    "package.json": '{\n  "name": "paintbrush",\n  "version": "0.5.0",\n  "private": true,\n  "scripts": {\n    "test": "bun run test:fast",\n    "test:evolve": "bun test ./tests/evolve.ts",\n    "start": "bun src/routes.ts",\n    "test:fast": "bun check && bun test",\n    "test:slow": "bun run test:evolve"\n  }\n}\n',
     "CLAUDE.md": "# Paintbrush\n<!-- template -->\nNotes on developing the template.\n<!-- /template -->\nAbout the app.\n",
     ".claude/launch.json": '{ "name": "paintbrush" }',
     ".railway/railway.ts": 'project("paintbrush", {})',
@@ -47,8 +47,8 @@ test("setup turns the template into an app", async () => {
       expect(await Bun.file(join(root, path)).exists()).toBe(false);
     }
     expect(await Bun.file(join(root, "README.md")).text()).toContain("# my-app");
-    // the app's own version, and no script for the evolve skill's test; everything else in package.json as it was
-    expect(await Bun.file(join(root, "package.json")).text()).toBe('{\n  "name": "my-app",\n  "version": "0.0.0",\n  "private": true,\n  "scripts": {\n    "test": "bun test",\n    "start": "bun src/routes.ts"\n  }\n}\n');
+    // the app's name and own version, and only the app's scripts: the template's tiers and the evolve skill's test go
+    expect(await Bun.file(join(root, "package.json")).text()).toBe('{\n  "name": "my-app",\n  "version": "0.0.0",\n  "private": true,\n  "scripts": {\n    "test": "bun check && bun test",\n    "start": "bun src/routes.ts"\n  }\n}\n');
     expect(await Bun.file(join(root, ".github/workflows/ci.yml")).text()).toBe("      - run: bun test\n"); // no step for the evolve test
     expect(await Bun.file(join(root, "src/index.html")).text()).toBe("<title>my-app</title>");
     expect(await Bun.file(join(root, ".claude/launch.json")).text()).toBe('{ "name": "my-app" }');
@@ -118,7 +118,7 @@ test("every file setup renames exists, and the template's name is nowhere else",
   const root = `${import.meta.dir}/..`;
   for (const path of NAMED) expect(await Bun.file(`${root}/${path}`).exists()).toBe(true);
 
-  // Files that may say "paintbrush": the ones setup renames, replaces or deletes (a deleted folder whole), and package.json (bun create renames it)
+  // Files that may say "paintbrush": the ones setup renames, replaces or deletes (a deleted folder whole), and package.json (setup names the app in it)
   const allowed = new Set([...NAMED, "README.md", "package.json"]);
   const deleted = (path: string) => DELETED.some((d) => path === d || path.startsWith(`${d}/`));
   const listed = Bun.spawnSync(["git", "ls-files", "--cached", "--others", "--exclude-standard"], { cwd: root }).stdout.toString();
@@ -130,7 +130,7 @@ test("every file setup renames exists, and the template's name is nowhere else",
   expect(strays).toEqual([]);
 });
 
-// --- Leaving the repository committed, whatever bun create's own git step managed ---
+// --- The first commit: setup's last step ---
 
 const git = (root: string, ...args: string[]) => Bun.spawnSync(["git", ...args], { cwd: root }).stdout.toString().trim();
 
@@ -151,19 +151,7 @@ test("a repository with no commit gets one, with everything in it", async () => 
   const { root, done } = await scratchRepo();
   try {
     await setup(root);
-    expect(git(root, "log", "--format=%s")).toBe("Initial commit (via bun create)");
-    expect(git(root, "status", "--porcelain")).toBe("");
-  } finally {
-    done();
-  }
-});
-
-test("bun create's own commit is amended with what setup wrote after it", async () => {
-  const { root, done } = await scratchRepo("Initial commit (via bun create)");
-  try {
-    await setup(root); // empties todo.jsonl, writes a README and a changelog: all after that commit
-    expect(git(root, "rev-list", "--count", "HEAD")).toBe("1");
-    expect(git(root, "log", "--format=%s")).toBe("Initial commit (via bun create)");
+    expect(git(root, "log", "--format=%s")).toBe("Initial commit");
     expect(git(root, "status", "--porcelain")).toBe("");
   } finally {
     done();
@@ -176,19 +164,6 @@ test("somebody else's history is left alone", async () => {
     await setup(root);
     expect(git(root, "log", "--format=%s")).toBe("Add things");
     expect(git(root, "status", "--porcelain")).not.toBe(""); // setup's changes are not committed
-  } finally {
-    done();
-  }
-});
-
-test("setup waits out a git lock, and commits once it clears", async () => {
-  const { root, done } = await scratchRepo();
-  try {
-    await Bun.write(join(root, ".git/index.lock"), ""); // what bun create's own git step holds while it runs
-    setTimeout(() => rmSync(join(root, ".git/index.lock")), 500);
-    await setup(root);
-    expect(git(root, "log", "--format=%s")).toBe("Initial commit (via bun create)");
-    expect(git(root, "status", "--porcelain")).toBe("");
   } finally {
     done();
   }

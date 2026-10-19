@@ -1,5 +1,5 @@
 import { expect } from "bun:test";
-import { hear, type Heard } from "../modelling/harness";
+import { hear, type Heard } from "./resources/render";
 import type { PatchOp, Test, WriteId } from "./json-patch";
 import { cookieNameForUrl } from "./scope";
 
