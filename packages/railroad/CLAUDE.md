@@ -11,9 +11,9 @@ why: [README.md](README.md). How to use it: the `railroad` skill.
   to the code on `main`.
 - **`bun-route`** (`.claude/skills/bun-route/`) — Bun HTML routes and
   `Bun.WebView` test patterns.
-- **`/publish`** (the monorepo root's `.claude/commands/publish.md`; this
-  package's part is `.claude/commands/publish.md` here) — one release round
-  for every package. Only run it when asked to release. npm publishing happens
+- **`/publish`** (the monorepo root's `.claude/commands/publish.md`, railroad's
+  row in its table) — one release round for every package, only on Peter's
+  explicit word. npm publishing happens
   in CI (the root's `.github/workflows/publish.yml`) on a pushed tag
   `railroad@x.y.z`; never publish by hand.
 

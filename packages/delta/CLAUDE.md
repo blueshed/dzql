@@ -40,7 +40,7 @@ Bun only: never `npm`, `npx` or `node`.
 | Tests | `bun run test`: the fast tier (fewer law seeds); `bun run test:slow`: every test, every seed (no database server, no Docker; about 17 s) |
 | One file | `bun test tests/local.test.ts` |
 | **The gate** | **`bun run test:slow`**: `bun check` (and kanban's) → `bun test tests/` |
-| Release | the monorepo's `/publish` (the root's `.claude/commands/publish.md`); this package's part is `.claude/commands/publish.md` |
+| Release | the monorepo's `/publish` (the root's `.claude/commands/publish.md`, delta's row in its table), only on Peter's explicit word |
 
 delta lives in the bluetools monorepo, the blueshed/dzql repository (`packages/delta`), beside railroad and dzql, as Bun
 workspaces: its `@blueshed/railroad` is `packages/railroad`'s source, not npm's. GitHub Actions

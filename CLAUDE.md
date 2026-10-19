@@ -63,8 +63,8 @@ npm, unless Peter has said so in so many words for that release. We do not debug
 GitHub: if a publish run fails, stop and report it to Peter, with the run's URL and its error, and
 change nothing there (no fix pushed to a tag, no tag moved or pushed again) until he says.
 
-`/publish` (`.claude/commands/publish.md`): one round, the packages named, a tag
-`<package>@x.y.z` each, which `.github/workflows/publish.yml` publishes to npm. Only when Peter
+`/publish` (`.claude/commands/publish.md`, a row per package: its gate, its end-to-end check, the
+skills it stamps): one round, the packages named, a tag `<package>@x.y.z` each, which `.github/workflows/publish.yml` publishes to npm. Only when Peter
 asks. Each package keeps its own version, its `CHANGELOG.md` (`## [Unreleased]` written as work
 lands) and its `todo.jsonl`.
 

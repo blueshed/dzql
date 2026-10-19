@@ -157,10 +157,10 @@ cd packages/dzql && bun unlink
 Not a step of a plan: finish every stage first, then release once, on Peter's word. Across
 packages, test by linking or packing (above), never by publishing.
 
-`/publish patch|minor|major` (`.claude/commands/publish.md`): the gate, the create-dzql end-to-end
-check, one version for both packages, the changelog and ledger promoted, and the tags
-`dzql@x.y.z` and `create-dzql@x.y.z`, whose push is what publishes (GitHub Actions, OIDC trusted
-publishing). Never `npm publish` by hand.
+The monorepo's `/publish` (the root's `.claude/commands/publish.md`, dzql's row in its table), only
+on Peter's explicit word: the gate, the create-dzql end-to-end check, one version for both
+packages, the changelog and ledger promoted, and the tags `dzql@x.y.z` and `create-dzql@x.y.z`,
+whose push is what publishes (GitHub Actions, OIDC trusted publishing). Never `npm publish` by hand.
 
 ## Listen to the User
 
