@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { press, urlFor, waitFor, webview } from "dzql/rendering/webview";
 import { createServer } from "dzql/rendering/server";
 import { asCouple, asHousehold, board, household } from "../setup";
-import { example } from "../index";
+import { app as example } from "../routes";
 import { crowd } from "../applets/photo";
 
 let server: ReturnType<typeof createServer>;

@@ -6,7 +6,7 @@
 # and its server test, and is not held to every line (17 October, the CI design's call, on Peter's word).
 # coverage is always on, and 100% is a gate, not an aim: the run fails below it. The table holds
 # only what a test loads in its own process, so three kinds of file are outside it, by design.
-# A script that only runs as one: src/rendering/start.ts, src/rendering/cli.ts and src/modelling/stories-run.ts, thin over tested
+# A script that only runs as one: src/rendering/cli.ts and src/modelling/stories-run.ts, thin over tested
 # code; each example's scripts/measure-render-cost.ts, which src/modelling/costs.ts runs whole, each in a
 # process of its own, whenever `bun test` checks the README; and the loader's commands, run by hand too (src/modelling/page/loader/check.ts and
 # load.ts), whose logic is in the files their tests load.

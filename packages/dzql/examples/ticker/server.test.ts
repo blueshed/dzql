@@ -4,7 +4,7 @@ import { createServer } from "dzql/rendering/server";
 import { connect as socketTo, forget, expectMessage, expectQuiet, heard, nextMessage, open as openAs, opened, pageOf, write } from "dzql/rendering/test-socket";
 import { randomTick, startFeed, stopFeed } from "./resources/ticker";
 import type { MarketDocument } from "./documents/market";
-import { example } from "./index";
+import { app as example } from "./routes";
 
 const inDelta = example.delta!.as("test");
 

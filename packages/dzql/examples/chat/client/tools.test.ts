@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { urlFor, waitFor, webview } from "dzql/rendering/webview";
 import { createServer } from "dzql/rendering/server";
-import { example } from "../index";
+import { app as example } from "../routes";
 
 // Chat with an assistant in the page: the tools the kernel registers from chat's own
 // controls, used through a model context as the WebMCP draft has it, while the person uses the page.

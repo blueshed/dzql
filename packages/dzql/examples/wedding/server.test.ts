@@ -5,7 +5,7 @@ import { connect as socketTo, heard as heardBy, nextMessage, opened, pageOf, typ
 import { decoded } from "dzql/rendering/parts";
 import { crowd } from "./applets/photo";
 import { asCouple, asHousehold, board, household } from "./setup";
-import { example } from "./index";
+import { app as example } from "./routes";
 import type { Resource } from "dzql/rendering/resources/resource";
 import { keepEveryone } from "./everyone";
 import { serverWrite } from "dzql/rendering/documents";

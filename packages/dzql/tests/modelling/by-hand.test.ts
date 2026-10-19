@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { example as chat } from "../../examples/chat";
+import { app as chat } from "../../examples/chat/routes";
 import { stories as chatStories } from "../../examples/chat/stories";
 import type { Example } from "../../src/rendering/example";
 import { sameWrite } from "../../src/modelling/by-hand";
@@ -15,7 +15,7 @@ import wrongPage from "./by-hand.test.html";
 
 /** An example and its stories, by its folder under examples/. */
 async function load(name: string): Promise<{ example: Example; stories: Stories }> {
-  const { example } = await import(`../../examples/${name}/index`);
+  const { app: example } = await import(`../../examples/${name}/routes`);
   const { stories } = await import(`../../examples/${name}/stories`);
   return { example, stories };
 }

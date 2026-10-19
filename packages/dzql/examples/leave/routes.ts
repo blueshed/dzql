@@ -1,3 +1,5 @@
+import { run, serve } from "@blueshed/delta/serve";
+import { appOf } from "dzql/rendering/server";
 import type { Example } from "dzql/rendering/example";
 import { session, team } from "./resources";
 import { session as sessionOf } from "./documents";
@@ -8,7 +10,7 @@ import { delta, sessions } from "./delta";
 
 // leave: a small team asks for days off, and a manager answers. The example whose people sign in:
 // the sign-in page posts to /login (./signin.ts), and from then on a session is a person.
-export const example: Example = {
+export const app: Example = {
   name: "leave",
   // The session first: who you are, and where.
   resources: [session, team],
@@ -24,3 +26,10 @@ export const example: Example = {
   delta, // the documents are delta's (./delta.ts)
   session: sessions.of,
 };
+
+/** The server: on `PORT` (3000); `bun examples/leave/routes.ts` runs it. */
+export async function startServer({ port = Number(process.env.PORT ?? 3000) } = {}) {
+  return serve(appOf(app), { port });
+}
+
+if (import.meta.main) await run(startServer);

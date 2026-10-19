@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { connectCli, parseCommand, runCommand, watch } from "dzql/rendering/cli/commands";
 import { createServer } from "dzql/rendering/server";
 import { aliases } from "./cli";
-import { example } from "./index";
+import { app as example } from "./routes";
 
 describe("chat's cli aliases", () => {
   test("each verb maps to its wire ops", () => {

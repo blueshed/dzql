@@ -6,7 +6,7 @@
 import { tap, type Measured } from "dzql/modelling/costs";
 import { createServer } from "dzql/rendering/server";
 import { asCouple, asHousehold, board, household } from "../setup";
-import { example } from "../index";
+import { app as example } from "../routes";
 import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "dzql/rendering/test-socket";
 
 const server = createServer(example, 0);

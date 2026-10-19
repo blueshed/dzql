@@ -3,7 +3,7 @@ import { press, urlFor, waitFor, webview } from "dzql/rendering/webview";
 import { createServer } from "dzql/rendering/server";
 import { tick } from "../resources/ticker";
 import type { MarketDocument } from "../documents/market";
-import { example } from "../index";
+import { app as example } from "../routes";
 
 /** The market as delta has it now, by symbol. */
 async function quotes(): Promise<MarketDocument> {

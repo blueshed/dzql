@@ -14,13 +14,12 @@ export function splitDoc(doc: string): { docType: string; docId: string } {
 }
 
 /**
- * The app in a folder: an example's `index.ts`, its `example`; else its `routes.ts` (routes and
- * resources, as `bun create dzql` lays an app out), whose `app` the page is drawn by. Undefined
- * while there is neither: stories come first.
+ * The app in a folder: its `routes.ts`, its `app` (routes and
+ * resources, as every example and `bun create dzql` lay an app out), whose `app` the page is drawn
+ * by. Undefined while there is none: stories come first.
  */
 export async function appIn(dir: string): Promise<Example | undefined> {
-  for (const [file, name] of [["index.ts", "example"], ["routes.ts", "app"]] as const)
-    if (await Bun.file(`${dir}/${file}`).exists()) return (await import(`${dir}/${file}`))[name] as Example;
+  if (await Bun.file(`${dir}/routes.ts`).exists()) return (await import(`${dir}/routes.ts`)).app as Example;
   return undefined;
 }
 

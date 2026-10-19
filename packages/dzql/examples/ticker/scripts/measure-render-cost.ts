@@ -6,7 +6,7 @@
 // README says (src/modelling/costs.ts, `bun run costs`).
 import { tap, type Measured } from "dzql/modelling/costs";
 import { createServer } from "dzql/rendering/server";
-import { example } from "../index";
+import { app as example } from "../routes";
 import { connect as socketTo, heard as heardAll, rawOf } from "dzql/rendering/test-socket";
 
 const VIEWERS = 5;

@@ -7,7 +7,7 @@ import type { Example } from "dzql/rendering/example";
 import { bornInto, toldNotAsked, touches } from "../../../../src/modelling/page/loader/facts";
 import { controlsOn, type Heard, type Trace } from "dzql/modelling/harness";
 import { attempt, documentsIn, documentsOf, importedDocs, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "../../../../src/modelling/page/loader/documents";
-import { example as chat } from "../../../../examples/chat/index";
+import { app as chat } from "../../../../examples/chat/routes";
 import { stories as chatStories } from "../../../../examples/chat/stories";
 import { stories as londons } from "./londons/stories";
 
@@ -229,7 +229,7 @@ describe("from a run", () => {
 
 describe("a post to a route, read from a run", () => {
   test("born into the documents its told members were told through, touching what delta wrote for the route, and told-not-asked as for a write", async () => {
-    const { example: leave } = await import("../../../../examples/leave/index");
+    const { app: leave } = await import("../../../../examples/leave/routes");
     const { stories: told } = await import("../../../../examples/leave/stories");
     const rename = async (req: Request) => {
       await serverWrite("team:1", [{ op: "replace", path: "/teams/name", value: String((await req.formData()).get("name")) }]);

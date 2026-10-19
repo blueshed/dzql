@@ -5,7 +5,7 @@ import { db } from "dzql/rendering/db";
 import { createServer } from "dzql/rendering/server";
 import { connect, opened } from "dzql/rendering/test-socket";
 import type { Raw } from "../../../../src/modelling/page/heart";
-import { example } from "../../../../src/modelling/page/index";
+import { app as example } from "../../../../src/modelling/page/routes";
 import { extract } from "../../../../src/modelling/page/loader/extract";
 import { built, format, gaps, matched, readPage, told } from "../../../../src/modelling/page/loader/told";
 import { said, send, writesOf, type Load } from "../../../../src/modelling/page/loader/writes";

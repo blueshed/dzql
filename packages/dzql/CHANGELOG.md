@@ -25,6 +25,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **Every app is `routes.ts` exporting `app`** (20 October): the examples (chat, leave, ticker,
+  wedding) and the model's page moved from `index.ts` exporting `example`, as the cafe, the starter
+  and every `bun create dzql` app already were; each serves itself (`bun examples/<name>/routes.ts`).
+  `appIn` reads `routes.ts` alone and `src/rendering/start.ts` is gone. To move an app of the older
+  shape: rename `index.ts` to `routes.ts` and its `example` to `app`.
+
 - **Exports nothing imported are gone** (19 October): `dzql/modelling/definitions`, `dzql/rendering/cli`
   (importing it ran it), and dzql/postgres's re-export of delta's auth (`DeltaAuth`, `wireAuth`,
   `upgradeWithAuth`, `isAuthError`...): take those from `@blueshed/delta/auth`.

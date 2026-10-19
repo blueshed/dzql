@@ -8,7 +8,7 @@ import { tap, type Measured } from "dzql/modelling/costs";
 import { patchMessage } from "dzql/rendering/json-patch";
 import { createServer } from "dzql/rendering/server";
 import { esc } from "dzql/rendering/html";
-import { example } from "../index";
+import { app as example } from "../routes";
 import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "dzql/rendering/test-socket";
 
 const MEMBERS = 5;

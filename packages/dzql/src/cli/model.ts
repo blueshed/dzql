@@ -161,7 +161,7 @@ export async function modelRoute({ file = process.env.MODEL_FILE ?? "model.json"
   process.env.MODEL_FILE = file;
   process.env.MODEL_NAME ??= projectName();
   const { appOf } = await import("../rendering/server");
-  const app = appOf((await import("../modelling/page/index.ts")).example);
+  const app = appOf((await import("../modelling/page/routes")).app);
   await sayLinks(String(port));
   watchModel(file, out);
   return app;
@@ -190,7 +190,9 @@ export async function run(argv: string[]): Promise<boolean> {
     process.env.MODEL_FILE = file;
     process.env.DB_PATH ??= ":memory:"; // sessions only: the model is the file
     process.env.MODEL_NAME ??= projectName();
-    await import("../rendering/start");
+    const { run } = await import("@blueshed/delta/serve");
+    const { startServer } = await import("../modelling/page/routes");
+    await run(() => startServer({ port: Number(port) }));
     await sayLinks(port);
     watchModel(file, out);
     return true;

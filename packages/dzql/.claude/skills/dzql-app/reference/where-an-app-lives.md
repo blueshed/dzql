@@ -40,7 +40,7 @@ CLAUDE.md, README.md, .claude/skills/ (from `delta install-skills`, run by `bun 
   verbs).
 
 The kernel finds an app by `ETA_EXAMPLE`: an example by name (`chat`, in dzql) or a folder (`./src`),
-and in it the `app` its `routes.ts` exports (or an example's `index.ts` `example`).
+and in it the `app` its `routes.ts` exports.
 
 ## Moving a project to a later dzql
 

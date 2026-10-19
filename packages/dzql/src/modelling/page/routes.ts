@@ -1,3 +1,5 @@
+import { run, serve } from "@blueshed/delta/serve";
+import { appOf, compose } from "../../rendering/server";
 import type { Example } from "dzql/rendering/example";
 import { modelResource, session } from "./resources";
 import { session as sessionOf } from "./model";
@@ -9,7 +11,7 @@ import { delta, sessions } from "./delta";
 // modeling: a description of an application, kept by two people as they talk -- Peter tells the
 // stories, Claude writes them down and describes the documents they need, from the CLI -- and
 // watched live on the page. The entities are worked out from the documents (./model.ts).
-export const example: Example = {
+export const app: Example = {
   name: "modeling",
   // The session first: who you are, and what you have picked.
   resources: [session, modelResource],
@@ -24,3 +26,10 @@ export const example: Example = {
   delta, // the documents are delta's (./delta.ts)
   session: sessions.of, // a session is a numbered row, named by its cookie
 };
+
+/** The model's page on its own, on `PORT`: served at /model, the root sending you there (`dzql model`, `bun run dev:modeling`). */
+export async function startServer({ port = Number(process.env.PORT ?? 3001) } = {}) {
+  return serve(compose(appOf(app), { routes: { "/": Response.redirect(app.at!, 302) } }), { port });
+}
+
+if (import.meta.main) await run(startServer);

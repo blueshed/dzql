@@ -10,7 +10,7 @@ import { aliases, show, stdin } from "../../../src/modelling/page/cli";
 import { closureOf, plainClosure } from "../../../src/modelling/page/closure";
 import { stories } from "../../../src/modelling/page/stories";
 import { links } from "../../../src/modelling/page/signin";
-import { example } from "../../../src/modelling/page/index";
+import { app as example } from "../../../src/modelling/page/routes";
 
 // A model as delta keeps it: three stories -- one the team serves, one the inbox, one nothing --
 // the team rooted at teams holding requests (under teams) and notes (whose parent it does not

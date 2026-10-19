@@ -1,12 +1,12 @@
 # The app (`Example`), and the CLI
 
-An app is one `Example`: its documents, its resources and its page, the `app` a project's
-`src/routes.ts` exports and serves (`serve(compose(appOf(app), ...))`), or an example's
-`index.ts` `example`. Signing people in is [signin.md](signin.md).
+An app is one `Example`: its documents, its resources and its page, the `app` its `routes.ts`
+exports and serves (`serve(compose(appOf(app), ...))`), in a project and in every example alike.
+Signing people in is [signin.md](signin.md).
 
 ```ts
-// examples/leave/index.ts
-export const example: Example = {
+// examples/leave/routes.ts
+export const app: Example = {
   name: "leave",
   resources: [session, team], // the session first
   render,
@@ -35,9 +35,9 @@ The fields are `Example` in `src/rendering/example.ts`.
 - `session` finds a cookie's session: `sessionRows(delta, "sessions").of` (`dzql/rendering/sessions`)
   keeps each as a numbered row holding the cookie's hash, made on a visit's first socket and found
   through a `visit:` document scoped by that hash. Without it, the cookie is the session.
-- A project's `src/routes.ts` runs it (`bun dev`, `bun start`); `src/rendering/start.ts` runs an
-  example by `ETA_EXAMPLE`. Its HTTP routes are entries in `routes.ts`'s `compose` (`{ routes: {
-  "/api/x": { GET } } }`); an example's `routes` field still takes a handler.
+- `routes.ts` runs it (`bun dev`, `bun start` in a project; `bun examples/<name>/routes.ts` for an
+  example). Its HTTP routes are entries in its `compose` (`{ routes: { "/api/x": { GET } } }`), or
+  the app's `routes` field, which takes a handler.
 
 ## CLI
 

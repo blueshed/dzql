@@ -5,7 +5,7 @@ import type { PatchOp } from "../../src/rendering/json-patch";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { defineDoc, registerDocs } from "@blueshed/delta/sqlite";
-import { example } from "../../examples/chat";
+import { app as example } from "../../examples/chat/routes";
 import { db, schema } from "../../examples/chat/delta";
 import { stories } from "../../examples/chat/stories";
 import type { Resource } from "../../src/rendering/resources/resource";
@@ -21,7 +21,7 @@ import { refuse, tell, toldAt } from "../../src/rendering/refusal";
 
 /** An example and its stories, by its folder under examples/. */
 async function load(name: string): Promise<{ example: Example; stories: Stories }> {
-  const { example } = await import(`../../examples/${name}/index`);
+  const { app: example } = await import(`../../examples/${name}/routes`);
   const { stories } = await import(`../../examples/${name}/stories`);
   return { example, stories };
 }

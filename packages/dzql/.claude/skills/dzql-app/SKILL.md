@@ -62,7 +62,7 @@ least that makes the next story pass; `bun run stories` after each.
 7. **Tests**, `routes.test.ts`: what a story cannot say, then the gate. → [tests](reference/tests.md)
 
 Beyond the cafe, dzql's older examples show the same pieces in their earlier places (`delta.ts`,
-`documents/<thing>.ts`, `resources/<thing>.ts`, `index.ts`): a document the server works out
+`documents/<thing>.ts`, `resources/<thing>.ts`, beside their `routes.ts`): a document the server works out
 (chat's `here`, [resource](reference/resource.md#after-a-write)); an applet, only for
 state a redraw would destroy (the ticker's board, [applets](reference/applets.md),
 [watching](reference/watching.md)); a CLI (chat's `cli.ts`); uploads (the wedding's); passwords and

@@ -91,10 +91,10 @@ What a change to them must not break. How the pieces work is in the skills; the 
   what and who then sees it; everything else follows. Start a feature with its story, watch it fail,
   build the least that makes it pass. Build nothing no story needs.
 - **The shape.** `src/rendering` and `src/modelling` never import from `examples/` (their tests
-  may). `examples/<name>/` is a whole app with an `index.ts` exporting `example: Example`, importing
-  dzql as an app does (`dzql/rendering/...`); examples never import from each other.
-  `examples/starter/` is laid out as `bun create dzql` makes an app: routes and resources, its
-  `routes.ts` exporting `app` and serving it (`appIn`, `src/rendering/names.ts`, finds either).
+  may). `examples/<name>/` is a whole app with a `routes.ts` exporting `app: Example` and serving it,
+  importing dzql as an app does (`dzql/rendering/...`); examples never import from each other.
+  `examples/starter/` is laid out as `bun create dzql` makes an app (routes and resources); the
+  kernel finds any of them by `appIn` (`src/rendering/names.ts`).
   `src/modelling/page/` is the model's page, an app dzql ships (`dzql model` serves it); its `loader/` reads an app that exists.
 - railroad only in `src/rendering/applet.ts`; the examples add `lucide`; the kernel imports no icon set.
 - Documents are delta's: rendering owns people and pages, delta owns documents, their ledger and
