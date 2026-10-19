@@ -5,7 +5,7 @@
 // stories alone: no run, so nothing of who was told.
 
 import { isPost, writeOf, type Stories, type Story } from "dzql/modelling/stories";
-import { appIn } from "dzql/rendering/names";
+import { appIn, storiesIn } from "dzql/rendering/names";
 import { splitPath } from "@blueshed/delta/core";
 import { run } from "dzql/modelling/harness";
 import { documentSources, documentsIn, importedDocs, resourceText, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
@@ -24,7 +24,7 @@ export function rulesIn(src: string): { path: RegExp; ops: string[]; dated?: boo
 
 export async function extract(at: string) {
   const { dir, name } = exampleAt(at);
-  const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
+  const { stories } = (await import(storiesIn(dir))) as { stories: Stories };
   const sources = await documentSources(dir);
   const session = stories.goTo?.("").doc ?? null;
 

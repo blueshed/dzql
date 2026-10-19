@@ -4,7 +4,7 @@
 // Stories come first, so an example may have them before it has an app: that is said, as the next
 // thing to do, not as a missing module.
 import type { Stories } from "./stories";
-import { appDir, appIn } from "../rendering/names";
+import { appDir, appIn, storiesIn } from "../rendering/names";
 import { print, run } from "./harness";
 
 // a run's writes are thrown away: it never touches the app's own database, unless DB_PATH says one
@@ -14,11 +14,11 @@ process.env.DB_PATH ??= ":memory:";
 const dir = appDir(process.env.ETA_EXAMPLE);
 const at = dir.slice(process.cwd().length + 1) || dir;
 
-if (!(await Bun.file(`${dir}/stories.ts`).exists())) {
+if (!(await Bun.file(storiesIn(dir)).exists())) {
   console.log(`${at} has no stories.ts: an app starts with its stories (docs/stories.md).`);
   process.exit(1);
 }
-const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
+const { stories } = (await import(storiesIn(dir))) as { stories: Stories };
 const example = await appIn(dir);
 if (!example) {
   console.log(`${at} has ${stories.stories.length} stories and no app yet (no routes.ts): build the least that makes the first one pass -- the dzql-app skill says how.`);

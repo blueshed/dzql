@@ -9,14 +9,14 @@ nothing but its page, waiting for its first story.
 ```sh
 bun dev          # http://localhost:3000, and the model's page at /model, where the stories are told first
 bun test         # the page is served and drawn, and every story passes
-bun run stories  # each story in src/stories.ts, told against the app
+bun run stories  # each story in stories.ts, told against the app
 bun run model    # the model's page alone, http://localhost:3001/model
 bun run stop     # a server started in the background
 ```
 
 ## How it grows
 
-- **Stories first.** `src/stories.ts` says who does what and who then sees it, each a sentence a
+- **Stories first.** `stories.ts` says who does what and who then sees it, each a sentence a
   customer could call true or false. Tell one, watch it fail, build the least that makes it pass.
 - **Routes and resources.** `src/routes.ts` is the server: the app's page and socket, any HTTP
   route, and in development the model's page, on delta's one server (`@blueshed/delta/serve`: the

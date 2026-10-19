@@ -8,7 +8,7 @@
  * The starter is dzql's own, copied in when this package is packed (`prepack`, as `starter/`); run
  * from the repository it is read where it lives, so the two never differ.
  */
-import { cpSync, existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const name = process.argv[2] || "my-dzql-app";
@@ -27,6 +27,18 @@ const starter = existsSync(packed) ? packed : join(import.meta.dir, "../dzql/exa
 console.log(`Creating ${name}...`);
 cpSync(join(import.meta.dir, "template"), dest, { recursive: true });
 cpSync(starter, join(dest, "src"), { recursive: true });
+
+// a dzql app is laid out as a paintbrush app is: its stories at the root, its tests in tests/
+renameSync(join(dest, "src/stories.ts"), join(dest, "stories.ts"));
+mkdirSync(join(dest, "tests"));
+const test = readFileSync(join(dest, "src/routes.test.ts"), "utf8").replace('from "./stories"', 'from "../stories"').replace('from "./routes"', 'from "../src/routes"');
+writeFileSync(join(dest, "tests/routes.test.ts"), test);
+rmSync(join(dest, "src/routes.test.ts"));
+
+// the project's memory, as a paintbrush app starts with: where it has been, and what is open
+const version = JSON.parse(readFileSync(join(import.meta.dir, "package.json"), "utf8")).version;
+writeFileSync(join(dest, "CHANGELOG.md"), `# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).\n\n## [Unreleased]\n\n- Started from create-dzql ${version}.\n`);
+writeFileSync(join(dest, "todo.jsonl"), "");
 
 // npm leaves dotfiles of a package behind: they travel without their dot
 renameSync(join(dest, "gitignore"), join(dest, ".gitignore"));

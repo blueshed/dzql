@@ -34,7 +34,7 @@ page, so the routes and resources are the server's:
 
 ## Working here
 
-- Start every feature with its story in `src/stories.ts`, watch `bun run stories` fail, build the
+- Start every feature with its story in `stories.ts`, watch `bun run stories` fail, build the
   least that makes it pass. A story with no body yet (`story(name)`) is unproven until it has one.
 - The gate before a commit: `bun check`, `bun test`, `bun run stories`.
 - Never edit dzql or delta in `node_modules`; move to a later one by bumping it in `package.json`.

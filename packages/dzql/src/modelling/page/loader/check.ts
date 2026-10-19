@@ -10,6 +10,7 @@
 
 import { extractSessionFile, savedServer } from "dzql/rendering/cli/commands";
 import type { Stories } from "dzql/modelling/stories";
+import { storiesIn } from "dzql/rendering/names";
 import { format, judge } from "./report";
 import { documentsOf, exampleAt, format as formatDocuments } from "./documents";
 import { extract } from "./extract";
@@ -33,7 +34,7 @@ if (p >= 0) {
   process.exit(0);
 }
 
-const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
+const { stories } = (await import(storiesIn(dir))) as { stories: Stories };
 console.log(formatDocuments(name, await documentsOf(at)));
 console.log();
 console.log(format(name, judge(stories).report));

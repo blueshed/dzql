@@ -1,4 +1,5 @@
 import type { Example } from "./example";
+import { existsSync } from "node:fs";
 
 // A document's whole name, `<docType>:<docId>` (`room:general`, `month:2026-09`): how delta names
 // it, and how the wire does, but for a session's own (src/resources/audience.ts).
@@ -21,6 +22,14 @@ export async function appIn(dir: string): Promise<Example | undefined> {
   for (const [file, name] of [["index.ts", "example"], ["routes.ts", "app"]] as const)
     if (await Bun.file(`${dir}/${file}`).exists()) return (await import(`${dir}/${file}`))[name] as Example;
   return undefined;
+}
+
+/**
+ * An app's stories: beside its code (an example's folder), or at its project's root, beside `src/`
+ * (an app made with `bun create dzql` or `bun create blueshed` keeps them there).
+ */
+export function storiesIn(dir: string): string {
+  return existsSync(`${dir}/stories.ts`) ? `${dir}/stories.ts` : `${dir}/../stories.ts`;
 }
 
 /**

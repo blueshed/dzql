@@ -21,7 +21,7 @@ import type { PatchOp } from "dzql/rendering/json-patch";
 import { controlsOn, run, type Control, type Heard, type Trace } from "dzql/modelling/harness";
 import { allOpenSockets } from "dzql/rendering/resources/audience";
 import { activeDocuments } from "dzql/rendering/documents";
-import { appIn } from "dzql/rendering/names";
+import { appIn, storiesIn } from "dzql/rendering/names";
 
 /** One actor's dealings with one document, counted in stories: held (in front of them), written, refused, told of a change. */
 export type Cell = { held: number; written: number; refused: number; told: number };
@@ -397,7 +397,7 @@ export async function resourceText(dir: string, doc: string): Promise<string | u
 /** The documents of an example (`exampleAt`): from a run of its stories when it has an app, else from the stories alone. */
 export async function documentsOf(at: string): Promise<Reading> {
   const { dir } = exampleAt(at);
-  const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
+  const { stories } = (await import(storiesIn(dir))) as { stories: Stories };
   const example = await appIn(dir);
   if (!example) return read(stories);
   const watched = watch(example);

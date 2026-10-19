@@ -59,6 +59,9 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **`storiesIn(dir)`** (`dzql/rendering/names`): an app's stories, beside its code (an example's
+  folder) or at its project's root, beside `src/`, as a paintbrush app keeps them; `bun run stories`,
+  `model:check` and `model:load` read them by it (19 October).
 - **A ref: a field that names a row of a list document, by its path** (19 October). Said
   `holds orders orders dish:menu:/items`: the order's `dish` is a row of the menu's `items`, its id
   the path's last step, kept as `dish_id` (`refOf`, `columnOf`, `fieldOf` in `dzql/modelling/reading`).

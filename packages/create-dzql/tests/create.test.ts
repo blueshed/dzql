@@ -18,7 +18,8 @@ beforeAll(async () => {
 afterAll(() => rmSync(parent, { recursive: true, force: true }));
 
 test("the app is eta's starter in src/, named, its dotfiles dotted", () => {
-  for (const file of ["src/routes.ts", "src/stories.ts", "src/page.ts", "src/index.html", ".gitignore", ".env.test", "README.md", "CLAUDE.md"]) expect(existsSync(join(app, file))).toBe(true);
+  for (const file of ["src/routes.ts", "stories.ts", "tests/routes.test.ts", "src/page.ts", "src/index.html", ".gitignore", ".env.test", "README.md", "CLAUDE.md", "CHANGELOG.md", "todo.jsonl", ".github/workflows/ci.yml"]) expect(existsSync(join(app, file))).toBe(true);
+  expect(existsSync(join(app, "src/stories.ts")) || existsSync(join(app, "src/routes.test.ts"))).toBe(false); // laid out as a paintbrush app
   expect(JSON.parse(readFileSync(join(app, "package.json"), "utf8")).name).toBe("my-app");
   expect(readFileSync(join(app, "src/routes.ts"), "utf8")).toContain('name: "my-app"');
   expect(readFileSync(join(app, "src/page.ts"), "utf8")).toContain("My App");

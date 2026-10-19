@@ -6,7 +6,12 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
-### The starters alike; one `model` script
+### The starters alike; one `model` script; one app shape
+
+An app from `bun create dzql` is laid out as one from `bun create blueshed`: `stories.ts` at its root,
+its tests in `tests/`, a `CHANGELOG.md` and `todo.jsonl` to start its memory, and its own CI
+(paintbrush's, without the template's evolve step). dzql finds the stories in either place
+(`storiesIn`), so a prototype and a performance app look alike from the first day.
 
 Both starters are `cli.ts` (create-dzql's was `index.ts`), and both refuse a folder that exists and
 a name that is not lower case and dashes, in the same words (only create-dzql checked the name). A
