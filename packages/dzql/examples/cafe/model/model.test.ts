@@ -66,7 +66,7 @@ describe("each story, on the store, each guarded", () => {
       for (const c of checks) {
         const doc = (await local.call("open", { doc: c.doc })).result as Record<string, any>;
         const rows = c.root ? [doc[c.entity]] : Object.values(doc[c.entity] ?? {});
-        expect(rows.some((r: any) => r && (c.path === undefined || r[c.path] === c.to)), `${c.who} sees ${c.entity}${c.path ? `.${c.path} = ${c.to}` : ""} in ${c.doc}`).toBe(true);
+        expect(rows.some((r: any) => r && (c.path === undefined || ("time" in c ? Date.parse(String(r[c.path])) === Date.parse(String(c.to)) : r[c.path] === c.to))), `${c.who} sees ${c.entity}${c.path ? `.${c.path} = ${c.to}` : ""} in ${c.doc}`).toBe(true);
       }
     });
 });

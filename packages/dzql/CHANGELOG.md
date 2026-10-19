@@ -23,6 +23,20 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Changed
+
+- **Every table the model makes keeps its history** (19 October, Peter: "developers have done the
+  least possible because they could not spend the time doing the right thing"). `dzql model` made
+  every table `temporal: false`, throwing away delta's default; it makes them temporal now. A row
+  removed is closed, never gone, so a ref never dangles: the guards read a row's open version
+  (`rowsIn` and `rowsInPostgres` ask `valid_to IS NULL` of a temporal table), so nothing new can
+  name a removed row, and what named it still reads it as it stood with delta's `open_at`. A table
+  an app's committed migrations made already keeps what they made it (`definitionsOf`, `typesOf`
+  and `sourceOf` take the history's state, `Made`), so an app from 0.14 gets no step to finish by
+  hand. The cafe's migration is made again from empty (an example, no data). The checks advise a
+  time on a row that names another and says none (`undated-ref`). The proof compares a time as the
+  instant it names, and a time no story says is a time (`valueOf`, `says`).
+
 ### Added
 
 - **A ref: a field that names a row of a list document, by its path** (19 October). Said

@@ -151,4 +151,4 @@ names, into `.claude/skills`.
 8. **A release**: *Done* (19 October, on Peter's word): railroad 0.17.0, delta 1.3.0, dzql and
    create-dzql 0.14.0, create-blueshed 0.4.0, published from this repository by `publish.yml`.
 
-Then features resume, `ref` first, each checked against this plan before it is built. *`ref`: done* (19 October): a field that names a row of a list document by its path (`dish:menu:/items`), checked, guarded and proved on every store; dzql's CHANGELOG has it.
+Then features resume, `ref` first, each checked against this plan before it is built. *`ref`: done* (19 October): a field that names a row of a list document by its path (`dish:menu:/items`), checked, guarded and proved on every store, over tables that keep their history so it never dangles; dzql's CHANGELOG has it.

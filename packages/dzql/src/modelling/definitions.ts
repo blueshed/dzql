@@ -22,14 +22,20 @@ export type Model = AnyModel;
 
 
 /** The model as delta's definitions: the schema of its entities, and its documents over them. */
-export function definitionsOf(model: Model): { schema: Schema; docs: DocDef[] } {
+/** The tables an app's migrations have made already, each as it was made (`stateOf` its history). */
+export type Made = Record<string, { temporal: boolean }>;
+
+export function definitionsOf(model: Model, made: Made = {}): { schema: Schema; docs: DocDef[] } {
   const m = readingOf(model);
   // the entities a document holds, each with its fields as columns -- but delta's own: the row's id, and the key to its parent
   const held = [...m.entities.values()].filter((e) => e.documents.length > 0);
   // a ref keeps the id of the row it names, in `<label>_id`
   const columnsOf = (e: Entity) =>
     Object.fromEntries([...e.fields].map(([f, type]) => [columnOf({ name: f, type }), type] as const).filter(([c]) => c !== "id" && !(e.parent && c === `${e.parent}_id`)).map(([c, type]) => [c, `${typeOf(type)}?` as ColumnShorthand]));
-  const schema = defineSchema(Object.fromEntries(held.map((e) => [e.name, { columns: columnsOf(e), temporal: false, ...(e.parent ? { parent: e.parent } : {}) }])));
+  // every table keeps its history (delta's default): a row removed is closed, never gone, so what
+  // names it still names a row, and any document can be read as it stood (`open_at`). A table an
+  // app's migrations made already stays as they made it: its database says so
+  const schema = defineSchema(Object.fromEntries(held.map((e) => [e.name, { columns: columnsOf(e), temporal: made[e.name]?.temporal ?? true, ...(e.parent ? { parent: e.parent } : {}) }])));
   // a document that names fewer of an entity's fields than another gives it shows, is told and takes
   // only those (delta's `columns`); one that names none of them has not said, and keeps them all
   const columns = (d: Document) => {
@@ -44,8 +50,8 @@ export function definitionsOf(model: Model): { schema: Schema; docs: DocDef[] } 
  * The same, as the source of an app's file: what `dzql model` writes. It imports from
  * delta's JSON file, where an app starts; moving to SQLite or Postgres changes that import alone.
  */
-export function sourceOf(model: Model, from = "@blueshed/delta/json"): string {
-  const { schema, docs } = definitionsOf(model);
+export function sourceOf(model: Model, from = "@blueshed/delta/json", made: Made = {}): string {
+  const { schema, docs } = definitionsOf(model, made);
   const m = readingOf(model);
   const json = (v: unknown): string =>
     Array.isArray(v) ? `[${v.map(json).join(", ")}]`
@@ -53,7 +59,7 @@ export function sourceOf(model: Model, from = "@blueshed/delta/json"): string {
     : JSON.stringify(v);
   const tables = Object.values(schema.tables).map((t) => {
     const columns = Object.fromEntries(Object.entries(t.columns).map(([c, def]) => [c, `${def.type}${def.nullable ? "?" : ""}`]));
-    return `  ${t.docKey}: ${json({ columns, temporal: false, ...(t.parent ? { parent: t.parent.collection } : {}) })},`;
+    return `  ${t.docKey}: ${json({ columns, temporal: t.temporal, ...(t.parent ? { parent: t.parent.collection } : {}) })},`;
   });
   const defs = docs.flatMap((def, i) => {
     const d = m.documents[i]!;
@@ -102,8 +108,8 @@ const pascal = (key: string) => key.replace(/(^|[_-])([a-z0-9])/g, (_, __, c: st
  * and each document's shape (its root, then each collection it holds by id). On delta's JSON file it
  * is all an app needs; SQLite and Postgres take the same definitions, with the migrations.
  */
-export function typesOf(model: Model, from = "@blueshed/delta/json"): string {
-  const { schema, docs } = definitionsOf(model);
+export function typesOf(model: Model, from = "@blueshed/delta/json", made: Made = {}): string {
+  const { schema, docs } = definitionsOf(model, made);
   const rowsOf = Object.values(schema.tables).map((t) => {
     const fields = [
       "id: number;",
@@ -121,7 +127,7 @@ export function typesOf(model: Model, from = "@blueshed/delta/json"): string {
     return `export type ${name}Doc = { ${parts.join(" ")} };`;
   });
   return [
-    sourceOf(model, from).replace("// The model, as delta's definitions: written by `dzql model` from the model's page.", "// The model, now: delta's definitions, a row type per table and each document's shape. Written by `dzql model` from the model's page; never edited by hand."),
+    sourceOf(model, from, made).replace("// The model, as delta's definitions: written by `dzql model` from the model's page.", "// The model, now: delta's definitions, a row type per table and each document's shape. Written by `dzql model` from the model's page; never edited by hand."),
     ...rowsOf,
     "",
     ...shapes,
@@ -136,7 +142,8 @@ export function typesOf(model: Model, from = "@blueshed/delta/json"): string {
  * migrations are the model's history from empty, one step per change to its schema.
  */
 export function nextMigrationOf(history: { changes?: Change[] }[], model: Model, owed?: (line: string) => boolean): { name: string; source: string } | undefined {
-  const { changes, byHand: all } = diff(stateOf(history), definitionsOf(model).schema);
+  const made = stateOf(history);
+  const { changes, byHand: all } = diff(made, definitionsOf(model, made).schema);
   // what a person must finish that an earlier step already says is owed there, not here again
   const byHand = all.filter((b) => !owed?.(`// By hand: ${b}`));
   if (!changes.length && !byHand.length) return undefined;
@@ -258,7 +265,7 @@ export function testsOf(model: Model, app = "model", types = "./types", guards?:
     const removed = new Set(s.writes.filter((w) => w.op === "remove" && !w.path).map((w) => w.entity));
     const checks = (s.kind === "cannot" ? [] : s.writes).filter((w) => !removed.has(w.entity)).flatMap((w) =>
       told.flatMap((who) =>
-        serving.filter((d) => d.held_by.includes(who) && holds(d, w)).map((d) => ({ who, doc: m.nameOf(d), entity: w.entity, ...(w.path ? { path: m.columnIn(w.entity, w.path), to: valueOf(m.typeOf(w.entity, w.path), w.to) } : {}), root: d.root === w.entity && !d.list })),
+        serving.filter((d) => d.held_by.includes(who) && holds(d, w)).map((d) => ({ who, doc: m.nameOf(d), entity: w.entity, ...(w.path ? { path: m.columnIn(w.entity, w.path), to: valueOf(m.typeOf(w.entity, w.path), w.to), ...(m.typeOf(w.entity, w.path) === "timestamptz" ? { time: true } : {}) } : {}), root: d.root === w.entity && !d.list })),
       ),
     );
     return [`  [${lit(s.text)}, ${lit(s.kind === "cannot")}, ${lit(premise)}, ${lit(writes)}, ${lit(checks)}],`];
@@ -319,7 +326,7 @@ export function testsOf(model: Model, app = "model", types = "./types", guards?:
     "      for (const c of checks) {",
     '        const doc = (await local.call("open", { doc: c.doc })).result as Record<string, any>;',
     "        const rows = c.root ? [doc[c.entity]] : Object.values(doc[c.entity] ?? {});",
-    '        expect(rows.some((r: any) => r && (c.path === undefined || r[c.path] === c.to)), `${c.who} sees ${c.entity}${c.path ? `.${c.path} = ${c.to}` : ""} in ${c.doc}`).toBe(true);',
+    '        expect(rows.some((r: any) => r && (c.path === undefined || ("time" in c ? Date.parse(String(r[c.path])) === Date.parse(String(c.to)) : r[c.path] === c.to))), `${c.who} sees ${c.entity}${c.path ? `.${c.path} = ${c.to}` : ""} in ${c.doc}`).toBe(true);',
     "      }",
     "    });",
     "});",

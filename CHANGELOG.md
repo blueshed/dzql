@@ -9,7 +9,9 @@ what is open across them. Newest first.
 ### ref
 
 The first feature after the plan: in a dzql model a field may name a row of a list document by its
-path (`dish:menu:/items`, kept as `dish_id`). dzql's CHANGELOG has the detail.
+path (`dish:menu:/items`, kept as `dish_id`). dzql's CHANGELOG has the detail. Then the right thing over the least: every table
+the model makes keeps its history (delta's default, which the model had turned off), so a ref never
+dangles and an order reads the menu as it stood when it was made.
 
 ### The DRY sweep's three breakages
 

@@ -82,3 +82,9 @@ test("a field as the modeller says it: its type is all after the first colon, so
   expect(fieldOf("price:integer")).toEqual({ name: "price", type: "integer" });
   expect(fieldOf("dish:menu:/items")).toEqual({ name: "dish", type: "menu:/items" });
 });
+
+test("a time is the instant it names, however the store writes it; a time no story says is a time", () => {
+  expect(says("timestamptz", "2026-10-19 12:00:00+00", "2026-10-19T12:00:00Z")).toBe(true);
+  expect(says("timestamptz", "2026-10-19T12:00:01.000Z", "2026-10-19T12:00:00Z")).toBe(false);
+  expect(Number.isNaN(Date.parse(String(valueOf("timestamptz", undefined))))).toBe(false);
+});

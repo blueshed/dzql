@@ -457,4 +457,6 @@ test("a ref: a path into a list its holders hold, naming a row some story adds; 
   expect(of(cafe("table:/tables", ["cook", "ann"]), "referential-closure").gaps.map((g) => g.detail)).toContain("orders.dish names a row of table:/tables, and table is one table, not a list: a ref names a row of a list (list 5)");
   // the visit's ref names a table: whose copy is said, never asked
   expect(of(cafe("menu:/items", ["cook", "ann"]), "actor-closure").advice!.map((a) => a.where)).not.toContain("table (ann)");
+  // a row that names one and says no time is advised to: the named row is read as it stood then
+  expect(of(cafe("menu:/items", ["cook", "ann"]), "referential-closure").advice).toContainEqual({ kind: "undated-ref", where: "orders.dish", detail: "orders names a row of menu:/items and says no time: give it one (holds 2 orders ... made_at:timestamptz) to read menu as it stood then" });
 });

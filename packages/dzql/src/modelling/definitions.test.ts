@@ -76,7 +76,7 @@ describe("the source dzql model export writes", () => {
   test("reads as the definitions, says what each document is for, and what is not decided", async () => {
     const source = sourceOf(model);
     expect(source).toContain(`import { defineDoc, defineSchema } from "@blueshed/delta/json";`);
-    expect(source).toContain(`  requests: { columns: { person_id: "integer?", starts: "text?", days: "real?" }, temporal: false, parent: "teams" },`);
+    expect(source).toContain(`  requests: { columns: { person_id: "integer?", starts: "text?", days: "real?" }, temporal: true, parent: "teams" },`);
     expect(source).toContain(`  // for: Ann asks for two days off, and Mo sees them waiting\n  defineDoc("team:", { root: "teams", include: ["people", "requests"], implied: true }),`);
     expect(source).toContain("each person's own");
     await Bun.write(join(dir, "model.ts"), source);
@@ -136,20 +136,35 @@ for (const [name, open] of stores) {
 }
 
 // A ref on each store: an order names a dish on the menu (`dish: menu:/items`), kept as `dish_id`,
-// and the orders document includes nothing of the menu: whoever reads it holds the menu too.
+// and the orders document includes nothing of the menu: whoever reads it holds the menu too. Every
+// table keeps its history, so a dish repriced or removed is still the dish the order named, read as
+// the menu stood when it was ordered (`open_at` at its `ordered_at`).
 const orders = definitionsOf({ documents: ((await Bun.file(`${import.meta.dir}/fixtures/orders.json`).json()) as { tables: { documents: Model["documents"] } }).tables.documents });
 for (const [name, open] of stores)
-  test(`on ${name}: an order names a dish by its id, and the orders document holds only the id`, async () => {
+  test(`on ${name}: an order names a dish by its id, and reads it as it stood when ordered`, async () => {
     const { ws, end } = await open(orders);
     try {
       const ann = mockClient({ clientId: "ann" });
-      await sendAndAwait(ws, ann, { action: "open", doc: "menu:" });
-      expect((await sendAndAwait(ws, ann, { action: "delta", doc: "menu:", ops: [{ op: "add", path: "/items/-", value: { name: "Soup", on: true } }] })).error).toBeUndefined();
-      await sendAndAwait(ws, ann, { action: "open", doc: "orders:" });
-      expect((await sendAndAwait(ws, ann, { action: "delta", doc: "orders:", ops: [{ op: "add", path: "/orders/-", value: { dish_id: 1, qty: 2 } }] })).error).toBeUndefined();
-      const read = (await sendAndAwait(ws, mockClient({ clientId: "mo" }), { action: "open", doc: "orders:" })).result;
-      expect(Object.values(read.orders)).toEqual([expect.objectContaining({ dish_id: 1, qty: 2 })]);
+      const write = async (doc: string, op: Record<string, unknown>) => {
+        await sendAndAwait(ws, ann, { action: "open", doc });
+        expect((await sendAndAwait(ws, ann, { action: "delta", doc, ops: [op] })).error).toBeUndefined();
+      };
+      await write("menu:", { op: "add", path: "/items/-", value: { name: "Soup", on: true, price: 4 } });
+      await Bun.sleep(5);
+      const orderedAt = new Date().toISOString();
+      await write("orders:", { op: "add", path: "/orders/-", value: { dish_id: 1, qty: 2, ordered_at: orderedAt } });
+      await Bun.sleep(5);
+      await write("menu:", { op: "replace", path: "/items/1/price", value: 5 });
+      await write("menu:", { op: "remove", path: "/items/1" });
+      const mo = mockClient({ clientId: "mo" });
+      const read = (await sendAndAwait(ws, mo, { action: "open", doc: "orders:" })).result;
+      const order = Object.values(read.orders as Record<string, { dish_id: number; ordered_at: string }>)[0]!;
+      expect(order).toMatchObject({ dish_id: 1, qty: 2 });
       expect(read.items).toBeUndefined();
+      // the menu now has no Soup; as it stood when it was ordered, Soup at 4
+      expect((await sendAndAwait(ws, mo, { action: "open", doc: "menu:" })).result.items).toEqual({});
+      const then = (await sendAndAwait(ws, mo, { action: "open_at", doc: "menu:", at: new Date(order.ordered_at).toISOString() })).result;
+      expect(then.items[String(order.dish_id)]).toMatchObject({ name: "Soup", price: 4 });
     } finally {
       await end();
     }
@@ -201,6 +216,18 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  test("a table the steps made before every table kept its history stays as they made it: no step, and the types say so; a new one keeps its history", async () => {
+    const { createTable, stateOf } = await import("@blueshed/delta/migrations");
+    // an app made by dzql 0.14: its tables made with no history
+    const before = definitionsOf(cafe()).schema;
+    const history = [{ changes: Object.entries(before.tables).map(([key, t]) => createTable(key, { columns: t.columns, ...(t.parent ? { parent: { collection: t.parent.collection, fk: t.parent.fkColumn } } : {}), temporal: false })) }];
+    expect(nextMigrationOf(history, cafe())).toBeUndefined();
+    expect(typesOf(cafe(), undefined, stateOf(history))).not.toContain("temporal: true");
+    // a table the model adds now is made keeping its history
+    const more: Model = { ...cafe(), documents: { ...cafe().documents, "9": { id: 9, name: "menu", root: "items", list: 1, held_by: ["ann"], stories: [1], holds: { items: { parent: null, fields: [{ name: "name" }] } } } } };
+    expect(nextMigrationOf(history, more)!.source).toContain('createTable("items", { columns: { name: { type: "text", nullable: true } }, temporal: true })');
   });
 
   test("a step a diff cannot make is written once, with what is owed by hand; never again while a step owes it", async () => {

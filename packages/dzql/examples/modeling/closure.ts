@@ -16,7 +16,7 @@
 // A register that the model cannot answer says so, and is never counted as passed.
 
 import { esc } from "dzql/rendering/html";
-import { knownType, readingOf, refOf } from "dzql/modelling/reading";
+import { knownType, readingOf, refOf, typeOf } from "dzql/modelling/reading";
 import { saidWrite, singular, touched, type Raw, type StoryWrite } from "./heart";
 
 export type Register = {
@@ -205,6 +205,11 @@ export function closureOf(raw: Raw): Register[] {
         ),
       ),
     ],
+    // every table keeps its history, so the row a ref names is there as it stood: a row that names
+    // one and says when (a time) can be read with the dish as it was then, its price that day
+    advice: [...new Map(refsHeld.map((r) => [`${r.e}.${r.label}`, r])).values()]
+      .filter((r) => ![...(m.entities.get(r.e)?.fields.values() ?? [])].some((t) => typeOf(t) === "timestamptz"))
+      .map((r) => ({ kind: "undated-ref", where: `${r.e}.${r.label}`, detail: `${r.e} names a row of ${r.doc}:/${r.collection} and says no time: give it one (holds ${r.d.id} ${r.e} ... made_at:timestamptz) to read ${r.doc} as it stood then` })),
   };
 
   const authorization: Register = {

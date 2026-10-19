@@ -13,6 +13,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Change } from "@blueshed/delta/migrations";
+import { stateOf } from "@blueshed/delta/migrations";
 import { nextMigrationOf, testsOf, typesOf, type Model } from "../modelling/definitions";
 import { extractSessionFile, savedServer } from "../rendering/cli/commands";
 
@@ -85,7 +86,8 @@ async function making(file: string, out: string, { drops = false }: { drops?: bo
     made.push(as);
     return as;
   };
-  const types = put("types.ts", () => typesOf(model));
+  // a table the committed steps made keeps what they made it (an app from before every table kept its history)
+  const types = put("types.ts", () => typesOf(model, undefined, stateOf(history)));
   // hjeli's guarded write layer, once a story says what it writes (./model-tools.ts, ../modelling/guards.ts); the proof makes its writes through it
   const { guardsOf, guardSource } = await import("../modelling/guards");
   const guards = guardsOf({ models: { name: model.name }, ...model } as Parameters<typeof guardsOf>[0]);

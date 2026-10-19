@@ -21,6 +21,12 @@
       "op": "add",
       "path": "name",
       "to": "Soup"
+     },
+     {
+      "entity": "items",
+      "op": "add",
+      "path": "price",
+      "to": "4"
      }
     ],
     "requires": null
@@ -75,6 +81,12 @@
       "op": "add",
       "path": "qty",
       "to": "1"
+     },
+     {
+      "entity": "orders",
+      "op": "add",
+      "path": "ordered_at",
+      "to": "2026-10-19T12:00:00Z"
      }
     ],
     "requires": [
@@ -142,6 +154,20 @@
       "entity": "items",
       "op": "replace",
       "path": "on"
+     },
+     {
+      "entity": "items",
+      "op": "replace",
+      "path": "price"
+     },
+     {
+      "entity": "items",
+      "op": "add",
+      "path": "price"
+     },
+     {
+      "entity": "items",
+      "op": "remove"
      }
     ],
     "requires": null
@@ -164,6 +190,50 @@
       "entity": "orders",
       "op": "replace",
       "path": "dish"
+     },
+     {
+      "entity": "orders",
+      "op": "replace",
+      "path": "ordered_at"
+     },
+     {
+      "entity": "orders",
+      "op": "add",
+      "path": "ordered_at"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 9,
+    "models_id": 1,
+    "text": "The cook changes a dish's price",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "replace",
+      "path": "price",
+      "to": "5"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 10,
+    "models_id": 1,
+    "text": "The cook removes a dish from the menu",
+    "actor": "cook",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "remove"
      }
     ],
     "requires": null
@@ -188,6 +258,10 @@
        {
         "name": "on",
         "type": "boolean"
+       },
+       {
+        "name": "price",
+        "type": "integer"
        }
       ]
      }
@@ -200,7 +274,9 @@
      1,
      2,
      3,
-     7
+     7,
+     9,
+     10
     ]
    },
    {
@@ -221,6 +297,10 @@
        {
         "name": "qty",
         "type": "integer"
+       },
+       {
+        "name": "ordered_at",
+        "type": "timestamptz"
        }
       ]
      }

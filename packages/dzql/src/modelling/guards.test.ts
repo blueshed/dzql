@@ -55,8 +55,7 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     const { schema, docs } = definitionsOf(leave as never);
     createTables(db, schema);
     const local = createLocal();
-    const rowOf: RowOf = (entity, id) => db.query(`SELECT * FROM "${entity}" WHERE id = ?`).get(id) as Record<string, unknown> | null;
-    guardWrites(local.server, guardsOf(leave), { actorOf: (identity) => (identity as { name?: string } | undefined)?.name, rowOf });
+    guardWrites(local.server, guardsOf(leave), { actorOf: (identity) => (identity as { name?: string } | undefined)?.name, rowOf: rowsIn(db, schema) });
     registerDocs(local.server, db, schema, docs);
     const ann = local.as({ name: "ann" });
     const mo = local.as({ name: "mo" });
@@ -89,7 +88,8 @@ describe("the guarded write layer: the stories' writes, each with what it presup
     // nobody signed in (a visit: an identity that names no teller); a document the model does not describe goes by to the store
     expect((await local.as("visit-7").call("delta", { doc: "team:1", ops: [{ op: "remove", path: "/requests/1" }] })).error).toEqual({ code: 401, message: "Sign in to write to team:1" });
     expect((await ann.call("delta", { doc: "elsewhere:1", ops: [] })).error!.code).toBe(404);
-    expect(db.query("SELECT status FROM requests").all()).toEqual([{ status: "approved" }]);
+    // the table keeps its history: the request as it was, closed, and as it is
+    expect(db.query("SELECT status, valid_to IS NULL AS open FROM requests ORDER BY valid_from").all()).toEqual([{ status: "waiting", open: 0 }, { status: "approved", open: 1 }]);
     // the server's own write (no identity: dzql's serverWrite) is no person's, and goes by (cafe-c's feedback)
     expect((await local.call("delta", { doc: "team:1", ops: [{ op: "replace", path: "/teams/1/name", value: "The desk" }] })).result).toEqual({ ack: true });
   });
@@ -191,6 +191,9 @@ test("rowsInPostgres reads a row as the schema names its table, by `pool.query`;
   expect(await rowOf("invoices", "2")).toBeNull();
   expect(await rowOf("nothing", "1")).toBeNull();
   expect(asked).toEqual([['SELECT * FROM "cafe_invoices" WHERE id = $1', "1"], ['SELECT * FROM "cafe_invoices" WHERE id = $1', "2"]]);
+  // a table that keeps its history: its open version
+  await rowsInPostgres(pool, { tables: { invoices: { name: "cafe_invoices", temporal: true } } })("invoices", "1");
+  expect(asked.at(-1)).toEqual(['SELECT * FROM "cafe_invoices" WHERE id = $1 AND valid_to IS NULL', "1"]);
 });
 
 test("two cannot stories on one write: each refuses in its own words, when its own requirements hold (the Shed's feedback)", async () => {
@@ -238,4 +241,25 @@ test("a story that changes a ref is said of its column, `<label>_id`, as the wri
   const rowOf: RowOf = (entity, id) => ({ id: Number(id), ...(entity === "orders" ? { dish_id: 1 } : {}) });
   expect(await check(guards, { actor: "ann", doc: "orders", op: { op: "replace", path: "/orders/1/dish_id", value: 2 }, rowOf })).toEqual({ ok: true, story: 1 });
   expect(await check(guards, { actor: "ann", doc: "orders", op: { op: "replace", path: "/orders/1/dish", value: 2 }, rowOf })).toMatchObject({ ok: false });
+});
+
+test("a table that keeps its history: the guards read a row's open version, and a row removed is not there (it cannot be named again)", async () => {
+  const model = (await Bun.file(`${import.meta.dir}/fixtures/orders.json`).json()) as { tables: { stories: GuardModel["stories"]; documents: GuardModel["documents"] } };
+  const { schema, docs } = definitionsOf({ documents: model.tables.documents as never });
+  const guards = guardsOf({ stories: model.tables.stories, documents: model.tables.documents });
+  const db = new Database(":memory:");
+  createTables(db, schema);
+  const local = createLocal();
+  guardWrites(local.server, guards, { actorOf: (who) => (who as { actor?: string } | undefined)?.actor, rowOf: rowsIn(db, schema) });
+  registerDocs(local.server, db, schema, docs);
+  const cook = local.as({ actor: "cook" }), customer = local.as({ actor: "customer" });
+  const order = () => customer.call("delta", { doc: "orders:", ops: [{ op: "add", path: "/orders/-", value: { dish_id: 1, qty: 1 } }] });
+  await cook.call("open", { doc: "menu:" });
+  await customer.call("open", { doc: "orders:" });
+  expect((await cook.call("delta", { doc: "menu:", ops: [{ op: "add", path: "/items/-", value: { name: "Soup", on: false } }] })).error).toBeUndefined();
+  expect((await cook.call("delta", { doc: "menu:", ops: [{ op: "replace", path: "/items/1/on", value: true }] })).error).toBeUndefined();
+  expect((await order()).error).toBeUndefined(); // the open version is on, not the first one
+  expect((await cook.call("delta", { doc: "menu:", ops: [{ op: "remove", path: "/items/1" }] })).error).toBeUndefined();
+  expect((await order()).error!.message).toContain("there is no such row");
+  db.close();
 });

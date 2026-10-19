@@ -78,7 +78,7 @@ const rows = <T extends { id: string | number }>(of: Record<string, T> | T[] | u
 
 /** A word as its type has it: a boolean's yes and no, a number's digits; none said, one of its type. */
 export function valueOf(type: string | undefined, word: string | undefined): unknown {
-  if (word === undefined) return type === "integer" || type === "real" ? 1 : type === "boolean" ? true : type === "json" ? {} : "changed";
+  if (word === undefined) return type === "integer" || type === "real" ? 1 : type === "boolean" ? true : type === "json" ? {} : type === "timestamptz" ? "2026-01-01T00:00:00Z" : "changed";
   if (type === "boolean") return word === "true" || word === "yes" || word === "1";
   if ((type === "integer" || type === "real") && word.trim() !== "" && !Number.isNaN(Number(word))) return Number(word);
   return word;
@@ -89,6 +89,8 @@ export function says(type: string | undefined, stored: unknown, word: string): b
   if (stored === null || stored === undefined) return false;
   const want = valueOf(type, word);
   if (type === "boolean") return (stored === true || stored === 1 || stored === "1" || stored === "true" || stored === "yes") === want;
+  // a time is the instant it names, however the store writes it ("2026-10-19 12:00:00+00" is 12:00Z)
+  if (type === "timestamptz") return Date.parse(String(stored)) === Date.parse(String(want));
   return String(stored) === String(want);
 }
 

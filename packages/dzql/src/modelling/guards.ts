@@ -206,12 +206,13 @@ export function guardWrites(ws: On, guards: Guards, opts: { actorOf: (identity: 
 /**
  * A `rowOf` for a SQLite store (delta's, or the JSON file's): the row as the schema says it, its
  * booleans as booleans (SQLite keeps them as 0 and 1), so a story's `requires paid=false` reads true.
+ * A table that keeps its history gives its open version: a row removed is closed, and is not there.
  */
-export function rowsIn(db: { query(sql: string): { get(...params: unknown[]): unknown } }, schema: { tables: Record<string, { name: string; columns: Record<string, { type: string }> }> }): RowOf {
+export function rowsIn(db: { query(sql: string): { get(...params: unknown[]): unknown } }, schema: { tables: Record<string, { name: string; columns: Record<string, { type: string }>; temporal?: boolean }> }): RowOf {
   return (entity, id) => {
     const t = schema.tables[entity];
     if (!t) return null;
-    const row = db.query(`SELECT * FROM "${t.name}" WHERE id = ?`).get(id) as Row | null;
+    const row = db.query(`SELECT * FROM "${t.name}" WHERE id = ?${t.temporal ? " AND valid_to IS NULL" : ""}`).get(id) as Row | null;
     if (row) for (const [name, c] of Object.entries(t.columns)) if (c.type === "boolean" && row[name] != null) row[name] = !!row[name];
     return row;
   };
@@ -219,13 +220,14 @@ export function rowsIn(db: { query(sql: string): { get(...params: unknown[]): un
 
 /**
  * A `rowOf` for a Postgres store (a server, or PGlite in this process): the row as the schema says
- * it, read with `pool.query`. Postgres keeps booleans as booleans, so nothing is read again.
+ * it, read with `pool.query`. Postgres keeps booleans as booleans, so nothing is read again. A table
+ * that keeps its history gives its open version, as `rowsIn` does.
  */
-export function rowsInPostgres(pool: { query(sql: string, params: unknown[]): Promise<{ rows: Row[] }> }, schema: { tables: Record<string, { name: string }> }): RowOf {
+export function rowsInPostgres(pool: { query(sql: string, params: unknown[]): Promise<{ rows: Row[] }> }, schema: { tables: Record<string, { name: string; temporal?: boolean }> }): RowOf {
   return async (entity, id) => {
     const t = schema.tables[entity];
     if (!t) return null;
-    return (await pool.query(`SELECT * FROM "${t.name}" WHERE id = $1`, [id])).rows[0] ?? null;
+    return (await pool.query(`SELECT * FROM "${t.name}" WHERE id = $1${t.temporal ? " AND valid_to IS NULL" : ""}`, [id])).rows[0] ?? null;
   };
 }
 

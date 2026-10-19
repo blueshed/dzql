@@ -5,11 +5,11 @@ import { defineDoc, defineSchema } from "@blueshed/delta/json";
 // The model's tables: an app that keeps more (who signs in, its sessions) defines them beside these,
 // `defineSchema({ ...tables, ... })`, and runs its own migrations after the model's.
 export const tables: Parameters<typeof defineSchema>[0] = {
-  tables: { columns: { name: "text?", seated: "boolean?" }, temporal: false },
-  invoices: { columns: { paid: "boolean?" }, temporal: false, parent: "tables" },
-  orders: { columns: { item: "text?", price: "real?", status: "text?" }, temporal: false, parent: "invoices" },
-  items: { columns: { name: "text?", price: "real?" }, temporal: false },
-  visits: { columns: { table: "text?" }, temporal: false },
+  tables: { columns: { name: "text?", seated: "boolean?" }, temporal: true },
+  invoices: { columns: { paid: "boolean?" }, temporal: true, parent: "tables" },
+  orders: { columns: { item: "text?", price: "real?", status: "text?" }, temporal: true, parent: "invoices" },
+  items: { columns: { name: "text?", price: "real?" }, temporal: true },
+  visits: { columns: { table: "text?" }, temporal: true },
 };
 
 export const schema = defineSchema(tables);
