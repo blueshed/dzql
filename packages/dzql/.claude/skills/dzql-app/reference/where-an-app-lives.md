@@ -1,4 +1,4 @@
-# Where an app lives, and when it seems to need eta's kernel
+# Where an app lives, and when it seems to need dzql's kernel
 
 How a project is made and laid out, how it moves to a later dzql, and the seams to look for
 before touching the kernel.
@@ -6,7 +6,7 @@ before touching the kernel.
 ```sh
 bun create dzql my-app   # the app is src/, begun as dzql's examples/starter
 cd my-app
-bun install              # also installs the skills: eta-app, modelling, delta-doc
+bun install              # also installs the skills: dzql-app, modelling, delta-doc
 bun dev                  # the app, and the model's page at /model, where the stories are told first
 bun test                 # bun run stories and bun run cli work on src/ too
 ```

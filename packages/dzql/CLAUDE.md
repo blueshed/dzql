@@ -2,7 +2,7 @@
 
 dzql is the path an app takes from its stories to its documents to its pages, and its last storage
 step: **modelling** (`dzql/modelling`: the stories, told against the app), **rendering**
-(`dzql/rendering`: pages the server draws, eta's kernel) and **the compiled Postgres step**
+(`dzql/rendering`: pages the server draws, the thin client's kernel) and **the compiled Postgres step**
 (`dzql/postgres`, `dzql/pglite`). One package; each part is its own entry, and nobody pays for a
 part they do not import: `@blueshed/railroad` is an optional peer that only an island needs.
 
@@ -12,7 +12,7 @@ Before working on this codebase, read:
 - the root `README.md`, *How an app is made* - **the one statement of the vision**: stories, documents, the storage path, routes and resources, and the compiled step
 - `docs/dzql/` (at the root): `modelling/stories.md` (what the stories are for), `rendering/` (eta.md: what it is, its measured costs; first-app.md; the bento), `postgres/` (delta on Postgres), `eta-history/` (eta's changelog and ledger)
 - `docs/dzql/postgres-split-plan.md` (at the root) - the plan that made dzql delta's Postgres step
-- `packages/create-dzql/README.md` - `bun create dzql`: eta's starter on dzql
+- `packages/create-dzql/README.md` - `bun create dzql`: the thin client's starter
 
 ## Where the Project Is
 
@@ -34,17 +34,17 @@ an item is worked on. Same shape as duckdown's.
 packages/
 ├── dzql/                # The dzql package on npm
 │   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told), by-hand.ts (in a browser), costs.ts
-│   ├── src/rendering/   # dzql/rendering: eta's kernel: server.ts, resources/, client/ (the browser's), bento, island.ts (railroad)
-│   ├── examples/<app>/  # eta's examples: chat, leave, modeling (the model's page), starter, ticker, wedding
+│   ├── src/rendering/   # dzql/rendering: the kernel: server.ts, resources/, client/ (the browser's), bento, island.ts (railroad)
+│   ├── examples/<app>/  # the examples: cafe (the worked one), chat, leave, modeling (the model's page), starter, ticker, wedding
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
 │   ├── src/compile/     # the compiler from delta's definitions, a module per kind of function (generateSql runs them all)
-│   ├── .claude/skills/  # modelling (someone telling the stories), eta-app (building an app on dzql/rendering)
+│   ├── .claude/skills/  # modelling (someone telling the stories), dzql-app (building an app on dzql/rendering)
 │   ├── src/postgres/cli.ts  # dzql sql | init | migrate | link (src/cli/index.ts, the bin, runs it)
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
 │   ├── bench/           # delta's bench (bun run bench), todo #25
 │   └── tests/           # delta/ (delta's cases), delta-pg/ (delta's Postgres tests), compile/ (compiled, to the framework's recorded answers; the path grammar over modeling-dzql's 204 rules)
-└── create-dzql/         # bun create dzql: eta's starter (examples/starter) as an app, tests/ makes one and starts it
+└── create-dzql/         # bun create dzql: the starter (examples/starter) as an app, tests/ makes one and starts it
 ```
 
 ## dzql as delta's Postgres step
@@ -68,14 +68,14 @@ packages/
   SQLite uses `dzql/rendering` with no Postgres, and one on Postgres uses `dzql/postgres` with no page.
   What dzql was before delta (its own client and runtime) is in CHANGELOG.md; nothing of it comes back.
 
-## Modelling and rendering (eta)
+## Modelling and rendering
 
 What a change to them must not break. How the pieces work is in the skills; the types in
 `src/modelling/` and `src/rendering/` are the contract.
 
 - Someone telling you the stories, there to answer: the **modelling** skill. Building or extending an
   app or an example, or touching the `Resource` contract, an app's `delta.ts`, the applet
-  registry or the wire: the **eta-app** skill. Documents: delta's **delta-doc** skill.
+  registry or the wire: the **dzql-app** skill. Documents: delta's **delta-doc** skill.
 - **Stories first.** `docs/dzql/modelling/stories.md` is what it is for. An app's `stories.ts` says who does
   what and who then sees it; everything else follows. Start a feature with its story, watch it fail,
   build the least that makes it pass. Build nothing no story needs.
@@ -103,7 +103,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
 
 - **Modelling and rendering** (no Docker): `bun check`, `bun run test:eta` (the default
   `bunfig.toml`: 100% coverage, the client's too, read from Chrome), `bun run stories:all`,
-  `bun run costs --check`. The browser tests need Chrome (the eta-app skill's *Tests*).
+  `bun run costs --check`. The browser tests need Chrome (the dzql-app skill's *Tests*).
 - **The Postgres step**: `cd packages/dzql && bun run test` (`tests/bunfig.toml`)
 - Tests run against Docker PostgreSQL (see `packages/dzql/compose.yml`)
 - `tests/delta/` and `tests/compile/` run on PGlite with no Docker (`bun --config=tests/bunfig.toml test tests/delta tests/compile`)
@@ -117,7 +117,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
 
 ### Testing the create-dzql Template
 
-`create-dzql` makes eta's starter an app: `template/` (its package.json, tsconfig, README) and
+`create-dzql` makes the starter an app: `template/` (its package.json, tsconfig, README) and
 `examples/starter` copied into `src/` (packed as `starter/` by `prepack`, read where it lives in
 the repository). `bun run --cwd packages/create-dzql test:fast` makes one in a temporary folder with
 the workspace's packages linked in, and checks it type-checks, passes its own tests, and starts on

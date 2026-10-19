@@ -21,7 +21,7 @@ if (!(await Bun.file(`${dir}/stories.ts`).exists())) {
 const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
 const example = await appIn(dir);
 if (!example) {
-  console.log(`${at} has ${stories.stories.length} stories and no app yet (no routes.ts): build the least that makes the first one pass -- the eta-app skill says how.`);
+  console.log(`${at} has ${stories.stories.length} stories and no app yet (no routes.ts): build the least that makes the first one pass -- the dzql-app skill says how.`);
   process.exit(1);
 }
 

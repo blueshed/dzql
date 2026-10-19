@@ -1,6 +1,6 @@
 ---
 name: modelling
-description: Use only while someone is telling you the stories of an app to be built, there to answer -- to write each story down on the model's page as it is told, describe the documents it needs (root, what each holds, who holds it), and read the gaps back, before any of the app is built. Then `dzql model` makes the app's types, guards, migrations and stories from it for any store (a JSON file, SQLite, Postgres), and the app is built from them with eta-app. reference.md has the verbs, the gaps and the move to an app, with a contents table.
+description: Use only while someone is telling you the stories of an app to be built, there to answer -- to write each story down on the model's page as it is told, describe the documents it needs (root, what each holds, who holds it), and read the gaps back, before any of the app is built. Then `dzql model` makes the app's types, guards, migrations and stories from it for any store (a JSON file, SQLite, Postgres), and the app is built from them with dzql-app. reference.md has the verbs, the gaps and the move to an app, with a contents table.
 metadata:
   version: 0.53.0
 ---
@@ -12,7 +12,7 @@ they need, while they watch each change land. The model is a delta document, so 
 undoes. The entities are worked out from the documents, never written: if they look wrong, a
 document is. `reference.md` has each part, with a contents table.
 
-Asked to build or change the app instead, this is not the skill: load **eta-app** and build it.
+Asked to build or change the app instead, this is not the skill: load **dzql-app** and build it.
 With nobody there to answer, never stop to wait: note the question, take the most natural reading,
 and go on.
 
@@ -52,5 +52,5 @@ and go on.
    cannot be asked) and the teller reads the page and calls each story true. While none is open,
    `dzql model` (or `bun dev`, the model at `/model` beside the app) writes
    `model/types.ts`, `guards.ts`, `migrations/` and `model.test.ts`, never a story. The app is
-   built from them with the **eta-app** skill, as dzql's `examples/cafe/` was (its README walks
+   built from them with the **dzql-app** skill, as dzql's `examples/cafe/` was (its README walks
    it). → *From the model to the app*

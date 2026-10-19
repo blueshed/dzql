@@ -34,7 +34,7 @@ server: the app, its HTTP routes, `modelRoute()` from `dzql/model` in developmen
 
 `dzql/rendering/links` (`signInLinks(key, sessions, people, at)`: `say(origin)` prints a link per
 person as the server starts, `ways()` is each one's name and path for a home page, `route` is the
-app's `"/in/:token"`). The model's page and its stories sign in through it; eta-app's
+app's `"/in/:token"`). The model's page and its stories sign in through it; dzql-app's
 `reference/signin.md` leads with links (passwords a fallback), and first-app.md, stories.md, the
 starter's `routes.ts` and the template's CLAUDE.md say the same. delta-doc's `auth.md` is left as
 delta's own (for a page that is delta's client); signin.md says which is which. Next: decisions 2
@@ -65,7 +65,7 @@ is a fixture to add. It found four disagreements (dzql's CHANGELOG says which), 
 
 **Too much to learn up front: the worked example is built.** `packages/dzql/examples/cafe/`
 (its README walks it): the model told, made, built as routes and resources, 22 stories, read back
-with no gaps, a conformance fixture; the eta-app and modelling skills and the template point at
+with no gaps, a conformance fixture; the dzql-app and modelling skills and the template point at
 it. Building it found three more disagreements, fixed: the read-back could not read the new
 layout, a document held every field of an entity though the model named fewer (now `columns`),
 and an app story of the app's own had no way to say so (`model: false`). Still open: cutting the

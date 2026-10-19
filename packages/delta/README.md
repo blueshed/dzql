@@ -107,7 +107,7 @@ Each of these is a page of the skill's [reference](.claude/skills/delta-doc/refe
   compiled to stored functions, answering delta's cases.
 - **[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)** is a starting
   website, its page drawn in the browser. `bun create blueshed my-app` makes one.
-- **[dzql's rendering](https://github.com/blueshed/dzql/tree/main/packages/dzql)** (eta) makes live
+- **[dzql's rendering](https://github.com/blueshed/dzql/tree/main/packages/dzql)** makes live
   apps for a few people at once, told as stories and checked by them. delta keeps its documents,
   their ledger and their one stream of changes; the server draws each page from them.
   `bun create dzql my-app` makes one.

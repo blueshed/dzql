@@ -235,7 +235,7 @@ Undo and redo are free: every write is recorded with its opposite. Three things 
 By a link, one per person, with no email and no password: `signInLinks` (`dzql/rendering/links`)
 makes them as the server starts, prints them where it starts, and its `route` is the app's
 `"/in/:token"`. Opened, a link starts a *new* session holding who that person is and sends the
-browser home. The model's page signs its keepers in so (`examples/modeling/signin.ts`); the eta-app
+browser home. The model's page signs its keepers in so (`examples/modeling/signin.ts`); the dzql-app
 skill's `reference/signin.md` is the whole of it, a demo's home page with a way in per person
 included.
 
@@ -277,14 +277,14 @@ railroad (an island, `src/rendering/island.ts`).
 - **A watched document is drawn whole into the page.** Watch one cut for who reads it, with no
   secret in it.
 - **One Undo is one document.** Keep a gesture's changes in one.
-- **Don't edit the kernel (`src/rendering/`) for one app.** If it seems you must, read the eta-app reference's "When it looks
-  like you need to touch the kernel" (`.claude/skills/eta-app/reference/where-an-app-lives.md`) first:
+- **Don't edit the kernel (`src/rendering/`) for one app.** If it seems you must, read the dzql-app reference's "When it looks
+  like you need to touch the kernel" (`.claude/skills/dzql-app/reference/where-an-app-lives.md`) first:
   a missing seam is rare.
 
 ## Where next
 
 - `docs/dzql/modelling/stories.md`: why eta is shaped this way.
-- `.claude/skills/eta-app/reference/`: every part, one short file a part (its `SKILL.md` says which
-  for which step); `docs/dzql/rendering/eta-app-notes.md` has the why.
+- `.claude/skills/dzql-app/reference/`: every part, one short file a part (its `SKILL.md` says which
+  for which step); `docs/dzql/rendering/dzql-app-notes.md` has the why.
 - `docs/dzql/rendering/bento/README.md`: the bento, a guide to where am I and what can I do.
 - `examples/leave/`: sign-in, a calendar applet, drafts, and a manager's rules, in about 1,000 lines.

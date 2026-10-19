@@ -1,19 +1,19 @@
 ---
-name: eta-app
-description: Use before building an eta app -- the src/ of a project made with `bun create dzql`, an example under examples/<name>/, or an app in a repo of its own -- or adding a document, resource, applet, route or CLI verb to one; and before touching the Resource contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference/ has one short file a piece; SKILL.md says which to read for which step.
+name: dzql-app
+description: Use before building an app whose pages dzql's server draws (dzql/rendering) -- the src/ of a project made with `bun create dzql`, an example under examples/<name>/, or an app in a repo of its own -- or adding a document, resource, applet, route or CLI verb to one; and before touching the Resource contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference/ has one short file a piece; SKILL.md says which to read for which step.
 metadata:
   version: 0.53.0
 ---
 
-# Building an app on eta
+# Building an app on dzql
 
-An eta app is its documents. A document is what a person needs in front of them to act: open it
+A dzql app is its documents. A document is what a person needs in front of them to act: open it
 and you are told every change; write to it and everyone holding it is told. The server draws each
 person's page from the documents they hold, and sends only what changed. Routes and resources
 are on the server: a resource looks after one document (who may write it, what a write becomes);
 an island is the only client resource.
 
-eta is the thin client: the server draws the page. The thick one is paintbrush (`bun create
+dzql's rendering is the thin client: the server draws the page. The thick one is paintbrush (`bun create
 blueshed`, its evolve skill), where the browser draws it; an applet works in either, and the
 documents are the same. Pick for ease or performance.
 
@@ -56,7 +56,7 @@ least that makes the next story pass; `bun run stories` after each.
    (`serverWrite`, the cafe's `/scan`). → [example](reference/example.md), [signin](reference/signin.md)
 7. **Tests**, `routes.test.ts`: what a story cannot say, then the gate. → [tests](reference/tests.md)
 
-Beyond the cafe, dzql's older examples show the same pieces in eta's earlier places (`delta.ts`,
+Beyond the cafe, dzql's older examples show the same pieces in their earlier places (`delta.ts`,
 `documents/<thing>.ts`, `resources/<thing>.ts`, `index.ts`): a document the server works out
 (chat's `here`, [resource](reference/resource.md#after-a-write)); an applet or an island, only for
 state a redraw would destroy (the ticker's board, [applets](reference/applets.md),

@@ -73,13 +73,13 @@ left them: a story says everyone who sees its change, counts on a home page incl
 leaves someone out fails by name. `untold` names who must not even be told: sent no document's ops. `cannot` is a refusal: the permit table's
 other half, told as a sentence, whichever layer refuses (the permit, a document that finds nothing
 to change, a session with no document to resolve). A `cannot` with `told` also says what the
-refused person is shown, beside the control that sent it (`refuse`, in the eta-app skill). Undo is a story too, and a redo, and the
+refused person is shown, beside the control that sent it (`refuse`, in the dzql-app skill). Undo is a story too, and a redo, and the
 harness runs them for free: every `does` is followed by its undo and its redo, and the seeing
 must hold in reverse -- unless the write is to a stored document with no undo (a tick), which undo must
 leave alone, or the author has since gone (logged out), who has no undo to press.
 
 What the undo takes back may be said to its author, over the page where Undo is (`afterWalk` and
-`tell`, in the eta-app skill), and a `does` with `undone` says what it must say, as `redone` does
+`tell`, in the dzql-app skill), and a `does` with `undone` says what it must say, as `redone` does
 for the redo. The wedding's
 household is told, since its Undo may change a photo someone else is watching, or a drawer that
 is shut:

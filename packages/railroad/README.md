@@ -121,10 +121,10 @@ a worker with no DOM and no JSX.
   website whose pages railroad draws. `bun create blueshed my-app` makes one
   (Bun 1.4).
 - **[dzql's rendering](https://github.com/blueshed/dzql/tree/main/packages/dzql)**
-  (eta) makes live apps for a few people at once, told as stories and checked by
+  makes live apps for a few people at once, told as stories and checked by
   them. The server draws each page and delta keeps its documents; railroad can
   draw an applet, the one piece of a page whose state a render would destroy (an
-  island, in eta's code).
+  island, in dzql's code).
   `bun create dzql my-app` makes one.
 
 ## What it is not

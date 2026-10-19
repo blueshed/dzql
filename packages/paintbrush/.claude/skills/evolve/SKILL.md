@@ -11,7 +11,7 @@ description: "Grows this app from its stories: a new shared document, two docume
 
 **Three stores, one page.** A JSON file, SQLite or Postgres keep the same documents, and the page stays the same on each. Every document is a schema and a `defineDoc` from the start, so moving changes the import, never the definitions. The only reason to move is ease or performance: the JSON file is the easiest, and holds documents over the same rows, undo and history; SQLite when the file is too much to rewrite after every change, or the schema must change on data in use; Postgres when servers share the data, or people should see only their own.
 
-**This is the thick client**: the browser draws the page with railroad. The thin one is eta (`bun create dzql`), where the server draws it; an applet (a railroad component) works in either. Pick for ease or performance.
+**This is the thick client**: the browser draws the page with railroad. The thin one is dzql's (`bun create dzql`), where the server draws it; an applet (a railroad component) works in either. Pick for ease or performance.
 
 ## Order of work
 

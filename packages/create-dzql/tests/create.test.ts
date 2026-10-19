@@ -29,10 +29,10 @@ test("the app is eta's starter in src/, named, its dotfiles dotted", () => {
   expect(readFileSync(join(app, ".gitignore"), "utf8")).toContain("db.sqlite*");
 });
 
-test("installing gives the app its skills: eta-app, modelling and delta-doc", () => {
+test("installing gives the app its skills: dzql-app, modelling and delta-doc", () => {
   const installed = Bun.spawnSync(["bun", "run", "prepare"], { cwd: app, stdout: "pipe", stderr: "pipe" });
   expect(installed.exitCode).toBe(0);
-  for (const skill of ["eta-app", "modelling", "delta-doc"]) expect(existsSync(join(app, ".claude/skills", skill, "SKILL.md"))).toBe(true);
+  for (const skill of ["dzql-app", "modelling", "delta-doc"]) expect(existsSync(join(app, ".claude/skills", skill, "SKILL.md"))).toBe(true);
 });
 
 test("the model's page starts beside the app, from dzql's modeling example", async () => {

@@ -1,16 +1,16 @@
 # Docs
 
-**Guidance**: what eta is for and how to build on it. Where these and the code disagree, the code,
-`packages/dzql/CLAUDE.md` and the eta-app skill are right; say so and fix the doc.
+**Guidance**: what dzql's rendering (once called eta) is for and how to build on it. Where these and the code disagree, the code,
+`packages/dzql/CLAUDE.md` and the dzql-app skill are right; say so and fix the doc.
 
 - The vision is the root README's *How an app is made*; `../modelling/stories.md` -- what the
   stories are for, and how they drive an app.
-- `eta.md` -- what eta is, its examples and commands, and what a write costs, measured by `bun run costs`.
+- `eta.md` -- what it is, its examples and commands, and what a write costs, measured by `bun run costs`.
 - `bento/` -- where am I and what can I do: the directions (`README.md`), built in `src/rendering/bento.ts`,
   and two sets of sample designs (`design/`, `paintbrush/`).
 - `first-app.md` -- a first app, step by step: chat, then leave, in the order you meet the words.
-- `least-resistance.md` -- why eta suits an AI that builds apps, and what would make it the easy path.
-- `eta-app-notes.md` -- the why behind the eta-app skill: the numbers and the reasons that would weigh
+- `least-resistance.md` -- why it suits an AI that builds apps, and what would make it the easy path.
+- `dzql-app-notes.md` -- the why behind the dzql-app skill: the numbers and the reasons that would weigh
   the skill down.
 
 **The record**: what the kernel was asked for and how it was reviewed, all done; kept because code

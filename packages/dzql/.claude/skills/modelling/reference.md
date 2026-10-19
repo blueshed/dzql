@@ -146,4 +146,4 @@ README walks it; here is what each part of it says about the model.
    not built, or built and never told; a does or cannot that differs; a document whose root,
    holders, holdings or own-ness differ, or that serves other stories.
 
-For the page itself, load the **eta-app** skill.
+For the page itself, load the **dzql-app** skill.

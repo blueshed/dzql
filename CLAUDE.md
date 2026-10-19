@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-The bluetools monorepo: railroad, delta, dzql (with eta's modelling and rendering), create-dzql, paintbrush (the starting website) and create-blueshed (`bun create blueshed`, which copies paintbrush) as Bun workspaces under
+The bluetools monorepo: railroad, delta, dzql (modelling, rendering and the Postgres step), create-dzql, paintbrush (the starting website) and create-blueshed (`bun create blueshed`, which copies paintbrush) as Bun workspaces under
 `packages/`. Each package has its own CLAUDE.md, read when working in it; it is the authority for
 that package's contracts, gate and docs (dzql's paths are written from this root). This file is
 only what is shared.
@@ -11,7 +11,7 @@ only what is shared.
 |---|---|---|---|
 | `packages/railroad` | nothing | `bun run test:railroad` | `bun run test:railroad:slow`: the consumer type checks, the browser |
 | `packages/delta` | railroad | `bun run test:delta` | none: its whole suite is fast |
-| `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun run test:dzql`, `bun run test:create-dzql` | `bun run test:dzql:slow`: Postgres in Docker, eta in a browser, the stories, the costs |
+| `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun run test:dzql`, `bun run test:create-dzql` | `bun run test:dzql:slow`: Postgres in Docker, the rendering in a browser, the stories, the costs |
 | `packages/paintbrush` | delta, railroad, dzql (`dzql/modelling`'s `story`) | `bun run test:paintbrush` | `bun run test:paintbrush:slow`: the evolve skill applied |
 | `packages/create-blueshed` | paintbrush (it packs a copy) | `bun run test:create-blueshed` | none |
 
@@ -21,7 +21,7 @@ only what is shared.
 - **The gate is `bun run affected`** (`scripts/affected.ts`): each package a change touches, and
   each that depends on one, runs its fast tier (`test:fast`: a type check and the tests that need no
   browser and no Postgres server), well under a minute. Commit, push, go on: never wait for CI.
-  The slow tier (`test:slow`: browsers, dzql's Postgres suite in Docker, eta's stories and costs)
+  The slow tier (`test:slow`: browsers, dzql's Postgres suite in Docker, dzql's stories and costs)
   runs in CI, path-filtered the same way (`.github/workflows/<package>.yml`), and by
   `bun run affected --slow` before a release. A red CI is fixed at the next push. (The workflows
   are paused on Peter's word since 17 October; until he says, the slow tier runs on his Mac.)

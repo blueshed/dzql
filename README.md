@@ -41,7 +41,7 @@ statement of how an app is made; each package's README says only its own part.
   | Behind it | entities (`defineSchema`) | |
 
 - **Two clients: thick or thin, with applets in either.** Thick, the browser draws the page with
-  railroad (paintbrush). Thin, the server draws every page from its URL (eta, `dzql/rendering`), so
+  railroad (paintbrush). Thin, the server draws every page from its URL (`dzql/rendering`), so
   its routes and resources are the server's. An applet is the piece of a page that holds state of
   its own (a drag, a calendar): on the thin client it is written by hand or with railroad (an
   island); on the thick client it is a railroad component like the rest of the page. Again, the
@@ -56,10 +56,10 @@ statement of how an app is made; each package's README says only its own part.
 |---|---|---|
 | [`packages/railroad`](packages/railroad) | `@blueshed/railroad` | Signals, JSX and routes for Bun's fullstack runtime; `/webview`, a page in a real browser for tests |
 | [`packages/delta`](packages/delta) | `@blueshed/delta` | Documents: open one and you're subscribed. JSON file and SQLite, the wire, the client, and the one server (`/serve`) |
-| [`packages/dzql`](packages/dzql) | `dzql` | Stories to documents to pages: `dzql/modelling`, `dzql/rendering` (eta), and the compiled Postgres step |
+| [`packages/dzql`](packages/dzql) | `dzql` | Stories to documents to pages: `dzql/modelling`, `dzql/rendering`, and the compiled Postgres step |
 | [`packages/paintbrush`](packages/paintbrush) | (private) | The starting website: routes and resources, a railroad page, delta documents |
 | [`packages/create-blueshed`](packages/create-blueshed) | `create-blueshed` | `bun create blueshed my-app`: a paintbrush app |
-| [`packages/create-dzql`](packages/create-dzql) | `create-dzql` | `bun create dzql my-app`: eta's starter, on dzql |
+| [`packages/create-dzql`](packages/create-dzql) | `create-dzql` | `bun create dzql my-app`: the thin client's starter |
 
 Each package keeps its npm name, its version and its CHANGELOG. In the workspace each uses its
 siblings' source, not npm's. `/publish` releases what has changed in one round, a tag per package

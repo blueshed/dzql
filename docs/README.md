@@ -10,7 +10,7 @@ right; fix the doc.
 - **railroad**: [why-railroad.md](railroad/why-railroad.md), the reasons behind it.
 - **dzql**:
   - [modelling/stories.md](dzql/modelling/stories.md): what the stories are for, and how they drive an app.
-  - [rendering/](dzql/rendering/README.md): pages the server draws (eta): [eta.md](dzql/rendering/eta.md)
+  - [rendering/](dzql/rendering/README.md): pages the server draws: [eta.md](dzql/rendering/eta.md)
     (what it is, its measured costs, kept true by `bun run costs`), [first-app.md](dzql/rendering/first-app.md),
     [the bento](dzql/rendering/bento/README.md).
   - [postgres/](dzql/postgres/postgres.md): delta on Postgres: setting up, [the stored functions](dzql/postgres/sql.md),

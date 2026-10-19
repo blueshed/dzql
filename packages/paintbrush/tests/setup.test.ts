@@ -106,7 +106,7 @@ test("setup says so when the skills are not installed (no delta yet), and skips 
   console.warn = (...args) => void warnings.push(args.join(" "));
   try {
     await setup(root);
-    expect(warnings.join("\n")).toContain("the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route,eta-app`");
+    expect(warnings.join("\n")).toContain("the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route,dzql-app`");
     expect(existsSync(join(root, ".claude/skills"))).toBe(false);
   } finally {
     console.warn = warn;

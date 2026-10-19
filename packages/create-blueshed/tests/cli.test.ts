@@ -42,7 +42,7 @@ test("bun create blueshed gives an app that says what it offers, with the model'
 
   expect(await Bun.file(join(app, "README.md")).text()).toContain("**You write your stories, a schema and documents. You get a live page, and proof that every\nstory holds");
   for (const skill of ["evolve", "modelling", "railroad", "delta-doc"]) expect(existsSync(join(app, ".claude/skills", skill, "SKILL.md"))).toBe(true);
-  for (const skill of ["eta-app", "bun-route"]) expect(existsSync(join(app, ".claude/skills", skill))).toBe(false);
+  for (const skill of ["dzql-app", "bun-route"]) expect(existsSync(join(app, ".claude/skills", skill))).toBe(false);
 
   const proc = Bun.spawn(["bun", "run", "model"], { cwd: app, stdout: "pipe", stderr: "inherit", env: { ...process.env, MODEL_PORT: "0" } });
   try {

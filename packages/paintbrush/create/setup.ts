@@ -93,10 +93,10 @@ export async function setup(root: string) {
   // The skills the app's packages ship (railroad's, delta's, and dzql's modelling, which package.json's
   // claudeSkills names), by delta's install-skills. railroad's bun-route is left out: it scaffolds a bare
   // project with `bun init`, and this app grows through its own evolve skill instead; so is dzql's
-  // eta-app, which builds a page the server draws.
+  // dzql-app, which builds a page the server draws.
   const cli = join(root, "node_modules/@blueshed/delta/cli.ts");
-  const installed = existsSync(cli) && Bun.spawnSync([process.execPath, cli, "install-skills", "--skip", "bun-route,eta-app"], { cwd: root, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
-  if (!installed) console.warn("  the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route,eta-app`");
+  const installed = existsSync(cli) && Bun.spawnSync([process.execPath, cli, "install-skills", "--skip", "bun-route,dzql-app"], { cwd: root, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
+  if (!installed) console.warn("  the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route,dzql-app`");
 
   await commitEverything(root);
 

@@ -68,7 +68,7 @@ bun routes.ts
 ```
 
 Two windows on http://localhost:3000 show the same message; a save in one shows in both, and it is
-kept in `data/message.json`. Growing it: the `eta-app` skill.
+kept in `data/message.json`. Growing it: the `dzql-app` skill.
 
 ### Install dzql and use modelling, for a JSON file, SQLite or Postgres
 
@@ -202,7 +202,7 @@ is `docs/dzql/postgres-split-plan.md` in blueshed/dzql.
 
 ## Start
 
-`bun create dzql my-app` makes eta's starter: an app whose stories come first, its pages drawn by
+`bun create dzql my-app` makes the starter: an app whose stories come first, its pages drawn by
 the server, its documents delta's, served by delta's one server. It begins with no stories and no
 documents; the first story says which document comes first.
 

@@ -55,7 +55,7 @@ console.log(`
 Done. To start:
 
   cd ${name}
-  bun install        # and the skills: eta-app, modelling, delta-doc
+  bun install        # and the skills: dzql-app, modelling, delta-doc
   bun dev            # http://localhost:3000: the page, waiting for its first story;
                      # and /model, the model's page, where the stories are told first
   bun test           # the page is served and drawn, and every story passes
