@@ -57,3 +57,21 @@ test("bun create blueshed gives an app that says what it offers, with the model'
     await proc.exited;
   }
 }, 60_000);
+
+test("no git, or already inside a repository: the app is made, with no repository of its own, and it says why", () => {
+  // inside a repository (as an app made in a monorepo is)
+  const repo = join(parent, "mono");
+  Bun.spawnSync(["mkdir", "-p", repo]);
+  Bun.spawnSync(["git", "init", "-q"], { cwd: repo });
+  const inside = Bun.spawnSync([process.execPath, cli, "inner", "--no-install"], { cwd: repo, stdout: "pipe", stderr: "pipe" });
+  expect(inside.exitCode).toBe(0);
+  expect(inside.stdout.toString()).toContain("already inside a git repository: no repository of its own");
+  expect(existsSync(join(repo, "inner/.git"))).toBe(false);
+  // no git on the PATH: Bun's spawnSync throws on a missing program, so the starter asks first
+  const bare = Bun.spawnSync([process.execPath, cli, "bare", "--no-install"], { cwd: parent, stdout: "pipe", stderr: "pipe", env: { ...process.env, PATH: "/nonexistent" } });
+  expect(bare.stderr.toString()).toBe("");
+  expect(bare.exitCode).toBe(0);
+  expect(bare.stdout.toString()).toContain("git not found: no repository made");
+  expect(existsSync(join(parent, "bare/.git"))).toBe(false);
+});
+

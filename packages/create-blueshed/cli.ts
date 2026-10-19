@@ -13,7 +13,7 @@
  *                  runs from, not npm: for trying the packages as they are, before a release
  */
 import { cpSync, existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const args = process.argv.slice(2);
 const name = args.find((a) => !a.startsWith("-")) ?? "my-app";
@@ -55,7 +55,14 @@ if (flags.has("--local") || process.env.BLUESHED_LOCAL) {
 }
 
 const run = (cmd: string[]) => Bun.spawnSync(cmd, { cwd: dest, stdin: "inherit", stdout: "inherit", stderr: "inherit" }).exitCode;
-if (!flags.has("--no-git")) run(["git", "init", "-q"]); // setup ends by making the first commit
+// The app is its own repository (setup makes the first commit), unless it is asked not to be, git is
+// not there, or the folder is already inside one (an app made in a monorepo is that repository's)
+const git = Bun.which("git");
+const inside = git && Bun.spawnSync([git, "rev-parse", "--is-inside-work-tree"], { cwd: dirname(dest), stdout: "pipe", stderr: "pipe" }).exitCode === 0;
+if (flags.has("--no-git")) {
+} else if (!git) console.log("  git not found: no repository made");
+else if (inside) console.log("  already inside a git repository: no repository of its own");
+else run([git, "init", "-q"]);
 if (flags.has("--no-install")) {
   console.log(`\nCopied to ${name}. Next: cd ${name} && bun install && bun create/setup.ts`);
   process.exit(0);

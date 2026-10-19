@@ -6,6 +6,12 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+- **`bun create blueshed` with no git, or inside a repository** (19 October): Bun's `spawnSync`
+  throws on a program it cannot find, so on a machine with no git the starter died at `git init`,
+  after copying and installing, and paintbrush's setup died before doing anything. Both ask for git
+  first (`Bun.which`): without it the app is made and the starter says no repository was. Inside an
+  existing repository (an app made in a monorepo) it makes none of its own either, and says so.
+
 ### The shape of a package, said once
 
 The plan's shape is done (`docs/plan.md`, steps 1 to 6): railroad's and delta's code in `src/`,

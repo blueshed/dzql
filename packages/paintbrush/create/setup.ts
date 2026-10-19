@@ -29,14 +29,15 @@ export const DELETED = ["todo.jsonl", "CHANGELOG.md", "logo.png", "create", "tes
 
 // The template's own clone is the one place this must never run: it deletes things
 function isTemplateClone(root: string) {
-  const origin = Bun.spawnSync(["git", "remote", "get-url", "origin"], { cwd: root }).stdout.toString();
+  if (!Bun.which("git")) return false; // no git, no clone
+  const origin = Bun.spawnSync(["git", "remote", "get-url", "origin"], { cwd: root, stderr: "pipe" }).stdout.toString();
   return /blueshed\/(paintbrush|dzql)(\.git)?\s*$/.test(origin); // its old repository, or its home now
 }
 
 // create-blueshed makes the repository (`git init`) and leaves the first commit to this, the last
 // step: everything setup wrote is in it. A repository with history is somebody's, and is left alone.
 function commitEverything(root: string) {
-  if (!existsSync(join(root, ".git"))) return; // --no-git
+  if (!existsSync(join(root, ".git")) || !Bun.which("git")) return; // no repository made (--no-git, no git, or inside another)
   const git = (...args: string[]) => Bun.spawnSync(["git", ...args], { cwd: root });
   if (git("rev-parse", "--verify", "-q", "HEAD").exitCode === 0) return;
   git("add", "-A");

@@ -182,3 +182,16 @@ test("the new app's README quotes its own files", async () => {
     for (const line of lines) expect(file).toContain(line);
   }
 });
+
+test("with no git on the PATH, setup still makes the app: no clone to refuse, no commit to make", async () => {
+  const { root, done } = await scratchTemplate({ "todo.jsonl": '{"n": 1}\n', "package.json": '{\n  "name": "paintbrush",\n  "version": "0.5.0"\n}\n' });
+  try {
+    // as a person runs it, in a process of its own: Bun's spawnSync throws on a program it cannot find
+    const run = Bun.spawnSync([process.execPath, join(import.meta.dir, "../create/setup.ts")], { cwd: root, env: { ...process.env, PATH: "/nonexistent" }, stdout: "pipe", stderr: "pipe" });
+    expect(run.exitCode).toBe(0);
+    expect(await Bun.file(join(root, "todo.jsonl")).text()).toBe("");
+    expect(existsSync(join(root, ".git"))).toBe(false);
+  } finally {
+    done();
+  }
+});
