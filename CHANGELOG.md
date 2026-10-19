@@ -6,6 +6,11 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+- **`bun create dzql` installs and makes the first commit, as `bun create blueshed` does**
+  (19 October): it copied files and stopped. It runs `bun install` (which installs the skills) and
+  commits, with the same `--no-install`, `--no-git` and `--local`, and the same rules: no repository
+  without git, or inside one already.
+
 - **`bun create blueshed` with no git, or inside a repository** (19 October): Bun's `spawnSync`
   throws on a program it cannot find, so on a machine with no git the starter died at `git init`,
   after copying and installing, and paintbrush's setup died before doing anything. Both ask for git

@@ -10,7 +10,7 @@ const parent = mkdtempSync(join(tmpdir(), "create-dzql-"));
 const app = join(parent, "my-app");
 
 beforeAll(async () => {
-  const made = Bun.spawnSync(["bun", join(import.meta.dir, "../cli.ts"), "my-app"], { cwd: parent, stdout: "pipe", stderr: "pipe" });
+  const made = Bun.spawnSync(["bun", join(import.meta.dir, "../cli.ts"), "my-app", "--no-install", "--no-git"], { cwd: parent, stdout: "pipe", stderr: "pipe" });
   expect(made.stderr.toString()).toBe("");
   expect(made.exitCode).toBe(0);
   symlinkSync(join(root, "node_modules"), join(app, "node_modules"));
@@ -89,3 +89,24 @@ test("it starts on delta's one server: the page, drawn over the socket, and /hea
     await proc.exited;
   }
 }, 30_000);
+
+// The first commit, as create-blueshed makes it; none without git, or inside a repository already
+test("the app is its own repository, one clean first commit; none without git, or inside another repository", () => {
+  const git = (cwd: string, ...a: string[]) => Bun.spawnSync(["git", "-c", "user.email=t@example.com", "-c", "user.name=t", ...a], { cwd, stdout: "pipe" }).stdout.toString().trim();
+  const make = (cwd: string, name: string, env: Record<string, string | undefined> = process.env) =>
+    Bun.spawnSync([process.execPath, join(import.meta.dir, "../cli.ts"), name, "--no-install"], { cwd, stdout: "pipe", stderr: "pipe", env: { ...env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@example.com", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@example.com" } });
+  expect(make(parent, "own").exitCode).toBe(0);
+  expect(git(join(parent, "own"), "log", "--format=%s")).toBe("Initial commit");
+  expect(git(join(parent, "own"), "status", "--porcelain")).toBe("");
+  const repo = join(parent, "mono");
+  Bun.spawnSync(["mkdir", "-p", repo]);
+  Bun.spawnSync(["git", "init", "-q"], { cwd: repo });
+  const inner = make(repo, "inner");
+  expect(inner.stdout.toString()).toContain("already inside a git repository: no repository of its own");
+  expect(existsSync(join(repo, "inner/.git"))).toBe(false);
+  const bare = make(parent, "bare", { ...process.env, PATH: "/nonexistent" });
+  expect(bare.stderr.toString()).toBe("");
+  expect(bare.stdout.toString()).toContain("git not found: no repository made");
+  expect(existsSync(join(parent, "bare/.git"))).toBe(false);
+});
+
