@@ -57,7 +57,7 @@ The root's `todo.jsonl` (what is open across packages) is settled the same way, 
 ## 3. What depends on what was released
 
 A sibling's range moves up to the version just made when it no longer includes it: delta's
-`@blueshed/railroad` (peer and dev); dzql's `@blueshed/delta` (peer and dev) and
+`@blueshed/railroad` (dev; its peer is every railroad before 1.0); dzql's `@blueshed/delta` (peer and dev) and
 `@blueshed/railroad` (dev, and its optional peer widened); paintbrush's three; the create-dzql
 template's `dzql`. Each move is a line under the dependent's new version in its CHANGELOG (under
 `[Unreleased]` for paintbrush when create-blueshed is not in the round). Then `bun install` at the

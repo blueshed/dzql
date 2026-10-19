@@ -56,9 +56,10 @@ describe("package exports", () => {
     // under src/server or src/core may import it (the logger is a copy).
     expect(pkg.peerDependencies["@blueshed/railroad"]).toBeDefined();
     expect(pkg.peerDependenciesMeta?.["@blueshed/railroad"]?.optional).toBe(true);
-    const glob = new Bun.Glob("src/{server,sql}/**/*.ts");
+    const glob = new Bun.Glob("src/**/*.ts");
     const root = new URL("..", import.meta.url).pathname;
     for await (const f of glob.scan(root)) {
+      if (f.startsWith("src/client/")) continue; // the client is railroad's to use
       expect([f, (await Bun.file(root + f).text()).includes('from "@blueshed/railroad')]).toEqual([f, false]);
     }
     expect((await Bun.file(root + "src/core.ts").text()).includes("@blueshed/railroad")).toBe(false);

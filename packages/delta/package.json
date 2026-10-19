@@ -44,7 +44,7 @@
     "test:slow": "bun check && bun check -p examples/kanban && bun test tests/"
   },
   "peerDependencies": {
-    "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0 || ^0.16.0 || ^0.17.0"
+    "@blueshed/railroad": ">=0.11.0 <1.0.0"
   },
   "peerDependenciesMeta": {
     "@blueshed/railroad": {

@@ -10,18 +10,12 @@ import { expect, test } from "bun:test";
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { until, type Proc } from "./helpers/examples";
+import { blockAfter as blockOf } from "./helpers/markdown";
 import { waitFor } from "../src/testing";
 
 const skill = await Bun.file(new URL("../.claude/skills/delta-doc/reference/recipe.md", import.meta.url)).text();
 
-/** The fenced block under the heading `marker`. */
-function blockAfter(marker: string): string {
-  const at = skill.indexOf(marker);
-  if (at < 0) throw new Error(`reference/recipe.md has no ${JSON.stringify(marker)}`);
-  const open = skill.indexOf("```", at);
-  const start = skill.indexOf("\n", open) + 1;
-  return skill.slice(start, skill.indexOf("\n```", start) + 1);
-}
+const blockAfter = (marker: string) => blockOf(skill, marker, "reference/recipe.md");
 
 /** One browser: the recipe's page in happy-dom, its client.ts, then (if asked) a message typed and sent; it exits once `#log` shows `HEAR`, or fails after 5 s. */
 const BROWSER = `

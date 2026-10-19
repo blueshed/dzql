@@ -96,7 +96,7 @@ export function writeFileAtomicSync(file: string, text: string): void {
 }
 
 /** Is process `pid` still running? (One we may not signal is.) */
-function running(pid: number): boolean {
+export function running(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;

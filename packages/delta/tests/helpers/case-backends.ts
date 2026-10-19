@@ -13,7 +13,7 @@ import { createWs } from "../../src/server/server";
 import * as sqlite from "../../src/server/sqlite";
 import * as json from "../../src/server/json";
 
-export const onSqlite: CaseBackend = async ({ schema, docs, seed }) => {
+export const sqliteBackend: CaseBackend = async ({ schema, docs, seed }) => {
   const db = new Database(":memory:");
   sqlite.createTables(db, schema);
   sqlite.importTables(db, schema, seed);
@@ -23,7 +23,7 @@ export const onSqlite: CaseBackend = async ({ schema, docs, seed }) => {
   return { ws, end: async () => db.close() };
 };
 
-export const onJson: CaseBackend = async ({ schema, docs, seed }) => {
+export const jsonBackend: CaseBackend = async ({ schema, docs, seed }) => {
   const dir = mkdtempSync(join(tmpdir(), "delta-cases-"));
   const file = join(dir, "data.json");
   json.importTables(file, schema, seed);

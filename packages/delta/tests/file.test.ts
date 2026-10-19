@@ -205,3 +205,27 @@ describe("a save that fails", () => {
     expect(JSON.parse(readFileSync(file, "utf8")).tables.notes.map((n: any) => n.text)).toEqual(["one", "two"]);
   });
 });
+
+describe("a store may hold more, never less", () => {
+  // an older app saving the file a newer one wrote erased the newer one's column and table
+  test("the JSON file keeps the tables, columns and ledger its schema does not declare, through every save", async () => {
+    const file = join(dir, "data.json");
+    writeFileSync(file, JSON.stringify({
+      tables: { notes: [{ id: 1, text: "one", colour: "red" }], tags: [{ id: 1, name: "newer" }] },
+      sequences: { notes: 1, tags: 1 },
+      ledger: { entries: [{ id: 1 }], versions: [] },
+    }));
+    const schema = defineSchema({ notes: { columns: { text: "text" }, temporal: false } }); // the older app's: no colour, no tags, no ledger
+    const local = createLocal();
+    const store = registerDocs(local.server, file, schema, [{ prefix: "notes:", root: "notes", include: [], scope: {} }]);
+    await local.call("open", { doc: "notes:" });
+    await local.call("delta", { doc: "notes:", ops: [{ op: "replace", path: "/notes/1/text", value: "uno" }, { op: "add", path: "/notes/-", value: { text: "two" } }] });
+    await store.persisted();
+    const saved = JSON.parse(readFileSync(file, "utf8"));
+    expect(saved.tables.notes).toEqual([{ id: 1, text: "uno", colour: "red" }, { id: 2, text: "two" }]);
+    expect(saved.tables.tags).toEqual([{ id: 1, name: "newer" }]);
+    expect(saved.sequences).toMatchObject({ notes: 2, tags: 1 });
+    expect(saved.ledger).toEqual({ entries: [{ id: 1 }], versions: [] });
+  });
+});
+

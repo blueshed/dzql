@@ -65,6 +65,41 @@ export function importTables(file: string, _schema: Schema, snapshot: Snapshot):
   writeFileAtomicSync(file, JSON.stringify({ tables: snapshot.tables, sequences: snapshot.sequences ?? {} }, null, 2));
 }
 
+/** What a file holds that a schema does not declare: kept through every save (a store may hold more, never less). */
+type Kept = { tables: Snapshot["tables"]; sequences: Record<string, number>; columns: Map<string, Map<unknown, Record<string, unknown>>>; rest: Record<string, unknown> };
+
+/** The tables, the columns of declared tables, and the keys of the file the schema does not say: a newer version's, kept for it. */
+function undeclared(saved: Saved, schema: Schema): Kept {
+  const tables: Snapshot["tables"] = {};
+  const sequences: Record<string, number> = {};
+  const columns = new Map<string, Map<unknown, Record<string, unknown>>>();
+  for (const [key, rows] of Object.entries(saved.tables)) {
+    const table = schema.tables[key];
+    if (!table) {
+      tables[key] = rows;
+      const last = saved.sequences?.[key];
+      if (last != null) sequences[key] = last;
+      continue;
+    }
+    const known = new Set(["id", ...(table.parent ? [table.parent.fkColumn] : []), ...Object.keys(table.columns), "valid_from", "valid_to"]);
+    const byId = new Map<unknown, Record<string, unknown>>();
+    for (const row of rows) {
+      const extra = Object.fromEntries(Object.entries(row).filter(([c]) => !known.has(c)));
+      if (Object.keys(extra).length) byId.set(row.id, extra);
+    }
+    if (byId.size) columns.set(key, byId);
+  }
+  const { tables: _tables, sequences: _sequences, ledger: _ledger, ...rest } = saved;
+  return { tables, sequences, columns, rest };
+}
+
+/** A snapshot with what the file held beyond the schema put back: a row keeps its undeclared columns by its id. */
+function withUndeclared(snapshot: Saved, kept: Kept): Saved {
+  const tables = { ...snapshot.tables };
+  for (const [key, byId] of kept.columns) tables[key] = (tables[key] ?? []).map((row) => ({ ...byId.get(row.id), ...row }));
+  return { ...kept.rest, ...snapshot, tables: { ...tables, ...kept.tables }, sequences: { ...snapshot.sequences, ...kept.sequences } };
+}
+
 /** The database a file is loaded into, and its saving: one per server and file. */
 type Engine = {
   db: Database;
@@ -100,12 +135,15 @@ function engineOf(ws: WsServer, file: string, schema: Schema): Engine {
   clearStaleTemps(file);
   const saved = read(file);
   importSqlite(db, schema, saved);
+  // a newer version's tables and columns, which this schema does not say: saved as they were
+  const kept = undeclared(saved, schema);
 
   const log = createLogger("[delta-json]");
   const engine: Engine = {
     db, schema, unloaded: saved.ledger, ledger: false, saving: Promise.resolve(),
     save() {
-      const snapshot: Saved = exportSqlite(db, schema);
+      const snapshot: Saved = withUndeclared(exportSqlite(db, schema), kept);
+      if (!engine.ledger && engine.unloaded) snapshot.ledger = engine.unloaded; // a ledger nobody here keeps, kept as it was
       if (engine.ledger) {
         snapshot.ledger = {
           entries: db.query("SELECT * FROM delta_ledger ORDER BY id").all() as Record<string, unknown>[],

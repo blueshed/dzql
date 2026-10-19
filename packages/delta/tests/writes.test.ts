@@ -13,11 +13,11 @@ import { registerMemory } from "../src/server/kinds";
 import { setLogLevel } from "../src/server/logger";
 import { applyOps } from "../src/core";
 import { createRowCases, errorCodeCases, mistakes, mockClient, sendAndAwait, uniqueCases, writeScopeCases } from "@blueshed/delta/testing";
-import { onJson, onSqlite } from "./helpers/case-backends";
+import { jsonBackend, sqliteBackend } from "./helpers/case-backends";
 
 setLogLevel("silent");
 
-for (const [name, backend] of [["SQLite", onSqlite], ["the JSON file", onJson]] as const) {
+for (const [name, backend] of [["SQLite", sqliteBackend], ["the JSON file", jsonBackend]] as const) {
   describe(name, () => {
     errorCodeCases(backend);
     createRowCases(backend);

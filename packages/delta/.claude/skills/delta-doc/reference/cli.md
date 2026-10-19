@@ -21,6 +21,10 @@ bunx @blueshed/delta call  <method> ['<paramsJSON>']
   `ws://localhost:${PORT:-3100}/ws`.
 - `--token <t>` or `DELTA_TOKEN` (prefer the env: a flag shows in `ps`): sent as
   `call authenticate` on connecting, never in the URL. A refused token is the sign-in's 401.
+- **An admin's write is one of these**: a role or a field changed by someone the document lets
+  write it, `delta delta person:1 '[{"op":"replace","path":"/people/1/role","value":"keeper"}]'`
+  with their token. It goes through the server, so its holders are told and its ledger records it;
+  never an `UPDATE` beside the server, which nobody is told of.
 - `--json`: one JSON line per event on stdout, nothing on stderr but errors; nothing is `null`;
   an error is one `{"error":{"code","message"}}` line on stderr, `code` the server's or `0` for
   the CLI's own (connection, bad argument).

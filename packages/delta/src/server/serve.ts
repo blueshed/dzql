@@ -11,6 +11,7 @@
  */
 import { rmSync } from "node:fs";
 import type { WsServer } from "./server";
+import { running } from "./file";
 
 /** What an app is to the server: its routes and resources, never a server of its own. */
 export interface App<R extends string = string> {
@@ -80,15 +81,8 @@ export type Runnable = { url: URL; stop(force?: boolean): Promise<void> | void; 
 /** Where the pid file is: `$PID_FILE`, else `.server.pid` where the command runs. */
 export const pidFile = (): string => process.env.PID_FILE ?? `${process.cwd()}/.server.pid`;
 
-function isAlive(pid: number): boolean {
-  if (!(pid > 0)) return false; // an empty or garbage file: kill(0) would hit our process group
-  try {
-    process.kill(pid, 0); // signal 0: does it exist
-    return true;
-  } catch (e) {
-    return (e as NodeJS.ErrnoException).code === "EPERM"; // it exists, and is not ours
-  }
-}
+/** A pid file's process, still running: an empty or garbage file names none (kill(0) would hit our process group). */
+const isAlive = (pid: number): boolean => pid > 0 && running(pid);
 
 declare global {
   var __deltaShutdown: (() => Promise<void>) | undefined;

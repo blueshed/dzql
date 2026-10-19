@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The JSON file keeps what its schema does not declare** (19 October): an older app saving the
+  file a newer one wrote erased the newer one's tables and columns, against "a store may hold more,
+  never less". Other tables, undeclared columns (by the row's id), other keys and a ledger nobody
+  here keeps are saved as they were.
+
 ### Changed
 
 - **`delta migrations make` also writes `migrations/index.ts`** (19 October): the folder as one
@@ -14,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `migrate(db, migrations, ...)` with `import { migrations } from "./migrations"`. `fromFolder` skips
   it. The shared-state example, which repeated the recipe, is gone: the recipe is the runnable app.
   The server's header, an eval and CLAUDE.md's map no longer teach a `Bun.serve` of the app's own.
+  The railroad peer is `>=0.11.0 <1.0.0`; the CLI reference shows an admin's write.
 - **The command is `src/cli.ts`** (19 October), so `src/` is everything that ships: the monorepo's
   one shape for a library (`docs/plan.md`). `bunx @blueshed/delta` and the `delta` bin are the
   same; a script that ran `node_modules/@blueshed/delta/cli.ts` by path runs the bin instead
