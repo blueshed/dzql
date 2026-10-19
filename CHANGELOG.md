@@ -16,7 +16,11 @@ paintbrush's (duckdown's bun-create entry, shinko) came up to the root. Each ite
 fields, in order; severities are low, medium or high; paths name where the files are now. Delta's two
 fixed items, released in 1.3.0, left its ledger, and `/publish` settles every ledger alike: each
 package's at its release, the root's once a round (it said so only of dzql's). #74 (paintbrush's old
-scaffolding) is fixed.
+scaffolding) is fixed. Then every open item was checked against the code: settled are root #16 (branches
+pruned across the Mac), #17 (CLAUDE.md says which package and skill), paintbrush #13 and dzql #76
+(/publish stamps dzql's skills); not to be done are root #19 (llms.txt), #111 (shinko) and #112
+(duckdown's own), and dzql #30 (by design); the cafe's orders will name the dish and read its price
+as it stood (dzql #52, on Peter's rule).
 
 ### The review's four bugs
 
