@@ -5,17 +5,21 @@
    a panel at the right from 820px, a sheet from the foot below. One family of corners, one control
    height, every shadow toward the ink.
 
-   An example's own stylesheet imports this first (`@import "../../../src/rendering/bento.css";`), then says
-   its tokens on :root and whatever is its own, the page outside the frame (body, #app) among it.
-   The tokens this reads:
+   This file is the frame, and its defaults are one look, the tray: cells cut into a padded tray,
+   rounded, lifted by shadows, labels in small capitals. `bento-plain.css` is the other, Paintbrush's
+   (docs/bento/paintbrush/): hairlines, 4px, no shadows, plain words. A look is these tokens, so an
+   app imports a look -- `@import "dzql/rendering/bento-plain.css";`, or this file for the tray --
+   then says its own tokens on :root and whatever is its own, the page outside the frame (body,
+   #app) among it. The tokens this reads:
      --paper --tray --card --card-hover --well --ink --muted --line --edge --ink-rgb
      (--edge is a control's border: at least 3:1 against --card, WCAG 1.4.11; --line is a hairline)
      --accent (links, tools, what is pressed)  --mark (the pencil)  --add  --danger
-   and, with the defaults below, the corner family, the spaces, the control sizes and the shadows. */
+   and, with the defaults below, the corner family, the spaces, the control sizes, the shadows, and
+   how the tray, a cell, a label, a tool, a row, the drawer and the modal are drawn. */
 
 :root {
   --radius-inner: 4px; --radius-control: 6px; --radius-thumb: 8px; --radius-panel: 20px; --radius-tray: 28px;
-  --radius-corner: calc(var(--radius-tray) - var(--space-md));
+  --radius-corner: calc(var(--radius-tray) - var(--tray-pad));
   --space-xs: 6px; --space-sm: 8px; --space-md: 10px; --space-lg: 14px; --space-xl: 20px; --space-2xl: 24px;
   --control: 32px; /* a rail button; the trail card is this tall */
   --touch: 40px; /* a button with a word, a field */
@@ -25,6 +29,31 @@
   --shadow-control: 0 1px 4px rgba(var(--ink-rgb), 0.2);
   --shadow-tray: 0 12px 30px rgba(var(--ink-rgb), 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   --shadow-window: 0 20px 50px rgba(var(--ink-rgb), 0.25);
+  --shadow-sheet: 0 -8px 30px rgba(var(--ink-rgb), 0.2); /* the drawer as a sheet, on a phone */
+  --shadow-drawer: 0 8px 30px rgba(var(--ink-rgb), 0.2); /* the drawer docked, from 820px */
+  --shadow-modal: 0 20px 50px rgba(var(--ink-rgb), 0.3);
+  /* the tray: its gap is the wall between cells, its padding the wall around them */
+  --tray-gap: var(--space-md); --tray-pad: var(--space-md); --tray-border: 0;
+  --cell-pad: var(--space-lg); --cell-min: 96px;
+  --window-border: 0; --modal-border: 0;
+  /* a label (.cap), the trail's place, a cell's summary */
+  --cap-size: 11.5px; --cap-spacing: 0.14em; --cap-case: uppercase; --cap-weight: 700;
+  --trail-ink: var(--ink); --here-weight: 600; --summary-ink: var(--muted);
+  /* a tool: a word on a button; making (add) and removing (danger) drawn by their own ink and fill */
+  --tool-size: 14px; --tool-weight: 600; --tool-edge: var(--accent); --tool-ink: var(--accent);
+  --add-fill: var(--card); --add-ink: var(--add); --add-hover: var(--card-hover);
+  --danger-fill: var(--card); --danger-ink: var(--danger); --danger-hover: var(--card-hover);
+  /* a row: its height, its padding (the hover reaches past the words by the side's), its words, its state */
+  --row-min: 56px; --row-pad-y: var(--space-md); --row-pad-x: var(--space-md);
+  --what-weight: 600; --state-size: 12px; --state-spacing: 0.1em; --state-case: uppercase;
+  /* a property in a drawer: its name beside its value, or (one column) above it */
+  --prop-columns: 6rem minmax(0, 1fr);
+  /* a cell's name takes its head's room (its › at the far side), or only its own (the › beside it) */
+  --cell-name-flex: 1;
+  /* a box's heading: the place's name, large; a pin's edge */
+  --heading-size: 20px; --pin-edge: var(--line);
+  /* the trail's weight; a row's words; the mark beside a name that opens */
+  --trail-weight: var(--cap-weight); --row-size: inherit; --name-mark: 16px;
 }
 /* ── the frame: what layers() draws (src/bento.ts), the ground and the layers over it. Its elements --
    every box, button and field in it -- are drawn as the bento's; an element anywhere else on an
@@ -52,11 +81,11 @@
 
 /* ── controls: a button with a word, a field, a choice ── */
 .field { flex: 1; min-width: 0; } /* in a row, it takes what the rest leave */
-.tool { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); height: var(--touch); padding: 0 var(--space-lg); border: 1px solid var(--accent); border-radius: var(--radius-control); background: var(--card); color: var(--accent); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-.tool:hover { background: var(--card-hover); }
+.tool { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); height: var(--touch); padding: 0 var(--space-lg); border: 1px solid var(--tool-edge); border-radius: var(--radius-control); background: var(--card); color: var(--tool-ink); font-size: var(--tool-size); font-weight: var(--tool-weight); text-decoration: none; white-space: nowrap; }
+.tool:hover { background: var(--tool-hover, var(--card-hover)); }
 .tool.quiet { border-color: var(--edge); color: var(--ink); font-weight: 500; }
-.tool.add { border-color: var(--add); color: var(--add); }
-.tool.danger { border-color: var(--danger); color: var(--danger); }
+.tool.add { --tool-hover: var(--add-hover); border-color: var(--add); background: var(--add-fill); color: var(--add-ink); }
+.tool.danger { --tool-hover: var(--danger-hover); border-color: var(--danger); background: var(--danger-fill); color: var(--danger-ink); }
 .tool:is([aria-pressed="true"], [aria-expanded="true"], [role="radio"][aria-checked="true"]) { background: var(--accent); border-color: var(--accent); color: var(--card); } /* on, chosen, or its drawer open */
 .pick { display: inline-flex; gap: var(--space-xs); }
 /* what a write was told, beside the control that sent it (src/refusal.ts): why it was refused, or what it did */
@@ -85,17 +114,23 @@
 
 /* ── where am I: the trail, and the page's tools beside it on the box ── */
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); margin: 0 var(--space-lg) var(--space-lg); min-height: var(--control); }
+/* with a heading: the trail on its own line, the name large under it, the page's deeds and tools beside the name */
+.page-head.headed { flex-direction: column; align-items: stretch; gap: var(--space-sm); }
+.heading { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.heading > img { display: block; }
+.heading h1 { margin: 0 auto 0 0; min-width: 0; font-size: var(--heading-size); font-weight: 600; line-height: 1.25; }
 .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; row-gap: calc(var(--touch) - 1lh); } /* a trail that wraps keeps its lines a touch apart, so no crumb's press area lies over another's */
+nav.crumbs { color: var(--trail-ink); font-weight: var(--trail-weight); } /* over .cap's ink: the trail may be quieter than a label */
 .crumbs .crumb { display: inline-flex; align-items: center; }
 .crumbs .sep { display: inline-flex; align-items: center; justify-content: center; width: 22px; color: var(--muted); }
 .crumbs a { position: relative; color: var(--accent); text-decoration: none; }
 .crumbs a:hover, .crumbs a:focus-visible { text-decoration: underline; text-underline-offset: 3px; } /* and the ring */
-.crumbs b { font-weight: 600; }
+.crumbs b { font-weight: var(--here-weight); }
 
 /* ── the tray: cells cut into it, walled by its padding. Computed by src/grid.ts, which
    hands over the areas for three columns and for one, and each cell's tray corners. ── */
-.cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: var(--space-md); padding: var(--space-md); background: var(--tray); border-radius: var(--radius-tray); box-shadow: var(--shadow-tray); }
-.cell { position: relative; display: flex; flex-direction: column; gap: var(--space-sm); min-height: 96px; min-width: 0; padding: var(--space-lg); background: var(--card); border-radius: 0; overflow: hidden; }
+.cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: var(--tray-gap); padding: var(--tray-pad); background: var(--tray); border: var(--tray-border); border-radius: var(--radius-tray); box-shadow: var(--shadow-tray); }
+.cell { position: relative; display: flex; flex-direction: column; gap: var(--space-sm); min-height: var(--cell-min); min-width: 0; padding: var(--cell-pad); background: var(--card); border-radius: 0; overflow: hidden; }
 /* a cell that opens is tapped anywhere on it, and its name is its button: the keyboard's stop, the
    ring drawn round the whole cell */
 .cell:has(> .cell-head > button.cell-name) { cursor: pointer; }
@@ -104,10 +139,10 @@
 .cell-head > button.cell-name { text-align: start; letter-spacing: inherit; text-transform: inherit; }
 .cell-head > button.cell-name:focus-visible { outline: none; }
 .cell-head { display: flex; align-items: center; gap: 7px; }
-.cell-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell-name { flex: var(--cell-name-flex); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cell-icon, .chev { display: inline-flex; align-items: center; color: var(--accent); }
 .thing .pencil { color: var(--mark); }
-.cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--muted); }
+.cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--summary-ink); }
 .cell-body { position: relative; flex: 1; min-height: 0; }
 /* a cell that is a thing: ✎, a tap opens its drawer, lit while it is open */
 .thing[aria-expanded="true"], .thing:has(> .cell-head > [aria-expanded="true"]) { box-shadow: inset 0 0 0 2px var(--accent); }
@@ -127,7 +162,7 @@
 
 /* ── the window: the cell open. Opening goes nowhere: the same element, named for
    the view transition, grows to the screen less a margin; the page behind holds still. ── */
-.cell.open { position: fixed; inset: var(--space-sm); z-index: 40; padding: 0; gap: 0; border-radius: var(--radius-tray); box-shadow: var(--shadow-window); cursor: default; }
+.cell.open { position: fixed; inset: var(--space-sm); z-index: 40; padding: 0; gap: 0; border: var(--window-border); border-radius: var(--radius-tray); box-shadow: var(--shadow-window); cursor: default; }
 @media (min-width: 820px) { .cell.open { inset: var(--space-2xl); } }
 body:has(.page.windowed) { overflow: hidden; }
 /* what is in place on the box, put inert behind an open window: a wrapper that lays out nothing */
@@ -188,23 +223,36 @@ body:has(.page.windowed) { overflow: hidden; }
    the words, the state, the mark. A row is a figure: tap it and its drawer opens and the whole
    line shows it is chosen; what it can carry waits in its drawer, not on the line. ── */
 .rows { display: flex; flex-direction: column; }
-.row { display: flex; align-items: center; gap: var(--space-md); min-height: 56px; padding: var(--space-md) var(--space-md); margin: 0 calc(-1 * var(--space-md)); border-bottom: 1px solid var(--line); border-radius: var(--radius-inner); }
+.row { display: flex; align-items: center; gap: var(--space-md); font-size: var(--row-size); min-height: var(--row-min); padding: var(--row-pad-y) var(--row-pad-x); margin: 0 calc(-1 * var(--row-pad-x)); border-bottom: 1px solid var(--line); border-radius: var(--radius-inner); }
 .row:last-child { border-bottom: 0; }
 .row .lead { flex: 0 0 auto; display: inline-flex; }
 .row .words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.row .what { font-weight: 600; }
-.row .state { flex: 0 0 auto; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; text-align: right; }
+.row .what { font-weight: var(--what-weight); }
+.row .state { flex: 0 0 auto; font-size: var(--state-size); letter-spacing: var(--state-spacing); text-transform: var(--state-case); color: var(--muted); white-space: nowrap; text-align: right; }
 .row .mark { flex: 0 0 auto; display: inline-flex; color: var(--mark); }
 .row .mark .icon-chevron-right { color: var(--accent); }
-.row.tap { width: calc(100% + 2 * var(--space-md)); text-align: start; cursor: pointer; } /* a button, the whole line */
+.row.tap { width: calc(100% + 2 * var(--row-pad-x)); text-align: start; cursor: pointer; } /* a button, the whole line */
 .row.tap:hover { background: rgba(var(--ink-rgb), 0.04); }
 .row.tap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.row[aria-expanded="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.row[aria-expanded="true"], .row.acts:has(> .words > [aria-expanded="true"]) { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+/* a row with a deed of its own: its name is the button that opens it, the mark beside the name, the deed at the end */
+.row.acts .words { flex-direction: row; align-items: baseline; flex-wrap: wrap; column-gap: var(--space-sm); }
+.row.acts .what { display: inline-flex; align-items: center; gap: var(--space-xs); text-align: start; }
+.row.acts .what .mark { display: inline-flex; color: var(--mark); }
+.row.acts .what .mark > svg { width: var(--name-mark); height: var(--name-mark); }
+.row.acts > .tool { flex: 0 0 auto; }
+.row.total .what, .row.total .state { font-weight: 600; color: var(--ink); }
+/* a run: the heading of a group of rows in one list */
+.run { margin: var(--space-sm) 0 0; font-size: 12px; font-weight: 400; color: var(--muted); }
+/* a pin: a small fact of a thing, in a cell's head or on a line; a button when it opens what it pins */
+.pin { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 var(--space-sm); border: 1px solid var(--pin-edge); border-radius: var(--radius-control); background: var(--card); color: var(--ink); font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; white-space: nowrap; }
+button.pin:hover { background: var(--card-hover); }
+.cell-head > .cell-name + .pin { margin-left: auto; } /* the pins at the far side, however the name grows */
 
 
 /* ── the drawer: a figure's properties -- a panel at the right from 820px, a sheet from the foot below ── */
 .scrim { position: fixed; inset: 0; z-index: 50; background: rgba(var(--ink-rgb), 0.35); }
-.drawer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; margin: 0 auto; max-width: 560px; max-height: 88dvh; display: flex; flex-direction: column; background: var(--card); color: var(--ink); border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -8px 30px rgba(var(--ink-rgb), 0.2); animation: drawer-rise 200ms ease-out; }
+.drawer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; margin: 0 auto; max-width: 560px; max-height: 88dvh; display: flex; flex-direction: column; background: var(--card); color: var(--ink); border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: var(--shadow-sheet); animation: drawer-rise 200ms ease-out; }
 @keyframes drawer-rise { from { transform: translateY(24px); opacity: 0.5; } to { transform: none; opacity: 1; } }
 .drawer-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: var(--space-lg) var(--space-lg) var(--space-sm); }
 .drawer-head h2 { font-size: 17px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -213,7 +261,7 @@ body:has(.page.windowed) { overflow: hidden; }
 .drawer-foot { display: flex; gap: var(--space-sm); padding: var(--space-lg) 0 0; }
 /* a thing's properties, each by its kind: its name in small caps, its value or the control that sets it */
 .props { display: flex; flex-direction: column; }
-.prop { display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--line); }
+.prop { display: grid; grid-template-columns: var(--prop-columns); align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--line); }
 .prop:last-child { border-bottom: 0; }
 .prop-name { color: var(--muted); }
 .prop-value { min-width: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
@@ -225,7 +273,7 @@ form.in-row { display: contents; }
 
 @media (min-width: 820px) {
   /* its outer corners lie on the window's, so they take the window's curve, not poke past it */
-  .drawer { left: auto; right: var(--space-2xl); top: var(--space-2xl); bottom: var(--space-2xl); width: var(--panel); max-width: none; max-height: none; border-radius: var(--radius-panel) var(--radius-tray) var(--radius-tray) var(--radius-panel); border: 1px solid var(--edge); box-shadow: 0 8px 30px rgba(var(--ink-rgb), 0.2); }
+  .drawer { left: auto; right: var(--space-2xl); top: var(--space-2xl); bottom: var(--space-2xl); width: var(--panel); max-width: none; max-height: none; border-radius: var(--radius-panel) var(--radius-tray) var(--radius-tray) var(--radius-panel); border: 1px solid var(--edge); box-shadow: var(--shadow-drawer); }
   /* docked beside the reading, not over it: the page stays in reach -- another figure, a tool on
      the rail, Undo -- and the drawer goes by its ×, by Escape, or by what is tapped next */
   .scrim:not(.modal-scrim) { display: none; }
@@ -238,7 +286,7 @@ body:has(dialog.modal) { overflow: hidden; }
 /* ── the modal: new or delete, one question, nothing else may be touched while it asks.
    Rendered `open`, not shown by script, so it carries its own scrim and is centred by hand. ── */
 .modal-scrim { z-index: 70; }
-dialog.modal { position: fixed; inset: 0; margin: auto; z-index: 71; width: min(420px, calc(100vw - 2 * var(--space-2xl))); height: fit-content; max-height: calc(100dvh - 48px); overflow: auto; border: 0; padding: var(--space-xl) var(--space-xl) var(--space-2xl); background: var(--card); color: var(--ink); border-radius: var(--radius-panel); box-shadow: 0 20px 50px rgba(var(--ink-rgb), 0.3); animation: drawer-rise 160ms ease-out; }
+dialog.modal { position: fixed; inset: 0; margin: auto; z-index: 71; width: min(420px, calc(100vw - 2 * var(--space-2xl))); height: fit-content; max-height: calc(100dvh - 48px); overflow: auto; border: var(--modal-border); padding: var(--space-xl) var(--space-xl) var(--space-2xl); background: var(--card); color: var(--ink); border-radius: var(--radius-panel); box-shadow: var(--shadow-modal); animation: drawer-rise 160ms ease-out; }
 dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 .modal-field { display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-md); }
 .modal-field input, .modal-field select { width: 100%; }
@@ -271,7 +319,7 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 
 /* ── words, and the door: a label in small capitals, a note, and the one thing to do before
    anything else (a name, signing in) ── */
-.cap { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--ink); }
+.cap { font-size: var(--cap-size); line-height: 16px; letter-spacing: var(--cap-spacing); text-transform: var(--cap-case); font-weight: var(--cap-weight); color: var(--ink); }
 .note { color: var(--muted); font-size: 13px; }
 .door { max-width: 24rem; margin: 10vh auto 0; padding: var(--space-2xl); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-panel); box-shadow: var(--shadow-tray); }
 .door h1 { margin: 0 0 var(--space-lg); }

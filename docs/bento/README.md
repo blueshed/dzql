@@ -67,16 +67,25 @@ the box, the whole thing when it is opened.
 - **Every change says what it did**, where the person is.
 - **Words on buttons say what they do.** ("Ask! Or Never mind!")
 
-## In dzql
+## In both clients
 
-The kernel offers one way to draw these (`packages/dzql/src/rendering/bento.ts`, `packages/dzql/src/rendering/bento.css`, laid out by
-`packages/dzql/src/rendering/grid.ts`): a box and its tray, a collection, the trail, readings, rows, a drawer, a modal,
-find, and the page's undo and redo. How they look -- sizes, corners, icons, the tray -- is that
-way's, not the bento's. An app may use the parts, change them or draw its own; a direction never
-requires a part, and a choice is justified by a story, never by this page.
+One way to draw these, the same HTML in both: dzql's, drawn by the server
+(`packages/dzql/src/rendering/bento.ts`, laid out by `packages/dzql/src/rendering/grid.ts`), and
+paintbrush's, drawn in the browser by railroad (`packages/paintbrush/src/resources/bento.tsx`,
+held to dzql's by `packages/paintbrush/tests/bento.test.ts`). The parts: a box and its tray, a
+heading, a collection, the trail, readings, rows, runs and totals, pins, a drawer, a modal, find,
+and the page's undo and redo. A page moves from one client to the other with its look: a handler
+in the browser is a write on the server.
 
-Not yet in the kernel: pins and their summaries, which Can You has (`openMap` and `grow` in
-`Workshop/canyou/src/resources/asks/`).
+How they look -- sizes, corners, shadows, type, the tray -- is a look's, not the bento's: one
+stylesheet, `packages/dzql/src/rendering/bento.css`, whose every look decision is a token. Its
+defaults are the tray (rounded, lifted, small capitals); `packages/dzql/src/rendering/bento-plain.css`
+is Paintbrush's (`paintbrush/` below: hairlines, black, 4px, no shadows), the starters'. An app
+may use the parts, change them or draw its own; a direction never requires a part, and a choice is
+justified by a story, never by this page.
+
+Not yet in either: a pin's summary, which grows into the full calendar or map, as Can You has it
+(`openMap` and `grow` in `Workshop/canyou/src/resources/asks/`).
 
 ## The samples
 
@@ -86,11 +95,12 @@ drawn on Claude's design canvas, whose runtime they need to render
 (claude.ai/artifact/1QLsr4aa8aH5mLxZbPi37s, private until shared); here they are the record of what
 was drawn, and the source to redraw from.
 
-`paintbrush/` is the same directions in another look, Paintbrush's (`styles.css`: plain, black,
-4px, no shadows, a toast for every change), on another subject, a café: its menu, your order, the
+`paintbrush/` is the same directions in another look, Paintbrush's (plain, black, 4px, no
+shadows, a toast for every change), on another subject, a café: its menu, your order, the
 kitchen's open orders. Its logo stands in for an app's on every page
 (claude.ai/artifact/YFtnHRNFWf6VaMeYUGUsB3, private until shared). The two sets differ in every
-look and agree in every direction: that is the bento being a guide, not a style.
+look and agree in every direction: that is the bento being a guide, not a style. The plain look,
+`bento-plain.css`, is drawn from it.
 
 ## Where it comes from
 

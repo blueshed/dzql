@@ -6,6 +6,8 @@ person deciding whether to use it; CLAUDE.md is Claude's entry point; the skills
 fix the other.
 
 - [plan.md](plan.md): what the toolset is, what is decided, and what comes next.
+- [client-plan.md](client-plan.md): one look for both clients, the bento drawn in Paintbrush's
+  look by the server and by railroad: what Peter chose, and its build in stages.
 - [stories.md](stories.md): what the stories are for, and how they drive an app, from paintbrush to dzql.
 - [rendering.md](rendering.md): the thin client, dzql's pages drawn on the server, and what a write
   costs, measured (kept true by dzql's `bun run costs`).

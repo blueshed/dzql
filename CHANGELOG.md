@@ -16,6 +16,14 @@ own; and the publish job needed Bun for delta's `prepare` script.
 
 ### Changed
 
+- **One look for both clients** (19 October, todo #51; `docs/client-plan.md`; Peter: "bento is
+  not part of paintbrush - should it be?"). The bento's stylesheet is a frame whose every look
+  decision is a token: the tray it had, and the plain look drawn for Paintbrush
+  (`docs/bento/paintbrush/`), which both starters now use. dzql's `bento.ts` draws what that design
+  has (a heading, runs, a row's own deed, pins, totals); paintbrush draws the same HTML with
+  railroad (`src/resources/bento.tsx`, held to dzql's by a test), its page a box, and its evolve
+  references draw with it. A prototype keeps its look as it grows: a page moves to the server by
+  turning each handler into a write (packages/dzql/CHANGELOG.md, packages/paintbrush/CHANGELOG.md).
 - **Every package publishes from this repository** (19 October): npm's trusted publisher for
   @blueshed/railroad, @blueshed/delta and create-blueshed is now blueshed/dzql's `publish.yml`
   (allowed: npm publish), in place of blueshed/railroad, blueshed/delta and blueshed/invoket, as

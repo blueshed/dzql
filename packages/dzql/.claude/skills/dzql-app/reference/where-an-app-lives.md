@@ -26,7 +26,7 @@ CLAUDE.md, README.md, .claude/skills/ (from `delta install-skills`, run by `bun 
 
 - The app imports dzql and delta by name, from `node_modules`: `import { story } from
   "dzql/modelling/stories"`, `import type { Example } from "dzql/rendering/example"`,
-  `@import "dzql/rendering/bento.css"`.
+  `@import "dzql/rendering/bento-plain.css"`.
 - `bun dev` is `bun --hot src/routes.ts --model`, `bun start` the same without the model and
   `--hot`: the server is delta's one server (`@blueshed/delta/serve`), the app giving it routes
   and resources, never a `Bun.serve` of its own; the model's page is `modelRoute()`

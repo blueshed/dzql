@@ -22,7 +22,7 @@ test("the app is eta's starter in src/, named, its dotfiles dotted", () => {
   expect(JSON.parse(readFileSync(join(app, "package.json"), "utf8")).name).toBe("my-app");
   expect(readFileSync(join(app, "src/routes.ts"), "utf8")).toContain('name: "my-app"');
   expect(readFileSync(join(app, "src/page.ts"), "utf8")).toContain("My App");
-  expect(readFileSync(join(app, "src/styles.css"), "utf8")).toContain('@import "dzql/rendering/bento.css";');
+  expect(readFileSync(join(app, "src/styles.css"), "utf8")).toContain('@import "dzql/rendering/bento-plain.css";');
   expect(readFileSync(join(app, "README.md"), "utf8")).not.toContain("{{name}}");
   // the tests never touch the database `bun dev` keeps, and neither is committed (cafe-e's feedback)
   expect(readFileSync(join(app, ".env.test"), "utf8")).toContain("DB_PATH=:memory:");

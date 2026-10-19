@@ -45,6 +45,10 @@ export interface CellOptions<I extends string> {
   big?: boolean;
   /** Columns it spans when it is not big. Default 1. */
   span?: number;
+  /** Rows of the tray it spans: the menu beside two smaller cells. Default 1. */
+  rows?: number;
+  /** Pins in its head, beside its name (`pin()`): where it is, when. */
+  pins?: string[];
   /** The small reading: the family photo, a few lines. */
   body?: string;
   mark?: I | BentoIcon;
@@ -119,6 +123,19 @@ export interface RowOptions {
   state?: string;
   /** What the tap does, at the end of the line: ✎ its drawer, › into it. */
   mark?: "pencil" | "chevron";
+  /** A deed of its own at the end of the line (a tool: Add): the row is then not one button but
+   * its name is, the mark beside it, so the line can hold both (a button never holds a button). */
+  act?: string;
+  /** The line that sums the others: drawn heavier. */
+  total?: boolean;
+}
+
+/** What a box's heading says beside the place's name (the trail's last crumb): the app's logo, and
+ * the page's own deeds (Add to the menu); the page's tools stand after them. */
+export interface Heading {
+  /** HTML: an `<img>`, decorative (`alt=""`), since the name is beside it. */
+  logo?: string;
+  actions?: string[];
 }
 
 export interface Option {
@@ -150,6 +167,9 @@ export const rows = (items: string[], empty: string, key?: string): string => {
   const html = items.length ? `<div class="rows">${items.join("")}</div>` : `<p class="note">${esc(empty)}</p>`;
   return key ? part(key, html) : html;
 };
+
+/** A run: the heading of a group of rows in one list (Coffee, Food), between their `rows()`. */
+export const run = (name: string): string => `<h3 class="run">${esc(name)}</h3>`;
 
 /** A property in a drawer: its name, and its value or the control that sets it. */
 export const prop = (name: string, value: string): string => `<div class="prop"><span class="prop-name cap">${esc(name)}</span><div class="prop-value">${value}</div></div>`;
@@ -315,6 +335,15 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return { tool: button, filter };
   }
 
+  /**
+   * A pin: a small fact of a thing -- where it is, when -- with its mark, in a cell's head or on a
+   * line. With a write it is a button (it opens what it pins: a table, the day); without, it is read.
+   */
+  function pin(text: string, o: { mark?: I | BentoIcon; write?: string } = {}): string {
+    const inner = `${o.mark ? icon(o.mark, 12) : ""}${esc(text)}`;
+    return o.write ? `<button type="button" class="pin"${o.write}>${inner}</button>` : `<span class="pin">${inner}</span>`;
+  }
+
   // ───────────────────────────── the tray ─────────────────────────────
 
   /**
@@ -336,12 +365,12 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     const moving = o.opens ? ` data-moving="${esc(key)}"` : "";
     const html = join(
       `<div class="cell${o.big ? " big" : ""}${o.thing ? " thing" : ""}" data-key="${key}"${moving}${tap ?? ""}>`,
-      `<div class="cell-head cap">${mark}${name}${chev}</div>`,
+      `<div class="cell-head cap">${mark}${name}${(o.pins ?? []).join("")}${chev}</div>`,
       o.summary && `<p class="cell-summary">${esc(o.summary)}</p>`,
       o.body && `<div class="cell-body">${o.body}</div>`,
       "</div>",
     );
-    return { key, span: o.big ? COLUMNS : (o.span ?? 1), rows: 1, html, name: o.name };
+    return { key, span: o.big ? COLUMNS : (o.span ?? 1), rows: o.rows ?? 1, html, name: o.name };
   }
 
   /**
@@ -378,7 +407,9 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
    * (src/grid.ts): each cell lands in its area, first-fit in the box's own order, and learns
    * which of the tray's corners it sits in, for three columns and for one. While a window is open,
    * what is behind it -- the trail, the other cells, what is in place -- is `inert`: not to be
-   * reached or heard until it closes.
+   * reached or heard until it closes. Given a `heading`, the place's name stands large under the
+   * trail (its `<h1>`), the logo before it, and after it the page's own deeds and its tools; at the
+   * root, with no way back to show, the heading stands alone.
    */
   /**
    * A window always has a way back to its box. A trail with no crumb going back (the box's own,
@@ -392,7 +423,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return [...box.slice(0, -1), { ...box[box.length - 1]!, back: box[box.length - 1]!.back ?? go("") }, { label: name }];
   }
 
-  function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], open?: OpenOptions): string {
+  function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], open?: OpenOptions, heading?: Heading): string {
     const wide = grid(cells, COLUMNS);
     const narrow = grid(cells, 1);
     const cornersOf = (t: Grid, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
@@ -402,8 +433,13 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
       return part(c.key, c.html.replace(`data-key="${c.key}"`, `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"${behind}`));
     });
     const areas = (t: Grid): string => t.areas.replace(/\n/g, " ");
+    const tools = open ? "" : pageTools("across");
+    // under a heading, a trail of one crumb would say the name twice: the heading alone says it
+    const head = heading
+      ? `${trail.length > 1 ? crumbs(trail) : ""}<div class="heading">${heading.logo ?? ""}<h1>${esc(trail[trail.length - 1]!.label)}</h1>${(heading.actions ?? []).join("")}${tools}</div>`
+      : `${crumbs(trail)}${tools}`;
     return join(
-      `<header class="page-head"${behind}>${crumbs(trail)}${open ? "" : pageTools("across")}</header>`,
+      `<header class="page-head${heading ? " headed" : ""}"${behind}>${head}</header>`,
       `<section class="page box${open ? " windowed" : ""}">`,
       // always wrapped, so a window opening changes the wrapper's tag and nothing the morph matches by position
       `<div class="in-place"${behind}>`,
@@ -425,14 +461,31 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
 
   /** A row of a list: one line per thing, the same columns on every list -- a lead, the words, the state, the mark. One that taps is a button, the whole line. */
   function row(o: RowOptions): string {
-    const classes = ["row", o.tap && "tap", o.hushed && "hushed"].filter(Boolean).join(" ");
-    const attrs = join(o.id && ` id="${esc(o.id)}"`, o.tap, o.chosen !== undefined && ` aria-expanded="${o.chosen}"`, o.chosen && " data-reveal", o.hidden && " hidden");
     const mark = o.mark === "pencil" ? `<span class="mark">${icon("pencil", 16)}</span>` : o.mark === "chevron" ? `<span class="mark">${icon("chevron-right", 18)}</span>` : "";
+    const note = o.note ? `<span class="note">${esc(o.note)}</span>` : "";
+    const expanded = o.chosen !== undefined ? ` aria-expanded="${o.chosen}"` : "";
+    if (o.act !== undefined) {
+      // two deeds on one line: the name opens (a button, its mark beside it), the act does its own
+      const classes = ["row", "acts", o.hushed && "hushed", o.total && "total"].filter(Boolean).join(" ");
+      const attrs = join(o.id && ` id="${esc(o.id)}"`, o.chosen && " data-reveal", o.hidden && " hidden");
+      const what = o.tap ? `<button type="button" class="what"${o.tap}${expanded}>${esc(o.what)}${mark}</button>` : `<span class="what">${esc(o.what)}${mark}</span>`;
+      const html = join(
+        `<div class="${classes}"${attrs}>`,
+        o.lead && `<span class="lead">${o.lead}</span>`,
+        `<span class="words">${what}${note}</span>`,
+        o.state && `<span class="state">${o.state}</span>`,
+        o.act,
+        "</div>",
+      );
+      return o.id ? part(o.id, html) : html;
+    }
+    const classes = ["row", o.tap && "tap", o.hushed && "hushed", o.total && "total"].filter(Boolean).join(" ");
+    const attrs = join(o.id && ` id="${esc(o.id)}"`, o.tap, expanded, o.chosen && " data-reveal", o.hidden && " hidden");
     const tag = o.tap ? "button" : "div";
     const html = join(
       `<${tag}${o.tap ? ' type="button"' : ""} class="${classes}"${attrs}>`,
       o.lead && `<span class="lead">${o.lead}</span>`,
-      `<span class="words"><span class="what">${esc(o.what)}</span>${o.note ? `<span class="note">${esc(o.note)}</span>` : ""}</span>`,
+      `<span class="words"><span class="what">${esc(o.what)}</span>${note}</span>`,
       o.state && `<span class="state">${o.state}</span>`,
       mark,
       `</${tag}>`,
@@ -511,7 +564,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return part("site", `<div class="site${className ? ` ${className}` : ""}"${follows}>${html}</div>`);
   }
 
-  return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal, go, site, readAs };
+  return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, pin, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal, go, site, readAs };
 }
 
 // ───────────────────────────── where you are ─────────────────────────────

@@ -1,27 +1,25 @@
 /*
- * Styles: variables, reset and layout, base elements, components, touch targets.
+ * Styles: the bento in its plain look, then the page around it, then what is the app's own.
  *
- * The rules: minimal and content-first, with no decoration. Every colour is a variable in :root,
- * never a hex value in a component. The primary button is black. Radius is 4px. No shadows,
- * gradients or animation beyond the toast's fade. Touch is a pointer query, not a width. Feedback
- * is a toast ("Saved", "Not saved"), never the browser's alert() or confirm().
+ * The rules: minimal and content-first, with no decoration. The page is the bento's (a box of
+ * cells, a drawer to change a thing, a modal for new or delete), drawn by dzql's bento-plain.css,
+ * the same stylesheet a page the server draws uses: plain, black, 4px, no shadows. Every colour is
+ * a variable in :root, never a hex value in a component: to change the look, say its tokens after
+ * the import. Touch is a pointer query, not a width. Feedback is a toast ("Saved", "Not saved"),
+ * never the browser's alert() or confirm().
  */
 
+@import "dzql/rendering/bento-plain.css";
+
 :root {
-  --bg: #f8f9fa;
-  --surface: white;
-  --text: #1a1a1a;
   --text-secondary: #555;
   --text-muted: #999;
-  --border-mid: #ddd;
-  --border-strong: #ccc;
-  --hover: #f0f0f0;
   --code-bg: #e9ecef;
-  --primary: #1a1a1a;
-  --primary-hover: #333;
-  --danger: #c33;
-  --notify: #e67e22;
+  --notify: #1a1a1a;
+  --alert: var(--danger);
 }
+
+/* --- The page around the bento --- */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -29,14 +27,14 @@ html, body { height: 100%; overflow: hidden; }
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--paper);
+  color: var(--ink);
   line-height: 1.5;
 }
 
 /* Scroll is on #app, not the body: it stops rubber-banding on fixed elements */
 #app {
-  max-width: 640px;
+  max-width: 960px;
   height: 100dvh;
   margin: 0 auto;
   padding: 2rem 1rem;
@@ -44,49 +42,11 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* --- Base elements --- */
-
-h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
-
-button {
-  font-size: 0.8rem;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  background: var(--surface);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-button:hover { background: var(--hover); }
-button.primary { background: var(--primary); color: var(--surface); border-color: var(--primary); }
-button.primary:hover { background: var(--primary-hover); }
-
-input, textarea {
-  width: 100%;
-  font-size: 0.85rem;
-  padding: 0.5rem;
-  border: 1px solid var(--border-mid);
-  border-radius: 4px;
-  font-family: inherit;
-}
-textarea { min-height: 120px; resize: vertical; }
-
-/* --- Components --- */
-
-.icon { flex-shrink: 0; vertical-align: -0.125em; } /* lucide, through <Icon>: 1em, the text's colour */
-
-.toolbar {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-.toolbar h1 { margin-bottom: 0; margin-right: auto; }
+/* --- The app's own --- */
 
 .help { font-size: 0.8rem; color: var(--text-secondary); margin-top: 1rem; line-height: 1.6; }
 .help code { background: var(--code-bg); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.75rem; }
+.cell .help { margin-top: 0; }
 .meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem; }
 
 .toast {
@@ -94,9 +54,10 @@ textarea { min-height: 120px; resize: vertical; }
   bottom: 1.5rem;
   left: 50%;
   translate: -50% 0;
+  z-index: 100;
   font-size: 0.8rem;
   padding: 0.5rem 1rem;
-  color: var(--surface);
+  color: var(--card);
   border-radius: 4px;
   opacity: 0;
   transition: opacity 0.2s;
@@ -104,12 +65,4 @@ textarea { min-height: 120px; resize: vertical; }
 }
 .toast.show { opacity: 1; }
 .toast.notify { background: var(--notify); }
-.toast.alert { background: var(--danger); }
-
-/* --- Touch targets: a pointer media query, not a width breakpoint --- */
-
-@media (pointer: coarse) {
-  button { min-height: 44px; padding: 0.6rem 1rem; font-size: 0.85rem; }
-  input, textarea { min-height: 44px; padding: 0.65rem; font-size: 1rem; }
-  h1 { font-size: 1.5rem; }
-}
+.toast.alert { background: var(--alert); }

@@ -65,76 +65,103 @@ test("an empty change is taken, and nothing is written", async () => {
 });
 
 // --- The view, in a real browser ---
+// The message is a cell on the box; its ✎ opens its drawer, where the box it is typed in and Save are.
+
+const CELL = `.cell[data-key="message"] .cell-name`;
+const SAVE = ".drawer .tool.add";
+
+/** The page, with the message's drawer opened as a person opens it: a tap on the cell. */
+async function openMessage(on: Bun.WebView = view, waitIn: (expr: string) => Promise<void> = waitFor) {
+  if (on === view) await open();
+  await waitIn(`document.querySelector(${JSON.stringify(CELL)})`);
+  await on.click(CELL);
+  await waitIn(`document.querySelector("textarea")`);
+}
 
 test("waiting for the page gives up, saying what it waited for", async () => {
   await open();
   await expect(waitFor("false", 100)).rejects.toThrow("Timed out waiting for: false");
 });
 
-test(`${stories.follows.name} -- the message is in the box, and a change made anywhere else shows in it`, async () => {
+test(`${stories.follows.name} -- the message is on the box and in its drawer, and a change made anywhere else shows in both`, async () => {
   await open();
+  await waitFor(`document.querySelector(".cell[data-key=message] .cell-summary")?.textContent === "Hello"`);
+  await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "Hello"`);
   await holding((doc) => doc.send([{ op: "replace", path: "/messages/1/text", value: "changed elsewhere" }]));
   await waitFor(`document.querySelector("textarea")?.value === "changed elsewhere"`);
+  await waitFor(`document.querySelector(".cell[data-key=message] .cell-summary")?.textContent === "changed elsewhere"`);
+  expect(await view.evaluate<string>(`location.hash`)).toBe("#/?message"); // where you are: a reload or a link opens it again
+});
+
+test("the drawer goes as it came: its ×, Escape, or Back, and the box behind is as it was", async () => {
+  for (const away of [`document.querySelector(".drawer-close").click()`, `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))`, `history.back()`]) {
+    await openMessage();
+    await view.evaluate(away);
+    await waitFor(`!document.querySelector(".drawer")`);
+    expect(await view.evaluate<string>(`document.querySelector(${JSON.stringify(CELL)}).getAttribute("aria-expanded")`)).toBe("false");
+  }
 });
 
 test(`${stories.saves.name} -- saving says Saved once the server has it, and the message survives a reload`, async () => {
-  await open();
+  await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "changed elsewhere"`);
   await replaceText("textarea", "typed in the browser");
-  await view.click("button.primary");
+  await view.click(SAVE);
   await waitFor(`document.querySelector(".toast.show.notify")?.textContent === "Saved"`);
 
-  await open();
+  await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "typed in the browser"`);
 });
 
 test(`${stories.refused.name} -- a save the server refuses says Not saved`, async () => {
-  await open();
+  await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "typed in the browser"`);
   await refuseWrites();
-  await view.click("button.primary");
+  await view.click(SAVE);
   await waitFor(`document.querySelector(".toast.show.alert")?.textContent === "Not saved"`);
 });
 
 test(`${stories.saves.name} -- Cmd+Enter, or Ctrl+Enter, in the box saves`, async () => {
   for (const key of ["Meta", "Control"] as const) {
-    await open();
+    await openMessage();
     await waitFor(`document.querySelector("textarea")?.value`);
     await replaceText("textarea", `saved with ${key}+Enter`);
     await view.press("Enter", { modifiers: [key] });
     await waitFor(`document.querySelector(".toast.show.notify")?.textContent === "Saved"`);
   }
-  await open();
+  await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "saved with Control+Enter"`);
 });
 
 test(`${stories.follows.name} -- a save shows in another window, and so does that window's save afterwards`, async () => {
-  await open();
+  await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "saved with Control+Enter"`);
   await withOtherWindow(async (other, waitForOther) => {
+    await openMessage(other, waitForOther);
     await waitForOther(`document.querySelector("textarea")?.value === "saved with Control+Enter"`);
 
     await replaceText("textarea", "from the first");
-    await view.click("button.primary");
+    await view.click(SAVE);
     await waitForOther(`document.querySelector("textarea")?.value === "from the first"`);
 
     await other.click("textarea");
     await other.type("!");
-    await other.click("button.primary");
+    await other.click(SAVE);
     await waitFor(`document.querySelector("textarea")?.value === "from the first!"`);
   });
 });
 
 test(`${stories.refused.name} -- typing that is not saved is not overwritten by another window's save`, async () => {
-  await open();
+  await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "from the first!"`);
   await replaceText("textarea", "half-typed");
   await withOtherWindow(async (other, waitForOther) => {
+    await openMessage(other, waitForOther);
     await waitForOther(`document.querySelector("textarea")?.value === "from the first!"`);
     await other.click("textarea");
     await other.type("?");
-    await other.click("button.primary");
+    await other.click(SAVE);
     await waitForOther(`document.querySelector(".toast.show.notify")?.textContent === "Saved"`);
   });
   await Bun.sleep(300); // time for the change to arrive, had it been taken
@@ -142,7 +169,7 @@ test(`${stories.refused.name} -- typing that is not saved is not overwritten by 
 });
 
 test(`${stories.restarts.name} -- after the server restarts, the page has what changed meanwhile and follows again`, async () => {
-  await open();
+  await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "from the first!?"`);
 
   const port = server.port;
@@ -152,10 +179,11 @@ test(`${stories.restarts.name} -- after the server restarts, the page has what c
   await waitFor(`document.querySelector("textarea")?.value === "changed while down"`, 10_000); // the page reconnects by itself
 
   await withOtherWindow(async (other, waitForOther) => {
+    await openMessage(other, waitForOther);
     await waitForOther(`document.querySelector("textarea")?.value === "changed while down"`);
     await other.click("textarea");
     await other.type("!");
-    await other.click("button.primary");
+    await other.click(SAVE);
   });
   await waitFor(`document.querySelector("textarea")?.value === "changed while down!"`);
 });

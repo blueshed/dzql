@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { address, bento, choice, collectionsWrite, field, layers, matches, parseAddress, patchCollections, prop, rows, type Collections, type FieldOptions } from "./bento";
+import { address, bento, choice, collectionsWrite, field, layers, matches, parseAddress, patchCollections, prop, rows, run, type Collections, type FieldOptions } from "./bento";
 import { appletProps, esc, join, write } from "./html";
 import { decoded, diff, drawParts, part } from "./parts";
 import { waitFor, webview } from "./webview";
@@ -188,6 +188,42 @@ describe("the surfaces", () => {
     expect(rows(["<a/>", "<b/>"], "None yet.")).toBe('<div class="rows"><a/><b/></div>');
   });
 
+  test("a row with a deed of its own: its name is the button that opens it, the mark beside the name, the deed at the end; a total is heavier", () => {
+    const add = b.tool("Add", { write: write("order", "add", "/lines/-", { item: 1 }) });
+    const out = b.row({ id: "d-1", tap: open, chosen: true, what: "Flat white", note: "double", state: "£3.20", mark: "pencil", act: add });
+    expect(out).toStartWith('<div data-eta-part="d-1" class="row acts" id="d-1" data-reveal>'); // not a button: it holds one
+    expect(out).toContain(`<span class="words"><button type="button" class="what"${open} aria-expanded="true">Flat white<span class="mark"><i data-icon="pencil"`);
+    expect(out).toContain(`</button><span class="note">double</span></span><span class="state">£3.20</span>${add}</div>`);
+    expect(out.match(/<button/g)).toHaveLength(2); // never one inside another
+    expect(b.row({ what: "Soup", state: "sold out", act: "" })).toBe('<div class="row acts"><span class="words"><span class="what">Soup</span></span><span class="state">sold out</span></div>'); // nothing to open, nothing to do
+    expect(b.row({ what: "Total", state: "£9.90", total: true })).toBe('<div class="row total"><span class="words"><span class="what">Total</span></span><span class="state">£9.90</span></div>');
+  });
+
+  test("a run heads a group of rows; a pin is a small fact, a button when it opens what it pins", () => {
+    expect(run("Coffee & tea")).toBe('<h3 class="run">Coffee &amp; tea</h3>');
+    expect(b.pin("Table 4", { mark: "pencil", write: open })).toBe(`<button type="button" class="pin"${open}><i data-icon="pencil" data-size="12"></i>Table 4</button>`);
+    expect(b.pin("Open till 17:00")).toBe('<span class="pin">Open till 17:00</span>');
+  });
+
+  test("a cell may span rows of the tray, and carry pins in its head, beside its name", () => {
+    const menu = b.cell({ name: "Menu", span: 2, rows: 2 });
+    expect(menu).toMatchObject({ key: "menu", span: 2, rows: 2 });
+    const order = b.cell({ name: "Your order", opens: open, pins: [b.pin("Table 4")] });
+    expect(order.html).toContain('<button type="button" class="cell-name" aria-expanded="false">Your order</button><span class="pin">Table 4</span><span class="chev">');
+    const tray = b.boxPage([{ label: "Corner Café" }], [], [menu, b.cell({ name: "order" }), b.cell({ name: "kitchen" })]);
+    expect(tray).toContain(`--tray-areas: "menu menu order" "menu menu kitchen"`);
+  });
+
+  test("a box with a heading: the trail, then the place's name large, the logo before it, the page's deeds and its tools after it", () => {
+    const add = b.tool("Add to the menu", { icon: "plus", write: open });
+    const out = b.boxPage([{ label: "Cafés", back: open }, { label: "Corner Café" }], [], [b.cell({ name: "menu" })], undefined, { logo: '<img src="logo.png" alt="">', actions: [add] });
+    expect(out).toContain('<header class="page-head headed"><nav class="crumbs cap" aria-label="Where you are">');
+    expect(out).toContain(`</nav><div class="heading"><img src="logo.png" alt=""><h1>Corner Café</h1>${add}<div class="stack page-tools across"`);
+    const windowed = b.boxPage([{ label: "Corner Café" }], [], [b.cell({ name: "menu", opens: open })], { key: "menu", body: "" }, {});
+    expect(windowed).toContain('<header class="page-head headed" inert><div class="heading"><h1>Corner Café</h1></div></header>'); // behind the window, with the rest; its tools are the window's now
+    // at the root the heading alone: a trail of one crumb would say the name twice
+  });
+
   test("the drawer and its properties; a choice among a few", () => {
     const close = write("desk", "remove", "/focus");
     const out = b.drawer("drawer", "ALPH", prop("Name", "<span>Alpha</span>"), close, "wide");
@@ -348,6 +384,17 @@ describe("the stylesheet", () => {
       } else if (mark === "}") within.pop();
     }
     expect(nested).toEqual([]);
+  });
+
+  test("the plain look is tokens: bento-plain.css imports the frame and sets only bento.css's own custom properties, on :root", async () => {
+    const frame = await Bun.file(new URL("./bento.css", import.meta.url)).text();
+    const plain = (await Bun.file(new URL("./bento-plain.css", import.meta.url)).text()).replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(plain.trim().startsWith('@import "./bento.css";')).toBe(true);
+    const selectors = [...plain.matchAll(/([^{};]+)\{/g)].map((m) => m[1]!.trim()).filter((s) => !s.startsWith("@"));
+    expect(new Set(selectors)).toEqual(new Set([":root"]));
+    const said = [...plain.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]!);
+    const named = new Set([...frame.matchAll(/(--[\w-]+)/g)].map((m) => m[1]!)); // read, defaulted, or listed in its header (--paper, --well: the page's)
+    expect(said.filter((t) => !named.has(t))).toEqual([]); // a token the frame does not know would be a look of the look's own
   });
 });
 

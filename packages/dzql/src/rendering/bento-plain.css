@@ -1,0 +1,34 @@
+/* The plain look: Paintbrush's (docs/bento/paintbrush/), the bento's frame (bento.css) drawn clean
+   and simple -- white cells split by a hairline, black ink, 4px corners, no shadows, labels in plain
+   words, the button that makes black and the one that removes red. Every value is a token of
+   bento.css's, so an app imports this, then says what is its own: its tokens on :root after it, and
+   the page outside the frame (body, #app). No dark scheme: an app that wants one says it. */
+
+@import "./bento.css";
+
+:root {
+  color-scheme: light;
+  --paper: #f8f9fa; --tray: #ddd; --card: #fff; --card-hover: #f0f0f0; --well: #e9ecef;
+  --ink: #1a1a1a; --ink-rgb: 26, 26, 26; --muted: #555; --line: #eee; --edge: #ccc;
+  --accent: #1a1a1a; --mark: #555; --add: #1a1a1a; --danger: #b02a2a;
+  --radius-inner: 4px; --radius-control: 4px; --radius-thumb: 4px; --radius-panel: 4px; --radius-tray: 4px;
+  --radius-corner: 3px; /* inside the tray's 4px and its 1px border */
+  --touch: 32px;
+  --shadow-control: none; --shadow-tray: none; --shadow-window: none; --shadow-sheet: none; --shadow-drawer: none; --shadow-modal: none;
+  --tray-gap: 1px; --tray-pad: 0; --tray-border: 1px solid var(--edge);
+  --cell-pad: 16px; --cell-min: 0;
+  --window-border: 1px solid var(--edge); --modal-border: 1px solid var(--edge);
+  --cap-size: 13px; --cap-spacing: 0; --cap-case: none; --cap-weight: 600;
+  --trail-ink: var(--muted); --here-weight: 400; --summary-ink: var(--ink);
+  --tool-size: 13px; --tool-weight: 400; --tool-edge: var(--edge); --tool-ink: var(--ink);
+  --add-fill: #1a1a1a; --add-ink: #fff; --add-hover: #333;
+  --danger-fill: #b02a2a; --danger-ink: #fff; --danger-hover: #8f2020;
+  --row-min: 0; --row-pad-y: 6px; --row-pad-x: 8px;
+  --what-weight: 400; --state-size: 13px; --state-spacing: 0; --state-case: none;
+  --prop-columns: minmax(0, 1fr); /* a field's label above it */
+  --cell-name-flex: 0 1 auto; /* "The kitchen ›" */
+  --pin-edge: #ddd;
+  --trail-weight: 400; --row-size: 14px; --name-mark: 12px;
+}
+/* a finger's size where the pointer is one: a pointer query, not a width */
+@media (pointer: coarse) { :root { --control: 44px; --touch: 44px; } }

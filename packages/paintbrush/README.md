@@ -7,7 +7,8 @@ A Bun website where people share documents: open one and you're subscribed, and 
 [Bun](https://bun.sh) is the runtime, the bundler, the test runner and the server. [delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents, [railroad](https://github.com/blueshed/dzql/tree/main/packages/railroad) draws the page, and [Railway](https://railway.com) deploys it.
 
 It is the light way in, for prototyping. For performance (pages drawn on the server, documents
-compiled to Postgres), start with `bun create dzql` instead.
+compiled to Postgres), start with `bun create dzql` instead. Both draw the same page, a bento box
+in a plain look, so a prototype keeps its look as it grows.
 
 Requires Bun 1.4.3 or later.
 
@@ -58,10 +59,10 @@ The `evolve` skill grows the app from its stories: another document, two on one 
 ```
 stories.ts           what the app was asked to make true, a sentence each, each told by a test
 src/routes.ts        the routes, and the documents on one WebSocket; served by delta's one server
-src/app.tsx          the socket every document rides, and railroad's routes
+src/app.tsx          the socket every document rides, and the page: a box of cells, drawers over it
 src/index.html       the page; Bun bundles the TypeScript and CSS it references
-src/styles.css       the design, with its rules at the top
-src/resources/       message/ and status/, three files each, a toast, and an Icon for lucide icons
+src/styles.css       the design: dzql's plain look for the bento, then the page
+src/resources/       message/ and status/, three files each, the bento, a toast, and an Icon for lucide icons
 tests/               routes with fetch, documents with a client, the page in a real browser (Bun.WebView), the entry point
 .railway/            the deploy, as code, with a volume for the data
 ```

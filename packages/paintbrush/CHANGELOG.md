@@ -6,9 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-- **Its siblings as released on 2026-10-19**: `@blueshed/railroad` `^0.17.0`, `@blueshed/delta` `^1.3.0`, `dzql` `^0.14.0` (create-blueshed 0.4.0 packs it).
+### Added
+
+- **The bento, drawn by railroad** (`src/resources/bento.tsx`): the trail and the heading, the box
+  and its cells, rows, runs and pins, the drawer, the modal, fields and tools, with the same HTML
+  and classes as dzql's `bento.ts`, the page the server draws, so one stylesheet draws both and a
+  page moves to the server by turning each handler into a write. Where you are is the URL (`here`,
+  `go`): Back closes a drawer, a link opens one, Escape puts away what opened last. The page is
+  drawn again only when you go elsewhere (`paged`), what is over it when it opens or closes
+  (`layers`), a list as it changes (`rowsOf`). `tests/bento.test.ts` draws every surface both ways
+  and holds the two to the same HTML.
 
 ### Changed
+
+- **Its siblings as released on 2026-10-19**: `@blueshed/railroad` `^0.17.0`, `@blueshed/delta` `^1.3.0`, `dzql` `^0.14.0` (create-blueshed 0.4.0 packs it).
+
+- **Breaking: the page is a bento box, in the plain look** (Peter, 19 October: "the colors and
+  style of paintbrush was clean and simple"; the look drawn in `docs/bento/paintbrush/`).
+  `styles.css` imports dzql's `bento-plain.css` (white cells split by a hairline, black ink, 4px, no
+  shadows) and keeps the page, `.help`, `.meta` and the toast, now black. `app.tsx` mounts the box:
+  the app's name as its heading (from the page's title), the message and the status its cells. The
+  message is a cell showing its text; its ✎ opens its drawer (`#/?message`), where the box and Save
+  are, and its ×, Escape or Back close it. The views export `MessageCell`, `MessageDrawer` and
+  `StatusCell` in place of `MessageView` and `StatusView`. To move an app across: copy
+  `src/resources/bento.tsx` and the new `styles.css`, draw each view as a cell (and its drawer),
+  and open the drawer in a test before typing in it.
+- **The evolve skill draws with the bento.** `app.tsx` lists the box's `cells`, the page's
+  `actions`, and `drawerOf` and `modalOf` by what is open, so a reference adds a resource a line
+  each. The references' views are cells: the notes (a row each, the bin asking in a modal, a note
+  added by the heading's deed and its modal), the catalogue and your order side by side (Add on
+  each item, × on each line, a total), and the people (who are you; you and Sign out, everyone
+  and their link, someone new in a modal); their tests press what a person presses. `test:evolve`
+  proves all nine.
 
 - **A new app opens with what it offers, and with the model's page.** Its README says it in one
   sentence (you write your stories, a schema and documents; you get a live page and proof that every

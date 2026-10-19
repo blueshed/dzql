@@ -1,28 +1,58 @@
 /**
- * App — client entry point: the socket the documents ride, and the routes, each drawn from resources.
+ * App — client entry point: the socket the documents ride, and the page, a bento box drawn from
+ * resources (src/resources/bento.tsx). Where you are is the URL: `#/` is the box, `#/?message` the
+ * message's drawer open over it.
  *
- * To add a page: import its view and add a route entry below.
+ * To add a resource to the page: its cell in `cells`, a deed of the page's beside its name in
+ * `actions`, its drawer in `drawerOf`, its new-or-delete in `modalOf`, each by its `what`.
  */
 import { connectWs, WS } from "@blueshed/delta/client";
-import { provide, routes } from "@blueshed/railroad";
-import { MessageView } from "./resources/message/message-view";
-import { StatusView } from "./resources/status/status-view";
+import { mount, provide } from "@blueshed/railroad";
+import { bento, layers, paged, type Address } from "./resources/bento";
+import { MessageCell, MessageDrawer } from "./resources/message/message-view";
+import { StatusCell } from "./resources/status/status-view";
 
 // One socket for every document the page opens; it reconnects, and reopens them, by itself
 provide(WS, connectWs("/ws"));
 
-routes(document.getElementById("app")!, {
-  "/": () => (
-    <>
-      <MessageView />
-      <StatusView />
-    </>
+const { boxPage } = bento();
+const name = document.title; // the app's name, said once, in index.html
+
+/** The box's cells, in its order: bigger for what matters more. */
+const cells = () => [
+  MessageCell(),
+  StatusCell(),
+];
+
+/** The page's own deeds, beside its name. */
+const actions = (): Node[] => [
+];
+
+/** A thing's drawer over the box, by its `what`: where it is changed. */
+function drawerOf(at: Address): Node | null {
+  if (at.what === "message") return MessageDrawer();
+  return null; // nothing open
+}
+
+/** What asks over the box, by its `what`: something new, or whether to remove it. */
+function modalOf(at: Address): Node | null {
+  return null; // nothing asks
+}
+
+mount(document.getElementById("app")!, () =>
+  layers(
+    paged((path) =>
+      path === "" ? (
+        boxPage([{ label: name }], [], cells(), undefined, { actions: actions() })
+      ) : (
+        <p>
+          Page not found!
+          <br />
+          <a href="#">&larr; home</a>
+        </p>
+      ),
+    ),
+    drawerOf,
+    modalOf,
   ),
-  "*": () => (
-    <p>
-      Page not found!
-      <br />
-      <a href="#">&larr; home</a>
-    </p>
-  ),
-});
+);
