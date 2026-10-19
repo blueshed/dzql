@@ -61,5 +61,5 @@ await world.send([
 // box: [ { op: "add", path: "/sites/2", ... } ]   it moved in
 ```
 
-`tests/examples.test.ts` and `tests/postgres-examples.test.ts` run these steps against both
+delta's `packages/delta/tests/examples.test.ts` and `tests/delta-pg/postgres-examples.test.ts` run these steps against both
 servers.

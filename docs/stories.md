@@ -1,4 +1,4 @@
-# Stories: what eta is for
+# Stories: what an app is for
 
 *What the examples and the kernel reach for, so that the next thing built is built towards it: keeping
 what a person sees truthful to what a database holds. The reader is Peter, and any builder handed
@@ -17,8 +17,26 @@ Two canons hold the whole thing up:
 2. **Every change is complete and consistent.** A write happens whole or not at all, and what
    people see afterwards is what the tables hold.
 
-eta checks both on the running app, from one file of stories, with neither a model beside it nor a
+dzql's harness checks both on the running app, from one file of stories, with neither a model beside it nor a
 copy of the document in the browser to compare.
+
+## From a prototype to the thin client
+
+The stories grow with the app, from light to performance. In a paintbrush prototype a story is a
+sentence alone, `story(name)` from `dzql/modelling/stories`, kept in the app's `stories.ts`:
+
+```ts
+// packages/paintbrush/stories.ts
+saves: story("Saving (the button, or Cmd+Enter or Ctrl+Enter in the box) says Saved once the server has it, and the message is still there after a reload."),
+```
+
+A test named from it makes it true (`` test(`${stories.saves.name} -- ...`) ``), and a test of the
+app fails any story no test tells, so a story is never dropped or renamed away from its test. The
+format is the same one the thin client's harness reads: when the app takes the step to
+`dzql/rendering`, the same story gains a body -- who does what, and who then sees it, where -- and
+the harness tells it against every page, the ones that must not hear of a change included. A story
+with no body yet is reported unproven by the harness, never failed. The rest of this page is that
+second half.
 
 ## A story
 
@@ -59,7 +77,7 @@ story("A stranger types a code nobody has, and is told it was not recognised", {
 });
 ```
 
-Every word in those is one eta already has. `as` is a session. `does` is a `{doc, ops}` message,
+Every word in those is one the thin client already has. `as` is a session. `does` is a `{doc, ops}` message,
 exactly as the browser or the CLI would send it. `seen` names who should notice and where: a page,
 and whatever else the example's `goTo` understands, because a person sees only the page they are on
 and a story says where its change shows; in an example with one page (chat's is the room; the
@@ -210,7 +228,7 @@ legible enough to read aloud. Neither the code nor a model is the product. The s
 ## The harness
 
 One kernel function, `run(example, stories)` in `packages/dzql/src/modelling/harness.ts`, and one script, `bun run stories`
-in `packages/dzql` (`src/modelling/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
+in `packages/dzql` (`packages/dzql/src/modelling/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
 
 1. Connect the cast over real sockets to a real server, apply each member's setup writes, then
    the story's own `premise` (each write must change something), and render every member from
@@ -419,7 +437,7 @@ export const stories: Stories = {
 - **Not generated code.** Claude writes the resources by hand from the stories, and a person
   can read both. When the permit table is the first thing derived rather than written, that is
   one function over the stories, not a code generator.
-- **Not a client copy of the document.** eta's browser holds HTML, and what it holds is compared
+- **Not a client copy of the document.** The thin client's browser holds HTML, and what it holds is compared
   with a fresh render, not with a copy of the document.
 
 ## Where to start reading

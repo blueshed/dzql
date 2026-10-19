@@ -36,5 +36,5 @@ time. Delta runs in the process (`createLocal()`), so the run opens and writes a
 with `local.as(ALICE)`, with no socket; a server puts the same registrations on `createWs()`
 with an auth module that reads a token (`jwtAuth`).
 
-`tests/postgres-examples.test.ts` checks that both sides answer the same, for each person and
+`tests/delta-pg/postgres-examples.test.ts` checks that both sides answer the same, for each person and
 each lens, as `example_app`.

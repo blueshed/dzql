@@ -137,7 +137,10 @@ names, into `.claude/skills`.
    one; dzql's Docker suite is `test:pg`; delta's `ci` is its `test:slow` (every law seed). dzql's
    examples are read from the folder once (`scripts/examples.ts`) by the test runs, the stories and
    the fast tier.
-6. **The skills checked against the code**: a test that every path and link a skill names exists.
+6. **The skills checked against the code**: *Done*. `scripts/docs.ts`, run first by `bun run
+   affected` whatever changed: every link and every path a live README, CLAUDE.md, skill or doc
+   names exists (a project's `src/` against the two starters). It found eight that did not, fixed.
+   dzql's `readme/exports.test.ts` holds every `dzql/...` import named to an export.
 7. **The docs by reader**: *Done* (19 October, Peter: "since our plans are in git"). `docs/` keeps
    what goes deeper: the plan, the stories, the thin client and its costs, the bento, Postgres,
    railroad's reasons, and the lineage. Finished plans, change requests, reviews, the inventory,

@@ -1,6 +1,6 @@
 # The stored functions, and calling them from SQL
 
-From `bench/adapters/delta.ts`: a write as a person, in one round trip.
+From `packages/dzql/bench/adapters/delta.ts`: a write as a person, in one round trip.
 
 ```ts
 await pool.query("SELECT delta_apply_as($1, $2, $3) AS result",
@@ -17,7 +17,7 @@ BEGIN
 END $$;
 ```
 
-The functions are in `src/sql/001a–001g-*.sql`, applied in order (`postgres.md`), each
+The functions are in `packages/dzql/src/sql/001a–001g-*.sql`, applied in order (`postgres.md`), each
 `SECURITY INVOKER` but the fan-out (`_delta_holders`) and the serials. `generateSql` replaces
 some of their helpers with SQL compiled for your documents (`postgres.md`, "Compiled SQL"); the
 functions you call stay these:
@@ -42,7 +42,7 @@ functions you call stay these:
 - **`SECURITY DEFINER` bypasses RLS.** Delta is persistence and broadcast, not authorization:
   such a function checks its own preconditions (through `_`-prefixed guard helpers, never
   callable from the wire), and a named add (an id the writer chose) is judged by the session's role's privileges on the table
-  (`_delta_serial_new` / `_delta_serial_past`, `src/compile/lookups.ts`).
+  (`_delta_serial_new` / `_delta_serial_past`, `packages/dzql/src/compile/lookups.ts`).
 - Never edit `001*`, nor `_delta_collections` / `_delta_docs` by hand: `generateSql` fills them.
 - Tables need `seq_<table>` sequences: `generateSql` makes them; do not hand-write tables.
 - Framework SQL older than the listener works, with a warning: re-apply it (`applyFramework`

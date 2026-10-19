@@ -1,86 +1,82 @@
-# eta
+# The thin client: pages drawn on the server
 
-**Live apps for a few people at once, told as stories and checked by them.**
+How dzql's rendering (`packages/dzql/src/rendering/`) works, and what a write costs. The manual is
+the `dzql-app` skill; a worked app is `packages/dzql/examples/cafe/`. This is the mechanism under
+both, for someone deciding whether it suits, or wanting to know why it is built so.
 
-![A wedding site built on eta: one household's guests as Lego figures, dressed live](images/wedding.jpg)
+![A wedding site on dzql's rendering: one household's guests as Lego figures, dressed live](images/wedding.jpg)
 
-People use more than one screen. Ann asks for a day off on her phone, and her manager sees it
-waiting on the calendar a moment later, with no refresh. Ben changes his note on his laptop, and
-his phone shows it. eta makes that the normal way a page works: you write no sync code.
+## One renderer, on the server
 
-## A story is the spec and the test
+An app has one `render(sessionId)`: it decides which screen a person is on and draws their whole
+page as HTML, reading the documents it shows with `read(name)`
+(`packages/dzql/src/rendering/documents.ts`). Reading is how a page subscribes: whatever a page
+read, it is told of. `read` is synchronous; a document not yet held throws `Pending`, and the
+kernel loads it and draws the page again, so a render never awaits and never half-draws.
 
-You start by saying what people do, in sentences a customer could call true or false:
+There is no state in the browser beyond the page itself. HTML is the only vocabulary on the wire:
+no JSON tree of the app's data, no client-side model to keep in step.
 
-```ts
-story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", ...)
-story("Ann asks for her draft, and Mo and Bo see it waiting on the calendar, and she sees it waiting in her drawer", ...)
-story("Ann cannot approve her own day off", ...)
-```
+## Writes in, parts out
 
-`bun run stories` runs each one against the real app, over real sockets. It checks the change
-lands, that the right people's pages change, that nobody else is sent anything, and that undo and
-redo put every page back. Then it does each again by hand, in a browser the size of a phone. You
-build the least that makes the next story pass, and nothing a story doesn't need.
+A control sends a write: a document's name and JSON Patch ops on a path (`{ doc, ops }`), never a
+verb or a function. On the server it is seen by the document's resource -- `permit` (may this be
+sent?), then `shape` (what it becomes) -- then delta applies it, and delta's one stream of changes
+says who holds what changed.
 
-## Start a project
+Every page that read a changed document is drawn again, and compared with what it was sent last.
+A page is cut into **parts** (`part(key, html)`, `packages/dzql/src/rendering/parts.ts`): the
+bento's cells, rows with an id, keyed lists, drawers. Only the parts that changed are sent: a part
+whose tag changed, its tag; one whose inside changed, whole; a list, the rows put in and taken out.
+The page goes whole only when its own outline changed. The client morphs each part into place
+(`packages/dzql/src/rendering/client/app.ts`), keeping focus, scroll and whatever a person was
+typing; it never replaces `innerHTML`.
 
-```bash
-bun create dzql my-app
-cd my-app
-bun install
-bun run model
-```
+So a message said in a room of a hundred goes to each other member as its one `<li>`, not the
+conversation again, and nobody whose page did not read the room is sent anything.
 
-You tell Claude the stories. It writes them down on the model's page (http://localhost:3001)
-while you watch, with the documents they need and who holds each. Then it builds the app from the
-model (`bun dev`, http://localhost:3000), story by story.
+## The session, and where a person is
 
-The project's app is in `src/`; dzql and delta come from `node_modules`, and you never edit
-them there. A later eta is a version bump of `dzql` in `package.json`, then your gate.
+Each visitor has a document of their own, the **session**: who they are and where they are. It is a
+resource like any other (`perSession`), found by the cookie, and named on the wire by its type
+alone, since its id is a credential. Where a person stands -- the cell they opened, the drawer over
+it -- is one **address** in the session, which the URL follows, so a reload, a link or a second tab
+opens on the same screen, drawn by the server.
 
-## Try the examples
+## Undo, refusals and the ledger
 
-You need [Bun](https://bun.sh). Then `bun install` at the root and `bun run dev` in `packages/dzql`, and open
-http://localhost:3000. That is chat: give a name, name a room, say something. Open a private window
-as someone else and you each see the other speak. Undo, bottom right, takes back your own last
-write.
+Undo is delta's ledger, walked along a cursor that is the person's session: Undo takes back your own
+last write while others keep writing, and says so when someone has changed it since. A write
+refused (by `permit`, `shape` or the model's guards) is told on the page where it was made, in the
+story's words (`toldAt`), and the writer's echo says `refused`.
 
-- `bun run dev:wedding` (port 3001): a site for one wedding, the picture above. Codes: `NICK` for
-  the couple, `OKAFOR` and `BEN` for two households.
-- `bun run dev:leave` (port 3004): a team's leave on one calendar. Drag across days to ask. Sign in
-  as `ann@leave.example`, `bo@leave.example` or `mo@leave.example` (the manager); each password is
-  the name and `-password`.
-- `bun run dev:ticker` (port 3002): a price board and a Swiss railway clock.
-- `bun run dev:modeling` (port 3005): the model's page, where an app is told before it is built.
+## Applets and islands
 
-## Why eta
-
-- **No sync code.** The server draws each person's page and sends only the parts that changed, to
-  every screen that shows them.
-- **Undo for each person.** Undo walks back your own writes while others keep writing, and says so
-  when someone has changed it since.
-- **Stories are the tests.** Every example's, run over real sockets and again by hand.
-- **A small client.** <!-- measured:client -->7.4 KB<!-- /measured --> gzipped, and no framework
-  to learn. The page is plain HTML, drawn on the server.
-- **One process.** Bun and SQLite, nothing else to run.
-
-It suits small teams where seeing what happened and being able to undo it matter more than scale:
-a wedding, a booking board, a classroom, an ops console. It is not built for a large consumer
-product.
+A part of a page whose state a redraw would destroy -- a drag halfway through, a clock, a chart's
+history -- is an **applet**: the client never morphs inside it (`[data-applet]`), and it is handed
+its document's ops as they come. Written with railroad, it is an **island** (`dzql/rendering/island`),
+the one thing that needs the optional `@blueshed/railroad`. Everything else is plain HTML with
+`data-write` controls.
 
 ## What it is made of
 
 - **[@blueshed/delta](https://www.npmjs.com/package/@blueshed/delta)** keeps the documents, their
-  history and their one stream of changes.
-- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** can draw an applet, a small
-  part of a page that keeps its own state in the browser, like a drag or a chart: an island (<!-- measured:railroad -->2.9 KB
-  gzipped for `signal` and `mount`, 3.7 KB with `list`<!-- /measured -->, only on a page that has one).
+  history and their one stream of changes: a JSON file, SQLite, or Postgres compiled by dzql.
+- **The client** is the kernel's, <!-- measured:client -->7.4 KB<!-- /measured --> gzipped, with no
+  framework to learn.
+- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws an island, only
+  on a page that has one (<!-- measured:railroad -->2.9 KB
+  gzipped for `signal` and `mount`, 3.7 KB with `list`<!-- /measured -->).
+
+It suits small teams where seeing what happened, and being able to undo it, matter more than scale:
+a wedding, a booking board, a classroom, an ops console. It is not built for a large consumer
+product.
 
 ## What a write costs
 
-After a change, each page that shows it gets only the parts that changed, compressed. `bun run
-costs` measures every number on this page from a fresh run, and `bun run test:eta` fails when they drift.
+After a change, each page that shows it gets only the parts that changed, compressed. dzql's `bun
+run costs` measures every number on this page from a fresh run of the examples, and its slow tier
+(`costs --check`) fails when they drift.
 
 <!-- measured:writes -->
 - **Chat**, one message in a room of 100 messages and 5 members: 423 B, compressed from 881 B, to
@@ -95,25 +91,7 @@ costs` measures every number on this page from a fresh run, and `bun run test:et
   and 227 B, compressed from 315 B, to another household, reading everyone (one patch and no HTML).
 <!-- /measured -->
 
-## Commands
+## Further
 
-```
-bun run dev          # chat, reloading as you edit (dev:wedding, dev:leave, dev:ticker, dev:modeling)
-bun run stories      # one example's stories; stories:all runs every example's
-bun run test:eta     # the tests, at 100% coverage
-bun check            # the type check (Bun 1.4.3 or later)
-bun run cli <verb>   # a terminal client: watch every change, undo, write
-bun run model:check  # read an app that exists as a model: who holds what, who is told
-bun run costs        # measure every number on this page
-```
-
-`ETA_EXAMPLE=<name>` picks the example for `dev`, `start`, `stories` and `cli`; `.env.example`
-explains every setting.
-
-## Learn more
-
-- `packages/dzql/examples/cafe/`: an app built from its model, step by step (its README), and the
-  `dzql-app` skill, the manual.
 - [stories.md](stories.md): what the stories are for, and how they drive an app.
-- [bento/](bento/README.md): a guide to pages where people know where they are and what they can do.
-- `packages/dzql/CHANGELOG.md`: what changed, and how to move an app across a change.
+- [bento/](bento/README.md): how a page looks and moves.

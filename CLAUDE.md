@@ -16,7 +16,8 @@ This must be obvious, in every package (Peter, 19 October):
 - **The skills, and their `reference/` pages, are the manual**: how to build with it, step by step.
   They ship with the package and are installed into an app.
 - `docs/` goes deeper or keeps the record; CHANGELOG.md and todo.jsonl say what changed and what is
-  open. Where two disagree, the code is right, then the skill; fix the other.
+  open. Where two disagree, the code is right, then the skill; fix the other. `bun run affected`
+  holds them to the code first: every link and every path a live doc names (`scripts/docs.ts`).
 
 ## Start light, grow into performance
 

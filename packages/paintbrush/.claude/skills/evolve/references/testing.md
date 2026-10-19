@@ -86,5 +86,5 @@ test(`${stories.notesRefused.name} -- the server refuses every write`, async () 
 - The page helpers are railroad's (`@blueshed/railroad/webview`): `open`, `waitFor`, `replaceText`, `failFetch`, `withOtherWindow`; `tests/browser.ts` adds `refuseWrites` (the server refuses what the page sends).
 - The Bun.WebView rules are at the top of railroad's `webview.ts` (`node_modules/@blueshed/railroad/webview.ts`): follow them exactly.
 - Every server in a test gets a scratch data folder (`mkdtempSync`), never the project's `data/`.
-- To test a document without a browser, hold it from a client in the test process: `connectWs` and `openDoc(name, client)`, as `tests/kitchen.test.ts` does in [sqlite.md](sqlite.md).
+- To test a document without a browser, hold it from a client in the test process: `connectWs` and `openDoc(name, client)`, as the kitchen's test does in [sqlite.md](sqlite.md).
 - delta's case suite (`@blueshed/delta/testing`: `errorCodeCases`, `pathCases` and the rest) is for a backend of one's own, dzql for Postgres, to answer as delta's do. An app tests its own documents, as here.

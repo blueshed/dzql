@@ -67,10 +67,10 @@ the box, the whole thing when it is opened.
 - **Every change says what it did**, where the person is.
 - **Words on buttons say what they do.** ("Ask! Or Never mind!")
 
-## In eta
+## In dzql
 
-The kernel offers one way to draw these (`src/rendering/bento.ts`, `src/rendering/bento.css`, laid out by
-`src/rendering/grid.ts`): a box and its tray, a collection, the trail, readings, rows, a drawer, a modal,
+The kernel offers one way to draw these (`packages/dzql/src/rendering/bento.ts`, `packages/dzql/src/rendering/bento.css`, laid out by
+`packages/dzql/src/rendering/grid.ts`): a box and its tray, a collection, the trail, readings, rows, a drawer, a modal,
 find, and the page's undo and redo. How they look -- sizes, corners, icons, the tray -- is that
 way's, not the bento's. An app may use the parts, change them or draw its own; a direction never
 requires a part, and a choice is justified by a story, never by this page.

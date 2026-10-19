@@ -25,7 +25,7 @@ const listener = await createDocListener(ws, pool, { types: docs.map((def) => do
 serve({ routes: { "/": index }, ws, close: [() => listener.destroy(), () => pool.end()] });
 ```
 
-Options: `createDocListener` and `docTypeFromDef` in `src/postgres/listener.ts` and
+Options: `createDocListener` and `docTypeFromDef` in `packages/dzql/src/postgres/listener.ts` and
 `registry.ts`. Signing in: delta-doc's `auth.md` (on Postgres, `postgresLinkStore` from
 `dzql/auth-link`); who may open what: below, and `rls.md`.
 
@@ -72,7 +72,7 @@ no table rules.
 collections, compiled from their definitions: nothing reads `_delta_collections` or `_delta_docs`
 to work out what a document means at run time. The framework SQL (`001*`) holds the tables, the
 write (`delta_apply`), the ledger and the listener's functions, and calls what `generateSql`
-writes. Each compiled piece is pinned by `tests/compile/`: its answers on every document name of
+writes. Each compiled piece is pinned by `packages/dzql/tests/compile/`: its answers on every document name of
 delta's path cases, on the seed and after writes, and its text.
 
 | What | Compiled |
@@ -109,7 +109,7 @@ Three rules follow:
   document to your definitions and apply `generateSql`.
 
 The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their `_as` forms
-(`sql.md`), which reach them. What a write costs, compiled, is in `bench/results-2026-10-15.md`
+(`sql.md`), which reach them. What a write costs, compiled, is in `packages/dzql/bench/results-2026-10-15.md`
 (under RLS, as an app role).
 
 ## Gotchas
@@ -124,7 +124,7 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
   single root row is not there, which the listener answers 404.
 - Write through `delta_apply` (the listener, or `delta_apply_as` from SQL), never a raw
   `INSERT`: only that path versions, logs and NOTIFYs (`sql.md`).
-- A hand-written `DocType` hears only its own writes (`DocType` in `src/postgres/registry.ts`).
+- A hand-written `DocType` hears only its own writes (`DocType` in `packages/dzql/src/postgres/registry.ts`).
 - **A write tells every open document that holds a row it touched, in its own transaction**: that
   is what makes each change arrive whole and in order. A row held by many open documents (a feed
   per person, each holding the same new post) costs the write one telling for each. Keep

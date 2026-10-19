@@ -26,7 +26,7 @@ import "../../../src/client/app";
 The contract is `Applet` in `src/rendering/applets.ts`; `appletWrites` and `appletProps` are `src/rendering/html.ts`.
 
 - An applet is not "the view for X": plain `data-write` HTML is the default.
-- Register it in `client/main.ts` before importing `src/rendering/client/app`. `client/index.html` has an
+- Register it in `client/main.ts` before importing `dzql/rendering/client/app`. `client/index.html` has an
   element with `id="app"`.
 - Neither the morph nor a render in parts goes inside `[data-applet]`: the mount itself may be a
   part (its tag, its props), nothing inside it.

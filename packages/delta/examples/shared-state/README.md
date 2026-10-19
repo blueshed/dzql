@@ -17,7 +17,7 @@ PORT=3199 bun examples/shared-state/server.ts      # override if 3100 is busy
 ```
 
 Open <http://localhost:3100> in two browser tabs. Type in one; see it appear in the other. The
-room is kept in `examples/shared-state/chat-room.json`; restart the server, refresh the page, the
+room is kept in `chat-room.json`, which it makes beside itself; restart the server, refresh the page, the
 messages are still there.
 
 ## The files

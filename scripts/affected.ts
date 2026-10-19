@@ -5,7 +5,8 @@
  * one of them, each run its fast tier: a type check and the tests that need no browser and no
  * Postgres server. `--slow` runs the slow tier too (the browser tests, dzql's Postgres suite in
  * Docker, eta's stories and costs): CI runs it on every push, and it runs before a release.
- * `--all` runs every package. `--dry-run` says what would run.
+ * `--all` runs every package. `--dry-run` says what would run. Whatever changed, it first holds the
+ * docs to the code (scripts/docs.ts): every link and every path a README, CLAUDE.md, skill or doc names.
  *
  * A package says its tiers in its package.json: `test:fast`, and `test:slow`. Within dzql, a change
  * only to eta's half (src/rendering, src/modelling, its examples) runs that half's fast tier
@@ -71,10 +72,13 @@ function plan(p: Pkg): string[] {
   return [...fast, ...(slow && p.scripts["test:slow"] ? ["test:slow"] : [])];
 }
 
+// what people and Claude read, held to the code, whatever changed: under a second (scripts/docs.ts)
+const docs = args.has("--dry-run") ? 0 : await Bun.spawn(["bun", join(root, "scripts", "docs.ts")], { cwd: root, stdout: "inherit", stderr: "inherit" }).exited;
+
 const runs = pkgs.filter((p) => touched.has(p.dir)).map((p) => ({ p, scripts: plan(p) })).filter((r) => r.scripts.length);
 if (runs.length === 0) {
   console.log(files.length ? "nothing to run: no package's files changed" : "nothing changed against origin/main");
-  process.exit(0);
+  process.exit(docs);
 }
 for (const { p, scripts } of runs) console.log(`${p.dir}: ${scripts.join(", ")}`);
 if (args.has("--dry-run")) process.exit(0);
@@ -87,7 +91,7 @@ for (const f of files.filter((f) => /\.test\.tsx?$/.test(f) && existsSync(join(r
   if (/setTimeout\(r, *\d|Bun\.sleep\(\d/.test(text)) console.log(`note ${f} waits a fixed time: wait on what it waits for`);
 }
 
-let failed: string[] = [];
+let failed: string[] = docs ? ["docs"] : [];
 const started = performance.now();
 for (const { p, scripts } of runs) {
   for (const script of scripts) {
