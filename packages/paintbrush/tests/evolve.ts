@@ -1,5 +1,5 @@
 import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
-import { cpSync, existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -81,13 +81,11 @@ const sibling = (dir: string, name: string): string | undefined => {
 };
 const candidates = [process.env.DELTA_SPEC ?? sibling("delta", "@blueshed/delta"), process.env.RAILROAD_SPEC ?? sibling("railroad", "@blueshed/railroad"), process.env.DZQL_SPEC ?? sibling("dzql", "dzql")].filter((s): s is string => s !== undefined);
 
-/** A new app, as bun create makes one: the template's files, installed, then its setup. */
+/** A new app, as bun create makes one: copied by create-blueshed (this folder is its template, its sibling), installed, then its setup. */
 function newApp(name: string) {
-  const app = join(scratch, name.toLowerCase().replace(/[^a-z]+/g, "-"));
-  const listed = run(root, ["git", "ls-files", "--cached", "--others", "--exclude-standard"]);
-  for (const path of listed.split("\n").filter(Boolean)) {
-    if (existsSync(join(root, path))) cpSync(join(root, path), join(app, path));
-  }
+  const slug = name.toLowerCase().replace(/[^a-z]+/g, "-");
+  run(scratch, ["bun", join(root, "../create-blueshed/cli.ts"), slug, "--no-install", "--no-git"]);
+  const app = join(scratch, slug);
   run(app, candidates.length ? ["bun", "add", ...candidates] : ["bun", "install"]);
   run(app, ["bun", "create/setup.ts"]);
   return app;

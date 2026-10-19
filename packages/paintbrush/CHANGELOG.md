@@ -35,6 +35,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **A new app's skills come again on every install** (20 October, root #68): setup makes
+  `delta install-skills --skip bun-route,dzql-app` (`SKILLS`) the app's `prepare`, as create-dzql's
+  template has it, so `bun update` brings its packages' skills; and one copy rule, `copyTemplate`,
+  is create-blueshed's copy and its pack; the evolve test makes its apps with create-blueshed itself.
+
 - **The evolve skill's Postgres step opens its store in one call** (20 October): dzql's
   `openStore`, given the socket, the data folder and the history of migrations, in place of the
   pool, the migrations, the framework, the compiled SQL and the listener by hand; `close` is

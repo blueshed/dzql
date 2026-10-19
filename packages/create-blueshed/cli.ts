@@ -12,7 +12,7 @@
  *   --local        (or BLUESHED_LOCAL=1) railroad, delta and dzql from the blueshed/dzql checkout this
  *                  runs from, not npm: for trying the packages as they are, before a release
  */
-import { cpSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const args = process.argv.slice(2);
@@ -30,10 +30,9 @@ if (existsSync(dest)) {
 
 // published, paintbrush is beside this file; in blueshed/dzql it is its sibling package
 const template = [join(import.meta.dir, "template"), join(import.meta.dir, "../paintbrush")].find((dir) => existsSync(dir))!;
-// what a new app never gets a copy of, as paintbrush's setup says it (UNCOPIED)
-const { UNCOPIED } = (await import(join(template, "create/setup.ts"))) as { UNCOPIED: string[] };
-const copied = (src: string) => !UNCOPIED.some((path) => src === join(template, path) || src.startsWith(`${join(template, path)}/`));
-cpSync(template, dest, { recursive: true, filter: copied });
+// all of it but what a new app never gets, as paintbrush's setup says it (copyTemplate, UNCOPIED)
+const { copyTemplate } = (await import(join(template, "create/setup.ts"))) as { copyTemplate: (from: string, to: string) => void };
+copyTemplate(template, dest);
 
 // --local: the app takes railroad, delta and dzql from this checkout's packages, and keeps them when a
 // step adds one again (`bun add dzql`): overrides win over what npm has

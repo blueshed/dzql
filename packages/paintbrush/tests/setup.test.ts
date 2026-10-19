@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DELETED, NAMED, UNCOPIED, readme, setup } from "../create/setup";
+import { DELETED, NAMED, UNCOPIED, copyTemplate, readme, setup } from "../create/setup";
 
 // A scratch "template" folder named like an app, with just enough of the template in it
 async function scratchTemplate(files: Record<string, string>) {
@@ -47,8 +47,8 @@ test("setup turns the template into an app", async () => {
       expect(await Bun.file(join(root, path)).exists()).toBe(false);
     }
     expect(await Bun.file(join(root, "README.md")).text()).toContain("# my-app");
-    // the app's name and own version, and only the app's scripts: the template's tiers and the evolve skill's test go
-    expect(await Bun.file(join(root, "package.json")).text()).toBe('{\n  "name": "my-app",\n  "version": "0.0.0",\n  "private": true,\n  "scripts": {\n    "test": "bun check && bun test",\n    "start": "bun src/routes.ts"\n  }\n}\n');
+    // the app's name and own version, and only the app's scripts: the template's tiers and the evolve skill's test go; its skills come again on every install
+    expect(await Bun.file(join(root, "package.json")).text()).toBe('{\n  "name": "my-app",\n  "version": "0.0.0",\n  "private": true,\n  "scripts": {\n    "test": "bun check && bun test",\n    "start": "bun src/routes.ts",\n    "prepare": "delta install-skills --skip bun-route,dzql-app"\n  }\n}\n');
     expect(await Bun.file(join(root, ".github/workflows/ci.yml")).text()).toBe("      - run: bun test\n"); // no step for the evolve test
     expect(await Bun.file(join(root, "src/index.html")).text()).toBe("<title>my-app</title>");
     expect(await Bun.file(join(root, ".claude/launch.json")).text()).toBe('{ "name": "my-app" }');
@@ -190,6 +190,18 @@ test("with no git on the PATH, setup still makes the app: no clone to refuse, no
     expect(await Bun.file(join(root, "todo.jsonl")).text()).toBe("");
     expect(existsSync(join(root, ".git"))).toBe(false);
   } finally {
+    done();
+  }
+});
+
+test("a new app is the template copied but for what it never gets (UNCOPIED): as create-blueshed copies and packs it", async () => {
+  const { root, done } = await scratchTemplate({ "src/app.tsx": "app", "logo.png": "logo", "evals/evolve.json": "[]", "data/message.json": "{}", "node_modules/x/index.js": "", "tests/out/shot.png": "", ".server.pid": "1", "tests/site.test.ts": "test" });
+  const to = `${root}-copy`;
+  try {
+    copyTemplate(root, to);
+    expect([...new Bun.Glob("**").scanSync({ cwd: to, dot: true })].sort()).toEqual(["src/app.tsx", "tests/site.test.ts"]);
+  } finally {
+    rmSync(to, { recursive: true, force: true });
     done();
   }
 });

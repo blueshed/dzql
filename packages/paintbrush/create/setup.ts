@@ -10,7 +10,7 @@
 // .claude/skills (delta's install-skills, below), so a session starts knowing how railroad's JSX
 // behaves, how a document is kept and changed, and how stories are told.
 
-import { existsSync, renameSync, rmSync } from "node:fs";
+import { cpSync, existsSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 // The files that carry the app's name, as "Paintbrush" (the page title, which the
@@ -27,6 +27,15 @@ export const NAMED = [
 // template alone and setup does not need (its logo, the evolve skill's evaluations). create-blueshed
 // leaves them out as it copies (cli.ts) and as it packs (pack.ts).
 export const UNCOPIED = ["node_modules", "data", "tests/out", ".server.pid", "logo.png", "evals"];
+
+/** The template copied to a new app's folder, as create-blueshed copies it and packs it (the evolve skill's test makes its apps with create-blueshed): all of it but UNCOPIED. */
+export function copyTemplate(from: string, to: string): void {
+  const copied = (src: string) => !UNCOPIED.some((path) => src === join(from, path) || src.startsWith(`${join(from, path)}/`));
+  cpSync(from, to, { recursive: true, filter: copied });
+}
+
+/** The skills a new app takes from its packages, again on every install (`prepare`), so `bun update` brings theirs: delta's install-skills, but railroad's bun-route (it scaffolds a bare project with `bun init`; this app grows through its own evolve skill) and dzql's dzql-app (it builds a page the server draws). */
+export const SKILLS = "delta install-skills --skip bun-route,dzql-app";
 
 // What is about the template, not the app, that setup needs as it runs: copied, then deleted (a folder whole)
 export const DELETED = ["todo.jsonl", "CHANGELOG.md", "create", "tests/setup.test.ts", "tests/evolve.ts"];
@@ -74,6 +83,7 @@ export async function setup(root: string) {
     if (pkg.scripts) {
       for (const script of ["test:evolve", "test:fast", "test:slow"]) delete pkg.scripts[script];
       pkg.scripts.test = "bun check && bun test";
+      pkg.scripts.prepare = SKILLS;
     }
     await Bun.write(pkgFile, `${JSON.stringify(pkg, null, 2)}\n`);
   }
@@ -95,13 +105,11 @@ export async function setup(root: string) {
   }
 
   // The skills the app's packages ship (railroad's, delta's, and dzql's modelling, which package.json's
-  // claudeSkills names), by delta's install-skills. railroad's bun-route is left out: it scaffolds a bare
-  // project with `bun init`, and this app grows through its own evolve skill instead; so is dzql's
-  // dzql-app, which builds a page the server draws.
+  // claudeSkills names): now, since `bun install` ran before the app had its `prepare` (SKILLS), and
   // by delta's bin, wherever a version keeps its code
   const cli = join(root, "node_modules/.bin/delta");
-  const installed = existsSync(cli) && Bun.spawnSync([process.execPath, cli, "install-skills", "--skip", "bun-route,dzql-app"], { cwd: root, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
-  if (!installed) console.warn("  the skills are not installed: after `bun install`, run `bunx delta install-skills --skip bun-route,dzql-app`");
+  const installed = existsSync(cli) && Bun.spawnSync([process.execPath, cli, ...SKILLS.split(" ").slice(1)], { cwd: root, stdout: "inherit", stderr: "inherit" }).exitCode === 0;
+  if (!installed) console.warn(`  the skills are not installed: after \`bun install\`, run \`bunx ${SKILLS}\``);
 
   commitEverything(root);
 
