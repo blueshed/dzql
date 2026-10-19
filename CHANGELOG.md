@@ -8,6 +8,11 @@ what is open across them. Newest first.
 
 ### Changed
 
+- **Every package publishes from this repository** (19 October): npm's trusted publisher for
+  @blueshed/railroad, @blueshed/delta and create-blueshed is now blueshed/dzql's `publish.yml`
+  (allowed: npm publish), in place of blueshed/railroad, blueshed/delta and blueshed/invoket, as
+  dzql and create-dzql already were (todo #14). Each is pending until its first publish, which
+  npm wants by 21 October or the publisher is made again (todo #50).
 - **One shape for a starter: routes and resources** (18 October): `bun create dzql` now lays an
   app out as paintbrush does, `src/routes.ts` and `src/resources/<name>/`, the server-drawn page
   among its routes (packages/dzql/CHANGELOG.md). One starter for both is the next step, once this
