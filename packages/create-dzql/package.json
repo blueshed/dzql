@@ -21,7 +21,8 @@
   "scripts": {
     "prepack": "rm -rf starter && cp -R ../dzql/examples/starter starter",
     "postpack": "rm -rf starter",
-    "test:fast": "bun test tests/"
+    "test:fast": "bun test tests/",
+    "test": "bun run test:fast"
   },
   "devDependencies": {
     "dzql": "^0.13.0",

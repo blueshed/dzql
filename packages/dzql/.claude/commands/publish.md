@@ -14,7 +14,7 @@ runs steps 2 to 6 here for each package it releases, then makes one commit, a ta
 |---|---|
 | Packages | `dzql` (`packages/dzql`) and `create-dzql` (`packages/create-dzql`), one version for both |
 | Published | npm, public, by `.github/workflows/publish.yml` on a pushed tag: `dzql@x.y.z`, `create-dzql@x.y.z` |
-| Gate | `cd packages/dzql && bun check && bun run test` (Docker; port 5433 free) |
+| Gate | `cd packages/dzql && bun check && bun run test:pg` (Docker; port 5433 free) |
 | End to end | CLAUDE.md, *Testing the create-dzql Template*: a new app, linked to the local dzql, and its own tests |
 
 Stop at the first failure without changing anything further. Releasing is not a step of a plan: it comes once every stage is done, on Peter's word. Running this

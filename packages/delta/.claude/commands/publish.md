@@ -14,7 +14,7 @@ runs steps 2 to 6 here for each package it releases, then makes one commit, a ta
 |---|---|
 | Package | `@blueshed/delta` |
 | Published | npm, public |
-| Gate | `bun run ci` |
+| Gate | `bun run test:slow` |
 | Skills stamped with the version | `.claude/skills/delta-doc/SKILL.md` |
 
 Stop at the first failure without changing anything further. Running this

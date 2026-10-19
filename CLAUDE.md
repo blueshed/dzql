@@ -30,7 +30,7 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
 | Package | Depends on (in the workspace) | Fast, from the root | Slow (CI, a release) |
 |---|---|---|---|
 | `packages/railroad` | nothing | `bun run test:railroad` | `bun run test:railroad:slow`: the consumer type checks, the browser |
-| `packages/delta` | railroad | `bun run test:delta` | none: its whole suite is fast |
+| `packages/delta` | railroad | `bun run test:delta` | `bun run test:delta:slow`: every law seed |
 | `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun run test:dzql`, `bun run test:create-dzql` | `bun run test:dzql:slow`: Postgres in Docker, the rendering in a browser, the stories, the costs |
 | `packages/paintbrush` | delta, railroad, dzql (`dzql/modelling`'s `story`) | `bun run test:paintbrush` | `bun run test:paintbrush:slow`: the evolve skill applied |
 | `packages/create-blueshed` | paintbrush (it packs a copy) | `bun run test:create-blueshed` | none |
@@ -45,6 +45,8 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
   runs in CI, path-filtered the same way (`.github/workflows/<package>.yml`), and by
   `bun run affected --slow` before a release. A red CI is fixed at the next push. (The workflows
   are paused on Peter's word since 17 October; until he says, the slow tier runs on his Mac.)
+  In every package `bun run test` is its fast tier; `test:slow` its slow one; dzql's Postgres suite
+  in Docker is `test:pg`.
   A package that packs a sibling's folder (`prepack`: create-blueshed copies paintbrush) runs
   when that sibling changes.
 - **What is going on** is `CHANGELOG.md` (what changed, across packages) and `todo.jsonl` (what is

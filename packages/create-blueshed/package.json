@@ -17,7 +17,8 @@
   "scripts": {
     "prepack": "rm -rf template && cp -R ../paintbrush template && rm -rf template/node_modules template/data template/tests/out",
     "postpack": "rm -rf template",
-    "test:fast": "bun test tests/"
+    "test:fast": "bun test tests/",
+    "test": "bun run test:fast"
   },
   "keywords": [
     "create",

@@ -14,7 +14,7 @@
     "dev": "bun --hot src/routes.ts",
     "stop": "delta stop",
     "typecheck": "bun check",
-    "test": "bun test",
+    "test": "bun run test:fast",
     "model": "bun node_modules/dzql/src/cli/index.ts model",
     "cli:model": "bun node_modules/dzql/src/cli/index.ts model",
     "test:evolve": "bun test ./tests/evolve.ts",

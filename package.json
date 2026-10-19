@@ -14,6 +14,7 @@
     "test:railroad": "bun run --cwd packages/railroad test:fast",
     "test:railroad:slow": "bun run --cwd packages/railroad test:slow",
     "test:delta": "bun run --cwd packages/delta test:fast",
+    "test:delta:slow": "bun run --cwd packages/delta test:slow",
     "test:dzql": "bun run --cwd packages/dzql test:fast",
     "test:dzql:slow": "bun run --cwd packages/dzql test:slow",
     "test:paintbrush": "bun run --cwd packages/paintbrush test:fast",

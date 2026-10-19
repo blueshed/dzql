@@ -1,7 +1,7 @@
 {
   "name": "@blueshed/railroad",
   "version": "0.16.2",
-  "description": "The smallest reactive layer for Bun realtime apps — signals, JSX, hash router. Built so an LLM can use it correctly without re-learning. Pair with @blueshed/delta for WebSocket document sync.",
+  "description": "The smallest reactive layer for Bun realtime apps \u2014 signals, JSX, hash router. Built so an LLM can use it correctly without re-learning. Pair with @blueshed/delta for WebSocket document sync.",
   "type": "module",
   "main": "index.ts",
   "types": "index.ts",
@@ -32,7 +32,7 @@
   ],
   "scripts": {
     "check:consumer": "bun check -p tests/consumer-types/tsconfig.json && bun check -p tests/consumer-types/tsconfig.react.json && bun check -p tests/fixtures/readme/tsconfig.server.json",
-    "test": "bun test",
+    "test": "bun run test:fast",
     "test:webview": "bun test ./tests/webview.test.ts ./tests/webview-kit.test.ts",
     "test:fast": "bun check && bun test --path-ignore-patterns=\"tests/webview*.test.ts\"",
     "test:slow": "bun run check:consumer && bun run test:webview"

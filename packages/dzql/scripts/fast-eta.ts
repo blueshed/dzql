@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
-// eta's fast tier (`bun run test:fast:eta`): its tests that need no browser, in parallel. A part of
+// The modelling and rendering fast tier (`bun run test:fast:eta`): its tests that need no browser, in parallel. A part of
 // the suite cannot meet bunfig.toml's 100% coverage, which only the whole run (`test:eta`) is held
 // to, and Bun says so only by its exit code: so this passes on every test passing, and nothing else.
+import { EXAMPLES } from "./examples";
 const BROWSER = ["src/rendering/bento.test.ts", "src/rendering/client-coverage.test.ts", "src/rendering/island.test.ts", "src/rendering/webview.test.ts", "src/rendering/client/**", "src/modelling/by-hand.test.ts", "src/modelling/costs.test.ts", "examples/*/client/**", "readme/browser.test.ts"];
-const DIRS = ["src/rendering", "src/modelling", "readme", ...["chat", "leave", "modeling", "starter", "ticker", "wedding", "cafe"].map((e) => `examples/${e}`)];
+const DIRS = ["src/rendering", "src/modelling", "readme", ...EXAMPLES.map((e) => `examples/${e}`)];
 const proc = Bun.spawn(["bun", "test", "--parallel", ...DIRS, ...BROWSER.map((p) => `--path-ignore-patterns=${p}`), ...process.argv.slice(2)], {
   cwd: `${import.meta.dir}/..`,
   stdout: "pipe",

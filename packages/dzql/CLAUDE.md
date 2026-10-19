@@ -113,7 +113,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
 - **Modelling and rendering** (no Docker): `bun check`, `bun run test:eta` (the default
   `bunfig.toml`: 100% coverage, the client's too, read from Chrome), `bun run stories:all`,
   `bun run costs --check`. The browser tests need Chrome (the dzql-app skill's *Tests*).
-- **The Postgres step**: `cd packages/dzql && bun run test` (`tests/bunfig.toml`)
+- **The Postgres step**: `cd packages/dzql && bun run test:pg` (`tests/bunfig.toml`)
 - Tests run against Docker PostgreSQL (see `packages/dzql/compose.yml`)
 - `tests/delta/` and `tests/compile/` run on PGlite with no Docker (`bun --config=tests/bunfig.toml test tests/delta tests/compile`)
 - The test script handles Docker lifecycle: starts fresh, runs tests, tears down. It removes the

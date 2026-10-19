@@ -37,9 +37,9 @@ Bun only: never `npm`, `npx` or `node`.
 |---|---|
 | Install | `bun install` |
 | Typecheck | `bun check` (Bun's type check, TypeScript 7; no `check` script, which would shadow it), and `bun check -p examples/kanban` for its JSX |
-| Tests | `bun run test`: every test (no database server, no Docker; about 17 s) |
+| Tests | `bun run test`: the fast tier (fewer law seeds); `bun run test:slow`: every test, every seed (no database server, no Docker; about 17 s) |
 | One file | `bun test tests/local.test.ts` |
-| **The gate** | **`bun run ci`**: `bun check` (and kanban's) → `bun test tests/` |
+| **The gate** | **`bun run test:slow`**: `bun check` (and kanban's) → `bun test tests/` |
 | Release | the monorepo's `/publish` (the root's `.claude/commands/publish.md`); this package's part is `.claude/commands/publish.md` |
 
 delta lives in the bluetools monorepo, the blueshed/dzql repository (`packages/delta`), beside railroad and dzql, as Bun
@@ -49,7 +49,7 @@ pushed tag `delta@x.y.z`) runs the same steps.
 
 **CI runs one Bun, pinned**: `bun-version: 1.4.3` in every workflow, the Bun the repo is
 developed on, so a Bun release cannot turn the gate red with no change here. To move it: install
-the new Bun, run `bun run ci` on it, then set `bun-version` in the root's workflows to
+the new Bun, run `bun run test:slow` on it, then set `bun-version` in the root's workflows to
 `bun --version` in one commit (`tests/package-exports.test.ts` fails if `delta.yml`'s says
 `latest`, or `publish.yml` stops running it).
 
@@ -196,6 +196,6 @@ the new Bun, run `bun run ci` on it, then set `bun-version` in the root's workfl
 Claude Code on the web runs in an ephemeral container. The monorepo's
 `.claude/hooks/session-start.sh` provisions it when `CLAUDE_CODE_REMOTE=true`: the Bun CI pins, then
 `bun install` at the root, and a browser. By hand, from the root, the same is
-`CLAUDE_CODE_REMOTE=true .claude/hooks/session-start.sh`; it is idempotent. The gate, `bun run ci`,
+`CLAUDE_CODE_REMOTE=true .claude/hooks/session-start.sh`; it is idempotent. The gate, `bun run test:slow`,
 runs there as it does locally: no database server, no Docker. Nothing in the container survives
 reclamation: commit what is worth keeping.
