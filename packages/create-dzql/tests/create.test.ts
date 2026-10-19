@@ -10,7 +10,7 @@ const parent = mkdtempSync(join(tmpdir(), "create-dzql-"));
 const app = join(parent, "my-app");
 
 beforeAll(async () => {
-  const made = Bun.spawnSync(["bun", join(import.meta.dir, "../index.ts"), "my-app"], { cwd: parent, stdout: "pipe", stderr: "pipe" });
+  const made = Bun.spawnSync(["bun", join(import.meta.dir, "../cli.ts"), "my-app"], { cwd: parent, stdout: "pipe", stderr: "pipe" });
   expect(made.stderr.toString()).toBe("");
   expect(made.exitCode).toBe(0);
   symlinkSync(join(root, "node_modules"), join(app, "node_modules"));
@@ -52,7 +52,7 @@ test("the model's page starts beside the app, from dzql's modeling example", asy
 }, 30_000);
 
 test("a name that is not one is refused", () => {
-  const made = Bun.spawnSync(["bun", join(import.meta.dir, "../index.ts"), "My App"], { cwd: parent, stderr: "pipe" });
+  const made = Bun.spawnSync(["bun", join(import.meta.dir, "../cli.ts"), "My App"], { cwd: parent, stderr: "pipe" });
   expect(made.exitCode).toBe(1);
   expect(made.stderr.toString()).toContain("is not a name for an app");
 });

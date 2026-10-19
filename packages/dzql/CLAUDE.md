@@ -136,9 +136,9 @@ delta's one server (the page, drawn over the socket, and `/health`). By hand:
 
 ```bash
 cd "$(mktemp -d)"
-bun /Users/peterb/Workshop/blueshed/dzql/packages/create-dzql/index.ts dzql-test-app
+bun <this repository>/packages/create-dzql/cli.ts dzql-test-app
 cd dzql-test-app
-ln -s /Users/peterb/Workshop/blueshed/dzql/node_modules node_modules   # the workspace's dzql and delta, not npm's
+ln -s <this repository>/node_modules node_modules   # the workspace's dzql and delta, not npm's
 bun check && bun test && bun dev
 ```
 

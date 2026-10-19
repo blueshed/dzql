@@ -32,8 +32,8 @@ CLAUDE.md, README.md, .claude/skills/ (from `delta install-skills`, run by `bun 
   and resources, never a `Bun.serve` of its own; the model's page is `modelRoute()`
   (`dzql/model`), composed only in development. `bun run stop` is `delta stop`.
 - dzql's own files run on the app for the rest: `src/modelling/stories-run.ts` (stories),
-  `src/rendering/cli.ts` (cli), `dzql model` (`bun run model`, the model's page alone, and
-  `cli:model`).
+  `src/rendering/cli.ts` (cli), `dzql model` (`bun run model`: the model's page alone, and its
+  verbs).
 
 The kernel finds an app by `ETA_EXAMPLE`: an example by name (`chat`, in dzql) or a folder (`./src`),
 and in it the `app` its `routes.ts` exports (or an example's `index.ts` `example`).

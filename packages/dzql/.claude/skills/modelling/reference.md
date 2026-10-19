@@ -18,7 +18,7 @@ work in.
 | | Wherever dzql is installed | In a project (`bun create dzql`) | In dzql itself (`packages/dzql`) |
 |---|---|---|---|
 | The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), at `/model`, the model kept in `model.json`, named for the project; beside an app, its `routes.ts` composes `modelRoute()` (`dzql/model`) in development | `bun dev`, at `localhost:3000/model` beside the app (or `bun run model` alone, port 3001) | `bun run dev:modeling`, port 3005 |
-| A verb | `bunx dzql model <verb>` | `bun run cli:model <verb>`: it talks to the server whose sign-in link it was given | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
+| A verb | `bunx dzql model <verb>` | `bun run model <verb>`: it talks to the server whose sign-in link it was given | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
 | Sign in | `login <link>`: `dzql model` and `bun dev` print a sign-in link for each keeper as they start (Peter's for the person, Claude's for the CLI); no email or password. `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) still works | the same | the same |
 | What it makes | after every change, while no check is open, into `model/` (`--out`): `types.ts`, `guards.ts`, `migrations/` and `model.test.ts`; `bunx dzql model check` once, exit 1 while one is open | the same | the same, `bun src/cli/index.ts model check` |
 
@@ -50,7 +50,7 @@ numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by n
 
 Words with an apostrophe go in double quotes (`story ann does "Ann scans the table's QR code"`):
 a single quote left open runs the commands after it into one story. Or `-` reads the words from
-stdin (`echo "..." | bun run cli:model story ann does -`; `reword <n> -` too). A story is one line;
+stdin (`echo "..." | bun run model story ann does -`; `reword <n> -` too). A story is one line;
 the model refuses a second.
 
 ## Documents

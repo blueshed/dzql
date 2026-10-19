@@ -17,6 +17,10 @@ import { join, resolve } from "node:path";
 
 const args = process.argv.slice(2);
 const name = args.find((a) => !a.startsWith("-")) ?? "my-app";
+if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) {
+  console.error(`"${name}" is not a name for an app: lower case letters, digits and dashes`);
+  process.exit(1);
+}
 const flags = new Set(args.filter((a) => a.startsWith("-")));
 const dest = resolve(name);
 if (existsSync(dest)) {

@@ -6,6 +6,13 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The starters alike; one `model` script
+
+Both starters are `cli.ts` (create-dzql's was `index.ts`), and both refuse a folder that exists and
+a name that is not lower case and dashes, in the same words (only create-dzql checked the name). A
+new app from either has one `model` script, `dzql model` by dzql's bin, where it had `model` and
+`cli:model`, the same command reaching into `node_modules/dzql/src`.
+
 - **The root `tsconfig.json` is a config, not an error** (19 October, Zed's report): it said
   `"files": []`, which TypeScript refuses (TS18002). It checks the root's own `scripts/` now, which
   nothing checked before, and `bun run affected` runs it beside the docs and ranges checks; each

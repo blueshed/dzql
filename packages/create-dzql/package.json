@@ -10,10 +10,10 @@
   "private": false,
   "type": "module",
   "bin": {
-    "create-dzql": "./index.ts"
+    "create-dzql": "./cli.ts"
   },
   "files": [
-    "index.ts",
+    "cli.ts",
     "template",
     "starter",
     "README.md"
