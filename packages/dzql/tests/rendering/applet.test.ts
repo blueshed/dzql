@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import fixture from "./island.test.html";
+import fixture from "./applet.test.html";
 import { press, waitFor, webview } from "../../src/rendering/webview";
 
 let server: ReturnType<typeof Bun.serve>;
@@ -12,7 +12,7 @@ afterAll(() => {
   server.stop(true);
 });
 
-/** A fresh browser on the fixture, its islands on `window`. */
+/** A fresh browser on the fixture, its applets on `window`. */
 async function open(): Promise<Bun.WebView> {
   const view = webview();
   await view.navigate(server.url.toString());
@@ -29,7 +29,7 @@ async function run(script: string): Promise<unknown> {
   return await inRoot(view, script);
 }
 
-describe("an island: a railroad component as an applet", () => {
+describe("an applet drawn by railroad: a railroad component as an applet", () => {
   test("mounts over what the server drew inside it, having read it; its props, its update and its document's ops redraw it; its cleanup takes it away", async () => {
     await using view = await open();
     await inRoot(view, `

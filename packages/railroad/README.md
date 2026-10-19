@@ -123,8 +123,8 @@ a worker with no DOM and no JSX.
 - **[dzql's rendering](https://github.com/blueshed/dzql/tree/main/packages/dzql)**
   makes live apps for a few people at once, told as stories and checked by
   them. The server draws each page and delta keeps its documents; railroad can
-  draw an applet, the one piece of a page whose state a render would destroy (an
-  island, in dzql's code).
+  draw an applet, the one piece of a page whose state a render would destroy
+  (`dzql/rendering/applet`).
   `bun create dzql my-app` makes one.
 
 ## What it is not

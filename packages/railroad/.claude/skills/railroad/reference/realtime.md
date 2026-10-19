@@ -71,16 +71,16 @@ await run(() => serve({ ws, routes: { "/": home } }));
 - Where documents are kept (a JSON file, SQLite, Postgres on dzql, memory, an outside source) changes nothing here: one client. The `delta-doc` skill, installed with delta, has them.
 - Two copies of railroad break this silently: [one-copy](one-copy.md).
 
-## dzql: an island in a page the server draws
+## dzql: an applet in a page the server draws
 
 ```tsx
 // dzql's examples/ticker/applets/, as an app imports it
 import { registerApplet } from "dzql/rendering/applets";
-import { island } from "dzql/rendering/island";
+import { applet } from "dzql/rendering/applet";
 
 type ClockProps = { tz: string };
 
-const picker = island<ClockProps>((props, ctx, el) => {
+const picker = applet<ClockProps>((props, ctx, el) => {
   const zones = [...el.querySelectorAll("option")].map((o) => o.value); // what the server drew
   return (
     <select onchange={(e) => ctx.send("clock", [{ op: "replace", path: "/tz", value: (e.target as HTMLSelectElement).value }])}>
@@ -92,7 +92,7 @@ const picker = island<ClockProps>((props, ctx, el) => {
 registerApplet("zone-picker", picker);
 ```
 
-- dzql's server (`dzql/rendering`) draws the page; its client morphs it, never inside a `[data-applet]`. An island draws that inside with `mount()`, disposed when eta removes the element.
+- dzql's server (`dzql/rendering`) draws the page; its client morphs it, never inside a `[data-applet]`. An applet draws that inside with `mount()`, disposed when eta removes the element.
 - Props are a signal, set by new `data-props` and by the document's patches through the optional `reduce(props, ops)`.
 - Read what the server drew inside `el` first: `render`'s result replaces it. Never bind `el`'s own attributes.
 - Write with `ctx.send(doc, ops)`, never by setting props. The rest is dzql's `dzql-app` skill.

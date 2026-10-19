@@ -11,7 +11,7 @@ A dzql app is its documents. A document is what a person needs in front of them 
 and you are told every change; write to it and everyone holding it is told. The server draws each
 person's page from the documents they hold, and sends only what changed. Routes and resources
 are on the server: a resource looks after one document (who may write it, what a write becomes);
-an island is the only client resource.
+an applet is the only client resource.
 
 dzql's rendering is the thin client, for performance: the server draws the page, with applets
 where a page holds state, and the documents are compiled to Postgres. The light one, for
@@ -63,7 +63,7 @@ least that makes the next story pass; `bun run stories` after each.
 
 Beyond the cafe, dzql's older examples show the same pieces in their earlier places (`delta.ts`,
 `documents/<thing>.ts`, `resources/<thing>.ts`, `index.ts`): a document the server works out
-(chat's `here`, [resource](reference/resource.md#after-a-write)); an applet or an island, only for
+(chat's `here`, [resource](reference/resource.md#after-a-write)); an applet, only for
 state a redraw would destroy (the ticker's board, [applets](reference/applets.md),
 [watching](reference/watching.md)); a CLI (chat's `cli.ts`); uploads (the wedding's); passwords and
 a proxy (leave's `signin.ts`). Also: what crosses the socket, [wire](reference/wire.md); an

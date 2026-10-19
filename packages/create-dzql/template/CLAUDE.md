@@ -10,7 +10,7 @@ the page the server draws from them. The skills say how, and `bun install` puts 
 - **dzql-app**: building or changing the app in `src/`: stories, documents, resources, the page.
   `node_modules/dzql/examples/cafe/` is an app built from its model, laid out as this one is: its
   README walks the path from the model to the app.
-- **delta-doc**: the documents themselves: schema, storage, the ledger. **railroad**: an island.
+- **delta-doc**: the documents themselves: schema, storage, the ledger. **railroad**: an applet drawn with it.
 
 ## The shape
 
@@ -27,7 +27,7 @@ page, so the routes and resources are the server's:
 - `src/resources/<name>/` is one document: `<name>-api.ts` its document, registered with the store
   (`register`); `<name>.ts` its resource (who may write it, what a write becomes), listed in the app's
   `resources`; `<name>-view.ts` its part of the page, drawn by `src/page.ts`.
-- An island is the only client resource.
+- An applet is the only client resource.
 - People sign in by a link each, printed as the server starts (`signInLinks`, from
   `dzql/rendering/links`), and sign out by the bento's `leave`: no email and no password unless a
   story asks for them.

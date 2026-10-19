@@ -53,5 +53,5 @@ Without JSX, the recipe's `applyOpsToCollection` (`recipe.md`; `DomCollection` i
   for several clients in one process (`testing.md`).
 - railroad's own skill has the JSX gotchas (no `.get()` in children, keys, dispose scopes).
 - In an app on dzql's rendering the page never opens a document: the server draws it from delta's documents and
-  the client morphs it; an island (a railroad component) is handed its document's ops by dzql.
+  the client morphs it; an applet (a railroad component, `dzql/rendering/applet`) is handed its document's ops by dzql.
   dzql's own skill (`dzql-app`) has that.

@@ -3,18 +3,18 @@ import { signal, type ReadonlySignal, type Signal } from "@blueshed/railroad/sig
 import type { Applet, AppletContext } from "./applets";
 import type { PatchOp } from "./json-patch";
 
-// An island: an applet drawn by railroad (`@blueshed/railroad`) instead of by hand. The page is the
-// server's; an applet is the one piece whose client-side state a render would destroy, and an
-// island is that piece written as a railroad component. Its props are a signal: a render that gives
+// An applet drawn by railroad (`@blueshed/railroad`) instead of by hand. The page is the
+// server's; an applet is the one piece whose client-side state a render would destroy, and this
+// is that piece written as a railroad component. Its props are a signal: a render that gives
 // the element new `data-props` sets it (`update`), and so do its document's ops as they are echoed,
 // through `reduce` (`patch`). Built on railroad's `signal` and `mount` and nothing else.
 //
-// The island draws only inside its element, and never binds the element's own attributes: those are
+// It draws only inside its element, and never binds the element's own attributes: those are
 // the page's, which the morph keeps (src/client/morph.ts), as it never descends into the element.
 // What the server rendered inside it -- the zones as `<option>`s -- is `render`'s to read, and is
 // then replaced by what `render` draws, so HTML stays the vocabulary.
 
-export function island<P>(
+export function applet<P>(
   render: (props: ReadonlySignal<P>, ctx: AppletContext, el: HTMLElement) => Node,
   reduce?: (props: P, ops: PatchOp[]) => P,
 ): Applet {
@@ -25,7 +25,7 @@ export function island<P>(
       held.set(el, props);
       const dispose = mount(el, () => {
         const drawn = render(props, ctx, el);
-        el.replaceChildren(); // the server's, read; now the island's
+        el.replaceChildren(); // the server's, read; now the applet's
         return drawn;
       });
       return () => {

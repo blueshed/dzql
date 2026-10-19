@@ -1,7 +1,7 @@
-// Two islands for island.test.ts to drive in a real browser: one that takes its document's ops,
+// Two applets drawn by railroad, for applet.test.ts to drive in a real browser: one that takes its document's ops,
 // and one that does not.
 import type { Applet } from "../../src/rendering/applets";
-import { island } from "../../src/rendering/island";
+import { applet } from "../../src/rendering/applet";
 
 type Count = { n: number };
 
@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-window.counter = island<Count>(
+window.counter = applet<Count>(
   (props, ctx, el) => {
     const drawn = el.textContent; // what the server rendered inside, read before it is replaced
     const more = () => ctx.send("count", [{ op: "replace", path: "/n", value: props.peek().n + 1 }]);
@@ -27,4 +27,4 @@ window.counter = island<Count>(
   (props, ops) => ops.reduce((p, op) => (op.path === "/n" ? { n: Number(op.value) } : p), props),
 );
 
-window.still = island<Count>((props) => <b>{props.map((p) => String(p.n))}</b>);
+window.still = applet<Count>((props) => <b>{props.map((p) => String(p.n))}</b>);

@@ -8,7 +8,7 @@ dzql is the path an app takes from its stories to its documents to its pages, an
 step: **modelling** (`dzql/modelling`: the stories, told against the app), **rendering**
 (`dzql/rendering`: pages the server draws, the thin client's kernel) and **the compiled Postgres step**
 (`dzql/postgres`, `dzql/pglite`). One package; each part is its own entry, and nobody pays for a
-part they do not import: `@blueshed/railroad` is an optional peer that only an island needs.
+part they do not import: `@blueshed/railroad` is an optional peer that only an applet drawn by railroad needs (`dzql/rendering/applet`).
 
 **The public API is `package.json`'s `exports`, each named; no wildcard.** A module not listed
 is dzql's own and may change. `tests/readme/exports.test.ts` holds it: every `dzql/...` path an example,
@@ -44,7 +44,7 @@ packages/
 ├── dzql/                # The dzql package on npm, shaped as the root CLAUDE.md says (The shape of a package)
 │   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told), by-hand.ts (in a browser), costs.ts,
 │   │                    #   reading, definitions, guards; page/ is the model's page, an app dzql ships (`dzql model` serves it)
-│   ├── src/rendering/   # dzql/rendering: the kernel: server.ts, resources/, client/ (the browser's), bento, island.ts (railroad)
+│   ├── src/rendering/   # dzql/rendering: the kernel: server.ts, resources/, client/ (the browser's), bento, applet.ts (an applet drawn by railroad)
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt; cli.ts: dzql sql | init | migrate | link
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
 │   ├── src/compile/     # the compiler from delta's definitions, a module per kind of function (generateSql runs them all)
@@ -96,7 +96,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
   `examples/starter/` is laid out as `bun create dzql` makes an app: routes and resources, its
   `routes.ts` exporting `app` and serving it (`appIn`, `src/rendering/names.ts`, finds either).
   `src/modelling/page/` is the model's page, an app dzql ships (`dzql model` serves it); its `loader/` reads an app that exists.
-- railroad only in `src/rendering/island.ts`; the examples add `lucide`; the kernel imports no icon set.
+- railroad only in `src/rendering/applet.ts`; the examples add `lucide`; the kernel imports no icon set.
 - Documents are delta's: rendering owns people and pages, delta owns documents, their ledger and
   their one stream of changes. A **resource** owns one `docType` (the server side; the server draws the page) and has no place on the page; a
   place on the page is a **cell**, in the bento's **tray**; the visitor's own document is the **session**.

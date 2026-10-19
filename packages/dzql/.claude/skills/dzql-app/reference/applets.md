@@ -50,13 +50,13 @@ The stories cannot see controls drawn in the browser, so the mount says what the
 - It sends with `ctx.send(doc, ops)`. A story works it with `gesture` ([stories.md](stories.md)); a
   drag by hand is pointer events, so wrap `setPointerCapture` in a `try`.
 
-## Islands
+## Drawn by railroad
 
-An island is an applet written as a railroad component: `island(render, reduce?)` (`src/rendering/island.ts`).
+An applet can be written as a railroad component: `applet(render, reduce?)` (`src/rendering/applet.ts`).
 
 ```tsx
 // examples/ticker/applets/city-picker-applet.tsx
-const picker = island<ClockProps>((props, ctx, el) => {
+const picker = applet<ClockProps>((props, ctx, el) => {
   const zones = zonesFrom(el); // what the server drew inside el, as <option>s
   …
 });
@@ -66,4 +66,4 @@ registerApplet("city-picker", picker);
 - `render(props, ctx, el)` gets its props as a signal and returns what replaces `el`'s inside.
 - It never binds `el`'s own attributes: they are the page's.
 - Write one where an applet builds DOM by hand; keep a pure HTML-drawing function where there is
-  one (the wedding's menu). A page with an island carries railroad; its file is `<name>-applet.tsx`.
+  one (the wedding's menu). A page with an applet drawn by railroad carries railroad; its file is `<name>-applet.tsx`.

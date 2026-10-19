@@ -1,4 +1,4 @@
-// The city picker's mounting, an island (src/island.ts): the zones are HTML -- the server renders
+// The city picker's mounting, an applet drawn by railroad (src/rendering/applet.ts): the zones are HTML -- the server renders
 // them as <option>s inside this applet's mount, and the applet reads them there, so nothing about
 // them crosses the wire as JSON. Choosing one is a write to the clock document; the placeholder
 // follows the clock's own patches. Imported only by client/main.ts, and measured from the pages
@@ -6,7 +6,7 @@
 import { list } from "@blueshed/railroad/jsx";
 import { computed, signal } from "@blueshed/railroad/signals";
 import { registerApplet } from "dzql/rendering/applets";
-import { island } from "dzql/rendering/island";
+import { applet } from "dzql/rendering/applet";
 import { cityIn, matches, step, type Zone } from "./city-picker";
 import { cityOf, tzAfter, type ClockProps } from "./clock";
 
@@ -14,7 +14,7 @@ import { cityOf, tzAfter, type ClockProps } from "./clock";
 const zonesFrom = (el: ParentNode): Zone[] => [...el.querySelectorAll("option")].map((o) => ({ tz: o.value, label: o.textContent ?? "", city: cityIn(o.textContent ?? "") }));
 
 // its props are the clock document's own fields, so the clock's ops land on them
-const picker = island<ClockProps>((props, ctx, el) => {
+const picker = applet<ClockProps>((props, ctx, el) => {
   const zones = zonesFrom(el);
   const query = signal("");
   const open = signal(false);

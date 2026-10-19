@@ -23,6 +23,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Breaking
+
+- **An island is an applet** (19 October, Peter: "we agreed on applet"): `dzql/rendering/island` is
+  `dzql/rendering/applet`, and `island(render, reduce?)` is `applet(render, reduce?)`, an applet
+  drawn by railroad. To move: `import { applet } from "dzql/rendering/applet"`. railroad is still
+  needed by that module alone.
+
 ### Changed
 
 - **The model's page is in `src/modelling/page/`, out of `examples/`** (19 October, the monorepo's

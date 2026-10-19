@@ -14,7 +14,7 @@ const fast = process.argv.includes("--fast");
 const ci = process.argv.includes("--ci");
 const DIRS = ["tests/rendering", "tests/modelling", "tests/readme", ...EXAMPLES.map((e) => `examples/${e}`)];
 // what needs a browser: left out of the fast run
-const BROWSER = ["tests/rendering/bento.test.ts", "tests/rendering/client-coverage.test.ts", "tests/rendering/island.test.ts", "tests/rendering/webview.test.ts", "tests/rendering/client/**", "tests/modelling/by-hand.test.ts", "tests/modelling/costs.test.ts", "examples/*/client/**", "tests/readme/browser.test.ts"];
+const BROWSER = ["tests/rendering/bento.test.ts", "tests/rendering/client-coverage.test.ts", "tests/rendering/applet.test.ts", "tests/rendering/webview.test.ts", "tests/rendering/client/**", "tests/modelling/by-hand.test.ts", "tests/modelling/costs.test.ts", "examples/*/client/**", "tests/readme/browser.test.ts"];
 const args = [...(ci ? ["--parallel=2", "--timeout=30000"] : ["--parallel"]), ...DIRS, ...(fast ? BROWSER.map((p) => `--path-ignore-patterns=${p}`) : [])];
 const extra = process.argv.slice(2).filter((a) => a !== "--fast" && a !== "--ci");
 

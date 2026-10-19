@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { dirname, relative, resolve } from "node:path";
 
-// What a page's bundle takes of the kernel -- the client, and an island an example's client mounts --
+// What a page's bundle takes of the kernel -- the client, and an applet drawn by railroad an example's client mounts --
 // reaches nothing only a server has: the documents, the database, the server, a refusal, the
 // harness, what a drawing read, the resources, delta's server side, Bun's and Node's own. Walked
 // through what each really imports, as a bundle would (a type-only import goes), the way an app's
@@ -9,7 +9,7 @@ import { dirname, relative, resolve } from "node:path";
 // no app's rule.
 
 const ROOT = resolve(import.meta.dir, "../../..");
-const ENTRIES = ["src/rendering/client/app.ts", "src/rendering/island.ts"];
+const ENTRIES = ["src/rendering/client/app.ts", "src/rendering/applet.ts"];
 
 /** A module only a server has. */
 const serverOnly = (spec: string, file: string): boolean =>

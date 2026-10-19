@@ -56,8 +56,8 @@ storage from a JSON file to SQLite to Postgres compiled by dzql.
 - **Two clients: thick or thin, with applets in either.** Thick, the browser draws the page with
   railroad (paintbrush). Thin, the server draws every page from its URL (`dzql/rendering`), so
   its routes and resources are the server's. An applet is the piece of a page that holds state of
-  its own (a drag, a calendar): on the thin client it is written by hand or with railroad (an
-  island); on the thick client it is a railroad component like the rest of the page. Again, the
+  its own (a drag, a calendar): on the thin client it is written by hand or with railroad
+  (`dzql/rendering/applet`); on the thick client it is a railroad component like the rest of the page. Again, the
   only reason to pick one is ease or performance.
 - **Small enough for an AI to hold.** One way to do each thing, and the whole of a package readable
   before a line is written. Postgres is compiled from delta's definitions by a deterministic

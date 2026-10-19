@@ -38,7 +38,7 @@
     "./rendering/derive": "./src/rendering/derive.ts",
     "./rendering/grid": "./src/rendering/grid.ts",
     "./rendering/icons": "./src/rendering/icons.ts",
-    "./rendering/island": "./src/rendering/island.ts",
+    "./rendering/applet": "./src/rendering/applet.ts",
     "./rendering/sessions": "./src/rendering/sessions.ts",
     "./rendering/scope": "./src/rendering/scope.ts",
     "./rendering/names": "./src/rendering/names.ts",

@@ -50,11 +50,11 @@ last write while others keep writing, and says so when someone has changed it si
 refused (by `permit`, `shape` or the model's guards) is told on the page where it was made, in the
 story's words (`toldAt`), and the writer's echo says `refused`.
 
-## Applets and islands
+## Applets
 
 A part of a page whose state a redraw would destroy -- a drag halfway through, a clock, a chart's
 history -- is an **applet**: the client never morphs inside it (`[data-applet]`), and it is handed
-its document's ops as they come. Written with railroad, it is an **island** (`dzql/rendering/island`),
+its document's ops as they come. Written with railroad, it is an applet drawn by `applet()` (`dzql/rendering/applet`),
 the one thing that needs the optional `@blueshed/railroad`. Everything else is plain HTML with
 `data-write` controls.
 
@@ -64,7 +64,7 @@ the one thing that needs the optional `@blueshed/railroad`. Everything else is p
   history and their one stream of changes: a JSON file, SQLite, or Postgres compiled by dzql.
 - **The client** is the kernel's, <!-- measured:client -->7.4 KB<!-- /measured --> gzipped, with no
   framework to learn.
-- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws an island, only
+- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws an applet written with it, only
   on a page that has one (<!-- measured:railroad -->2.9 KB
   gzipped for `signal` and `mount`, 3.7 KB with `list`<!-- /measured -->).
 
