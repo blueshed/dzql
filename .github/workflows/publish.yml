@@ -92,6 +92,11 @@ jobs:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
 
+      # npm publish runs a package's own scripts: delta's `prepare` is Bun's
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+
       - name: Verify the tag matches package.json
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
