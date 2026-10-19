@@ -153,7 +153,7 @@ names, into `.claude/skills`.
 
 Then features resume, `ref` first, each checked against this plan before it is built. *`ref`: done* (19 October): a field that names a row of a list document by its path (`dish:menu:/items`), checked, guarded and proved on every store, over tables that keep their history so it never dangles; dzql's CHANGELOG has it.
 
-## The shape of each package (planned 19 October; starts when the DRY/YAGNI/KISS review has reported and dzql's Postgres suite has run)
+## The shape of each package (planned 19 October; started the same day, after the review below)
 
 Peter: "look at the shape of each package and determine the best and easiest to understand,
 adopt and adapt each to use it." The three libraries were shaped three ways: railroad's code loose
@@ -204,3 +204,59 @@ said again, and a commit pushed. No release.
    performance app look alike from the first day.
 6. **The root**: CLAUDE.md's layout table and docs/plan.md say the shape once; each package's
    CLAUDE.md links there rather than repeating it.
+
+## The DRY/YAGNI/KISS review (19 October), in the order it is done
+
+A read-only review of every package against a75acb01; each finding checked against the code. Done
+in this order, each a commit with the gate green; an item done is struck through here.
+
+**First, what is broken today:**
+
+1. `scripts/affected.ts` splits dzql's fast tier in two, wrongly: `src/cli/` goes to the Postgres
+   half though only modelling's tests exercise it, and `src/postgres/` never runs cafe or the
+   starter. The split goes (`test:fast:eta`, `test:fast:pg`, the bunfig's coverage excludes, the
+   names of empty `docs/eta`, `docs/delta`): dzql's whole fast tier is 26 s.
+2. Importing `dzql/modelling` makes a `db.sqlite` in the folder (`rendering/db.ts` opens it as it
+   loads; `harness.ts` imports it). It opens in `sqliteStore()`; `hear`, `applyOp` and `HtmlOp` move
+   to where rendering keeps them, so rendering no longer imports modelling; the workaround in
+   `stories-run.ts` goes.
+3. `dzql serve` fails in every app `bun create dzql` makes (it imports `index.ts`), and nothing runs
+   it: it goes.
+4. A new paintbrush app keeps the name "paintbrush", a `bun-create` entry to a file setup deleted,
+   a `test:slow` that fails, and a `tsconfig` naming a missing folder; the scaffolding of `bun create
+   blueshed/paintbrush` (the commit retries, the nested `.github/ci.yml` GitHub never reads, its
+   tests) goes.
+
+**Then the shape (above), which takes in:** dzql's model checks and page move out of `examples/`
+into `src/modelling/`, and the 1,656-line copy of hjeli's checks under
+`examples/modeling/loader/model/` goes (`model:check` runs `closureOf`); exports nothing imports
+(`dzql/modelling/definitions`, `dzql/rendering/cli`, dzql/postgres's re-export of delta's auth);
+eta's names and old paths in comments; the test configs said twice; the stale half of this file.
+
+**Then what is said twice in code**, each to one place:
+
+- the compiler's per-document dispatcher, written seven times, with three ways of an empty `CASE`
+  (one `prefixDispatch` helper); `lit` and `WHOLE` defined twice;
+- `validateOps`, a third copy of delta's write rules that nothing calls (delta gives the rules
+  from `./backend`, or it goes);
+- the stories harness restating the client's rules for controls, three times (one walk, by-hand's
+  page script built from `form-value`); then `harness.ts` split by job;
+- dzql's copies of delta's sites-bbox example and test helper (delta's `./testing` gives them);
+- the server message typed five ways, the undo write built four ways, the session cookie read four
+  ways (one `ServerMessage`, `walked`, `sessionFrom`);
+- railroad's two browser-testing manuals (`webview.ts`'s header is the one); its realtime page,
+  which restates delta's and dzql's; delta's server header and eval teaching `Bun.serve`; delta's
+  CLAUDE.md file map;
+- `/publish`'s hand list of sibling ranges (what `scripts/ranges.ts` reports) and its three
+  statements of the gate (each row: `bun run test:slow`);
+- skills installed two ways (paintbrush's by `prepare`, as create-dzql's), and the evolve test's
+  template copy made as `create-blueshed` makes it.
+
+**On Peter's word only (GitHub):** the workflows' path filters are a hand copy of the dependency
+graph and have drifted; while CI is paused they become one workflow running `bun scripts/affected.ts
+--slow`. `publish.yml` releases create-dzql through dzql's Postgres gate and never runs
+create-dzql's own test.
+
+**Open, to decide:** the cafe copies an item's name and price into each order rather than naming
+the dish (dzql todo); `docs/client-plan.md` is finished but for one item, an evolve step that moves
+a page to the server, which goes into paintbrush's `todo.jsonl` before the file goes.
