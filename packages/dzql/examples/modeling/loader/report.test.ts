@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { story, type Stories } from "dzql/modelling/stories";
 import { entityOf, fromStories, locate, noticing, pascal, readOp, singular } from "./from-stories";
-import { compare, format, judge } from "./report";
+import { format, judge } from "./report";
 import { extract, rulesIn } from "./extract";
 import { documentsIn } from "./documents";
 import { stories as chat } from "../../chat/stories";
@@ -153,23 +153,11 @@ describe("judge and format", () => {
     expect(report.story.states).toEqual([{ field: "StallLot.status", values: ["accepted", "offered"], moves: 2 }]);
     expect([...report.story.refusals]).toEqual([["Stall", 1]]);
   });
-  test("compare, by whole name and by the collection's own name", () => {
-    const other = {
-      actors: [{ name: "seller", auth_claim: "sub" }],
-      entities: [{ name: "Stall", fields: [] }, { name: "Lot", fields: [] }, { name: "Fishmonger", fields: [] }],
-      documents: [],
-      stories: [],
-    };
-    const c = compare(reading, other, []);
-    expect(c.shared).toEqual(["Stall", "StallLot = Lot"]);
-    expect(c.onlyTheirs).toEqual(["Fishmonger"]);
-    expect(c.onlyOurs).toContain("PantryBin");
-    const text = format("market", report, c);
+  test("the report says the stories, each predicate's gaps and what only stories can ask", () => {
+    const text = format("market", report);
     expect(text).toContain("# market: closure over stories");
     expect(text).toContain("13 stories (11 does, 1 cannot, 1 closes a tab)");
     expect(text).toContain("unestablished-row · buyer: the buyer changes a sign nobody adds");
-    expect(text).toContain("- shared by name (2): Stall, StallLot = Lot");
-    expect(format("market", report)).not.toContain("Against the other model");
   });
   test("a gap-free predicate reads in the singular and the plural", () => {
     const one = format("x", { ...report, gaps: report.gaps.slice(0, 1) });

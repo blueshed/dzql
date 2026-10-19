@@ -7,7 +7,6 @@
  *
  *   referentialClosure → resolvePath  (every entity/column/enum reference resolves)
  *   authorizationClosure → terminalOf (the terminal reaches the actor identity)
- *   emitPoliciesSql      → compilePath (faithful lowering to RLS — all of it, no [0])
  *
  * Forward-hop grammar (this build): one or more hops, optional leading `->`:
  *   path  := hop ('->' hop)*
@@ -29,11 +28,6 @@ import type { Model } from "./grammar";
 // never let an identifier break out of its quoting regardless (mirrors gen.ts's q).
 const q = (id: string): string => `"${id.replace(/"/g, '""')}"`;
 const tbl = (entity: string): string => entity.toLowerCase();
-// NULLIF(..., '') so an unset OR empty `app.user_id` casts to NULL (matches no rows) instead of
-// throwing `invalid input syntax for type bigint: ""` — the CL9 RLS robustness fix.
-// Exported as THE identity expression every SQL emitter keys on: gen-supabase.ts retargets
-// generated policies by replacing this exact string with `app_uid()` (see emitSupabasePoliciesSql).
-export const ME = "NULLIF(current_setting('app.user_id', true), '')::bigint";
 const lit = (v: string): string => `'${v.replace(/'/g, "''")}'`;
 
 export type Cond =
@@ -141,27 +135,4 @@ export function terminalOf(path: Path): { entity: string; column: string } | nul
   return last ? { entity: last.entity, column: last.trailing } : null;
 }
 
-function condSql(c: Cond): string {
-  switch (c.op) {
-    case "=": return `${q(c.col)} = ${lit(c.val)}`;
-    case "<>": return `${q(c.col)} <> ${lit(c.val)}`;
-    case "in": return `${q(c.col)} IN (${c.vals.map(lit).join(", ")})`;
-    case "null": return `${q(c.col)} IS NULL`;
-    case "notnull": return `${q(c.col)} IS NOT NULL`;
-    case "bool": return q(c.col);
-  }
-}
 
-/** Lower the path to a SQL predicate over the START entity's columns. `startField` is
- *  the marked field (its value is the first inbound). `isTemporal(entity)` → current_ view. */
-export function compilePath(path: Path, startField: string, isTemporal: (entity: string) => boolean): string {
-  const rec = (inbound: string, hops: Hop[]): string => {
-    const h = hops[0]!;
-    const rest = hops.slice(1);
-    const table = isTemporal(h.entity) ? `current_${tbl(h.entity)}` : tbl(h.entity);
-    const tail = rest.length ? rec(h.trailing, rest) : `${q(h.trailing)} = ${ME}`;
-    const where = [...h.conds.map(condSql), tail].join(" AND ");
-    return `${q(inbound)} IN (SELECT ${q(h.joinCol)} FROM ${q(table)} WHERE ${where})`;
-  };
-  return rec(startField, path.hops);
-}

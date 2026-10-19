@@ -25,6 +25,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **`model:check` keeps only the hjeli it uses** (19 October, the review): `--against` (comparing
+  with another model of the same domain), and with it hjeli's migrations and document-first
+  lowering, are gone, and so is what nothing called (`runAll`, `subscriptionClosure`,
+  `identityScopedDocs`, the RLS compilation): `examples/modeling/loader/model/` is 1,212 lines, from
+  1,656. Swapping its four predicates for the model page's `closureOf` is not mechanical (they read
+  a model made from stories, not the page's), and stays open (todo #64).
 - **The tests are in `tests/`, out of `src/`** (19 October, the monorepo's one shape, `docs/plan.md`):
   `src/` is what ships. `tests/modelling`, `tests/rendering` and `tests/readme` (the README's,
   once `readme/`) beside the Postgres ones (`tests/compile`, `tests/delta`, `tests/delta-pg`).

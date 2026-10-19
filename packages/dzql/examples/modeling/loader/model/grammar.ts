@@ -245,17 +245,7 @@ export type Gap = {
 
 export const EMPTY_MODEL: Model = { actors: [], entities: [], documents: [], operations: [], stories: [] };
 
-/** The empty DOCUMENT-FIRST model — the two-noun authoring shape (`documents` + `actions`, no
- *  `operations`). `init` writes this; `loadRaw` merges missing arrays from it for a document-first
- *  file so a mutation never reintroduces an `operations` array. */
-export const EMPTY_DOC_MODEL: Model = { actors: [], entities: [], documents: [], actions: [], stories: [] };
 
-/** The SEED for a doc that doesn't exist yet (the server-registered empty doc, and the local
- *  missing-file load). Carries BOTH write surfaces (`operations: []` AND `actions: []`) so the
- *  very first op can be either grammar's: `add /actions/-` (the document-first authoring verb)
- *  no longer dies with "Path not found at segment actions", and `init`'s `remove /operations`
- *  still has its key. `init` then strips `operations`, leaving a clean document-first file. */
-export const SEED_MODEL: Model = { actors: [], entities: [], documents: [], operations: [], actions: [], stories: [] };
 
 /**
  * The model's read facets as legacy `Document`s — the unified read set the predicates and the

@@ -1,7 +1,8 @@
 # loader/model
 
-A copy of hjeli's model and its six predicates (`grammar.ts`, `predicates.ts`, `paths.ts`,
-`document-first.ts`, `migrations.ts`, from hjeli's `src/core/` at commit 98f3c9a), so that eta
-depends on nothing outside itself. The files are as hjeli has them. A change to the predicates
-is made in hjeli first, and copied here by hand when the loader needs it. hjeli's own tests
-cover these files; eta's cover what the loader does with them.
+What `bun run model:check` uses of hjeli's model and its predicates (`grammar.ts`, `predicates.ts`,
+`paths.ts`, from hjeli's `src/core/` at commit 98f3c9a): the model's types and four of the six
+predicates (actor, precondition, referential and authorization closure), which the report reads
+from a model made from an example's stories (`../from-stories.ts`, `../report.ts`). What nothing
+here used was cut on 19 October (the comparison with another model, `--against`; the migrations
+and document-first lowering; RLS compilation). The model's page has its own checks, `closure.ts`.

@@ -110,55 +110,9 @@ function stripLiterals(where: string): string {
   return where.replace(/'(?:[^']|'')*'/g, "''");
 }
 
-/** True if a SQL clause (`where` / `order`) references the column `entity.field`
- *  as a real identifier. Literals are stripped first so an `Entity.field` appearing
- *  only inside a string literal isn't mistaken for a column reference. */
-function clauseReferences(clause: string | undefined, entity: string, field: string): boolean {
-  if (!clause) return false;
-  return new RegExp(`\\b${escapeRegex(entity)}\\.${escapeRegex(field)}\\b`).test(stripLiterals(clause));
-}
 
-function nodeMatches(node: DocNode, entity: string, field: string | undefined): boolean {
-  if (node.from !== entity) return false;
-  if (!field) return true;
-  if (node.fields.some((f) => f.kind === "scalar" && f.source === field)) return true;
-  // A field the document doesn't project but *filters* or *orders* by still shapes
-  // the projection — changing it alters membership (`where`) or sequence (`order`),
-  // so the substrate must re-emit to subscribers. Both clauses count as watching it.
-  // (Aggregate / nested inner scopes are reached separately by walkNodes, which
-  // visits every non-scalar field's inner DocNode.)
-  if (clauseReferences(node.where, entity, field)) return true;
-  if (clauseReferences(node.order, entity, field)) return true;
-  return false;
-}
 
-export function someNodeMatches(node: DocNode, entity: string, field: string | undefined): boolean {
-  let found = false;
-  walkNodes(node, (n) => {
-    if (!found && nodeMatches(n, entity, field)) found = true;
-  });
-  return found;
-}
 
-export function subscriptionClosure(model: Model): Gap[] {
-  const gaps: Gap[] = [];
-  const docs = readFacets(model);
-  for (const wa of writeActions(model)) {
-    for (const w of wa.writes) {
-      const watchers = docs.filter((d) => someNodeMatches(d.node, w.entity, w.path));
-      if (watchers.length === 0) {
-        gaps.push({
-          predicate: "subscription-closure",
-          kind: "silent-write",
-          refs: { entity: w.entity },
-          where: `${wa.actor}: ${wa.label}`,
-          detail: `${w.op} ${w.entity}${w.path ? "." + w.path : ""} reaches no open document`,
-        });
-      }
-    }
-  }
-  return gaps;
-}
 
 /** Does this write list contain the actor's establishing write? Ranges over a WriteAction's
  *  writes — so an actor established by a document-first ACTION (its delegating story correctly
@@ -837,45 +791,5 @@ export function authorizationClosure(model: Model): Gap[] {
   return gaps;
 }
 
-/** True if a clause binds the parameter `:name` (not a `::cast`), literals stripped. */
-function clauseBindsParam(clause: string | undefined, param: string): boolean {
-  if (!clause) return false;
-  return new RegExp(`(?<!:):${escapeRegex(param)}\\b`).test(stripLiterals(clause));
-}
 
-/**
- * Identity-scoped documents — the reads where the actor's *identity* crosses into
- * the data scope: a `source: "auth"` param (bound by the substrate from the server
- * WebSocket, never the client) appears in some node's `where`/`order`. These are the
- * security-sensitive reads — data filtered by *who is asking* (`inbox`, `my-profile`),
- * so they must bind the identity server-side and lower to owner/RLS enforcement. A
- * document scoped purely by `source: "client"` params (e.g. a `:venue_id` from a row
- * click) is *not* flagged — the client legitimately chooses what to read.
- * Informational: it classifies, it does not gate.
- */
-export function identityScopedDocs(model: Model): { doc: string; via: string[] }[] {
-  const out: { doc: string; via: string[] }[] = [];
-  for (const d of readFacets(model)) {
-    const authParams = d.params.filter((p) => p.source === "auth").map((p) => p.name);
-    if (!authParams.length) continue;
-    const via = new Set<string>();
-    walkNodes(d.node, (n) => {
-      for (const p of authParams) {
-        if (clauseBindsParam(n.where, p) || clauseBindsParam(n.order, p)) via.add(p);
-      }
-    });
-    if (via.size) out.push({ doc: d.name, via: [...via] });
-  }
-  return out;
-}
 
-export function runAll(model: Model): Gap[] {
-  return [
-    ...reachability(model),
-    ...subscriptionClosure(model),
-    ...actorClosure(model),
-    ...preconditionClosure(model),
-    ...referentialClosure(model),
-    ...authorizationClosure(model),
-  ];
-}

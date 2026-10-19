@@ -105,35 +105,7 @@ export function judge(stories: Stories): { reading: Reading; report: Report } {
   };
 }
 
-/** Another model of the same domain (hjeli's own), for the comparison: its verdict, and which entities the two readings share by name. */
-export function compare(reading: Reading, other: Model, gaps: Gap[]) {
-  // An entity of ours matches one of theirs by its whole chain (`OccasionEvent`) or by its own
-  // collection alone (`Venue/areas` -> `Area`).
-  const keys = (entity: string): string[] => {
-    const path = reading.collections.get(entity) ?? entity;
-    return [entity.toLowerCase(), entityOf([path.split("/").at(-1)!]).toLowerCase()];
-  };
-  const theirs = new Map(other.entities.map((e) => [e.name.toLowerCase(), e.name]));
-  const matched = new Set<string>();
-  const shared: string[] = [];
-  const onlyOurs: string[] = [];
-  for (const e of reading.model.entities) {
-    const hit = keys(e.name).find((k) => theirs.has(k));
-    if (hit) {
-      matched.add(hit);
-      shared.push(e.name === theirs.get(hit) ? e.name : `${e.name} = ${theirs.get(hit)}`);
-    } else onlyOurs.push(e.name);
-  }
-  return {
-    gaps: gaps.length,
-    counts: { actors: other.actors.length, entities: other.entities.length, stories: other.stories.length },
-    shared: shared.sort(),
-    onlyOurs: onlyOurs.sort(),
-    onlyTheirs: [...theirs.entries()].filter(([k]) => !matched.has(k)).map(([, v]) => v).sort(),
-  };
-}
-
-export function format(name: string, report: Report, against?: ReturnType<typeof compare>): string {
+export function format(name: string, report: Report): string {
   const c = report.counts;
   const lines: string[] = [];
   const out = (s = "") => lines.push(s);
@@ -168,15 +140,6 @@ export function format(name: string, report: Report, against?: ReturnType<typeof
   for (const [kind, ns] of kinds) {
     out(`- ${kind}: ${ns.length}`);
     for (const n of ns) out(`    ${n.where} — ${n.detail}`);
-  }
-  if (against) {
-    out();
-    out(`## Against the other model`);
-    out();
-    out(`${against.counts.actors} actors · ${against.counts.entities} entities · ${against.counts.stories} stories · ${against.gaps} gaps`);
-    out(`- shared by name (${against.shared.length}): ${against.shared.join(", ")}`);
-    out(`- only in the stories (${against.onlyOurs.length}): ${against.onlyOurs.join(", ")}`);
-    out(`- only in the model (${against.onlyTheirs.length}): ${against.onlyTheirs.join(", ")}`);
   }
   return lines.join("\n");
 }
