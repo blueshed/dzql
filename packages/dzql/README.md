@@ -10,7 +10,7 @@ Choose it for performance: the server draws the pages, with applets where a page
 its own, and the documents are compiled to Postgres. To prototype, start lighter with
 [paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush) (`bun create
 blueshed`): railroad and delta, the page drawn in the browser.
-Each example below is run as written by `readme/readme.test.ts`.
+Each example below is run as written by `tests/readme/readme.test.ts`.
 
 ### Install dzql and use rendering: the server draws the page
 

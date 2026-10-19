@@ -5,7 +5,7 @@ import { join } from "node:path";
 // dzql's public API is its named exports: what an app imports, and nothing else. No wildcard: a
 // module not listed is dzql's own and may change. Every `dzql/...` path an example, a skill, a
 // README or a doc names is one of them, and every one is a file.
-const root = join(import.meta.dir, "..");
+const root = join(import.meta.dir, "..", "..");
 const exported = Object.entries(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).exports as Record<string, string>);
 
 test("every export is a file, and none is a wildcard", () => {
@@ -19,7 +19,7 @@ test("every dzql path the examples, skills and docs name is exported", async () 
   const names = new Set(exported.map(([name]) => `dzql${name.slice(1)}`));
   const said = new Map<string, string>();
   const where = [
-    [root, "{examples,src,readme,.claude}/**/*.{ts,tsx,md,css}"],
+    [root, "{examples,src,tests/readme,.claude}/**/*.{ts,tsx,md,css}"],
     [join(root, ".."), "{paintbrush,create-dzql}/**/*.{ts,tsx,md}"],
     [join(root, "..", ".."), "{README.md,docs/**/*.md}"],
   ] as const;

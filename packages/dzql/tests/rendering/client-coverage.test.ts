@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname } from "node:path";
-import { bundle, count, decode, gaps, judge, judged, kept, read, shared, spans, testFiles, type Ran } from "./client-coverage";
+import { bundle, count, decode, gaps, judge, judged, kept, read, shared, spans, testFiles, type Ran } from "../../src/rendering/client-coverage";
 import fixture from "./client/morph.test.html";
-import { waitFor, webview } from "./webview";
+import { waitFor, webview } from "../../src/rendering/webview";
 
 // The client in bun test's coverage gate: what a page ran, read from Chrome, by file and line.
 
@@ -17,7 +17,7 @@ describe("the client's coverage", () => {
       await using view = webview();
       await view.navigate(server.url.toString());
       await waitFor(view, `typeof window.morph`, (v) => v === "function");
-      const at = (await Bun.file(`${import.meta.dir}/client/morph.ts`).text()).split("\n").findIndex((line) => line.startsWith("export function morph(")) + 1;
+      const at = (await Bun.file(`${import.meta.dir}/../../src/rendering/client/morph.ts`).text()).split("\n").findIndex((line) => line.startsWith("export function morph(")) + 1;
       const ran: Ran = new Map();
       await read(view, ran); // morph.ts loaded, and morph never called
       expect(ran.get(`${root}/src/rendering/client/morph.ts`)?.get(at)).toBe(false);

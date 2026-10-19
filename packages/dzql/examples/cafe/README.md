@@ -49,5 +49,5 @@ it tells (`model: 6`); one that is the app's own, such as signing out, says `mod
 
 **7. Read back: is the app the model as told?** `bun run model:check cafe --against-page <the
 page's model as JSON>` matches every story by its number and every document by its name: no gaps.
-dzql's `src/modelling/conformance.test.ts` holds all of this to each other on every change: the
+dzql's `tests/modelling/conformance.test.ts` holds all of this to each other on every change: the
 checks close, the proof passes through the guards, and the read-back finds no gap.

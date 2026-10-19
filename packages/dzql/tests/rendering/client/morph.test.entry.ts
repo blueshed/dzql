@@ -4,8 +4,8 @@
 // applet belongs to an example, not the kernel (see
 // the chat example's own morph-applet test for one that mounts a real applet
 // against this same morph.ts).
-import { formValue } from "./form-value";
-import { morph, morphElement, morphTag } from "./morph";
+import { formValue } from "../../../src/rendering/client/form-value";
+import { morph, morphElement, morphTag } from "../../../src/rendering/client/morph";
 
 declare global {
   interface Window {

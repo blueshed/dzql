@@ -2,7 +2,7 @@ import { afterAll, expect, setSystemTime, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { costs, differing, gzipped, item, measure, received, rewritten, said, size, tap, type Heard, type Run } from "./costs";
+import { costs, differing, gzipped, item, measure, received, rewritten, said, size, tap, type Heard, type Run } from "../../src/modelling/costs";
 
 // Every number the README quotes is a run's (src/costs.ts): what one write sends everyone else,
 // the client's size. A change that moves one fails here until `bun run costs` writes
@@ -175,7 +175,7 @@ test("a bundle is measured as production builds it: what a package says only in 
 
 test("a measure's clock stands still, on a day before the wedding's", async () => {
   try {
-    const { STILL } = await import("./costs-clock");
+    const { STILL } = await import("../../src/modelling/costs-clock");
     const at = Date.now();
     await Bun.sleep(5);
     expect([at, Date.now()]).toEqual([STILL.getTime(), STILL.getTime()]);

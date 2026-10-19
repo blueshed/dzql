@@ -1,23 +1,23 @@
 import { describe, expect, setSystemTime, spyOn, test } from "bun:test";
 import { mkdtempSync as tempDir, readdirSync, rmSync as removeDir } from "node:fs";
 import { tmpdir as osTmp } from "node:os";
-import type { PatchOp } from "../rendering/json-patch";
+import type { PatchOp } from "../../src/rendering/json-patch";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { defineDoc, registerDocs } from "@blueshed/delta/sqlite";
 import { example } from "../../examples/chat";
 import { db, schema } from "../../examples/chat/delta";
 import { stories } from "../../examples/chat/stories";
-import type { Resource } from "../rendering/resources/resource";
-import { read } from "../rendering/documents";
-import { appletProps, appletWrites, write } from "../rendering/html";
-import type { Example } from "../rendering/example";
-import { size } from "./costs";
-import { anyOne, controlsOn, goesTo, hear, holding, holds, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, writesOn, type Outcome, type Report, type Trace, type Wire } from "./harness";
-import { comparable, diff, drawParts, part, splitTag } from "../rendering/parts";
-import { post, story, untold, type Stories, type Story } from "./stories";
-import { serverWrite } from "../rendering/documents";
-import { refuse, tell, toldAt } from "../rendering/refusal";
+import type { Resource } from "../../src/rendering/resources/resource";
+import { read } from "../../src/rendering/documents";
+import { appletProps, appletWrites, write } from "../../src/rendering/html";
+import type { Example } from "../../src/rendering/example";
+import { size } from "../../src/modelling/costs";
+import { anyOne, controlsOn, goesTo, hear, holding, holds, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, writesOn, type Outcome, type Report, type Trace, type Wire } from "../../src/modelling/harness";
+import { comparable, diff, drawParts, part, splitTag } from "../../src/rendering/parts";
+import { post, story, untold, type Stories, type Story } from "../../src/modelling/stories";
+import { serverWrite } from "../../src/rendering/documents";
+import { refuse, tell, toldAt } from "../../src/rendering/refusal";
 
 /** An example and its stories, by its folder under examples/. */
 async function load(name: string): Promise<{ example: Example; stories: Stories }> {
@@ -1304,7 +1304,7 @@ test("bun run stories never opens the app's own database: DB_PATH is set before 
     writeFileSync(`${dir}/src/stories.ts`, "export const stories = { cast: {}, stories: [] };\n");
     const env: Record<string, string | undefined> = { ...process.env, ETA_EXAMPLE: "./src" };
     delete env.DB_PATH;
-    const p = Bun.spawn(["bun", `${import.meta.dir}/stories-run.ts`], { cwd: dir, env, stdout: "pipe", stderr: "pipe" });
+    const p = Bun.spawn(["bun", `${import.meta.dir}/../../src/modelling/stories-run.ts`], { cwd: dir, env, stdout: "pipe", stderr: "pipe" });
     expect(await new Response(p.stdout).text()).toContain("no app yet");
     await p.exited;
     expect(existsSync(`${dir}/db.sqlite`)).toBe(false);
@@ -1316,7 +1316,7 @@ test("bun run stories never opens the app's own database: DB_PATH is set before 
 test("importing dzql/modelling, or a test's socket, opens no database: the harness opens the app's only when a run asks", () => {
   const dir = tempDir(`${osTmp()}/dzql-import-`);
   try {
-    const run = Bun.spawnSync(["bun", "-e", `await import(${JSON.stringify(`${import.meta.dir}/index.ts`)}); await import(${JSON.stringify(`${import.meta.dir}/../rendering/test-socket.ts`)});`], { cwd: dir, env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "DB_PATH")) });
+    const run = Bun.spawnSync(["bun", "-e", `await import(${JSON.stringify(`${import.meta.dir}/../../src/modelling/index.ts`)}); await import(${JSON.stringify(`${import.meta.dir}/../../src/rendering/test-socket.ts`)});`], { cwd: dir, env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "DB_PATH")) });
     expect(run.exitCode).toBe(0);
     expect(readdirSync(dir)).toEqual([]);
   } finally {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { appletProps } from "./html";
-import { comparable, diff, drawnValues, drawParts, part, splitTag } from "./parts";
+import { appletProps } from "../../src/rendering/html";
+import { comparable, diff, drawnValues, drawParts, part, splitTag } from "../../src/rendering/parts";
 
 const draw = (render: () => string) => drawParts(render);
 const list = (key: string, rows: [string, string][]) => part(key, `<ul>${rows.map(([k, t]) => part(k, `<li>${t}</li>`)).join("")}</ul>`);

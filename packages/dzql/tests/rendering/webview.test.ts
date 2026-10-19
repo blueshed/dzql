@@ -1,5 +1,5 @@
 import { describe, expect, setSystemTime, test } from "bun:test";
-import { measured, press, urlFor, waitFor, webview } from "./webview";
+import { measured, press, urlFor, waitFor, webview } from "../../src/rendering/webview";
 
 // Both platforms' paths, on whichever this runs.
 describe("at: a view's own address", () => {

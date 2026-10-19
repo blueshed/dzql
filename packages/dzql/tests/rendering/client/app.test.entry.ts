@@ -7,7 +7,7 @@
 // Two applets first, as an example's main.ts registers its own: `tally`, which draws from its props
 // alone -- who is looking, and the total of the document it watches, derived -- and `ops`, which
 // takes its document's ops itself (`patch`). Each notes on `window.__applets` what it was given.
-import { registerApplet } from "../applets";
+import { registerApplet } from "../../../src/rendering/applets";
 
 type Rows = Record<string, { n: number }>;
 type Given = { mounts: unknown[]; updates: unknown[]; patches: unknown[] };
@@ -51,4 +51,4 @@ registerApplet("ops", {
   },
 });
 
-await import("./app");
+await import("../../../src/rendering/client/app");

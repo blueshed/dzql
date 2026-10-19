@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { signInLinks } from "./links";
-import type { Sessions } from "./sessions";
+import { signInLinks } from "../../src/rendering/links";
+import type { Sessions } from "../../src/rendering/sessions";
 
 // A link per person, printed as the server starts; opened, it starts a fresh session as them.
 const started: Record<string, unknown>[] = [];

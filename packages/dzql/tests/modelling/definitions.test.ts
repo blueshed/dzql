@@ -8,9 +8,9 @@ import { setLogLevel } from "@blueshed/delta/logger";
 import { mockClient, sendAndAwait, waitFor } from "@blueshed/delta/testing";
 import * as json from "@blueshed/delta/json";
 import * as sqlite from "@blueshed/delta/sqlite";
-import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "../postgres";
-import { openPglite } from "../postgres/pglite";
-import { definitionsOf, nextMigrationOf, sourceOf, testsOf, typesOf, type Model } from "./definitions";
+import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "../../src/postgres";
+import { openPglite } from "../../src/postgres/pglite";
+import { definitionsOf, nextMigrationOf, sourceOf, testsOf, typesOf, type Model } from "../../src/modelling/definitions";
 
 setLogLevel("silent");
 

@@ -3,7 +3,7 @@ import { Database } from "bun:sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { createTables, defineCustomDoc, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { registerMemory } from "@blueshed/delta/kinds";
-import { activeDocuments, createDocuments, Pending, read, serverWrite, settled, setActiveDocuments, watch } from "./documents";
+import { activeDocuments, createDocuments, Pending, read, serverWrite, settled, setActiveDocuments, watch } from "../../src/rendering/documents";
 
 /** delta over Postgres (dzql) behaves so: a write is answered first, and its change published later (over NOTIFY). */
 function laggingDelta() {

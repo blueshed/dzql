@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyPatch, isWriteId, patchMessage, refusedMessage } from "./json-patch";
+import { applyPatch, isWriteId, patchMessage, refusedMessage } from "../../src/rendering/json-patch";
 
 describe("a write's answers", () => {
   test("its echo carries its id to its writer, and to nobody else; its refusal carries the id, and why when it says", () => {

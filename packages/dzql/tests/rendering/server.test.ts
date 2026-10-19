@@ -5,21 +5,21 @@ import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
 import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
-import type { Resource, Walk } from "./resources/resource";
-import type { Example } from "./example";
-import type { ConnectionData } from "./connection";
+import type { Resource, Walk } from "../../src/rendering/resources/resource";
+import type { Example } from "../../src/rendering/example";
+import type { ConnectionData } from "../../src/rendering/connection";
 import index from "./server.test.fixture.html";
-import { WIRE, type PatchOp, type WriteId } from "./json-patch";
-import { closeConnection, openConnection, setCookieIsSession, wireName, wireOps } from "./resources/audience";
-import { read, serverWrite } from "./documents";
-import { part } from "./parts";
-import { appOf, CHANGED_SINCE, compose, createServer } from "./server";
+import { WIRE, type PatchOp, type WriteId } from "../../src/rendering/json-patch";
+import { closeConnection, openConnection, setCookieIsSession, wireName, wireOps } from "../../src/rendering/resources/audience";
+import { read, serverWrite } from "../../src/rendering/documents";
+import { part } from "../../src/rendering/parts";
+import { appOf, CHANGED_SINCE, compose, createServer } from "../../src/rendering/server";
 import { serve } from "@blueshed/delta/serve";
 import { createWs } from "@blueshed/delta/server";
-import { assemble, type Inspection } from "./resources";
-import { onFailure } from "./failed";
-import { refuse, tell, toldAt } from "./refusal";
-import { connect, expectMessage, expectQuiet, heard, htmlOf, nextMessage, open, opened, rawOf, write, type WireMessage } from "./test-socket";
+import { assemble, type Inspection } from "../../src/rendering/resources";
+import { onFailure } from "../../src/rendering/failed";
+import { refuse, tell, toldAt } from "../../src/rendering/refusal";
+import { connect, expectMessage, expectQuiet, heard, htmlOf, nextMessage, open, opened, rawOf, write, type WireMessage } from "../../src/rendering/test-socket";
 
 // A tiny, self-contained example -- not chat, not anything under the examples directory -- so
 // this file proves the kernel on its own: a note per session (its own document), and months of

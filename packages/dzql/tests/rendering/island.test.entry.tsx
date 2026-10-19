@@ -1,7 +1,7 @@
 // Two islands for island.test.ts to drive in a real browser: one that takes its document's ops,
 // and one that does not.
-import type { Applet } from "./applets";
-import { island } from "./island";
+import type { Applet } from "../../src/rendering/applets";
+import { island } from "../../src/rendering/island";
 
 type Count = { n: number };
 

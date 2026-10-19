@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { make } from "../cli/model";
+import { make } from "../../src/cli/model";
 
 // The tools agree. Each part of the path from a model to an app reads the model: the checks
 // (examples/modeling/closure.ts), the proof (./definitions.ts, `testsOf`), the guards (./guards.ts)

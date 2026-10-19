@@ -1,4 +1,4 @@
-# dzql's compile and Postgres tests (bun run test: bun --config=tests/bunfig.toml test tests/).
+# dzql's compile and Postgres tests (bun run test:pg: tests/compile, tests/delta, tests/delta-pg).
 [test]
 # Collect coverage on every `bun test` run.
 coverage = true

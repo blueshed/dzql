@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { columnOf, fieldOf, knownType, readingOf, refOf, says, touched, typeOf, valueOf } from "./reading";
+import { columnOf, fieldOf, knownType, readingOf, refOf, says, touched, typeOf, valueOf } from "../../src/modelling/reading";
 
 // One reading of a model, which the checks, the heart, the definitions, the proof and the guards take.
 const f = (name: string, type?: string) => ({ name, ...(type && { type }) });

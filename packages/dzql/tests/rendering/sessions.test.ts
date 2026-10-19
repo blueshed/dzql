@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
-import { sessionRows } from "./sessions";
+import { sessionRows } from "../../src/rendering/sessions";
 
 const hashOf = (cookie: string): string => new Bun.CryptoHasher("sha256").update(cookie).digest("hex");
 

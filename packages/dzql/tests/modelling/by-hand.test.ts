@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { example as chat } from "../../examples/chat";
 import { stories as chatStories } from "../../examples/chat/stories";
-import type { Example } from "../rendering/example";
-import { sameWrite } from "./by-hand";
-import { run, stillOpen } from "./harness";
-import { createServer } from "../rendering/server";
-import { write } from "../rendering/html";
-import type { Stories, Story } from "./stories";
+import type { Example } from "../../src/rendering/example";
+import { sameWrite } from "../../src/modelling/by-hand";
+import { run, stillOpen } from "../../src/modelling/harness";
+import { createServer } from "../../src/rendering/server";
+import { write } from "../../src/rendering/html";
+import type { Stories, Story } from "../../src/modelling/stories";
 import wrongPage from "./by-hand.test.html";
 
 // The stories by hand: each told as the harness tells it, then done in a browser the size of a

@@ -3,8 +3,8 @@ import { describe, expect, test } from "bun:test";
 import { createLocal } from "@blueshed/delta/local";
 import { createTables, registerDocs } from "@blueshed/delta/sqlite";
 import { closureOf } from "../../examples/modeling/closure";
-import { definitionsOf } from "./definitions";
-import { check, guardSource, guardsOf, guardWrites, rowsIn, rowsInPostgres, type GuardModel, type RowOf } from "./guards";
+import { definitionsOf } from "../../src/modelling/definitions";
+import { check, guardSource, guardsOf, guardWrites, rowsIn, rowsInPostgres, type GuardModel, type RowOf } from "../../src/modelling/guards";
 
 // The leave app's model, told as a modeller tells it: who asks, who approves, and what each write
 // presupposes. Every check is closed (hjeli's six, Easy's coverage: each write decided for both), so its guards may be generated.

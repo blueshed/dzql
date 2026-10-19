@@ -109,8 +109,8 @@ export function gaps(ran: Ran, judge: (file: string) => boolean = judged): strin
 /** What one process, or one file of a parallel run, leaves to be judged: the project's files it loaded, its tests among them, and what its pages ran. */
 export type Kept = { loaded: string[]; ran: [file: string, lines: [number, boolean][]][] };
 
-/** The project's test files, as bun test finds them: a whole run loads each one. */
-export const testFiles = (): string[] => [...new Bun.Glob("**/*.{test,spec}.{ts,tsx,js,jsx}").scanSync({ cwd: root, absolute: true })].filter((f) => !f.includes("/node_modules/") && !f.startsWith(`${root}/tests/`) && !f.startsWith(`${root}/examples/delta/`));
+/** The project's test files but the Postgres ones (tests/compile, delta, delta-pg: `bun run test:pg`), as bun test finds them: a whole run loads each one. */
+export const testFiles = (): string[] => [...new Bun.Glob("**/*.{test,spec}.{ts,tsx,js,jsx}").scanSync({ cwd: root, absolute: true })].filter((f) => !f.includes("/node_modules/") && !/\/tests\/(compile|delta|delta-pg)\//.test(f.slice(root.length)) && !f.startsWith(`${root}/examples/delta/`));
 
 /** What `ran` and the project's files `loaded` leave to be judged. */
 export const kept = (ran: Ran, loaded: string[] = Object.keys(require.cache)): Kept => ({ loaded: loaded.filter((f) => f.startsWith(`${root}/`) && !f.includes("/node_modules/")), ran: [...ran].map(([file, lines]) => [file, [...lines]]) });

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { bento, choice, type Field } from "../bento";
-import { appletProps, write } from "../html";
-import { diff, drawParts, part, splitTag } from "../parts";
-import { press, waitFor, webview } from "../webview";
-import { renderMessage } from "../resources/render";
+import { bento, choice, type Field } from "../../../src/rendering/bento";
+import { appletProps, write } from "../../../src/rendering/html";
+import { diff, drawParts, part, splitTag } from "../../../src/rendering/parts";
+import { press, waitFor, webview } from "../../../src/rendering/webview";
+import { renderMessage } from "../../../src/rendering/resources/render";
 import { lastId, push, pushRefused, pushRender, quietPages, reconnected, stubEverySocket, stubSend } from "./socket.test.helpers";
 import fixture from "./app.test.html";
 
@@ -1201,7 +1201,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a choice and the reading switch are drawn chosen by aria-checked alone, as a pressed tool is", async () => {
     await using view = await open();
-    const css = await Bun.file(new URL("../bento.css", import.meta.url)).text();
+    const css = await Bun.file(new URL("../../../src/rendering/bento.css", import.meta.url)).text();
     const { readingSwitch, readAs, tool } = bento({ icon: () => "", session: "session" });
     await pushRender(view, `<style>${css} :root { --accent: rgb(1, 2, 3); --card: rgb(4, 5, 6); }</style>${choice("Coming?", [{ text: "Yes", on: true, write: "" }, { text: "No", on: false, write: "" }])}${readingSwitch([["spark", "chart", false, readAs("board", "spark")], ["list", "list", true, readAs("board", "list")]])}<div class="pick">${tool("Find", { pressed: true, write: "" })}</div>`);
     await waitFor(view, `document.querySelectorAll('[role=radio]').length`, (v) => v === 4);

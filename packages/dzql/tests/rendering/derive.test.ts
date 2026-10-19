@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { defineSchema } from "@blueshed/delta/sqlite";
-import { bento } from "./bento";
-import { derivedPage, type Derivation } from "./derive";
-import { write } from "./html";
+import { bento } from "../../src/rendering/bento";
+import { derivedPage, type Derivation } from "../../src/rendering/derive";
+import { write } from "../../src/rendering/html";
 
 // A page drawn from a collection's shape: delta's columns, a declaration beside them, and the
 // permit, asked. The bento's own surfaces draw it; these say which, and with what.

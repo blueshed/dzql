@@ -131,7 +131,7 @@ names, into `.claude/skills`.
 ## Doing next, in order
 
 4. **dzql's public API**: *Done*. `exports` names 41 modules, no wildcards; eleven are dzql's own.
-   `readme/exports.test.ts` holds it. The overlaps were layers, not duplicates: `delta migrate`
+   `tests/readme/exports.test.ts` holds it. The overlaps were layers, not duplicates: `delta migrate`
    takes a JSON file or SQLite and hands a Postgres URL to `dzql migrate` (one command per store);
    sign-in by link is delta's protocol (`@blueshed/delta/auth-link`), its Postgres store
    (`dzql/auth-link`), and the thin client's links (`dzql/rendering/links`).
@@ -142,7 +142,7 @@ names, into `.claude/skills`.
 6. **The skills checked against the code**: *Done*. `scripts/docs.ts`, run first by `bun run
    affected` whatever changed: every link and every path a live README, CLAUDE.md, skill or doc
    names exists (a project's `src/` against the two starters). It found eight that did not, fixed.
-   dzql's `readme/exports.test.ts` holds every `dzql/...` import named to an export.
+   dzql's `tests/readme/exports.test.ts` holds every `dzql/...` import named to an export.
 7. **The docs by reader**: *Done* (19 October, Peter: "since our plans are in git"). `docs/` keeps
    what goes deeper: the plan, the stories, the thin client and its costs, the bento, Postgres,
    railroad's reasons, and the lineage. Finished plans, change requests, reviews, the inventory,

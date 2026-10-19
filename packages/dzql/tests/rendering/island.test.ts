@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import fixture from "./island.test.html";
-import { press, waitFor, webview } from "./webview";
+import { press, waitFor, webview } from "../../src/rendering/webview";
 
 let server: ReturnType<typeof Bun.serve>;
 

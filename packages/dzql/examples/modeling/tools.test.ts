@@ -5,7 +5,7 @@ import type { Raw } from "./heart";
 import { requireSentence, siteOf, writeSentence } from "./site";
 
 // hjeli's three that `dzql model` lacked: the site a customer reads, the model's verbs over MCP, and
-// the guards written from the model (the guards themselves: src/modelling/guards.test.ts).
+// the guards written from the model (the guards themselves: tests/modelling/guards.test.ts).
 const field = (name: string, type = "text") => ({ name, type });
 const leave: Raw = {
   models: { name: "leave" },

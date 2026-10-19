@@ -10,8 +10,8 @@ import type { Subprocess } from "bun";
 import { waitFor } from "@blueshed/delta/testing";
 
 const here = import.meta.dir;
-const readme = readFileSync(join(here, "..", "README.md"), "utf8");
-const cli = join(here, "..", "src", "cli", "index.ts");
+const readme = readFileSync(join(here, "..", "..", "README.md"), "utf8");
+const cli = join(here, "..", "..", "src", "cli", "index.ts");
 const file = (name: string) => readFileSync(join(here, name), "utf8");
 
 /** The README's `sh` blocks, in order, each a list of commands: `bunx dzql` run as this checkout's, `bun add` already done. */
@@ -22,7 +22,7 @@ const blocks = [...readme.matchAll(/```sh\n([\s\S]*?)```/g)].map((m) =>
 /** An app's folder, with the workspace's packages where `bun add` would put npm's. */
 function app(...files: [from: string, to: string][]): string {
   const dir = mkdtempSync(join(tmpdir(), "dzql-readme-"));
-  symlinkSync(join(here, "..", "..", "..", "node_modules"), join(dir, "node_modules"));
+  symlinkSync(join(here, "..", "..", "..", "..", "node_modules"), join(dir, "node_modules"));
   for (const [from, to] of files) cpSync(join(here, from), join(dir, to));
   return dir;
 }

@@ -2,15 +2,15 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Resource } from "../resources/resource";
-import type { Example } from "../example";
+import type { Resource } from "../../../src/rendering/resources/resource";
+import type { Example } from "../../../src/rendering/example";
 import index from "../server.test.fixture.html";
 import { Database } from "bun:sqlite";
 import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
-import { read } from "../documents";
-import { createServer } from "../server";
-import { refuse } from "../refusal";
+import { read } from "../../../src/rendering/documents";
+import { createServer } from "../../../src/rendering/server";
+import { refuse } from "../../../src/rendering/refusal";
 import {
   connectCli,
   DEFAULT_SESSION_FILE,
@@ -26,8 +26,8 @@ import {
   runCommand,
   signIn,
   watch,
-} from "./commands";
-import { appDir } from "../names";
+} from "../../../src/rendering/cli/commands";
+import { appDir } from "../../../src/rendering/names";
 
 describe("parseCommand", () => {
   test("inspect, watch, and undo take no argument", () => {

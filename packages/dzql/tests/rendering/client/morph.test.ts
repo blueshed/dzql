@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { waitFor, webview } from "../webview";
+import { waitFor, webview } from "../../../src/rendering/webview";
 import fixture from "./morph.test.html";
 
 let server: ReturnType<typeof Bun.serve>;

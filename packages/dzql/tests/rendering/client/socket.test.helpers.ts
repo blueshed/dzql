@@ -3,8 +3,8 @@
 // the client itself, its socket's `send` recording what the page sends (`stubSend`), and sending
 // what the server would as "message" events on that same socket (`push`).
 import { afterAll, beforeAll } from "bun:test";
-import { renderMessage } from "../resources/render";
-import { waitFor, webview } from "../webview";
+import { renderMessage } from "../../../src/rendering/resources/render";
+import { waitFor, webview } from "../../../src/rendering/webview";
 
 /** What the socket says, whatever it is told: nothing. */
 const quiet = (): void => {};

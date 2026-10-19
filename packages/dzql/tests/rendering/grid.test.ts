@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { slug, grid } from "./grid";
+import { slug, grid } from "../../src/rendering/grid";
 
 describe("grid", () => {
   test("places cells first-fit in the box's own order, and says which tray corners each sits in", () => {

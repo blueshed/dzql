@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { address, bento, choice, collectionsWrite, field, layers, matches, parseAddress, patchCollections, prop, rows, run, type Collections, type FieldOptions } from "./bento";
-import { appletProps, esc, join, write } from "./html";
-import { decoded, diff, drawParts, part } from "./parts";
-import { waitFor, webview } from "./webview";
-import { renderMessage } from "./resources/render";
+import { address, bento, choice, collectionsWrite, field, layers, matches, parseAddress, patchCollections, prop, rows, run, type Collections, type FieldOptions } from "../../src/rendering/bento";
+import { appletProps, esc, join, write } from "../../src/rendering/html";
+import { decoded, diff, drawParts, part } from "../../src/rendering/parts";
+import { waitFor, webview } from "../../src/rendering/webview";
+import { renderMessage } from "../../src/rendering/resources/render";
 import fixture from "./bento.test.html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out
@@ -374,7 +374,7 @@ describe("collectionsWrite: a session's permit and shape for the bento's own wri
 
 describe("the stylesheet", () => {
   test("bento.css nests no rule in another: a browser without CSS nesting (Safari before 16.5, Chrome before 112) drops the whole block", async () => {
-    const css = (await Bun.file(new URL("./bento.css", import.meta.url)).text()).replace(/\/\*[\s\S]*?\*\//g, "");
+    const css = (await Bun.file(new URL("../../src/rendering/bento.css", import.meta.url)).text()).replace(/\/\*[\s\S]*?\*\//g, "");
     const within: string[] = []; // the preludes of the blocks we are in
     const nested: string[] = [];
     for (const [, prelude, mark] of css.matchAll(/([^{};]*)([{};])/g)) {
@@ -387,8 +387,8 @@ describe("the stylesheet", () => {
   });
 
   test("the plain look is tokens: bento-plain.css imports the frame and sets only bento.css's own custom properties, on :root", async () => {
-    const frame = await Bun.file(new URL("./bento.css", import.meta.url)).text();
-    const plain = (await Bun.file(new URL("./bento-plain.css", import.meta.url)).text()).replace(/\/\*[\s\S]*?\*\//g, "");
+    const frame = await Bun.file(new URL("../../src/rendering/bento.css", import.meta.url)).text();
+    const plain = (await Bun.file(new URL("../../src/rendering/bento-plain.css", import.meta.url)).text()).replace(/\/\*[\s\S]*?\*\//g, "");
     expect(plain.trim().startsWith('@import "./bento.css";')).toBe(true);
     const selectors = [...plain.matchAll(/([^{};]+)\{/g)].map((m) => m[1]!.trim()).filter((s) => !s.startsWith("@"));
     expect(new Set(selectors)).toEqual(new Set([":root"]));

@@ -1,6 +1,6 @@
-# eta's tests (bun run test:eta), its modelling, rendering and examples, each held to 100%: this is the
-# default, so a plain `bun test` and its parallel workers read it. dzql's own tests, which need
-# Postgres, run with tests/bunfig.toml (bun run test).
+# Modelling's, rendering's, the README's and the examples' tests (bun run test:coverage), held to 100%:
+# this is the default, so a plain `bun test` and its parallel workers read it. The compile and
+# Postgres tests run with tests/bunfig.toml (bun run test:pg).
 [test]
 # 100% guards the kernel (src/rendering, src/modelling), not the examples: an example keeps its stories
 # and its server test, and is not held to every line (17 October, the CI design's call, on Peter's word).
@@ -23,4 +23,4 @@ coverageThreshold = 1.0
 # hjeli's model and predicates (hjeli: the modeller before eta's), covered by its own tests (its README.md).
 # An example's stories.ts is a declaration `bun run stories:all` runs whole; a test that imports
 # one to run a story or two would otherwise count the rest as uncovered
-coveragePathIgnorePatterns = ["**/node_modules/**", "src/compile/**", "src/postgres/**", "src/cli/**", "tests/**", "../delta/**/*", "../railroad/**/*", "**/delta/src/**", "**/railroad/src/**", "examples/**", "readme/**"]
+coveragePathIgnorePatterns = ["**/node_modules/**", "src/compile/**", "src/postgres/**", "src/cli/**", "tests/**", "../delta/**/*", "../railroad/**/*", "**/delta/src/**", "**/railroad/src/**", "examples/**"]

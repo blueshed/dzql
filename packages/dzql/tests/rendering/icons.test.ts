@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { svg, type IconNode } from "./icons";
+import { svg, type IconNode } from "../../src/rendering/icons";
 
 const cross: IconNode = [
   ["path", { d: "M18 6 6 18" }],

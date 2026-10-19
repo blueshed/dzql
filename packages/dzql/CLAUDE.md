@@ -11,7 +11,7 @@ step: **modelling** (`dzql/modelling`: the stories, told against the app), **ren
 part they do not import: `@blueshed/railroad` is an optional peer that only an island needs.
 
 **The public API is `package.json`'s `exports`, each named; no wildcard.** A module not listed
-is dzql's own and may change. `readme/exports.test.ts` holds it: every `dzql/...` path an example,
+is dzql's own and may change. `tests/readme/exports.test.ts` holds it: every `dzql/...` path an example,
 a skill, a README or a doc names must be exported. Make a module public by listing it, with the
 change that first needs it.
 
@@ -110,7 +110,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
 
 ## Testing
 
-- **Modelling and rendering** (no Docker): `bun check`, `bun run test:eta` (the default
+- **Modelling and rendering** (no Docker): `bun check`, `bun run test:coverage` (the default
   `bunfig.toml`: 100% coverage, the client's too, read from Chrome), `bun run stories:all`,
   `bun run costs --check`. The browser tests need Chrome (the dzql-app skill's *Tests*).
 - **The Postgres step**: `cd packages/dzql && bun run test:pg` (`tests/bunfig.toml`)

@@ -39,7 +39,7 @@ function everyonePhoto(props: CrowdProps): string {
   with a resource of its own that permits nothing. A `defineCustomDoc` recompute holds only what
   it selects but is told whole (`replace ""`) on every write to what it watches: keep it small. A
   plain `defineDoc` over just the collections is told field by field; `columns` narrows it.
-  `src/rendering/documents.test.ts` holds both.
+  `tests/rendering/documents.test.ts` holds both.
 
 ## When props cost
 

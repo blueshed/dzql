@@ -25,6 +25,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The tests are in `tests/`, out of `src/`** (19 October, the monorepo's one shape, `docs/plan.md`):
+  `src/` is what ships. `tests/modelling`, `tests/rendering` and `tests/readme` (the README's,
+  once `readme/`) beside the Postgres ones (`tests/compile`, `tests/delta`, `tests/delta-pg`).
+  `scripts/tests.ts` runs them, once for the fast tier (`--fast`: no browser, no coverage gate) and
+  once whole (`bun run test:coverage`, held to 100%), replacing `scripts/eta.ts` and
+  `scripts/fast-eta.ts`, which built one folder list twice; `test:eta` is `test:coverage`, and
+  `test:pg` runs only the Postgres folders.
 - **Every table the model makes keeps its history** (19 October, Peter: "developers have done the
   least possible because they could not spend the time doing the right thing"). `dzql model` made
   every table `temporal: false`, throwing away delta's default; it makes them temporal now. A row
