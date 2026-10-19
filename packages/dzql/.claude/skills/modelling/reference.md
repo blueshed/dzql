@@ -36,7 +36,7 @@ numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by n
 | A story | `story <actor> <does\|cannot> <words>`; `--post /login` among the words for one that posts a form before anyone holds a document |
 | A correction | `reword <n> <words>`; `teller <n> <actor>` for who tells it, its number kept |
 | What its write changes | `touches <n> <entity>...` |
-| What it writes, as hjeli had it | `writes <n> add <entity> replace <entity>.<field>=<value> remove <entity>...`; `add <entity>.<field>=<value>` is the value a new row starts with (`add tables.seated=false`) |
+| What it writes, as hjeli had it | `writes <n> add <entity> replace <entity>.<field>=<value> remove <entity>...`; `add <entity>.<field>=<value>` is the value a new row starts with (`add tables.seated=false`); a story's writes are the kinds of change it makes, not a count, so two adds of one entity are one new row starting with both (`add tools.out=false add tools.broken=false`) |
 | The state it presupposes | `requires <n> <entity>.<field>=<value>...` |
 | A story taken back | `unsay <n>` |
 | A document | `document <name> <root> <story>...`: at least one story it serves; entities are plural (`invoices`) |
@@ -123,7 +123,8 @@ README walks it; here is what each part of it says about the model.
    the identity the app's `who` returns (the session's id without one): look the teller up there,
    or have `who` return it, never both. The guards let a write through on the first `does` story
    of its writer whose requirements hold (read from the written row and the rows above it), and
-   refuse it in a `cannot` story's words; each op is checked on its own, and the server's own
+   refuse it in the words of the `cannot` story whose requirements hold (two on one write each say
+   their own state); each op is checked on its own, and the server's own
    writes (`serverWrite`) go by. A resource's `permit` then says only what its page sends.
 3. **Each person's own: `resources/visit/`.** The `own` document is the app's session: a
    `perSession` resource, its root the session's table, to which the app adds what a session keeps

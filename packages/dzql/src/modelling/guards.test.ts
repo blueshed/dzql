@@ -192,3 +192,22 @@ test("rowsInPostgres reads a row as the schema names its table, by `pool.query`;
   expect(await rowOf("nothing", "1")).toBeNull();
   expect(asked).toEqual([['SELECT * FROM "cafe_invoices" WHERE id = $1', "1"], ['SELECT * FROM "cafe_invoices" WHERE id = $1', "2"]]);
 });
+
+test("two cannot stories on one write: each refuses in its own words, when its own requirements hold (the Shed's feedback)", async () => {
+  const shed = guardsOf({
+    stories: [
+      { id: 3, text: "A member borrows a tool from the shed", actor: "member", writes: [{ entity: "loans", op: "add" }], requires: [{ entity: "tools", path: "out", value: "false" }, { entity: "tools", path: "broken", value: "false" }] },
+      { id: 4, text: "A member cannot borrow a tool someone else has out", actor: "member", kind: "cannot", writes: [{ entity: "loans", op: "add" }], requires: [{ entity: "tools", path: "out", value: "true" }] },
+      { id: 7, text: "A member cannot borrow a broken tool", actor: "member", kind: "cannot", writes: [{ entity: "loans", op: "add" }], requires: [{ entity: "tools", path: "broken", value: "true" }] },
+    ],
+    documents: [{ id: 1, name: "shed", root: "tools", list: 1, holds: { tools: { parent: null, fields: [{ name: "out", type: "boolean" }, { name: "broken", type: "boolean" }] }, loans: { parent: "tools", fields: [] } } as never, held_by: ["member"] }],
+  });
+  const tool = { out: false, broken: false };
+  const rowOf: RowOf = (entity) => (entity === "tools" ? { id: 1, ...tool } : null);
+  const borrow = () => check(shed, { actor: "member", doc: "shed", op: { op: "add", path: "/loans/-", value: { tools_id: 1 } }, rowOf });
+  expect(await borrow()).toEqual({ ok: true, story: 3 });
+  Object.assign(tool, { broken: true });
+  expect(await borrow()).toEqual({ ok: false, reason: "A member cannot borrow a broken tool", story: 7 });
+  Object.assign(tool, { out: true, broken: false });
+  expect(await borrow()).toEqual({ ok: false, reason: "A member cannot borrow a tool someone else has out", story: 4 });
+});

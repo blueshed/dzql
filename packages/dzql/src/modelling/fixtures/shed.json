@@ -1,0 +1,226 @@
+{
+ "tables": {
+  "models": [
+   {
+    "id": 1,
+    "name": "shed"
+   }
+  ],
+  "stories": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "text": "The keeper puts a tool in the shed",
+    "actor": "keeper",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "tools",
+      "op": "add",
+      "path": "out",
+      "to": "false"
+     },
+     {
+      "entity": "tools",
+      "op": "add",
+      "path": "broken",
+      "to": "false"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 2,
+    "models_id": 1,
+    "text": "The keeper marks a tool broken",
+    "actor": "keeper",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "tools",
+      "op": "replace",
+      "path": "broken",
+      "to": "true"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 3,
+    "models_id": 1,
+    "text": "A member borrows a tool from the shed",
+    "actor": "member",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "loans",
+      "op": "add",
+      "path": "back",
+      "to": "false"
+     },
+     {
+      "entity": "tools",
+      "op": "replace",
+      "path": "out",
+      "to": "true"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "tools",
+      "path": "out",
+      "value": "false"
+     },
+     {
+      "entity": "tools",
+      "path": "broken",
+      "value": "false"
+     }
+    ]
+   },
+   {
+    "id": 4,
+    "models_id": 1,
+    "text": "A member cannot borrow a tool someone else has out",
+    "actor": "member",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "loans",
+      "op": "add"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "tools",
+      "path": "out",
+      "value": "true"
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "models_id": 1,
+    "text": "A member cannot put tools in or mark them broken",
+    "actor": "member",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "tools",
+      "op": "add"
+     },
+     {
+      "entity": "tools",
+      "op": "replace",
+      "path": "broken"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 6,
+    "models_id": 1,
+    "text": "The keeper cannot borrow: that is the members'",
+    "actor": "keeper",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "loans",
+      "op": "add"
+     },
+     {
+      "entity": "tools",
+      "op": "replace",
+      "path": "out"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 7,
+    "models_id": 1,
+    "text": "A member cannot borrow a broken tool",
+    "actor": "member",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "loans",
+      "op": "add"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "tools",
+      "path": "broken",
+      "value": "true"
+     }
+    ]
+   }
+  ],
+  "documents": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "name": "shed",
+    "root": "tools",
+    "own": 0,
+    "list": 1,
+    "holds": {
+     "tools": {
+      "parent": null,
+      "fields": [
+       {
+        "name": "name",
+        "type": "text"
+       },
+       {
+        "name": "out",
+        "type": "boolean"
+       },
+       {
+        "name": "broken",
+        "type": "boolean"
+       }
+      ]
+     },
+     "loans": {
+      "parent": "tools",
+      "fields": [
+       {
+        "name": "back",
+        "type": "boolean"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "keeper",
+     "member"
+    ],
+    "stories": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ]
+   }
+  ]
+ }
+}

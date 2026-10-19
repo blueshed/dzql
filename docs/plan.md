@@ -147,6 +147,7 @@ names, into `.claude/skills`.
    railroad's reasons, and the lineage. Finished plans, change requests, reviews, the inventory,
    eta's old changelog and the cafe feedback are in git's history; `first-app.md`, which repeated
    the skill, is the cafe now.
-8. **A release**, on Peter's word: dzql and create-dzql first (todo #29), then create-blueshed.
+8. **A release**: *Done* (19 October, on Peter's word): railroad 0.17.0, delta 1.3.0, dzql and
+   create-dzql 0.14.0, create-blueshed 0.4.0, published from this repository by `publish.yml`.
 
 Then features resume, `ref` first, each checked against this plan before it is built.

@@ -181,11 +181,19 @@ function planOf(m: Reading): Planned[] {
     const ws = s.writes.filter((w) => !setup || w.op !== "remove");
     if (!ws.length || s.post) return [];
     const all = best(s, holding(s, [...new Set(ws.map((w) => w.entity))]), ws[0]!.entity);
-    return ws.flatMap((w) => {
+    const writes: Write[] = [];
+    for (const w of ws) {
       const d = all ?? best(s, holding(s, [w.entity]), w.entity);
       const op = d && opOf(d, w);
-      return op ? [{ as: s.actor, doc: m.nameOf(d), ops: [op] }] : [];
-    });
+      if (!op) continue;
+      // a story's writes are the kinds of change it makes, not a count: two adds of one entity are
+      // one new row, starting with each value said (`add tools.out=false add tools.broken=false`,
+      // the Shed's feedback)
+      const same = op.op === "add" && writes.find((x) => x.doc === m.nameOf(d) && x.ops[0]!.op === "add" && x.ops[0]!.path === op.path);
+      if (same) Object.assign(same.ops[0]!.value as Record<string, unknown>, op.value);
+      else writes.push({ as: s.actor, doc: m.nameOf(d), ops: [op] });
+    }
+    return writes;
   };
   // whoever a story needs first: the stories that add the rows it changes or adds under, or set the state it requires
   // a state is set up by one story, the one that presupposes least (a table added free, not one

@@ -40,12 +40,16 @@ CHANGELOG. Then `bun install` at the root, so `bun.lock` names the new versions.
 git add -A packages bun.lock
 git commit -m "Release <package> <version>, <package> <version>"
 git tag -a <package>@<version> -m "<package> <version>"     # one per package released, create-dzql with dzql
-git push origin main --follow-tags
+git push origin main
+git push origin refs/tags/<package>@<version>    # each tag on its own
 ```
 
-Each tag starts `.github/workflows/publish.yml`: that package's gate, then `npm publish
+Push the commit, then each tag on its own (`git push origin refs/tags/<tag>`): GitHub makes no
+event for a tag pushed with more than three others, and `--follow-tags` carries any older local
+tag with it. Each tag starts `.github/workflows/publish.yml`: that package's gate, then `npm publish
 --provenance`. If the push is refused, report the exact error and stop; never `--force` or
-`--no-verify`.
+`--no-verify`. If a run fails, stop and report it to Peter (its URL and its error): never fix it on
+GitHub or npm, never move or push a tag again, until he says.
 
 ## 5. Confirm and report
 

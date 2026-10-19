@@ -57,6 +57,12 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
 
 ## Releasing
 
+**The law of this repo: nothing is released without Peter's explicit say-so.** Never a version
+bump, a tag, a pushed tag, a change to a workflow on GitHub (enabling one included) or a setting on
+npm, unless Peter has said so in so many words for that release. We do not debug in npm or on
+GitHub: if a publish run fails, stop and report it to Peter, with the run's URL and its error, and
+change nothing there (no fix pushed to a tag, no tag moved or pushed again) until he says.
+
 `/publish` (`.claude/commands/publish.md`): one round, the packages named, a tag
 `<package>@x.y.z` each, which `.github/workflows/publish.yml` publishes to npm. Only when Peter
 asks. Each package keeps its own version, its `CHANGELOG.md` (`## [Unreleased]` written as work

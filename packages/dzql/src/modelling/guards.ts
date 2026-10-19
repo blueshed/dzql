@@ -10,7 +10,7 @@
 //   state    a story's `requires`: the row written, or a row it hangs under, holds the value
 //            (`requires requests.status=waiting`)
 //
-// A `cannot` story that names a write is the reason it is refused, in its words alone: the page
+// A `cannot` story that names a write, its requirements holding, is the reason it is refused, in its words alone: the page
 // shows them, and the story's number goes beside them (`story`) for logs and the harness. A write that no story says is
 // refused, never let through: the model is what may happen. A requirement on a row that is neither
 // the one written nor one above it cannot be checked from the write, so its story is refused with
@@ -135,9 +135,13 @@ export async function check(guards: Guards, write: { actor: string; doc: string;
     if (!failed) return { ok: true, story: rule.story };
     why.push(`story ${rule.story} ("${rule.text}") ${failed}`);
   }
-  const cannot = saying.find((r) => !r.allow && r.actor === actor);
-  if (cannot) return { ok: false, reason: cannot.text, story: cannot.story };
+  // refused in the words of the `cannot` story whose requirements hold: two on one write each say
+  // their own state (the Shed's feedback: a broken tool was refused as one someone had out)
+  const cannots = saying.filter((r) => !r.allow && r.actor === actor);
+  for (const cannot of cannots) if (!(await unmet(guards, cannot, { doc, op, entity, id, rowOf }))) return { ok: false, reason: cannot.text, story: cannot.story };
+  // none whose state holds: why the story that would have let it did not, else the first that refuses it
   if (why.length) return { ok: false, reason: why[0]! };
+  if (cannots[0]) return { ok: false, reason: cannots[0].text, story: cannots[0].story };
   return { ok: false, reason: `No story says ${actor} may ${said(op, entity, field)}` };
 }
 

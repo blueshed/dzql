@@ -17,6 +17,8 @@ const FIXTURES: Record<string, string> = {
   leave: `${import.meta.dir}/fixtures/leave.json`,
   "cafe-e": `${import.meta.dir}/fixtures/cafe-e.json`,
   menu: `${import.meta.dir}/fixtures/menu.json`,
+  // the Shed's feedback: two cannot stories on one write, and a tool that starts with two values
+  shed: `${import.meta.dir}/fixtures/shed.json`,
   cafe: `${import.meta.dir}/../../examples/cafe/model.json`,
 };
 

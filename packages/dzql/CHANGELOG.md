@@ -23,6 +23,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Fixed
+
+- **Two `cannot` stories on one write each refuse in their own words** (19 October, the Shed's
+  feedback: a member borrowing a broken tool was refused as "a tool someone else has out"). The
+  guards refuse in the words of the `cannot` whose requirements hold; with none holding, why the
+  `does` story did not let it, else the first `cannot`.
+- **Two adds of one entity in one story are one new row, starting with both values** (the Shed's
+  feedback: `add tools.out=false add tools.broken=false` made two tools in the proof, one with
+  `broken` null). A story's writes are the kinds of change it makes, not a count; the modelling
+  reference says so. The Shed's model is a conformance fixture (`src/modelling/fixtures/shed.json`),
+  and fails without either fix.
+
 ## [0.14.0] - 2026-10-19
 
 - `@blueshed/railroad` 0.17.0: the dev dependency is `^0.17.0`, and the optional peer takes it (`^0.16.2 || ^0.17.0`). `create-dzql` 0.14.0 with it: its template asks for `dzql` `^0.14.0`.
