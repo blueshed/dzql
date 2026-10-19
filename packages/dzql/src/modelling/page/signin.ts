@@ -1,8 +1,7 @@
 import { refuseOrigin } from "@blueshed/delta/server";
 import { tell } from "dzql/rendering/refusal";
 import { signInLinks } from "dzql/rendering/links";
-import { sessionCookie } from "dzql/rendering/server";
-import { scope } from "dzql/rendering/scope";
+import { seeOther, cookieOf } from "dzql/rendering/server";
 import { db, sessions } from "./delta";
 
 // Signing in: an email and a password, posted from the sign-in page as a plain form -- so the
@@ -25,14 +24,13 @@ export async function signIn(req: Request): Promise<Response> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const login = loginOf.get(email);
   const matches = await Bun.password.verify(String(form.get("password") ?? ""), login?.hash ?? NOBODY);
-  const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/model", ...(cookie ? { "Set-Cookie": cookie } : {}) } });
   if (!login || !matches) {
-    const visit = new RegExp(`(?:^|;\\s*)${scope().cookie.name}=([^;]+)`).exec(req.headers.get("cookie") ?? "")?.[1];
+    const visit = cookieOf(req);
     if (visit) await tell(await sessions.of(visit), { doc: "session", path: "/login", reason: "That email and password do not match." });
-    return home();
+    return seeOther("/model");
   }
   const { cookie } = await sessions.start({ person_id: login.person_id, name: login.name });
-  return home(sessionCookie(cookie));
+  return seeOther("/model", cookie);
 }
 
 // Or a link: one for each person who keeps the model, printed where the server starts (`dzql model`,

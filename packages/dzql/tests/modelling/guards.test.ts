@@ -263,3 +263,9 @@ test("a table that keeps its history: the guards read a row's open version, and 
   expect((await order()).error!.message).toContain("there is no such row");
   db.close();
 });
+
+test("a write whose path is no JSON Pointer names no entity, so no story lets it", async () => {
+  const guards = guardsOf({ stories: [{ id: 1, text: "Ann adds a note", actor: "ann", writes: [{ entity: "notes", op: "add" }] }], documents: [{ id: 1, name: "notes", root: "notes", list: 1, holds: { notes: { parent: null, fields: [{ name: "text" }] } } as never, held_by: ["ann"] }] });
+  expect(await check(guards, { actor: "ann", doc: "notes", op: { op: "add", path: "notes/-", value: {} }, rowOf: () => null })).toMatchObject({ ok: false });
+});
+

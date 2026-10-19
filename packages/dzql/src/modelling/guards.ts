@@ -110,7 +110,7 @@ export function guardsOf(model: Model): Guards {
 /** A type worth saying: any but text, which is how a value is compared when none is said. */
 const typed = (type: string | undefined) => (type && type !== "text" ? { type } : {});
 
-/** A write's path, as delta reads it (`splitPath`): `/<entity>/<id>[/<field>]`; one that is no pointer says nothing, and delta answers it. */
+/** A write's path, as delta reads it (`splitPath`): `/<entity>/<id>[/<field>]`; one that is no pointer names no entity, so no story lets it. */
 const segments = (path: string): string[] => {
   try {
     return splitPath(path);

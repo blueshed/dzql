@@ -13,7 +13,7 @@ import { Refusal, refuse, tell } from "./refusal";
 import { handleOf, newHandle } from "./resources/ledger";
 import { refuseOrigin } from "@blueshed/delta/server";
 import { serve, type App } from "@blueshed/delta/serve";
-import { scope, served, unserved, within, type Scope } from "./scope";
+import { cookieIn, scope, served, unserved, within, type Scope } from "./scope";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
@@ -36,6 +36,13 @@ export function sessionCookie(cookie: string): string {
   const { name, path } = scope().cookie; // the app's own, where a server holds several
   return new Bun.Cookie(name, cookie, { path, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" }).serialize();
 }
+
+/** This app's session cookie on the request, if it has one: what `sessions.of` turns into a session. */
+export const cookieOf = (req: Request): string | undefined => cookieIn(req.headers.get("cookie"), scope().cookie.name);
+
+/** Back to a page after a form, 303, giving the visit its session cookie when one has just started. */
+export const seeOther = (to = "/", cookie?: string): Response =>
+  new Response(null, { status: 303, headers: { Location: to, ...(cookie ? { "Set-Cookie": sessionCookie(cookie) } : {}) } });
 
 // What each connection was last sent, so the next drawing sends only what differs (src/rendering/parts.ts).
 const sent = new WeakMap<Socket, Drawn>();
@@ -407,7 +414,7 @@ export function appOf(example: Example): DzqlApp {
         const identified = await example.identify?.(req);
         if (identified instanceof Response) return identified;
         // the first of its name: the cookie of the app under the longest path, as a browser sends them
-        const cookie = new RegExp(`(?:^|;\\s*)${app.cookie.name}=([^;]+)`).exec(req.headers.get("cookie") ?? "")?.[1];
+        const cookie = cookieIn(req.headers.get("cookie"), app.cookie.name); // this app's, by name (cookieOf reads the scope's)
         const token = identified ?? cookie ?? crypto.randomUUID();
         const sessionId = example.session ? await example.session(token) : token;
         const headers = new Headers();

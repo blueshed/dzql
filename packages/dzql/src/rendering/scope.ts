@@ -27,17 +27,24 @@ export type Scope = {
 /** The cookie an app's sessions go by: `session_id` at the root, `session_id_model` under `/model`. */
 export const cookieNameFor = (at = ""): string => (at ? `session_id_${at.replace(/[^A-Za-z0-9]/g, "")}` : "session_id");
 
+/** A cookie's value in a `Cookie` header, by its name: the first of that name, as a browser sends the app under the longest path first. */
+export const cookieIn = (header: string | null | undefined, name: string): string | undefined => new RegExp(`(?:^|;\\s*)${name}=([^;\\s]+)`).exec(header ?? "")?.[1];
+
+/** The session a sign-in's answer (its `Set-Cookie`), or a socket's upgrade, names: the app's `session_id`, or one under a path's. */
+export const sessionIn = (text: string | null | undefined): string | undefined => /session_id\w*=([^;\s]+)/.exec(text ?? "")?.[1];
+
 /** The cookie of the app a socket's or a route's URL is under: `ws://host/model/ws` is the model's. */
 export const cookieNameForUrl = (url: string | URL): string => cookieNameFor(new URL(String(url).replace(/^ws/, "http")).pathname.replace(/\/(ws|login)?\/?$/, ""));
 
 const storage = new AsyncLocalStorage<Scope>();
 const serving = new Set<Scope>();
 /** What a call outside any app reads when the process serves none, or more than one. */
-const nobody: Scope = { cookieIsSession: false, openSockets: new Set(), cookie: { name: "session_id", path: "/" }, claims: new Set(), handles: new Map() };
+const scopeAt = (at: string): Scope => ({ cookieIsSession: false, openSockets: new Set(), cookie: { name: cookieNameFor(at), path: at || "/" }, claims: new Set(), handles: new Map() });
+const nobody: Scope = scopeAt("");
 
 /** A new app's scope, served until `unserved`. */
 export function served(at = ""): Scope {
-  const scope: Scope = { cookieIsSession: false, openSockets: new Set(), cookie: { name: cookieNameFor(at), path: at || "/" }, claims: new Set(), handles: new Map() };
+  const scope = scopeAt(at);
   serving.add(scope);
   return scope;
 }

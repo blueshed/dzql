@@ -78,6 +78,10 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **`cookieOf(req)` and `seeOther(to, cookie?)`** (`dzql/rendering/server`, 19 October): this app's
+  session cookie on a request, and the 303 back to a page after a form (setting the cookie when a
+  session starts), where each example wrote its own. `walked(way)` (`dzql/rendering/json-patch`) is
+  the ledger's walk, one statement for the client, the CLI, the stories and the bento.
 - **`storiesIn(dir)`** (`dzql/rendering/names`): an app's stories, beside its code (an example's
   folder) or at its project's root, beside `src/`, as a paintbrush app keeps them; `bun run stories`,
   `model:check` and `model:load` read them by it (19 October).

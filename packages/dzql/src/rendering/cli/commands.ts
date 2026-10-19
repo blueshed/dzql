@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { isVerb, type PatchOp } from "../json-patch";
+import { walked, isVerb, type PatchOp } from "../json-patch";
+import { sessionIn } from "../scope";
 
 export type Command =
   | { kind: "write"; doc: string; ops: PatchOp[] }
@@ -26,8 +27,8 @@ function parseWrite(rest: string[]): Command | undefined {
 // The one write every example shares, since it's not a domain concern: undo
 // is a remove on the ledger's own cursor document (see resources/ledger.ts),
 // not a per-example verb.
-const undo = (): Command => ({ kind: "write", doc: "ledger", ops: [{ op: "remove", path: "/latest" }] });
-const redo = (): Command => ({ kind: "write", doc: "ledger", ops: [{ op: "add", path: "/latest" }] });
+const undo = (): Command => ({ kind: "write", ...walked("undo") });
+const redo = (): Command => ({ kind: "write", ...walked("redo") });
 
 /** Maps a CLI invocation's argv (after the script name) to a wire command. */
 export function parseCommand(argv: string[], aliases: Aliases = {}): Command | undefined {
@@ -125,7 +126,7 @@ export function loadOrCreateSessionCookie(file: string, name = "session_id"): st
 export async function signIn(url: string, form: Record<string, string>): Promise<string | undefined> {
   const at = new URL(`${url.replace(/^ws/, "http").replace(/\/ws$/, "")}/login`); // the app's own, under its path
   const res = await fetch(at, { method: "POST", body: new URLSearchParams(form), redirect: "manual", headers: { origin: at.origin } });
-  return /session_id\w*=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1]; // the app's own: `session_id`, or one under a path's
+  return sessionIn(res.headers.get("set-cookie")); // the app's own: `session_id`, or one under a path's
 }
 
 /** Opens the socket as the session `cookie` names, or, with a `token` (`ETA_TOKEN`), as whoever the app's `identify` says it is. */

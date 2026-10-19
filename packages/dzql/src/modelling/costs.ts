@@ -8,6 +8,7 @@
 // little from run to run stands within 3% (`WITHIN`). Imported, nothing runs.
 
 import { connect, createServer, type AddressInfo } from "node:net";
+import { sessionIn } from "../rendering/scope";
 
 /** One message a page was sent: its type, its size, and its size as it crossed the wire (compressed, when it was). */
 export type Heard = { type: string; bytes: number; sent: number };
@@ -103,7 +104,7 @@ export async function tap(port: number, at = ""): Promise<{ url: string; heard: 
     client.on("data", function upgrade(chunk: Buffer) {
       request += chunk.toString("latin1");
       if (!request.includes("\r\n\r\n")) return;
-      frames.set(/session_id\w*=([^;\s]+)/.exec(request)?.[1] ?? "", sent);
+      frames.set(sessionIn(request) ?? "", sent);
       client.off("data", upgrade);
     });
     // what the server sends: its answer to the upgrade, then frames, never masked, however the reads fall

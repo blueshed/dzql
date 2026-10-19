@@ -2,8 +2,7 @@ import { refuseOrigin } from "@blueshed/delta/server";
 import { run, serve } from "@blueshed/delta/serve";
 import type { Example } from "dzql/rendering/example";
 import { serverWrite } from "dzql/rendering/documents";
-import { appOf, compose, sessionCookie } from "dzql/rendering/server";
-import { scope } from "dzql/rendering/scope";
+import { appOf, compose, cookieOf, seeOther } from "dzql/rendering/server";
 import homepage from "./index.html";
 import { delta, open, pool, stories } from "./store";
 import { links } from "./links";
@@ -34,11 +33,10 @@ async function scan(req: Request): Promise<Response> {
     table = String((await req.formData()).get("table") ?? "");
   }
   if (!table || !/^\d+$/.test(table) || (await pool.query(`SELECT 1 FROM "tables" WHERE id = $1`, [table])).rows.length === 0) return new Response("There is no such table here.", { status: 404 });
-  const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/", ...(cookie ? { "Set-Cookie": sessionCookie(cookie) } : {}) } });
-  const visit = new RegExp(`(?:^|;\\s*)${scope().cookie.name}=([^;]+)`).exec(req.headers.get("cookie") ?? "")?.[1];
-  if (!visit) return home((await sessions.start({ table })).cookie);
+  const visit = cookieOf(req);
+  if (!visit) return seeOther("/", (await sessions.start({ table })).cookie);
   await serverWrite(`visit:${await sessions.of(visit)}`, [{ op: "replace", path: "/visits/table", value: table }, { op: "replace", path: "/visits/page", value: "" }]);
-  return home();
+  return seeOther("/");
 }
 
 /** The page and its resources: one per document, the visit first, and the page they draw. */

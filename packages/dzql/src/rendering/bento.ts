@@ -8,7 +8,13 @@
 
 import { esc, join, write } from "./html";
 import { part } from "./parts";
-import type { PatchOp } from "./json-patch";
+import { walked, type PatchOp } from "./json-patch";
+
+/** The ledger's walk as a control writes it. */
+const walk = (way: "undo" | "redo"): string => {
+  const { doc, ops: [op] } = walked(way);
+  return write(doc, op!.op, op!.path);
+};
 import { splitPath } from "@blueshed/delta/core";
 import { slug, grid, type Cell, type Grid } from "./grid";
 
@@ -285,8 +291,8 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   function pageTools(lay: "down" | "across" = "down"): string {
     return join(
       `<div class="stack page-tools${lay === "across" ? " across" : ""}" aria-label="Tools">`,
-      tool("Undo", { icon: "undo", write: write("ledger", "remove", "/latest"), iconOnly: true }),
-      tool("Redo", { icon: "redo", write: write("ledger", "add", "/latest"), iconOnly: true }),
+      tool("Undo", { icon: "undo", write: walk("undo"), iconOnly: true }),
+      tool("Redo", { icon: "redo", write: walk("redo"), iconOnly: true }),
       leave && tool(leave.text, { icon: leave.icon, kind: "quiet", write: write(trayDoc, "remove", leave.path), iconOnly: true }),
       "</div>",
     );

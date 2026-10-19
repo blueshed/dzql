@@ -6,7 +6,7 @@ import { hear, type Heard, type HeardOp } from "../rendering/resources/render";
 export { hear, type Heard };
 import { createServer } from "../rendering/server";
 import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
-import { isTest, isVerb, applyPatch, type PatchOp, type Test, type WriteId } from "../rendering/json-patch";
+import { isTest, isVerb, applyPatch, walked, type PatchOp, type Test, type WriteId } from "../rendering/json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "../rendering/documents";
 import { onFailure } from "../rendering/failed";
 import { comparable, decoded, ownProps, splitTag } from "../rendering/parts";
@@ -87,8 +87,8 @@ const isStored = (owner: { kind?: Kind } | undefined): boolean => owner?.kind ==
 /** A time after every write: a document opened as it stood then (`open_at`) is its rows as they stand. */
 const AFTER_EVERY_WRITE = "9999-12-31T23:59:59.999Z";
 
-const UNDO: Write = { doc: "ledger", ops: [{ op: "remove", path: "/latest" }] };
-const REDO: Write = { doc: "ledger", ops: [{ op: "add", path: "/latest" }] };
+const UNDO: Write = walked("undo");
+const REDO: Write = walked("redo");
 
 
 // The patch stream, checked: what an applet holds must be what a fresh render gives it (`unheld`).

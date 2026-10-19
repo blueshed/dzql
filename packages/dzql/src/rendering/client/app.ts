@@ -1,5 +1,5 @@
 import { applets } from "../applets";
-import { applyPatch, WIRE, type PatchOp, type Test } from "../json-patch";
+import { walked, applyPatch, WIRE, type PatchOp, type Test } from "../json-patch";
 import { formValue, groupOf, held, isBox, isField, isRadio, pressed, rendered, sends, type Field } from "./form-value";
 import type { HtmlOp } from "../resources/render";
 import { keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
@@ -76,7 +76,7 @@ function heard(id: unknown, answer: Answer): void {
 }
 
 /** The ledger write that walks the session's last change, or the one `change` names (the handle a write's answer gave); the server says which handles are the session's. */
-export const walked = (way: "undo" | "redo", change?: unknown): Write => ({ doc: "ledger", ops: [{ op: way === "undo" ? "remove" : "add", path: `/${change ?? "latest"}` }] });
+export { walked }; // the ledger's walk, json-patch.ts's
 
 /** What runs after each drawing, the page as it now is: a module an app opts into (src/rendering/client/tools.ts). */
 const drawn: (() => void)[] = [];

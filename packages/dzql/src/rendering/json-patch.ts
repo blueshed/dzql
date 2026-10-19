@@ -71,3 +71,7 @@ export function applyPatch<T>(value: T, ops: PatchOp[]): T {
   applyOps(copy, ops as DeltaOp[]);
   return copy;
 }
+
+/** The ledger's walk, as every page, the CLI and the stories send it: an undo takes the latest change back (or the one named), a redo puts it again. */
+export const walked = (way: "undo" | "redo", change?: unknown): { doc: string; ops: PatchOp[] } => ({ doc: "ledger", ops: [{ op: way === "undo" ? "remove" : "add", path: `/${change ?? "latest"}` }] });
+

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { refuseOrigin } from "@blueshed/delta/server";
 import { tell } from "dzql/rendering/refusal";
-import { sessionCookie } from "dzql/rendering/server";
+import { seeOther, cookieOf } from "dzql/rendering/server";
 import { db, sessions, tokenId } from "./delta";
 
 // Signing in: an email and a password, posted from the sign-in page as a plain form -- so the
@@ -49,11 +49,10 @@ export async function signIn(req: Request): Promise<Response> {
   if (refused) return refused;
   const form = await req.formData();
   const email = String(form.get("email") ?? "").trim().toLowerCase();
-  const home = (cookie?: string) => new Response(null, { status: 303, headers: { Location: "/", ...(cookie ? { "Set-Cookie": cookie } : {}) } });
   const told = async (reason: string) => {
-    const visit = /(?:^|;\s*)session_id=([^;]+)/.exec(req.headers.get("cookie") ?? "")?.[1];
+    const visit = cookieOf(req);
     if (visit) await tell(await sessions.of(visit), { doc: "session", path: "/login", reason });
-    return home();
+    return seeOther("/");
   };
   if (slowed(email)) return told("Too many tries: wait a minute, then try again."); // not even checked
   const login = loginOf.get(email);
@@ -63,7 +62,7 @@ export async function signIn(req: Request): Promise<Response> {
     return told("That email and password do not match.");
   }
   guesses.delete(email);
-  return home(sessionCookie(await signedIn(login.person_id)));
+  return seeOther("/", await signedIn(login.person_id));
 }
 
 /** A person's number as a row names it (an older table keeps it as text), or null for nobody. */

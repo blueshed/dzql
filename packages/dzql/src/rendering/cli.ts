@@ -16,7 +16,7 @@ import {
   signIn,
 } from "./cli/commands";
 import { appDir } from "./names";
-import { cookieNameForUrl } from "./scope";
+import { cookieNameForUrl, sessionIn } from "./scope";
 
 /** The app's CLI, over its socket: `bun run cli <command>` runs it; `dzql model <verb>` calls it with the model's verbs. */
 export async function main(argv: string[]): Promise<void> {
@@ -38,7 +38,7 @@ export async function main(argv: string[]): Promise<void> {
   if (rest[0] === "login") {
     // a sign-in link (`dzql model` prints one for each keeper), or the email and password the form takes
     const link = rest[1]?.startsWith("http") ? await fetch(rest[1], { redirect: "manual" }) : undefined;
-    const session = link ? /session_id\w*=([^;]+)/.exec(link.headers.get("set-cookie") ?? "")?.[1] : await signIn(url, { email: rest[1] ?? "", password: rest[2] ?? "" });
+    const session = link ? sessionIn(link.headers.get("set-cookie")) : await signIn(url, { email: rest[1] ?? "", password: rest[2] ?? "" });
     if (!session) {
       console.error(link ? "refused: that link is not one this server gave (it prints new ones as it starts: use the latest)" : "refused: that email and password do not match");
       process.exit(1);
