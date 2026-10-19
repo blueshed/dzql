@@ -51,7 +51,6 @@ and go on.
 6. **Build nothing yet.** The model is done enough when the checks are closed (or say why they
    cannot be asked) and the teller reads the page and calls each story true. While none is open,
    `dzql model` (or `bun dev`, the model at `/model` beside the app) writes
-   `model/types.ts`, `guards.ts`, `migrations/` and `model.test.ts`, never a story; the app is built from them with the **eta-app**
-   skill -- load it, and its page and bento references, before drawing a page. Read
-   `model/types.ts` and run `bun check` before building on it; dzql's `examples/cafe/` is the step
-   from model to app, worked (its README). → *From the model to the app*
+   `model/types.ts`, `guards.ts`, `migrations/` and `model.test.ts`, never a story. The app is
+   built from them with the **eta-app** skill, as dzql's `examples/cafe/` was (its README walks
+   it). → *From the model to the app*

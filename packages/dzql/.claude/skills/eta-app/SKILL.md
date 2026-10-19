@@ -21,45 +21,50 @@ The types in dzql's `src/rendering/` (`node_modules/dzql/` in a project) are the
 them, not prose about them. Only while someone is telling you the stories, there to answer, does
 the **modelling** skill come first; asked to build or change, build.
 
-## The order
+## The path
 
-Stories, then documents, then pages: each step the least that makes the next story pass. Run
-`bun run stories` after each. The words are [words](reference/words.md).
+**dzql's `examples/cafe/` is an app built this way** (`node_modules/dzql/examples/cafe/` in a
+project; laid out at its root where yours has `src/`). Each step names the file of it that shows
+the step: read it, then do the step in your app. Stories, then documents, then pages, each the
+least that makes the next story pass; `bun run stories` after each.
 
-An app is routes and resources. A project made with `bun create dzql` lays it out so:
-`src/routes.ts` is the server (the app, its HTTP routes and in development the model's page,
-composed on delta's one server), and each document is a resource of its own folder,
-`src/resources/<name>/`: `<name>-api.ts` (its schema and document, registered on `delta`, and
-`read` for the page), `<name>.ts` (its `Resource`: who may write it, what a write becomes) and
-`<name>-view.ts` (its part of the page, drawn by `src/page.ts`). **dzql's `examples/cafe/` is
-an app laid out so, built from its model** (`node_modules/dzql/examples/cafe/`; its README walks
-it, step by step): read it first, and copy its shape. dzql's older examples (chat, leave, wedding,
-the ticker) are the same pieces in eta's earlier places: `delta.ts`, `documents/<thing>.ts`,
-`resources/<thing>.ts` and `index.ts`; read them for how, and put what you write where the
-project's layout says.
+1. **The story**, `stories.ts`: a member of the cast (`as`) `does` or `cannot` a write -- a
+   document and its ops -- and who then sees it (`seen`). Watch it fail; a teller asking to see the
+   page now is no reason to skip it. If the stories were modelled, `dzql model` has already made
+   `model/` (the definitions, the guards, the migrations), and each story names the model story it
+   tells (`model: 6`; `model: false` for the app's own). → [stories](reference/stories.md)
+2. **The store**, `store.ts`: the tables (`defineSchema`: the model's `tables`, and the app's own
+   beside them), the migrations, `delta` (`createLocal()`), and the model's guards on it before any
+   document. → [documents](reference/documents.md), [migrations](reference/migrations.md)
+3. **A document, a folder**, `resources/floor/`: `floor-api.ts` registers its definition, `read()`s
+   it for the page, and keeps the pure rules a write follows; `floor.ts` is its **resource**, which
+   says which document a session is on (`resolveDoc`; a list's is `""`), what may be sent
+   (`permit`), what a write becomes (`shape`) and what follows it. Undo is the ledger
+   (`{ ledger: true }`). → [resource](reference/resource.md); refusing, saying why,
+   [refusal](reference/refusal.md); a document that would grow forever, [scope](reference/scope.md)
+4. **The session**, `resources/visit/`: each visitor's own document, a `perSession` resource listed
+   first, found by its cookie (`sessionRows`). It keeps only what the stories need: where you are
+   is one **address** (`page`), which the URL follows. → [bento](reference/bento.md#where-you-are-the-address)
+5. **The page**, `page.ts` and each `<name>-view.ts`: a **box** of **cells** (`boxPage`), a list
+   `rows()` of `row()`s, a deed a `tool()`, a drawer or a modal over it, a refusal drawn where it
+   happened (`toldAt`). `surfaces.ts` makes the bento once (`bento({ icon, session, leave })`);
+   `icons.ts` is lucide. → [page](reference/page.md), [bento](reference/bento.md),
+   [controls](reference/controls.md); reference data, [derive](reference/derive.md)
+6. **The routes**, `routes.ts`: the app (its `Example`: resources, page, who is active, the
+   address, its routes) on delta's one server, the model's page beside it in development. People
+   come in by a link each (`links.ts`); what is no document's is a route that writes as the server
+   (`serverWrite`, the cafe's `/scan`). → [example](reference/example.md), [signin](reference/signin.md)
+7. **Tests**, `routes.test.ts`: what a story cannot say, then the gate. → [tests](reference/tests.md)
 
-1. **The story** (`stories.ts`): who does what, and who then sees it. Watch it fail. A teller
-   asking to see the page now is no reason to skip it: the stories take minutes, and find what the
-   teller would. → [stories](reference/stories.md)
-2. **The documents** (`resources/<name>/<name>-api.ts`), cut so whoever must see a change holds
-   it: the schema, the document, `read(id)` and the pure rules a write follows, tested directly; undo. →
-   [documents](reference/documents.md); one that would grow forever, [scope](reference/scope.md);
-   a field renamed or dropped, or data moved, [migrations](reference/migrations.md)
-3. **Its resource** (`resources/<name>/<name>.ts`, listed in the app's `resources`): `permit`, `shape`, what follows; a memory document the server works out,
-   written as the difference. → [resource](reference/resource.md); why a write was refused or what
-   it did, [refusal](reference/refusal.md)
-4. **The page** (`page.ts`'s `render(sessionId)`, each resource's part from its `<name>-view.ts`): a box or a collection, in parts. → [page](reference/page.md);
-   a field, form or button, [controls](reference/controls.md); a drawer, a modal, the address,
-   [bento](reference/bento.md); reference data, [derive](reference/derive.md)
-5. **An applet or an island**, only for state a redraw would destroy. →
-   [applets](reference/applets.md); its data, [watching](reference/watching.md)
-6. **`routes.ts`**: the app (its `Example`: resources, page, who may write) and its HTTP routes, composed; `cli.ts`, if someone writes from the terminal. →
-   [example](reference/example.md); sign-in and routes, [signin](reference/signin.md)
-7. **Tests**, for what a story cannot say; the gate. → [tests](reference/tests.md)
-
-Also: what crosses the socket, [wire](reference/wire.md); an assistant on the page,
-[assistants](reference/assistants.md); starting a project, a later dzql, or before touching the
-kernel, [where-an-app-lives](reference/where-an-app-lives.md).
+Beyond the cafe, dzql's older examples show the same pieces in eta's earlier places (`delta.ts`,
+`documents/<thing>.ts`, `resources/<thing>.ts`, `index.ts`): a document the server works out
+(chat's `here`, [resource](reference/resource.md#after-a-write)); an applet or an island, only for
+state a redraw would destroy (the ticker's board, [applets](reference/applets.md),
+[watching](reference/watching.md)); a CLI (chat's `cli.ts`); uploads (the wedding's); passwords and
+a proxy (leave's `signin.ts`). Also: what crosses the socket, [wire](reference/wire.md); an
+assistant on the page, [assistants](reference/assistants.md); starting a project, a later dzql, or
+before touching the kernel, [where-an-app-lives](reference/where-an-app-lives.md). The words are
+[words](reference/words.md).
 
 ## The rules that matter most
 

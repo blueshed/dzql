@@ -1,16 +1,19 @@
 # Words, and the first questions an app asks
 
-The pieces of an app by name, and what to reach for first. The order to work in is [SKILL.md](../SKILL.md).
+The pieces of an app by name, and what to reach for first. The path to work in is [SKILL.md](../SKILL.md).
 
 ```ts
-// examples/chat/index.ts: the whole app, by its pieces
-export const example: Example = {
-  name: "chat",
-  resources: [session, room, here, lobby], // one per document type, the session first
-  delta,                                       // its documents (delta.ts)
+// examples/cafe/routes.ts: the whole app, by its pieces
+export const app: Example = {
+  name: "cafe",
+  index: homepage,                             // index.html: the page's shell
+  delta,                                       // its documents (store.ts; each resource's -api.ts registers one)
+  resources: [visit, floor, menu, table, door], // one per document type, the session first
   render,                                      // the page: render(sessionId), the whole page as HTML
-  active: (sessionId) => sessionDoc.read(sessionId).name !== null,
-  index,                                       // client/index.html
+  active: (sessionId) => visitOf(sessionId).role !== null,
+  address: { doc: "visit", path: "/page" },    // where the session stands, which the URL follows
+  routes: { "/in/:token": links.route as never, "/scan": scan },
+  session: sessions.of,                        // a cookie's session
 };
 ```
 

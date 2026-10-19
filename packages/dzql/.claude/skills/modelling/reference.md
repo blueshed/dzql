@@ -98,81 +98,52 @@ each, who is told, what permit lets through that no page offers) and hjeli's pre
 
 ## From the model to the app
 
-While no check is open, `dzql model` writes into a folder of its own (`model/`, never the app's
-`src/`, so the app neither reloads nor loses a file of its own): `types.ts`, delta's two definitions (a
-`defineSchema` of its entities, each with the fields documents give it, hanging from its parent,
-and a `defineDoc` for each document, saying in a comment which stories it is for) with a row type
-per table and each document's shape; `guards.ts`, the guarded write layer; `migrations/`, the newest step
-rewritten in place while it is not yet committed, and a new step once it is (a step a diff cannot
-make -- a parent changed -- is written once with `// By hand:` lines to finish); and
-`model.test.ts`, the proof on SQLite: each story's write lands where its tellers see it, made
-through the guards as its teller, and each `cannot` story is refused in its own words. It writes no
-stories: the app's stories are the app's, in its words, each naming its model story (`model: n`).
-A file in `model/` a person wrote is kept, and the model's goes beside it (`types.model.ts`).
+dzql's `examples/cafe/` (`node_modules/dzql/examples/cafe/`) is this step, worked: a model told,
+made, built as routes and resources until every story passes, and read back with no gap. Its
+README walks it; here is what each part of it says about the model.
 
-How the app uses them:
-- **The store:** `types.ts` exports `tables`, `docs` and `schema`, made with the JSON file's
-  `defineSchema` for the model's own proof. An app on another store takes `tables` and `docs` and
-  gives them to its own: `defineSchema({ ...tables, ... })` and `registerDocs` from
-  `@blueshed/delta/sqlite` (or dzql's Postgres). The definitions are the same on every store.
-- **The tables:** the app keeps what the model does not (who signs in, sessions) beside the
-  model's, its own tables under its own name. At start-up it runs the model's migrations with the
-  model's schema (`migrate(db, model's, { app: "<name>-model", schema })`, `schema` from
-  `types.ts`), then `createTables` and `migrateSchema` with its own, which add what it says
-  beyond the model (eta-app's documents.md). Passing the app's schema to the model's migrations
-  makes delta warn that the definitions say more than the migrations: they are the model's.
-- **Each person's own document:** the model's `own` document is the app's session. Its root is the
-  session's table: the app adds the session's own columns to it (`cookie`, who signed in) and keeps
-  it as a `perSession` resource under the name the app gives its session. The guards leave it out.
-  `sessionRows(delta, table)` finds a cookie's session through a document it calls `visit:`: if the
-  own document is itself named `visit`, give the lookup another prefix (`sessionRows(delta, table,
-  "cookie:")`, registering `cookie:` scoped by the cookie).
-- **The guards:** `guards.ts` stands in front of the store, `guardWrites(delta.server, guards, {
-  actorOf, rowOf })` on the app's `delta` before any `registerDocs` (first in `routes.ts`): a write no story says is refused there,
-  with the story's words. A resource's `permit` need not say the rules again. `rowsIn(db,
-  schema)` (`dzql/modelling/guards`) is the `rowOf` for SQLite, its booleans read as booleans.
-  The server's own writes (`serverWrite`) are no person's, and go by.
-  `actorOf` is given the identity the app's `Example.who` returns (the session's id when it has
-  none): either look the teller up from the session there, or have `who` return the teller and
-  `actorOf` take it as it is, never both. A guard's 401 (nobody it knows) and 403 are refused on
-  the page with their reason.
-  How they decide: the first `does` rule for the writer whose requirements hold lets the write
-  through; else a `cannot` for the writer refuses it, in its words. A requirement is read from the
-  written row and the rows it hangs under, on each write of the story that reaches it. Each op of a
-  write is checked on its own. Narrow each resource's `permit` to what the page sends, and let
-  the guards say who: `bun run stories` asks them too (`may`, never written) before it calls a write
-  no story tells a hidden verb.
-- **Whose copy:** a document a role holds whose root is one of many (a table, a bill), and that
-  is not a `list`, is advice
-  in actor closure until the model says how each person comes to hold theirs (a story that gives
-  it them, or their own document holding a field that names it, `table`): ask the teller.
-Every store takes the definitions: delta's JSON file and SQLite, and dzql's Postgres. In code, `definitionsOf(model)` (`dzql/modelling/definitions`) does the
-same. Who owns a document that is each person's own is not in the model: the file says so, to be
-given with sign-in.
+1. **What the model makes: `model/`.** While no check is open, `dzql model` writes into a folder
+   of its own (never the app's `src/`, so the app neither reloads nor loses a file): `types.ts`
+   (delta's definitions -- each entity a table hanging from its parent, each document a
+   `defineDoc` naming the stories it is for, its `columns` where it holds fewer fields than the
+   table has -- and a row type and a document shape for each), `guards.ts`, `migrations/` (the
+   newest rewritten in place until committed; a step a diff cannot make, a parent changed, written
+   once with `// By hand:` lines) and `model.test.ts`, the proof: each story's write made through
+   the guards as its teller and seen by everyone it tells, each `cannot` refused in its own words.
+   It writes no stories. A file in `model/` a person wrote is kept, the model's beside it
+   (`types.model.ts`). Every store takes the same definitions: the JSON file, SQLite, dzql's
+   Postgres.
+2. **The store: `store.ts`.** The model's migrations with the model's schema
+   (`migrate(db, ..., { app: "<name>-model", schema })`; the app's schema there would make delta
+   warn that the definitions say more than the migrations), then the app's own tables beside the
+   model's (`defineSchema({ ...tables, ... })`: who the staff are, what a session keeps), added by
+   `createTables` and `migrateSchema`. Then the guards, before any document:
+   `guardWrites(delta.server, guards, { actorOf, rowOf: rowsIn(db, schema) })`. `actorOf` is given
+   the identity the app's `who` returns (the session's id without one): look the teller up there,
+   or have `who` return it, never both. The guards let a write through on the first `does` story
+   of its writer whose requirements hold (read from the written row and the rows above it), and
+   refuse it in a `cannot` story's words; each op is checked on its own, and the server's own
+   writes (`serverWrite`) go by. A resource's `permit` then says only what its page sends.
+3. **Each person's own: `resources/visit/`.** The `own` document is the app's session: a
+   `perSession` resource, its root the session's table, to which the app adds what a session keeps
+   (the cookie's hash, who signed in). The guards leave it out. `sessionRows` finds a cookie's
+   session through a document it calls `visit:`; where the model already names one `visit`, give it
+   another (`sessionRows(delta, "visits", "cookie:")`).
+4. **A document, a resource: `resources/<name>/`.** `<name>-api.ts` registers the model's
+   definition (`docs.filter((d) => d.prefix === "floor:")`), `<name>.ts` lets its holders see it
+   (`resolveDoc`; a `list` resolves `""`), `<name>-view.ts` draws it. *Whose copy* advice -- a
+   document a role holds whose root is one of many, not a `list` -- is answered by a story that
+   gives it them, or their own document naming it (the visit's `table`).
+5. **The stories: `stories.ts`.** In the wire's words, each naming the model story it tells
+   (`model: 10`: then it matches whatever its words, and only does or cannot is compared, the
+   model's teller being a role and the app's a member of the cast); `model: false` for one that is
+   the app's own (signing out). `bun run stories`: the least that makes the next pass. The harness
+   asks the guards too (`may`, never written) before it calls a write no story tells a hidden verb.
+6. **Read back: is the app the model as told?** `bun run model:check --against-page` (in dzql,
+   `model:check <example> --against-page`) reads the model page as the CLI is signed in
+   (`.eta-session`, `ETA_URL`; or a saved page, `--against-page <file.json>`) and the app as
+   `model:load` would write it, and names each gap as a question for the teller: a story told and
+   not built, or built and never told; a does or cannot that differs; a document whose root,
+   holders, holdings or own-ness differ, or that serves other stories.
 
-For a page the server draws, load the **eta-app** skill; the model says what to build, story by
-story. **dzql's `examples/cafe/` is the whole of it, worked** (`node_modules/dzql/examples/cafe/`,
-its README the path): a model told, made, and built as routes and resources until every story
-passes and the read-back finds no gap. Read it before building:
-
-| In the model | In the app |
-|---|---|
-| A story | A story in `src/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into, `model` the model story's number |
-| A document | A resource of its own, `src/resources/<name>/`: its `defineDoc` (from `model/types.ts`'s `docs`) registered in `<name>-api.ts`, its root and what it holds as its includes |
-| An entity, its fields, its parent | A table in `defineSchema`, its columns, its `parent` |
-| `own` | A `perSession` resource |
-| Who holds it | Who its resource lets see it |
-| What each story does or cannot | Its resource's `permit` and `shape` |
-
-Then `bun run stories`: the least that makes the next story pass, then the next.
-
-Last, read it back: is the app the model as told? `bun run model:check --against-page` (in dzql,
-`model:check <example> --against-page`) reads the model page as the CLI is signed in
-(`.eta-session`, `ETA_URL`) and the app as `model:load` would write it, and names each gap as a
-question for the teller: a story told and not in the app, or in the app and never told; a teller
-or does/cannot that differs; a document whose root, holders, holdings or own-ness differ, or that
-serves other stories. Give each app story its model story's number
-(`story("Ann cannot order onto a paid bill", { model: 10, as: "ann", cannot: ... })`): then it
-matches whatever its words, and only does/cannot is compared (the model's teller is a role, the
-app's a cast member). One with no number matches by its words, so a reword shows as two gaps.
-`--against-page <file.json>` reads a saved page instead.
+For the page itself, load the **eta-app** skill.

@@ -158,6 +158,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   alone, `/` sending you to `/model`. `site`, `guards` and `mcp` read `model.json`; `check` takes
   the place of `audit` and `export` (MCP's `model_check`).
 
+### Changed
+
+- **The skills are one path, through the cafe** (19 October, Peter: "make it so"): eta-app's order
+  is the worked example's files in turn -- the story, the store, a document's folder, the session,
+  the page, the routes, the tests -- each introducing its words where they are first needed, with
+  what the cafe has no need of (a memory document, an applet, a CLI, uploads, passwords) one line
+  on to the older examples. The modelling reference's move to an app is the same walk from the
+  model's side.
+
 ### Added
 
 - **The worked example: the cafe, from its model** (`examples/cafe/`, Peter's ask after cafe-e: "the
