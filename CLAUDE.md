@@ -44,8 +44,9 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
   browser and no Postgres server), well under a minute. Commit, push, go on: never wait for CI.
   The slow tier (`test:slow`: browsers, dzql's Postgres suite in Docker, dzql's stories and costs)
   runs in CI, path-filtered the same way (`.github/workflows/<package>.yml`), and by
-  `bun run affected --slow` before a release. A red CI is fixed at the next push. (The workflows
-  are paused on Peter's word since 17 October; until he says, the slow tier runs on his Mac.)
+  `bun run affected --slow` before a release. A red CI is fixed at the next push. (The CI workflows
+  are paused on Peter's word since 17 October; until he says, the slow tier runs on his Mac.
+  `Publish to npm` stays on, by his word on 19 October: it runs only on a release tag.)
   In every package `bun run test` is its fast tier; `test:slow` its slow one; dzql's Postgres suite
   in Docker is `test:pg`.
   A package that packs a sibling's folder (`prepack`: create-blueshed copies paintbrush) runs
