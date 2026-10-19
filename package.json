@@ -8,8 +8,6 @@
   ],
   "scripts": {
     "test": "bun scripts/affected.ts --all",
-    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
-    "cache:clear": "bun pm cache rm",
     "affected": "bun scripts/affected.ts",
     "test:railroad": "bun run --cwd packages/railroad test:fast",
     "test:railroad:slow": "bun run --cwd packages/railroad test:slow",
@@ -32,15 +30,6 @@
     "type": "git",
     "url": "https://github.com/blueshed/dzql"
   },
-  "keywords": [
-    "delta",
-    "postgres",
-    "postgresql",
-    "compiler",
-    "bun",
-    "typescript"
-  ],
-  "author": "Peter Bunyan",
   "license": "MIT",
   "packageManager": "bun@1.4.3"
 }

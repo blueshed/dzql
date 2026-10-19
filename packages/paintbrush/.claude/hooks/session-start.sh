@@ -8,8 +8,8 @@
 # from an npm package, and points BUN_CHROME_PATH at it. If browser tests fail in the sandbox,
 # run it by hand: CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR=$PWD CLAUDE_ENV_FILE=/dev/null bash .claude/hooks/session-start.sh
 #
-# Copied from railroad's hook of the same name, which is where the reasons below were found
-# out; change them there first. Web sandbox only: locally you already have Bun and a
+# The monorepo's own hook runs this same file at its root (bluetools' `.claude/hooks/`), so the
+# reasons below are said once. Web sandbox only: locally you already have Bun and a
 # browser, so it exits at once. Runs synchronously, so Bun, the dependencies and the
 # browser are ready before the agent loop starts. Idempotent.
 set -euo pipefail

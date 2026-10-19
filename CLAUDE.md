@@ -1,9 +1,10 @@
 # CLAUDE.md
 
 The bluetools monorepo: railroad, delta, dzql (modelling, rendering and the Postgres step), create-dzql, paintbrush (the starting website) and create-blueshed (`bun create blueshed`, which copies paintbrush) as Bun workspaces under
-`packages/`. Each package has its own CLAUDE.md, read when working in it; it is the authority for
-that package's contracts, gate and docs (dzql's paths are written from this root). This file is
-only what is shared.
+`packages/`. railroad, delta, dzql and paintbrush each have their own CLAUDE.md, CHANGELOG.md and
+todo.jsonl, read when working in it; it is the authority for that package's contracts, gate and docs
+(dzql's paths are written from this root). The two starters have none: create-dzql is dzql's (released
+with it, one version) and create-blueshed paintbrush's (a copy of it). This file is only what is shared.
 
 ## What each document is for
 
@@ -56,7 +57,8 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
   when that sibling changes.
 - **What is going on** is `CHANGELOG.md` (what changed, across packages) and `todo.jsonl` (what is
   open across them) here; keep both current with every change, as each package keeps its own.
-- Bun only, pinned in CI to 1.4.3.
+- Bun only, on the one the root package.json's `packageManager` names (CI reads it;
+  `scripts/ranges.ts` holds each package's `@types/bun` to it, and each README's "or later" to its floor).
 
 ## The shape of a package
 
@@ -87,8 +89,8 @@ change nothing there (no fix pushed to a tag, no tag moved or pushed again) unti
 
 `/publish` (`.claude/commands/publish.md`, a row per package: its gate, its end-to-end check, the
 skills it stamps): one round, the packages named, a tag `<package>@x.y.z` each, which `.github/workflows/publish.yml` publishes to npm. Only when Peter
-asks. Each package keeps its own version, its `CHANGELOG.md` (`## [Unreleased]` written as work
-lands) and its `todo.jsonl`.
+asks. Each package keeps its own version (create-dzql dzql's); railroad, delta, dzql and paintbrush
+their `CHANGELOG.md` (`## [Unreleased]` written as work lands) and `todo.jsonl`.
 
 ## Working here
 

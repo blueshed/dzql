@@ -4,7 +4,7 @@
  * origin/main: commits not pushed, staged, unstaged, untracked), and every package that depends on
  * one of them, each run its fast tier: a type check and the tests that need no browser and no
  * Postgres server. `--slow` runs the slow tier too (the browser tests, dzql's Postgres suite in
- * Docker, eta's stories and costs): CI runs it on every push, and it runs before a release.
+ * Docker, dzql's stories and costs): CI runs it (`.github/workflows/ci.yml`), and it runs before a release.
  * `--all` runs every package. `--dry-run` says what would run. Whatever changed, it first holds the
  * docs to the code (scripts/docs.ts): every link and every path a README, CLAUDE.md, skill or doc names;
  * and the sibling ranges to the workspace's versions (scripts/ranges.ts).

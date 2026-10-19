@@ -43,7 +43,7 @@ in the heading. `Drawer.dc.html` puts each field's label above it, not in bento'
 grid, and its remove is a red link in the drawer's foot that leads to the modal. `Modal.dc.html`
 matches `confirmModal` almost as it is.
 
-**Work already done, to reuse:** Can You (`Workshop/canyou/src/resources/asks/ui.tsx`, `shell.tsx`) is
+**Work already done, to reuse:** Can You (Peter's, outside this repository: its `asks/ui.tsx` and `shell.tsx`) is
 a railroad app of the Paintbrush line. Its steps (one thing open at a time, each a step, Back and
 Escape closing it, the trail) are the browser's half of what the kernel's client does for the bento.
 

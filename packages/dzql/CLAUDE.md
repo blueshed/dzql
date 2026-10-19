@@ -142,22 +142,13 @@ ln -s <this repository>/node_modules node_modules   # the workspace's dzql and d
 bun check && bun test && bun dev
 ```
 
-Against a delta not yet on npm (the template names its next version), link it too: `bun link` in
-delta, and `"@blueshed/delta": "link:@blueshed/delta"` in the app. A linked delta brings its own
-railroad, and two copies of railroad break the page ("A second copy of @blueshed/railroad has
-loaded" in the console; signals don't cross copies). Make it one: `rm -rf node_modules/@blueshed/railroad &&
-ln -s <delta>/node_modules/@blueshed/railroad node_modules/@blueshed/railroad` in the app.
-
-### Cleanup
-
-```bash
-cd packages/dzql && bun unlink
-```
+The symlinked `node_modules` is the workspace's: its delta and railroad are the siblings'
+sources, one copy each, so a change not yet on npm is what the app runs against.
 
 ## Publishing
 
 Not a step of a plan: finish every stage first, then release once, on Peter's word. Across
-packages, test by linking or packing (above), never by publishing.
+packages, test in the workspace or by packing, never by publishing.
 
 The monorepo's `/publish` (the root's `.claude/commands/publish.md`, dzql's row in its table), only
 on Peter's explicit word: the gate, the create-dzql end-to-end check, one version for both

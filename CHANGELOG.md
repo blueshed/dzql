@@ -6,6 +6,16 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The Bun, the hook and the root's statements, said once (20 October)
+
+- **One Bun, said in one place** (#97): the root's `packageManager`. `scripts/ranges.ts`, in the
+  gate, holds each package's `@types/bun` and a new app's `packageManager` to it, and each README's
+  "Bun x or later" to its own package's floor (`engines.bun`: railroad's is lower, on purpose).
+- **One session-start hook** (#99): paintbrush's, which a new app ships with; the root's runs it.
+- **What the root says, true again** (#86, #87, #88): which packages keep a CLAUDE.md, CHANGELOG and
+  todo; CI is `ci.yml`; the root `package.json` without scripts and fields nothing used, and the old
+  compiler's `dist/` gone; no doc names a path on Peter's Mac as its authority.
+
 - **`bun create dzql` installs and makes the first commit, as `bun create blueshed` does**
   (19 October): it copied files and stopped. It runs `bun install` (which installs the skills) and
   commits, with the same `--no-install`, `--no-git` and `--local`, and the same rules: no repository

@@ -74,7 +74,7 @@ storage from a JSON file to SQLite to Postgres compiled by dzql.
 | [`packages/create-blueshed`](packages/create-blueshed) | `create-blueshed` | `bun create blueshed my-app`: a paintbrush app, for prototyping |
 | [`packages/create-dzql`](packages/create-dzql) | `create-dzql` | `bun create dzql my-app`: the thin client, for performance |
 
-Each package keeps its npm name, its version and its CHANGELOG. In the workspace each uses its
+Each package keeps its npm name and its version, and but for the starters its CHANGELOG. In the workspace each uses its
 siblings' source, not npm's. `/publish` releases what has changed in one round, a tag per package
 (`railroad@x.y.z`, `delta@x.y.z`, `dzql@x.y.z`).
 

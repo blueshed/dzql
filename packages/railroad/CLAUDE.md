@@ -158,7 +158,7 @@ so after a dependency change run `bun install` and commit `bun.lock`.
 
 Locally nothing is needed. In the web sandbox (`CLAUDE_CODE_REMOTE=true`) the
 SessionStart hook at the monorepo root, `.claude/hooks/session-start.sh` (wired in
-`.claude/settings.json`), upgrades Bun to ≥ 1.4.3, runs `bun install` there, and
+`.claude/settings.json`), upgrades Bun to the root package.json's floor (`engines.bun`), runs `bun install` there, and
 stages a headless Chromium from the `@sparticuz/chromium` npm tarball with a
 `--no-sandbox` launch shim at `BUN_CHROME_PATH`, because the browser download
 hosts (`cdn.playwright.dev`, `googlechromelabs.github.io`, `dl.google.com`,

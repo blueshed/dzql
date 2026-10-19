@@ -84,8 +84,8 @@ is Paintbrush's (`paintbrush/` below: hairlines, black, 4px, no shadows), the st
 may use the parts, change them or draw its own; a direction never requires a part, and a choice is
 justified by a story, never by this page.
 
-Not yet in either: a pin's summary, which grows into the full calendar or map, as Can You has it
-(`openMap` and `grow` in `Workshop/canyou/src/resources/asks/`).
+Not yet in either: a pin's summary, which grows into the full calendar or map, as Can You (an app
+of Peter's, outside this repository) has it.
 
 ## The samples
 
@@ -104,6 +104,6 @@ look and agree in every direction: that is the bento being a guide, not a style.
 
 ## Where it comes from
 
-`Workshop/blueshed/archive/apples_pears/apples.md`, "The page"; `Workshop/canyou/docs/minimum-ux.md`,
-"Where you are" and its tap rules; the atlas, `Workshop/concept/location`. When this page and those
-disagree, they are right.
+Peter's earlier notes, outside this repository: apples and pears' "The page", Can You's minimum UX
+("Where you are" and its tap rules), and the location atlas. This page is what was taken from them,
+and the authority here.

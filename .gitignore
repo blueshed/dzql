@@ -2,9 +2,6 @@ node_modules/
 .env
 .DS_Store
 
-# Generated compiler output
-packages/dzql/dist/
-
 # Test coverage output
 coverage/
 
@@ -15,6 +12,9 @@ packages/dzql/*.sqlite-wal
 packages/dzql/.eta-session*
 packages/dzql/server.pid
 packages/dzql/server.log
+
+# Claude Code's worktrees, one per session or agent writing beside this checkout
+.claude/worktrees/
 
 # Tools outside the repos made these, empty, on 16 October: never commit them
 .agents/
