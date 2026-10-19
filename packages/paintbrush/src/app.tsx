@@ -3,12 +3,12 @@
  * resources (src/resources/bento.tsx). Where you are is the URL: `#/` is the box, `#/?message` the
  * message's drawer open over it.
  *
- * To add a page: a path in `paged` below, drawn from its resources' cells; to add a drawer or a
- * modal, a `what` in `layers`.
+ * To add a resource to the page: its cell in `cells`, a deed of the page's beside its name in
+ * `actions`, its drawer in `drawerOf`, its new-or-delete in `modalOf`, each by its `what`.
  */
 import { connectWs, WS } from "@blueshed/delta/client";
 import { mount, provide } from "@blueshed/railroad";
-import { bento, layers, paged } from "./resources/bento";
+import { bento, layers, paged, type Address } from "./resources/bento";
 import { MessageCell, MessageDrawer } from "./resources/message/message-view";
 import { StatusCell } from "./resources/status/status-view";
 
@@ -18,11 +18,32 @@ provide(WS, connectWs("/ws"));
 const { boxPage } = bento();
 const name = document.title; // the app's name, said once, in index.html
 
+/** The box's cells, in its order: bigger for what matters more. */
+const cells = () => [
+  MessageCell(),
+  StatusCell(),
+];
+
+/** The page's own deeds, beside its name. */
+const actions = (): Node[] => [
+];
+
+/** A thing's drawer over the box, by its `what`: where it is changed. */
+function drawerOf(at: Address): Node | null {
+  if (at.what === "message") return MessageDrawer();
+  return null; // nothing open
+}
+
+/** What asks over the box, by its `what`: something new, or whether to remove it. */
+function modalOf(at: Address): Node | null {
+  return null; // nothing asks
+}
+
 mount(document.getElementById("app")!, () =>
   layers(
     paged((path) =>
       path === "" ? (
-        boxPage([{ label: name }], [], [MessageCell(), StatusCell()], undefined, {})
+        boxPage([{ label: name }], [], cells(), undefined, { actions: actions() })
       ) : (
         <p>
           Page not found!
@@ -31,7 +52,7 @@ mount(document.getElementById("app")!, () =>
         </p>
       ),
     ),
-    (at) => (at.what === "message" ? MessageDrawer() : null),
-    null,
+    drawerOf,
+    modalOf,
   ),
 );

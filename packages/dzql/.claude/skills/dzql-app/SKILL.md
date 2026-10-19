@@ -72,7 +72,7 @@ before touching the kernel, [where-an-app-lives](reference/where-an-app-lives.md
 - **A page is the bento's, never hand-rolled.** Read [page](reference/page.md) and
   [bento](reference/bento.md) before the first `render`: a page is a `collectionPage` or a
   `boxPage` in `layers()`, a list is `rows()` of `row()`s (a lead, the words, a state, one tap),
-  a deed is a `tool()`; `styles.css` imports `bento.css` first and says only the app's tokens and
+  a deed is a `tool()`; `styles.css` imports a look first (`bento-plain.css`, the starter's) and says only the app's tokens and
   what the bento has no surface for. The result is a clean, simple interface: one thing to do per
   row, nothing drawn that no story needs.
 - **Display, then a sheet.** A page shows; whatever edits or acts opens over it: a row's tap opens

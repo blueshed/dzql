@@ -145,14 +145,17 @@ export const linkFor = (person: number) => call<{ url: string; expires: string }
 // src/resources/people/people-view.tsx
 import { list, signal, when } from "@blueshed/railroad";
 import { Link, LogOut, UserPlus } from "lucide";
-import { Icon } from "../icon";
+import { bento, go, rowsOf } from "../bento";
 import { toast } from "../toast";
 import type { Person } from "./people-api";
 import { becomeAs, everyone, linkFor, me, openPeople, signOut } from "./people";
 
-/** Signed in: who you are, everyone here, someone new, and anyone's link. Else "Who are you?". */
-export function PeopleView() {
-  return <>{when(me, (m$) => <Everyone who={m$.peek() as Person} />, () => when(me.map((m) => m === null), () => <WhoAreYou />))}</>;
+const { cell, row, tool, addModal } = bento();
+
+/** People on the box. Signed in: you, everyone here and anyone's link, someone new. Else: who are you? */
+export function PeopleCell() {
+  const body = <>{when(me, (m$) => <Everyone who={m$.peek() as Person} />, () => when(me.map((m) => m === null), () => <WhoAreYou />))}</>;
+  return cell({ name: "People", body });
 }
 
 function WhoAreYou() {
@@ -160,14 +163,10 @@ function WhoAreYou() {
   void everyone<Person>().then((all) => people.set(all)); // nobody, in production
   return (
     <>
-      <h2>Who are you?</h2>
+      <p class="note">Who are you?</p>
       {when(
         people.map((p) => p.length > 0),
-        () => (
-          <div class="toolbar pick">
-            {list(people, (p) => p.id, (p$) => <button class="be" onclick={() => void becomeAs(p$.peek().id).catch((err) => toast(err.message, "alert"))}>{p$.map((p) => p.name)}</button>)}
-          </div>
-        ),
+        () => <div class="pick">{list(people, (p) => p.id, (p$) => tool(p$.peek().name, { className: "be", on: () => void becomeAs(p$.peek().id).catch((err) => toast(err.message, "alert")) }))}</div>,
         () => <p class="help">Ask someone here for your link.</p>,
       )}
     </>
@@ -177,42 +176,29 @@ function WhoAreYou() {
 function Everyone({ who }: { who: Person }) {
   const people = openPeople();
   const all = people.data.map((d) => Object.values(d?.people ?? {}).sort((a, b) => a.name.localeCompare(b.name)));
-  const name = signal("");
   const sent = signal("");
-  const add = () =>
-    people.send([{ op: "add", path: "/people/-", value: { name: name.peek().trim() } }]).then(
-      () => name.set(""),
-      () => toast("Not added", "alert"),
-    );
   return (
     <>
-      <div class="toolbar who">
-        <h2>{who.name}</h2>
-        <button class="sign-out" onclick={() => void signOut()}><Icon icon={LogOut} /> Sign out</button>
-      </div>
-      <ul class="people">
-        {list(all, (p) => p.id, (p$) => (
-          <li>
-            <span class="name">{p$.map((p) => p.name)}</span>
-            <button class="send-link" onclick={() => void linkFor(p$.peek().id).then(({ url }) => sent.set(url))}>
-              <Icon icon={Link} label="Make their link" />
-            </button>
-          </li>
-        ))}
-      </ul>
+      {row({ id: "you", what: who.name, note: "you", act: tool("Sign out", { icon: LogOut, kind: "quiet", className: "sign-out", on: () => void signOut() }) })}
+      {rowsOf(all, (p) => p.id, (p$) =>
+        row({ what: () => p$.get().name, act: tool("Make their link", { icon: Link, iconOnly: true, kind: "quiet", className: "send-link", on: () => void linkFor(p$.peek().id).then(({ url }) => sent.set(url)) }) }), "Nobody yet.")}
       {when(sent, (s$) => <p class="help sent">For them to tap once: <code class="link">{s$}</code></p>)}
-      <form class="toolbar add-person" onsubmit={(e: Event) => (e.preventDefault(), void add())}>
-        <input name="person" placeholder="Someone new" value={name} oninput={(e: Event) => name.set((e.currentTarget as HTMLInputElement).value)} />
-        <button><Icon icon={UserPlus} /> Add</button>
-      </form>
+      {tool("Someone new", { icon: UserPlus, className: "add-person", on: go("", "new-person") })}
     </>
   );
+}
+
+/** Someone new, asked over the box: their name. The people document is opened for it, and closes with it. */
+export function NewPerson() {
+  const people = openPeople();
+  const done = go("");
+  return addModal("Someone new", [{ name: "name", label: "Their name" }], ({ name }) => void people.send([{ op: "add", path: "/people/-", value: { name: name!.trim() } }]).then(done, () => toast("Not added", "alert")), done);
 }
 ```
 
 ```ts
-// src/app.tsx: after import { StatusView } from "./resources/status/status-view";
-import { PeopleView } from "./resources/people/people-view";
+// src/app.tsx: after import { StatusCell } from "./resources/status/status-view";
+import { NewPerson, PeopleCell } from "./resources/people/people-view";
 import { takeLink, whoAmI } from "./resources/people/people";
 import { toast } from "./resources/toast";
 ```
@@ -225,8 +211,13 @@ provide(WS, connectWs("/ws", { onConnect: whoAmI }));
 ```
 
 ```ts
-// src/app.tsx: after <MessageView />
-<PeopleView />
+// src/app.tsx: after MessageCell(),
+PeopleCell(),
+```
+
+```ts
+// src/app.tsx: before return null; // nothing asks
+if (at.what === "new-person") return NewPerson();
 ```
 
 The stories, then their tests: through the socket, nobody until signed in, and a link made by one person signs in another; on the page, pick who you are, add someone new, and their link signs them in in another window.
@@ -302,22 +293,24 @@ test(`${stories.signIn.name} -- nobody until signed in; a pick signs in, and a l
 
 test(`${stories.invite.name} -- on the page: pick who you are, add someone new, and their link signs them in in another window`, async () => {
   await open();
-  await waitFor(`[...document.querySelectorAll(".pick button.be")].some((b) => b.textContent === "Ann")`);
-  await view.evaluate(`[...document.querySelectorAll(".pick button.be")].find((b) => b.textContent === "Ann").click()`);
-  await waitFor(`document.querySelector(".who h2")?.textContent === "Ann"`);
-  await view.click("input[name=person]");
+  await waitFor(`[...document.querySelectorAll(".pick .be")].some((b) => b.textContent === "Ann")`);
+  await view.evaluate(`[...document.querySelectorAll(".pick .be")].find((b) => b.textContent === "Ann").click()`);
+  await waitFor(`document.querySelector("#you .what")?.textContent === "Ann"`);
+  await view.click(".add-person"); // someone new is asked for in a modal
+  await waitFor(`document.querySelector("dialog input[name=name]")`);
+  await view.click("dialog input[name=name]");
   await view.type("Cy");
-  await view.click("form.add-person button");
-  const cy = `[...document.querySelectorAll(".people li")].find((li) => li.textContent.includes("Cy"))`;
+  await view.click("dialog .tool.add");
+  const cy = `[...document.querySelectorAll('.cell[data-key="people"] .rows .row')].find((r) => r.textContent.includes("Cy"))`;
   await waitFor(cy);
-  await view.evaluate(`${cy}.querySelector("button.send-link").click()`);
+  await view.evaluate(`${cy}.querySelector(".send-link").click()`);
   await waitFor(`document.querySelector(".sent code.link")`);
   const link = await view.evaluate<string>(`document.querySelector(".sent code.link").textContent`);
 
   await withOtherWindow(async (other, waitForOther) => {
     await other.navigate(link);
-    await waitForOther(`document.querySelector(".who h2")?.textContent === "Cy"`);
-    await other.click("button.sign-out");
+    await waitForOther(`document.querySelector("#you .what")?.textContent === "Cy"`);
+    await other.click(".sign-out");
     await waitForOther(`document.querySelector(".pick")`);
   });
 });

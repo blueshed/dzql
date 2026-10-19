@@ -22,6 +22,8 @@ import { createElement as lucide, ChevronRight, Eye, EyeOff, Pencil, Plus, Redo2
 import { address, parseAddress, type Address } from "dzql/rendering/bento";
 import { grid, slug, type Grid } from "dzql/rendering/grid";
 
+/** Where you are: a path, and the one thing open over it (`what`, and `which` one). */
+export type { Address };
 /** A lucide icon, as `lucide` exports one. */
 export type Mark = Parameters<typeof lucide>[0];
 /** A gesture: what a press does. */

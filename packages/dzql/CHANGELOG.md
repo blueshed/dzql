@@ -51,7 +51,9 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   in a button) and a total (`row({ total })`); a pin (`pin()`), in a cell's head (`cell({ pins })`)
   or on a line; a cell two rows tall (`cell({ rows })`). Each is an addition: a page that does not
   ask for one is drawn as it was. At the root, a heading stands alone: a trail of one crumb would
-  say the name twice.
+  say the name twice. The dzql-app skill's `reference/bento.md` names them, and the looks; its rule
+  that no row carries a button is now that a row carries at most one deed of its own, the one the
+  line is for (Add, on a menu), as the design draws it.
 
 - **What cafe-e found, built by a blank Claude from the skills alone** (18 October,
   `cafe-e/feedback.md`: it built the whole cafe, 18 stories at 100%, and played it in Chrome). The

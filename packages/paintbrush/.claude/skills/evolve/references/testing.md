@@ -9,7 +9,7 @@ The stories come first, in `stories.ts`; each test is named from the one it tell
   // Notes
   notesFollow: story("A note added in one window shows in every other, and so does its removal."),
   notesKept: story("A note is still there after a reload."),
-  notesRefused: story("A note the server refuses says Not saved, and stays in the box."),
+  notesRefused: story("A note the server refuses says Not saved, and stays in the box it was typed in."),
 ```
 
 ```ts
@@ -33,52 +33,52 @@ afterAll(async () => {
   rmSync(dataDir, { recursive: true, force: true });
 });
 
-const shown = `[...document.querySelectorAll(".notes li")].map((li) => li.textContent).join(", ")`;
-const onNotes = `document.querySelector("h1")?.textContent === "Notes"`;
+const NOTES = `.cell[data-key="notes"]`;
+const shown = `[...document.querySelectorAll('${NOTES} .rows .what')].map((w) => w.textContent).join(", ")`;
+
+/** A note added as a person adds one: the deed beside the page's name, then its modal. */
+async function addNote(text: string) {
+  await view.click(".heading > .tool");
+  await waitFor(`document.querySelector("dialog input[name=text]")`);
+  await view.click("dialog input[name=text]");
+  await view.type(text);
+  await view.click("dialog .tool.add");
+}
 
 test(`${stories.notesFollow.name} -- added in one window, removed in the other`, async () => {
   await open();
-  await view.evaluate(`location.hash = "#/notes"`);
-  await waitFor(onNotes);
+  await waitFor(`document.querySelector('${NOTES}')`);
   await withOtherWindow(async (other, waitForOther) => {
-    await other.evaluate(`location.hash = "#/notes"`);
-    await waitForOther(onNotes);
+    await waitForOther(`document.querySelector('${NOTES}')`);
 
-    await view.click("input");
-    await view.type("first");
-    await view.click("button.primary");
+    await addNote("first");
     await waitForOther(`${shown} === "first"`);
-    await waitFor(`document.querySelector("input").value === ""`); // the box empties once it is saved
+    await waitFor(`!document.querySelector("dialog")`); // the modal goes once it is saved
 
-    await other.click(".notes li button");
+    await other.click(`${NOTES} .row .tool`); // the bin asks first
+    await waitForOther(`document.querySelector("dialog .tool.danger")`);
+    await other.click("dialog .tool.danger");
     await waitFor(`${shown} === ""`);
   });
 });
 
 test(`${stories.notesKept.name} -- added, then the page reloaded`, async () => {
   await open();
-  await view.evaluate(`location.hash = "#/notes"`);
-  await waitFor(onNotes);
-  await view.click("input");
-  await view.type("kept");
-  await view.click("button.primary");
+  await waitFor(`document.querySelector('${NOTES}')`);
+  await addNote("kept");
   await waitFor(`${shown} === "kept"`);
 
   await open();
-  await view.evaluate(`location.hash = "#/notes"`);
   await waitFor(`${shown} === "kept"`);
 });
 
 test(`${stories.notesRefused.name} -- the server refuses every write`, async () => {
   await open();
-  await view.evaluate(`location.hash = "#/notes"`);
-  await waitFor(onNotes);
+  await waitFor(`document.querySelector('${NOTES}')`);
   await refuseWrites();
-  await view.click("input");
-  await view.type("refused");
-  await view.click("button.primary");
+  await addNote("refused");
   await waitFor(`document.querySelector(".toast.show.alert")?.textContent === "Not saved"`);
-  expect(await view.evaluate<string>(`document.querySelector("input").value`)).toBe("refused");
+  expect(await view.evaluate<string>(`document.querySelector("dialog input[name=text]").value`)).toBe("refused");
 });
 ```
 

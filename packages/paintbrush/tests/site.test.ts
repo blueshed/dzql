@@ -91,7 +91,7 @@ test("home page loads: a box, its name the page's heading, the message and the s
   await open();
   expect(await view.evaluate<string>("document.title")).toBe("Paintbrush");
   await waitFor(`document.querySelector("h1")?.textContent === "Paintbrush"`);
-  expect(await view.evaluate<string[]>(`[...document.querySelectorAll(".cells > .cell")].map((c) => c.dataset.key)`)).toEqual(["message", "status"]);
+  expect(await view.evaluate<string[]>(`[...document.querySelectorAll(".cells > .cell")].map((c) => c.dataset.key)`)).toEqual(expect.arrayContaining(["message", "status"])); // and whatever the app has grown
 });
 
 test("the Save button has its lucide icon, hidden from screen readers", async () => {

@@ -106,14 +106,34 @@ Running the Shed evals again is Peter's call: they are agent runs.
 Moving a page to the server then becomes a step evolve can state: the same classes, a handler
 turned into `write()`.
 
-## Questions for Peter
+## Peter's answers
 
-1. **Which look is the default?** Plain for both starters, with tray kept for the examples that
-   have it? Or every example moved to plain?
-2. **Where does the railroad bento live?** Recommended: in paintbrush, as template code copied into
-   each new app, the way `icon.tsx` is. dzql's CLAUDE.md keeps railroad to `island.ts`, and a
-   paintbrush test can hold the copy to `dzql/rendering/bento`. The other way is a dzql export:
-   one copy to fix, but it changes that rule.
-3. **The heading:** is it the bento's, so the thin client gains it too (logo, name large, the page's
-   actions, Undo beside it)?
-4. **The drawer's fields:** the design's label above each field, or bento's name | value grid?
+1. **The default look**: plain for both starters; the examples keep the tray until each is next
+   worked on.
+2. **The railroad bento**: in paintbrush, as template code, held to `dzql/rendering/bento` by a
+   paintbrush test.
+3. **The heading**: the bento's, in both clients.
+4. **The drawer's fields**: the label above each field (in the plain look).
+
+## Where it stands
+
+Built on 19 October, a commit a stage:
+
+1. `bento.css` is the frame, every look decision a token, its defaults the tray: the computed style
+   of every element on five pages of every surface, at 375 and 1280, is as it was.
+   `bento-plain.css` is the plain look, only tokens. The starter imports it.
+2. `bento.ts` has the heading (alone at the root), runs, a row's own deed, totals, pins, and a cell
+   two rows tall. The café of `Main.dc.html`, drawn with them under the plain look and nothing
+   else, matches the design.
+3. Paintbrush's `bento.tsx` draws 47 cases as `bento.ts` does, held by `tests/bento.test.ts`, which
+   fails on one class changed. Where you are is the URL; Back and Escape close; the page is drawn
+   again only when you go elsewhere.
+4. Paintbrush's page is a box: its name the heading, the message (✎ to its drawer) and the status.
+5. The evolve references draw with it, and `test:evolve` proves all nine.
+
+One choice made on the way: a row may carry one deed of its own, the one the line is for (Add, on a
+menu), as the design draws it. The dzql-app skill had said no row carries a button, so its rule
+now says at most one, and every other deed is in the drawer.
+
+Still open: an evolve step that moves a page to the server, now a handler turned into a write; the
+examples' looks, the tray until each is worked on.

@@ -29,6 +29,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `StatusCell` in place of `MessageView` and `StatusView`. To move an app across: copy
   `src/resources/bento.tsx` and the new `styles.css`, draw each view as a cell (and its drawer),
   and open the drawer in a test before typing in it.
+- **The evolve skill draws with the bento.** `app.tsx` lists the box's `cells`, the page's
+  `actions`, and `drawerOf` and `modalOf` by what is open, so a reference adds a resource a line
+  each. The references' views are cells: the notes (a row each, the bin asking in a modal, a note
+  added by the heading's deed and its modal), the catalogue and your order side by side (Add on
+  each item, × on each line, a total), and the people (who are you; you and Sign out, everyone
+  and their link, someone new in a modal); their tests press what a person presses. `test:evolve`
+  proves all nine.
 
 - **A new app opens with what it offers, and with the model's page.** Its README says it in one
   sentence (you write your stories, a schema and documents; you get a live page and proof that every

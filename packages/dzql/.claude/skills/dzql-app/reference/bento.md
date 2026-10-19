@@ -29,9 +29,15 @@ binds the app's icons, its session's docType and the last tool, once. These are 
 - A modal is new (`addModal`) or delete (`confirmModal`); there is no bare one.
 - **A page displays; an edit or a deed opens over it.** A row shows what a thing is and taps open
   its drawer (`drawer`), where its fields and its deeds are; making a new one is the window's plus
-  (`addTool`) opening `addModal`; taking one away is `confirmModal`. No form, input or select
-  sits on a page that displays, and no row carries a button beside it: the deed is in its drawer.
-  The one exception is the thing the page is for, said in one field at its foot (chat's message).
+  (`addTool`) or the heading's deed opening `addModal`; taking one away is `confirmModal`. No
+  form, input or select sits on a page that displays. A row carries at most one deed of its own,
+  the one the line is for (Add, on a menu): `row({ act })`, its name then the button that opens
+  it; every other deed is in its drawer. The one exception is the thing the page is for, said in
+  one field at its foot (chat's message).
+- The rest of a box, as Paintbrush's design draws it: a **heading** (`boxPage(…, heading)`: the
+  name large under the trail, a logo, the page's own deeds and its tools; at the root, alone), a
+  **run** heading a group of rows (`run`), a **total** (`row({ total })`), a **pin** in a cell's
+  head or on a line (`pin`, `cell({ pins })`), a cell two rows tall (`cell({ rows })`).
 - **Several kinds of work are a box**, a cell each (`cell`, its count and summary in its head),
   one grown into the window at a time -- never one long scroll of sections. A person whose work is
   one list is a collection.
@@ -40,9 +46,14 @@ binds the app's icons, its session's docType and the last tool, once. These are 
 - Find and the reading switch write to the session (`/filter/<key>`, `/hide/<key>`,
   `/reading/<key>`): its `permit` says yes when `collectionsWrite(op)` is not undefined, and its
   `shape` takes `collectionsWrite(op, ui)`, each field it moves replaced whole (the ticker's desk).
-- The stylesheet imports `src/rendering/bento.css` first, then says its own tokens. `bento.css` styles only
-  inside `layers()`: draw every bento page in it (`layers(page, "", "")` when nothing is open).
-  Outside it (`body`, `#app`) is the app's to style.
+- The stylesheet imports a look first, then says its own tokens: `dzql/rendering/bento-plain.css`
+  (plain: hairlines, black, 4px, no shadows; the starter's) or `dzql/rendering/bento.css` (the
+  tray, rounded and lifted). Every look decision is a token of `bento.css`'s, listed at its top:
+  say a token, never a rule over the bento's. It styles only inside `layers()`: draw every bento
+  page in it (`layers(page, "", "")` when nothing is open). Outside it (`body`, `#app`) is the
+  app's to style.
+- The light client draws the same HTML in the browser (paintbrush's `bento.tsx`, held to this one
+  by its test), so a page that moves here keeps its look: each handler there is a write here.
 - What opens is a `<button>`, never a `div` with `role="button"` (an applet's SVG figure says
   `role="button"` and answers Enter and Space). A row an applet draws is opened by a `<button>`
   beside the mount (`aria-labelledby`), not around it.

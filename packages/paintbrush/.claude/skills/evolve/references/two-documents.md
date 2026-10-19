@@ -47,64 +47,49 @@ The view names and prices each line from the catalogue, so a change to either re
 
 ```tsx
 // src/resources/order/order-view.tsx
-import { list } from "@blueshed/railroad";
 import { joinPath, type DeltaOp } from "@blueshed/delta/core";
 import { Plus, X } from "lucide";
-import { Icon } from "../icon";
+import { bento, rowsOf } from "../bento";
 import { toast } from "../toast";
 import { catalogue, order } from "./order";
 
-export function OrderView() {
-  const items = catalogue.data.map((c) => Object.values(c?.items ?? {}));
-  const lines = order.data.map((o) => Object.values(o?.lines ?? {}));
-  const item = (id: number) => catalogue.data.get()?.items[id];
-  const total = () => lines.get().reduce((sum, l) => sum + (item(l.item)?.price ?? 0), 0);
-  const change = (ops: DeltaOp[]) => order.send(ops).catch(() => toast("Not saved", "alert"));
+const { cell, row, tool } = bento();
+const items = catalogue.data.map((c) => Object.values(c?.items ?? {}));
+const lines = order.data.map((o) => Object.values(o?.lines ?? {}));
+const item = (id: number) => catalogue.data.get()?.items[id];
+const money = (n: number) => n.toFixed(2);
+const change = (ops: DeltaOp[]) => order.send(ops).catch(() => toast("Not saved", "alert"));
 
-  return (
+/** The catalogue on the box: each item, its price, and Add, which puts a line on your order. */
+export function CatalogueCell() {
+  return cell({
+    name: "Catalogue",
+    span: 2,
+    body: rowsOf(items, (i) => i.id, (i$) =>
+      row({
+        what: () => i$.get().name,
+        state: () => money(i$.get().price),
+        act: tool("Add", { icon: Plus, label: `Add ${i$.peek().name}`, on: () => void change([{ op: "add", path: "/lines/-", value: { item: i$.peek().id } }]) }),
+      }), "Nothing to order yet."),
+  });
+}
+
+/** Your order on the box: each line named and priced from the catalogue, × to take it off, and the total. */
+export function OrderCell() {
+  const total = () => lines.get().reduce((sum, l) => sum + (item(l.item)?.price ?? 0), 0);
+  const body = (
     <>
-      <h1>Order</h1>
-      <ul class="catalogue">
-        {list(items, (i) => i.id, (i$) => (
-          <li>
-            {i$.map((i) => `${i.name} ${i.price.toFixed(2)}`)}
-            <button onclick={() => void change([{ op: "add", path: "/lines/-", value: { item: i$.peek().id } }])}>
-              <Icon icon={Plus} label={`Add ${i$.peek().name}`} />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <ul class="order">
-        {list(lines, (l) => l.id, (l$) => (
-          <li>
-            {() => item(l$.get().item)?.name ?? ""}
-            <button onclick={() => void change([{ op: "remove", path: joinPath("lines", l$.peek().id) }])}>
-              <Icon icon={X} label="Remove" />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <p class="total">{() => `Total ${total().toFixed(2)}`}</p>
+      {rowsOf(lines, (l) => l.id, (l$) =>
+        row({
+          what: () => item(l$.get().item)?.name ?? "",
+          state: () => money(item(l$.get().item)?.price ?? 0),
+          act: tool("Remove", { icon: X, iconOnly: true, kind: "quiet", on: () => void change([{ op: "remove", path: joinPath("lines", l$.peek().id) }]) }),
+        }), "Nothing yet.")}
+      {row({ what: "Total", state: () => money(total()), total: true })}
     </>
   );
+  return cell({ name: "Your order", count: () => lines.get().length || null, body });
 }
-```
-
-The reset takes a list's padding, so its bullets would hang outside the page: the lists are rows instead.
-
-```css
-// src/styles.css: after .toast.alert { background: var(--danger); }
-
-.catalogue, .order { list-style: none; margin-bottom: 1rem; }
-.catalogue li, .order li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid var(--border-mid);
-}
-.total { font-weight: 600; }
 ```
 
 ```ts
@@ -117,14 +102,17 @@ import { orderDocs } from "./resources/order/order-api";
 await orderDocs(ws, dataDir);
 ```
 
+Two cells on the box, side by side:
+
 ```tsx
-// src/app.tsx: after import { StatusView } from "./resources/status/status-view";
-import { OrderView } from "./resources/order/order-view";
+// src/app.tsx: after import { StatusCell } from "./resources/status/status-view";
+import { CatalogueCell, OrderCell } from "./resources/order/order-view";
 ```
 
 ```tsx
-// src/app.tsx: before "*": () => (
-"/order": () => <OrderView />,
+// src/app.tsx: after StatusCell(),
+CatalogueCell(),
+OrderCell(),
 ```
 
 Its story, and its test, as in [testing.md](testing.md); the page passes it on SQLite and Postgres too:
@@ -156,24 +144,24 @@ afterAll(async () => {
   rmSync(dataDir, { recursive: true, force: true });
 });
 
-const shown = (list: string) => `[...document.querySelectorAll(".${list} li")].map((li) => li.textContent.trim()).join(", ")`;
-const total = (amount: string) => `document.querySelector(".total")?.textContent === "Total ${amount}"`;
+const CATALOGUE = `.cell[data-key="catalogue"]`;
+const ORDER = `.cell[data-key="your-order"]`;
+const shown = (cell: string) => `[...document.querySelectorAll('${cell} .rows .what')].map((w) => w.textContent.trim()).join(", ")`;
+const total = (amount: string) => `document.querySelector('${ORDER} .row.total .state')?.textContent === "${amount}"`;
 
 test(`${stories.ordering.name} -- two windows order and remove`, async () => {
   await open();
-  await view.evaluate(`location.hash = "#/order"`);
-  await waitFor(`${shown("catalogue")} === "Tea 2.50, Cake 3.00"`); // the catalogue is drawn
+  await waitFor(`${shown(CATALOGUE)} === "Tea, Cake"`); // the catalogue is drawn
   await withOtherWindow(async (other, waitForOther) => {
-    await other.evaluate(`location.hash = "#/order"`);
     await waitForOther(total("0.00"));
 
-    await view.click(".catalogue li:nth-child(1) button");
-    await view.click(".catalogue li:nth-child(2) button");
-    await waitForOther(`${shown("order")} === "Tea, Cake"`);
+    await view.click(`${CATALOGUE} .rows > .row:nth-child(1) > .tool`);
+    await view.click(`${CATALOGUE} .rows > .row:nth-child(2) > .tool`);
+    await waitForOther(`${shown(ORDER)} === "Tea, Cake"`);
     await waitForOther(total("5.50"));
 
-    await other.click(".order li:nth-child(1) button");
-    await waitFor(`${shown("order")} === "Cake"`);
+    await other.click(`${ORDER} .rows > .row:nth-child(1) > .tool`);
+    await waitFor(`${shown(ORDER)} === "Cake"`);
     await waitFor(total("3.00"));
   });
 });
