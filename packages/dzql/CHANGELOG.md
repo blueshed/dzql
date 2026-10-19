@@ -23,6 +23,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Breaking
+
+- **dzql's public API is named**: `package.json`'s `exports` lists each module an app imports (41,
+  among them `dzql/rendering/server`, `dzql/rendering/documents`, `dzql/modelling/stories`); the
+  wildcards `dzql/rendering/*` and `dzql/modelling/*` are gone. Eleven modules are dzql's own and
+  no longer importable: `modelling/by-hand`, `modelling/costs-clock`, `modelling/stories-run`,
+  `rendering/client-coverage`, `rendering/connection`, `rendering/failed`, `rendering/reading`,
+  `rendering/resources/ledger`, `rendering/resources/render`, `rendering/start` (scripts run by
+  path still run). `readme/exports.test.ts` holds the list to what the examples, skills and docs use.
+- **The `eta-app` skill is `dzql-app`**: `bunx delta install-skills` installs it under its new name;
+  delete `.claude/skills/eta-app` from an app that has it.
+
 ### Changed
 
 - **What cafe-e found, built by a blank Claude from the skills alone** (18 October,

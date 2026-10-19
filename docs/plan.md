@@ -128,8 +128,11 @@ names, into `.claude/skills`.
 
 ## Doing next, in order
 
-4. **dzql's public API**: named entries, no wildcards; what an app imports is listed, the rest is
-   internal.
+4. **dzql's public API**: *Done*. `exports` names 41 modules, no wildcards; eleven are dzql's own.
+   `readme/exports.test.ts` holds it. The overlaps were layers, not duplicates: `delta migrate`
+   takes a JSON file or SQLite and hands a Postgres URL to `dzql migrate` (one command per store);
+   sign-in by link is delta's protocol (`@blueshed/delta/auth-link`), its Postgres store
+   (`dzql/auth-link`), and the thin client's links (`dzql/rendering/links`).
 5. **The scripts**: `test` means the same in every package; dzql's examples are listed once.
 6. **The skills checked against the code**: a test that every path and link a skill names exists.
 7. **The docs by reader**: *Done* (19 October, Peter: "since our plans are in git"). `docs/` keeps

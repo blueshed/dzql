@@ -10,6 +10,11 @@ step: **modelling** (`dzql/modelling`: the stories, told against the app), **ren
 (`dzql/postgres`, `dzql/pglite`). One package; each part is its own entry, and nobody pays for a
 part they do not import: `@blueshed/railroad` is an optional peer that only an island needs.
 
+**The public API is `package.json`'s `exports`, each named; no wildcard.** A module not listed
+is dzql's own and may change. `readme/exports.test.ts` holds it: every `dzql/...` path an example,
+a skill, a README or a doc names must be exported. Make a module public by listing it, with the
+change that first needs it.
+
 ## Read the Documentation First
 
 Before working on this codebase, read:
