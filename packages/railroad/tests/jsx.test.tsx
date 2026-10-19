@@ -1,10 +1,10 @@
 import { describe, test, expect, spyOn, beforeEach, afterEach, mock } from "bun:test";
-import { signal, effect, untrack, pushDisposeScope, popDisposeScope, trackDispose, hasActiveDisposeScope } from "./signals";
-import type { ReadonlySignal } from "./signals";
-import { createElement, when, list, mount, Fragment } from "./jsx";
-import type { JSX } from "./jsx";
-import { routes } from "./routes";
-import { SVG_NS, tick, flush, defer } from "./tests/helpers";
+import { signal, effect, untrack, pushDisposeScope, popDisposeScope, trackDispose, hasActiveDisposeScope } from "../src/signals";
+import type { ReadonlySignal } from "../src/signals";
+import { createElement, when, list, mount, Fragment } from "../src/jsx";
+import type { JSX } from "../src/jsx";
+import { routes } from "../src/routes";
+import { SVG_NS, tick, flush, defer } from "./helpers";
 
 // when()/list() warn when created outside a dispose scope; bracket each test
 // in one (as a component or mount() would) and tear it down afterwards.
@@ -1339,8 +1339,8 @@ describe("a .get() in a render body warns once per render body, in development",
   test("a production build leaves it out", () => {
     const cwd = new URL(".", import.meta.url).pathname;
     const script = `
-      const { createElement, mount } = await import("./jsx.ts");
-      const { signal } = await import("./signals.ts");
+      const { createElement, mount } = await import("../src/jsx.ts");
+      const { signal } = await import("../src/signals.ts");
       const s = signal(1);
       mount(document.body, () => createElement(function View() { return createElement("p", null, s.get()); }, null));`;
     const run = (NODE_ENV: string, prelude = "") => Bun.spawnSync(
@@ -1363,8 +1363,8 @@ describe("a Signal from another copy of railroad throws where it is rendered", (
     // so the copy stays out of this one's coverage (Bun would report it as signals.ts).
     const cwd = new URL(".", import.meta.url).pathname;
     const run = Bun.spawnSync([process.execPath, "--preload", "./happy-dom.setup.ts", "-e", `
-      const { createElement, when, mount } = await import("./jsx.ts");
-      const copy = await import("./signals.ts?copy");
+      const { createElement, when, mount } = await import("../src/jsx.ts");
+      const copy = await import("../src/signals.ts?copy");
       const data = copy.signal({ title: "board" });
       for (const render of [() => createElement("p", null, data), () => when(data, () => createElement("p", null))]) {
         try { mount(document.body, render); console.log("rendered"); } catch (e) { console.log(e.message); }
@@ -1372,8 +1372,8 @@ describe("a Signal from another copy of railroad throws where it is rendered", (
     const out = run.stdout.toString();
     expect(out).not.toContain("rendered");
     expect(out.match(/made by another copy of @blueshed\/railroad/g)?.length).toBe(2);
-    expect(out).toContain(new URL("./signals.ts?copy", import.meta.url).href); // the copy that made it
-    expect(out).toContain(`this copy (${new URL("./signals.ts", import.meta.url).href})`);
+    expect(out).toContain(new URL("../src/signals.ts?copy", import.meta.url).href); // the copy that made it
+    expect(out).toContain(`this copy (${new URL("../src/signals.ts", import.meta.url).href})`);
   });
   // What another copy's Signal looks like to this one: a class of its own, whose prototype carries
   // the URL of the copy that made it under the key every copy shares.
@@ -1399,7 +1399,7 @@ describe("a Signal from another copy of railroad throws where it is rendered", (
     for (const t of tries) {
       expect(t).toThrow("made by another copy of @blueshed/railroad");
       expect(t).toThrow(elsewhere);
-      expect(t).toThrow(`this copy (${new URL("./signals.ts", import.meta.url).href})`);
+      expect(t).toThrow(`this copy (${new URL("../src/signals.ts", import.meta.url).href})`);
     }
     expect(root.childNodes.length).toBe(0);
     expect(hasActiveDisposeScope()).toBe(false);

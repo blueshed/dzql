@@ -6,6 +6,12 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **The source is in `src/`, the tests in `tests/`** (19 October), the monorepo's one shape for a
+  library (`docs/plan.md`): `src/` is what ships. Every public name is the same (`exports` points
+  into `src/`), so nothing that imports railroad changes.
+
 ## [0.17.0] - 2026-10-19
 
 ### Fixed

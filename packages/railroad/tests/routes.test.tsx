@@ -1,8 +1,8 @@
 import { describe, test, expect, spyOn, beforeEach, afterEach } from "bun:test";
-import { signal, effect, pushDisposeScope, popDisposeScope, trackDispose } from "./signals";
-import { createElement, when, Fragment } from "./jsx";
-import { routes, route, navigate, matchRoute } from "./routes";
-import { SVG_NS, tick, defer } from "./tests/helpers";
+import { signal, effect, pushDisposeScope, popDisposeScope, trackDispose } from "../src/signals";
+import { createElement, when, Fragment } from "../src/jsx";
+import { routes, route, navigate, matchRoute } from "../src/routes";
+import { SVG_NS, tick, defer } from "./helpers";
 
 beforeEach(() => {
   document.body.innerHTML = "";

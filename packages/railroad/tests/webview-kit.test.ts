@@ -1,6 +1,6 @@
 // @blueshed/railroad/webview: the kit page tests share, in a real browser.
 import { afterAll, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
-import { browser, waitIn } from "../webview";
+import { browser, waitIn } from "../src/webview";
 import kit from "./fixtures/kit.html";
 
 setDefaultTimeout(30_000); // the first browser start can be slow

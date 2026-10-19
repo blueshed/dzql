@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from "bun:test";
-import { key, provide, inject, tryInject, clearProviders } from "./shared";
+import { key, provide, inject, tryInject, clearProviders } from "../src/shared";
 
 describe("shared", () => {
   test("provide and inject", () => {

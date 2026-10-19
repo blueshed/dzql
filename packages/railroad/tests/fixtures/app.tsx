@@ -11,7 +11,7 @@ import {
   provide,
   inject,
   key,
-} from "../../index";
+} from "../../src/index";
 
 // Suppress unused warnings — Fragment + effect imported for completeness.
 void Fragment; void effect;

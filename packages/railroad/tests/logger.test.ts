@@ -1,5 +1,5 @@
 import { describe, test, expect, spyOn, beforeEach, afterEach } from "bun:test";
-import { createLogger, setLogLevel, getLogLevel, loggedRequest } from "./logger";
+import { createLogger, setLogLevel, getLogLevel, loggedRequest } from "../src/logger";
 
 describe("logger", () => {
   let logSpy: ReturnType<typeof spyOn>;
@@ -109,7 +109,7 @@ describe("logger", () => {
 
 describe("logger: LOG_LEVEL from the environment", () => {
   test("LOG_LEVEL=warn hides info and shows warn", () => {
-    const script = `const { createLogger } = await import("./logger.ts");
+    const script = `const { createLogger } = await import("../src/logger.ts");
       const log = createLogger("[t]"); log.info("info line"); log.warn("warn line");`;
     const run = Bun.spawnSync([process.execPath, "-e", script], {
       cwd: import.meta.dir,

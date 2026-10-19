@@ -23,4 +23,4 @@ coverageThreshold = 1.0
 # hjeli's model and predicates (hjeli: the modeller before eta's), covered by its own tests (its README.md).
 # An example's stories.ts is a declaration `bun run stories:all` runs whole; a test that imports
 # one to run a story or two would otherwise count the rest as uncovered
-coveragePathIgnorePatterns = ["**/node_modules/**", "src/compile/**", "src/postgres/**", "src/cli/**", "tests/**", "../delta/**/*", "../railroad/**/*", "**/delta/src/**", "**/railroad/*.ts", "examples/**", "readme/**"]
+coveragePathIgnorePatterns = ["**/node_modules/**", "src/compile/**", "src/postgres/**", "src/cli/**", "tests/**", "../delta/**/*", "../railroad/**/*", "**/delta/src/**", "**/railroad/src/**", "examples/**", "readme/**"]

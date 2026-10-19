@@ -57,10 +57,12 @@ so after a dependency change run `bun install` and commit `bun.lock`.
 
 ## Where the contracts live
 
-- **The JSDoc header of each source file** is the authoritative API. Read it
+- **The layout is the monorepo's** (`docs/plan.md`, *The shape of each package*): `src/` is what
+  ships, each public entry a file named in `package.json`'s `exports`; `tests/` proves it.
+- **The JSDoc header of each source file** (in `src/`) is the authoritative API. Read it
   before changing behaviour, and update it with the behaviour.
 
-  | File | Exports | Depends on |
+  | File (`src/`) | Exports | Depends on |
   |---|---|---|
   | `signals.ts` | `signal` `computed` `effect` `batch` `untrack` `Signal` `trackDispose` `pushDisposeScope` `popDisposeScope` `hasActiveDisposeScope` (and `assertOwnSignal`, `untrackRender`, `scoped`, `warn`, internal: for `jsx.ts` and `routes.ts`) | — |
   | `jsx.ts` | `createElement` `Fragment` `when` `list` `mount`, the `JSX` types (on `createElement`, not global; and `adoptIntoSvg`, `renderThunk`, internal: for `routes.ts`) | signals |
@@ -71,7 +73,7 @@ so after a dependency change run `bun install` and commit `bun.lock`.
   | `index.ts` | the public surface | all of the above but webview |
   | `jsx-runtime.ts` / `jsx-dev-runtime.ts` | `jsx` `jsxs` `jsxDEV` `Fragment`, and `JSX` re-exported from jsx | jsx |
 
-- **Tests pin the behaviour.** `signals.test.tsx`, `jsx.test.tsx`,
+- **Tests pin the behaviour.** `tests/signals.test.tsx`, `jsx.test.tsx`,
   `routes.test.tsx`, `shared.test.ts`, `logger.test.ts`, one per module,
   grouped by feature (a `describe` per feature). A regression test goes in
   its module's file, in the describe for the feature it pins (or a new one

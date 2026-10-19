@@ -1,7 +1,7 @@
 import { describe, test, expect, spyOn } from "bun:test";
-import { signal, computed, effect, batch, untrack, pushDisposeScope, popDisposeScope } from "./signals";
-import type { ReadonlySignal } from "./signals";
-import { createElement, when, mount } from "./jsx";
+import { signal, computed, effect, batch, untrack, pushDisposeScope, popDisposeScope } from "../src/signals";
+import type { ReadonlySignal } from "../src/signals";
+import { createElement, when, mount } from "../src/jsx";
 
 describe("signal", () => {
   test("get and set", () => {
@@ -1034,7 +1034,7 @@ describe("an app's production build drops the development warnings", () => {
   ];
 
   test("their text is in a development bundle and not in a production one", async () => {
-    const entry = new URL("./index.ts", import.meta.url).pathname;
+    const entry = new URL("../src/index.ts", import.meta.url).pathname;
     const bundle = async (NODE_ENV: string) => {
       const built = await Bun.build({
         entrypoints: [entry], minify: true, target: "browser",
@@ -1056,7 +1056,7 @@ describe("a second copy of railroad says so when it loads", () => {
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const dir = mkdtempSync(join(tmpdir(), "railroad-copy-"));
-    const first = new URL("./signals.ts", import.meta.url);
+    const first = new URL("../src/signals.ts", import.meta.url);
     copyFileSync(first, join(dir, "signals.ts"));
     // In a child process, so the copy stays out of this one (and its coverage).
     const run = Bun.spawnSync([process.execPath, "-e",
