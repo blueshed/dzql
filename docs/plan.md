@@ -104,7 +104,7 @@ names, into `.claude/skills`.
 **Unclear:**
 - Who each is for. A person using the toolset, an agent building an app, or someone working on
   the toolset read different things, and the same thing is said in several (`docs/dzql/rendering/first-app.md`
-  and the dzql-app skill; `docs/dzql/modelling/stories.md` and both skills).
+  and the dzql-app skill; `docs/stories.md` and both skills).
 - Whether there is a site, or `llms.txt` (#19).
 
 ## Decided
@@ -132,8 +132,11 @@ names, into `.claude/skills`.
    internal.
 5. **The scripts**: `test` means the same in every package; dzql's examples are listed once.
 6. **The skills checked against the code**: a test that every path and link a skill names exists.
-7. **The docs by reader**: `docs/` keeps what goes deeper and the record; what repeats a skill
-   (`docs/dzql/rendering/first-app.md`) goes, pointing at the skill and the cafe.
+7. **The docs by reader**: *Done* (19 October, Peter: "since our plans are in git"). `docs/` keeps
+   what goes deeper: the plan, the stories, the thin client and its costs, the bento, Postgres,
+   railroad's reasons, and the lineage. Finished plans, change requests, reviews, the inventory,
+   eta's old changelog and the cafe feedback are in git's history; `first-app.md`, which repeated
+   the skill, is the cafe now.
 8. **A release**, on Peter's word: dzql and create-dzql first (todo #29), then create-blueshed.
 
 Then features resume, `ref` first, each checked against this plan before it is built.

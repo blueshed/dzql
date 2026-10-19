@@ -2,7 +2,7 @@ import type { PatchOp } from "dzql/rendering/json-patch";
 import { post, story, type Stories, type Write } from "dzql/modelling/stories";
 import { mondayOf } from "./calendar";
 
-// A small team asks for days off, told as stories. See docs/dzql/modelling/stories.md. It is the example
+// A small team asks for days off, told as stories. See docs/stories.md. It is the example
 // that needs to know who you are: Ann and Bo ask, Mo manages and answers, and a visitor who has
 // not signed in may do nothing. Signing in is not a write -- a password never crosses the wire --
 // so the cast signs in through the example's own sign-in page (`signIn`), and the stories start

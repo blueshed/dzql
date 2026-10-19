@@ -1,4 +1,4 @@
-// The stories by hand (docs/dzql/modelling/stories.md, "By hand"). The harness finds a story's control in the page
+// The stories by hand (docs/stories.md, "By hand"). The harness finds a story's control in the page
 // the server drew, which says only that it is there: it may be hidden by a stylesheet, covered by
 // something drawn over it, of no size, off a phone's screen, or a field no form sends. Here a real
 // browser (`Bun.WebView`, src/webview.ts) is the author's tab: it goes where the story is done by

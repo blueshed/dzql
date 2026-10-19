@@ -516,7 +516,7 @@ did not ([zeta-lost-out.md](zeta-lost-out.md)). Three came back within the day:
 - **The origin check.** delta 0.8.0 refuses a socket opened from another site.
 
 The same sitting gathered every completeness check from dzql to eta into one
-set of rules ([document-proofs.md](../dzql/modelling/document-proofs.md)), and turned the
+set of rules (document-proofs.md (in git\'s history)), and turned the
 harness on eta's own stories. Three findings, each a surprise:
 
 - **Stories that nobody could do.** The harness now looks for the control on
@@ -532,7 +532,7 @@ harness on eta's own stories. Three findings, each a surprise:
 Two outside eyes in the same days: Genoa and Landfall, from 2013
 ([genoa-landfall.md](genoa-landfall.md)), already had refusal reasons, audit
 per row and paging — the first is back, the other two are open. And a CSS
-review ([css-review.md](../dzql/rendering/css-review.md)) found the kernel's stylesheet the
+review (css-review.md (in git\'s history)) found the kernel's stylesheet the
 most accessible of the line and still short; its accessibility half is done.
 
 railroad 0.14.0, delta 0.8.0 and eta 0.49.0 shipped the lot, through one
@@ -559,7 +559,7 @@ release procedure shared by the three.
   the stories rather than written by hand.
 - **The model beside the stories** (rules M1–M10). eta's stories run the code;
   nothing checks the documents are complete before a page exists. The eta
-  modeller ([eta-modeller.md](../dzql/modelling/eta-modeller.md)) is the attempt.
+  modeller (eta-modeller.md (in git\'s history)) is the attempt.
 - **Postgres.** delta's Postgres backend tells a write only to the document
   written through, where SQLite tells every document that holds the row.
   Before eta runs on Postgres, that difference has to close.
@@ -644,7 +644,7 @@ to a story someone told. Repeatable — same state, same app, any substrate.
    dispatch vs. composition over a pair are two implementations of the
    same idea. Future action: try the predicate in hjeli; try the
    pattern on an epsilon doc type. *(Now rule M10 in
-   [document-proofs.md](../dzql/modelling/document-proofs.md), not built anywhere.)*
+   document-proofs.md (in git\'s history), not built anywhere.)*
 
 6. **Turn closure — the predicate that proves a model *playable***
    (2026-08-08, same sitting; proven on the rights-market model by
@@ -678,4 +678,4 @@ to a story someone told. Repeatable — same state, same app, any substrate.
    documents). Future action: promote into hjeli as predicate seven
    (or 7+8 with [[writer closure|#5]]), and grow `export ux` from
    derive-ux.ts. *(Now rules M8 and M9 in
-   [document-proofs.md](../dzql/modelling/document-proofs.md).)*
+   document-proofs.md (in git\'s history).)*

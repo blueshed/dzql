@@ -1,6 +1,6 @@
 /**
  * Link sign-in on Postgres: the `LinkStore` delta's `auth-link` keeps its links and sessions in
- * (`@blueshed/delta/auth-link`; docs/delta/link-sign-in-plan.md). The tables are its own,
+ * (`@blueshed/delta/auth-link`). The tables are its own,
  * `_auth_links` and `_auth_sessions`, beside delta's `_delta_*`: hashes, the person's id, times. A
  * link is used in one statement, so two taps at once make one session, on one server or several.
  *

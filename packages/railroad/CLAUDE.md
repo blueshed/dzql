@@ -149,7 +149,7 @@ so after a dependency change run `bun install` and commit `bun.lock`.
   words (model, order of work, invariants, which file for which job); each
   reference file under ~600 (aim 200-400), leading with one complete example
   that runs; point to the types, never re-type them; history and rationale
-  go to `docs/railroad/why-railroad.md` (at the root), not the skill.
+  go to `docs/why-railroad.md` (at the root), not the skill.
 - Skills carry `metadata: version:` in frontmatter. Leave the number alone; `/publish`
   stamps it.
 

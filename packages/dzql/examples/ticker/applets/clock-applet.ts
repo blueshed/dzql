@@ -3,7 +3,7 @@
 // that ever crosses the wire for it afterwards is the clock document's own `replace /tz` when a
 // city is chosen, which the applet takes itself. Imported only by client/main.ts, and measured
 // from the pages that run it (src/client-coverage.ts); the drawing and time math are clock.ts
-// (docs/dzql/rendering/change-request.md item 4).
+//.
 
 import { registerApplet } from "dzql/rendering/applets";
 import { clockSvg, handsAt, partsIn, timeSaid, tzAfter, type ClockProps } from "./clock";

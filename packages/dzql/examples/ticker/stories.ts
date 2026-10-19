@@ -1,4 +1,4 @@
-// The ticker, told as stories. See docs/dzql/modelling/stories.md. The market is one document everyone
+// The ticker, told as stories. See docs/stories.md. The market is one document everyone
 // sees; a watchlist and a clock are each session's own. Two things here that chat and the wedding
 // did not have: a tick is seen through an applet (the board takes the ops itself; no render
 // follows), so "seen" means a fresh render from the tables differs, not that HTML crossed the

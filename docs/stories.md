@@ -185,8 +185,8 @@ Given a pile of stories, these are not written; they are read off:
   that role, and every `cannot` is refused. Today each resource hand-writes a list of regexes
   and verbs; the stories say the same thing as sentences, and the list is the one thing in a
   resource that should be derived first.
-- **The audience.** Who sees a document is who the stories say sees it. The [change request](../rendering/change-request.md)'s
-  item 1 asked for a method on the resource; it is better as a fact of the stories.
+- **The audience.** Who sees a document is who the stories say sees it. The change request's
+  item 1 (in git's history) asked for a method on the resource; it is better as a fact of the stories.
 - **The pages and their places.** Where a change shows is where stories say it shows. A page
   nobody's story sees is not a page, and a resource no story's write reaches is not a resource.
 - **The documents and their shapes.** The paths written say what a document holds; the values

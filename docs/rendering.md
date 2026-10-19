@@ -112,9 +112,8 @@ explains every setting.
 
 ## Learn more
 
-- [docs/dzql/rendering/first-app.md](first-app.md): a first app, step by step.
-- [docs/dzql/modelling/stories.md](../modelling/stories.md): what eta is for, and how stories drive it.
-- [docs/dzql/rendering/bento/README.md](bento/README.md): a guide to pages where people know where they are
-  and what they can do.
-- [docs/dzql/rendering/least-resistance.md](least-resistance.md): why eta suits an AI that builds apps.
+- `packages/dzql/examples/cafe/`: an app built from its model, step by step (its README), and the
+  `dzql-app` skill, the manual.
+- [stories.md](stories.md): what the stories are for, and how they drive an app.
+- [bento/](bento/README.md): a guide to pages where people know where they are and what they can do.
 - `packages/dzql/CHANGELOG.md`: what changed, and how to move an app across a change.

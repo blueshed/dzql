@@ -30,7 +30,7 @@ export const app: Example = {
   halfway through, a sparkline's history). It is not "the view for X": plain `data-write` HTML is the
   default. → [applets.md](applets.md)
 - A **cell** is a place in a bento box; the **tray** is the box the cells are cut into. The
-  **bento** (`docs/dzql/rendering/bento/README.md`) is how a page looks and moves: a box or a collection.
+  **bento** (`docs/bento/README.md`) is how a page looks and moves: a box or a collection.
 
 ## The first questions an app asks
 

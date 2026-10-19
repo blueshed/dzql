@@ -1,33 +1,19 @@
 # Docs
 
-The vision, how an app is made, is stated once: the root [README](../README.md#how-an-app-is-made).
-Each package's README, CHANGELOG.md, CLAUDE.md and skills (`.claude/skills/`) stay with the package.
-The documents here go deeper, by package. Where one disagrees with the code or a skill, the code is
-right; fix the doc.
+What is here goes deeper than a README and is not the manual. Each package's README is for a
+person deciding whether to use it; CLAUDE.md is Claude's entry point; the skills (each package's
+`.claude/skills/`) are the manual. Where any of these disagree, the code is right, then the skill;
+fix the other.
 
-## Guidance
+- [plan.md](plan.md): what the toolset is, what is decided, and what comes next.
+- [stories.md](stories.md): what the stories are for, and how they drive an app, from paintbrush to dzql.
+- [rendering.md](rendering.md): the thin client, dzql's pages drawn on the server, and what a write
+  costs, measured (kept true by dzql's `bun run costs`).
+- [bento/](bento/README.md): how a page looks and moves, and the designs it was drawn from.
+- [postgres/](postgres/postgres.md): delta's documents on Postgres, compiled by dzql: setting up,
+  [the stored functions](postgres/sql.md), [row-level security](postgres/rls.md).
+- [why-railroad.md](why-railroad.md): the reasons behind railroad.
+- [history/](history/documents-history.md): the lineage, from documents and paintbrush to dzql on delta.
 
-- **railroad**: [why-railroad.md](railroad/why-railroad.md), the reasons behind it.
-- **dzql**:
-  - [modelling/stories.md](dzql/modelling/stories.md): what the stories are for, and how they drive an app.
-  - [rendering/](dzql/rendering/README.md): pages the server draws: [eta.md](dzql/rendering/eta.md)
-    (what it is, its measured costs, kept true by `bun run costs`), [first-app.md](dzql/rendering/first-app.md),
-    [the bento](dzql/rendering/bento/README.md).
-  - [postgres/](dzql/postgres/postgres.md): delta on Postgres: setting up, [the stored functions](dzql/postgres/sql.md),
-    [row-level security](dzql/postgres/rls.md).
-- **delta** and **paintbrush** keep theirs in their READMEs and skills.
-
-## The record
-
-How things came to be, all built. Kept because the changelogs and code comments cite them; nothing
-here is guidance.
-
-- [monorepo-plan.md](monorepo-plan.md): how railroad, delta, dzql and eta came into one repository.
-- [stories-as-code.md](stories-as-code.md): how `story()` came to be one format from paintbrush to eta.
-- [delta/link-sign-in-plan.md](delta/link-sign-in-plan.md): sign-in by link (delta 1.1.0).
-- [dzql/postgres-split-plan.md](dzql/postgres-split-plan.md): how Postgres moved from delta to dzql.
-- [dzql/modelling/](dzql/modelling/): [eta-modeller.md](dzql/modelling/eta-modeller.md),
-  [document-proofs.md](dzql/modelling/document-proofs.md).
-- [dzql/rendering/](dzql/rendering/README.md): the requests and reviews that shaped eta.
-- [dzql/eta-history/](dzql/eta-history/CHANGELOG.md): eta's changelog and ledger, from before it came into dzql.
-- [history/](history/documents-history.md): the lineage: documents, paintbrush, eta on delta, and before.
+Finished plans, change requests, reviews and the feedback from blank-agent runs are in git's history,
+not here; CHANGELOG.md says what each changed.

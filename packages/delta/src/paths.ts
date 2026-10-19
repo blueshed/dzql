@@ -1,7 +1,6 @@
 /**
  * A document's `owns` as a path: from the document's row to the person who may open it, write
- * through it and hear what is written to it (dzql's path language, moved here: the monorepo's
- * docs/dzql/postgres-split-plan.md, step 3). Permissions are a document's, never a table's.
+ * through it and hear what is written to it (dzql's path language, moved here). Permissions are a document's, never a table's.
  *
  *   defineDoc("venue:", { root: "venues", include: [], owns: "@org_id->members[org_id=$]{active}.person_id" })
  *

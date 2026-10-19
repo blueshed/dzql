@@ -4,8 +4,7 @@
 // story cannot be dropped or renamed away from its test. Earlier stories stay true.
 //
 // A story here is a sentence alone. When the app takes the step to dzql/rendering, a story gains a
-// body (who does what, who then sees it) and the harness tells it
-// (https://github.com/blueshed/dzql/blob/main/docs/stories-as-code.md).
+// body (who does what, who then sees it) and the harness tells it.
 import { story } from "dzql/modelling/stories";
 
 export const stories = {

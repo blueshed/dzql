@@ -21,6 +21,6 @@ and sessions in Postgres with dzql's `postgresLinkStore` (`dzql/auth-link`). Fro
 `dzql sql` writes the app's SQL, `dzql init` vendors the framework SQL, `dzql migrate` runs the
 migrations and `dzql link` prints someone's sign-in link.
 
-dzql's own docs (`docs/dzql/postgres/postgres.md` in blueshed/dzql) say what Postgres adds: a server or
+dzql's own docs (`docs/postgres/postgres.md` in blueshed/dzql) say what Postgres adds: a server or
 PGlite in the process (for tests), what is compiled, row-level security, and calling the stored
 functions from SQL.

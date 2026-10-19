@@ -14,8 +14,8 @@ part they do not import: `@blueshed/railroad` is an optional peer that only an i
 
 Before working on this codebase, read:
 - the root `README.md`, *How an app is made* - **the one statement of the vision**: stories, documents, the storage path, routes and resources, and the compiled step
-- `docs/dzql/` (at the root): `modelling/stories.md` (what the stories are for), `rendering/` (eta.md: what it is, its measured costs; first-app.md; the bento), `postgres/` (delta on Postgres), `eta-history/` (eta's changelog and ledger)
-- `docs/dzql/postgres-split-plan.md` (at the root) - the plan that made dzql delta's Postgres step
+- `docs/` (at the root): `stories.md` (what the stories are for), `rendering.md` (the thin client, its measured costs), `bento/` (how a page looks and moves), `postgres/` (delta on Postgres), `plan.md` (what is decided, what is next)
+- `examples/cafe/` and its README: an app built from its model, the path the `dzql-app` skill follows
 - `packages/create-dzql/README.md` - `bun create dzql`: the thin client's starter
 
 ## Where the Project Is
@@ -80,7 +80,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
 - Someone telling you the stories, there to answer: the **modelling** skill. Building or extending an
   app or an example, or touching the `Resource` contract, an app's `delta.ts`, the applet
   registry or the wire: the **dzql-app** skill. Documents: delta's **delta-doc** skill.
-- **Stories first.** `docs/dzql/modelling/stories.md` is what it is for. An app's `stories.ts` says who does
+- **Stories first.** `docs/stories.md` is what it is for. An app's `stories.ts` says who does
   what and who then sees it; everything else follows. Start a feature with its story, watch it fail,
   build the least that makes it pass. Build nothing no story needs.
 - **The shape.** `src/rendering` and `src/modelling` never import from `examples/` (their tests
@@ -99,7 +99,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
   the client morphs, never replaces `innerHTML`, never descends into a `[data-applet]`. After a
   write each page that read the document gets only its changed parts. Every change is told from
   delta's one stream. A change to what the wire carries bumps `WIRE`.
-- **Pages.** A page's shape comes from its stories; the bento (`docs/dzql/rendering/bento/README.md`) is how to
+- **Pages.** A page's shape comes from its stories; the bento (`docs/bento/README.md`) is how to
   check it. Say a thing once.
 - Verify every bug fix by reverting it, watching its test fail, then restoring it.
 

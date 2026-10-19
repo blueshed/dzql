@@ -1,6 +1,6 @@
 // Runs one example's stories (`examples/<name>/stories.ts`) against it and prints the report.
 // `bun run stories` (chat, by default) or `ETA_EXAMPLE=wedding bun run stories`, or an app's own
-// folder (`ETA_EXAMPLE=./src`, src/names.ts `appDir`). See docs/dzql/modelling/stories.md.
+// folder (`ETA_EXAMPLE=./src`, src/names.ts `appDir`). See docs/stories.md.
 // Stories come first, so an example may have them before it has an app: that is said, as the next
 // thing to do, not as a missing module.
 // a run's writes are thrown away: it never touches the app's own database, unless DB_PATH says one.
@@ -15,7 +15,7 @@ const dir = appDir(process.env.ETA_EXAMPLE);
 const at = dir.slice(process.cwd().length + 1) || dir;
 
 if (!(await Bun.file(`${dir}/stories.ts`).exists())) {
-  console.log(`${at} has no stories.ts: an app starts with its stories (docs/dzql/modelling/stories.md).`);
+  console.log(`${at} has no stories.ts: an app starts with its stories (docs/stories.md).`);
   process.exit(1);
 }
 const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };

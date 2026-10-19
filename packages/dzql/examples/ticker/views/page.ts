@@ -1,4 +1,4 @@
-// The desk, drawn to the bento (docs/dzql/rendering/bento/README.md): a box with three
+// The desk, drawn to the bento (docs/bento/README.md): a box with three
 // cells -- the board, big, with two readings; the market; the clock, a thing whose drawer
 // holds the city -- each growing into the window when opened, the tools on the rail, the page's
 // at the bottom right. A row is a symbol: its drawer holds what it is and what it can carry, watch

@@ -142,7 +142,7 @@ a worker with no DOM and no JSX.
   mistakes that actually happen, and which page of
   [the manual](.claude/skills/railroad/reference/) to read for which job.
 - The contract: the comment at the top of each source file.
-- [Why railroad](https://github.com/blueshed/dzql/blob/main/docs/railroad/why-railroad.md): the reasons behind it.
+- [Why railroad](https://github.com/blueshed/dzql/blob/main/docs/why-railroad.md): the reasons behind it.
 - [What changed](CHANGELOG.md).
 
 Both skills ship in the package. To use them with Claude Code, copy them in:

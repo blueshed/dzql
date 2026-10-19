@@ -2,7 +2,7 @@
 // seconds and waits at the top for the minute to catch up (the "stop to go"); the minute hand
 // steps. Pure functions, tested here without a browser; the mounting that drives the hands every
 // frame and takes the clock document's own patches is clock-applet.ts, imported only by
-// client/main.ts (docs/dzql/rendering/change-request.md item 4).
+// client/main.ts.
 
 import type { PatchOp } from "dzql/rendering/json-patch";
 
