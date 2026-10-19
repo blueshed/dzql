@@ -6,6 +6,11 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+- **The root `tsconfig.json` is a config, not an error** (19 October, Zed's report): it said
+  `"files": []`, which TypeScript refuses (TS18002). It checks the root's own `scripts/` now, which
+  nothing checked before, and `bun run affected` runs it beside the docs and ranges checks; each
+  package's `include` still replaces it.
+
 ### One CI workflow; each release through its package's own gate
 
 On Peter's word (19 October). The seven per-package workflows, whose path filters were a hand copy

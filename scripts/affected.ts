@@ -73,7 +73,9 @@ function plan(p: Pkg): string[] {
 // what people and Claude read, held to the code, whatever changed: under a second (scripts/docs.ts)
 // and every range a package gives a sibling includes the sibling's version here (scripts/ranges.ts)
 const check = (script: string) => Bun.spawn(["bun", join(root, "scripts", script)], { cwd: root, stdout: "inherit", stderr: "inherit" }).exited;
-const docs = args.has("--dry-run") ? 0 : (await check("docs.ts")) || (await check("ranges.ts"));
+// and the root's own scripts type-check (the root tsconfig.json)
+const typed = () => Bun.spawn(["bun", "check"], { cwd: root, stdout: "inherit", stderr: "inherit" }).exited;
+const docs = args.has("--dry-run") ? 0 : (await check("docs.ts")) || (await check("ranges.ts")) || (await typed());
 
 const runs = pkgs.filter((p) => touched.has(p.dir)).map((p) => ({ p, scripts: plan(p) })).filter((r) => r.scripts.length);
 if (runs.length === 0) {
