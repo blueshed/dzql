@@ -6,10 +6,10 @@ import { hear, type Heard, type HeardOp } from "../rendering/resources/render";
 export { hear, type Heard };
 import { createServer } from "../rendering/server";
 import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
-import { isTest, isVerb, applyPatch, walked, type PatchOp, type Test, type WriteId } from "../rendering/json-patch";
+import { isTest, isVerb, walked, type PatchOp, type WriteId } from "../rendering/json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "../rendering/documents";
 import { onFailure } from "../rendering/failed";
-import { comparable, decoded, ownProps, splitTag } from "../rendering/parts";
+import { comparable, decoded } from "../rendering/parts";
 import { tell as tellSession, toldNothing, toldTo, type Line } from "../rendering/refusal";
 import { esc } from "../rendering/html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
@@ -18,7 +18,13 @@ import { shownTo } from "../rendering/reading";
 import type { Resource, Kind } from "../rendering/resources/resource";
 import { prefixDoc, splitDoc } from "../rendering/names";
 import { size, sum, tap } from "./costs";
-import { escapeSegment, splitPath } from "@blueshed/delta/core";
+import { controlsOn, goesTo, offers, placeOf, writesOn, type Control, type Writing } from "./harness/controls";
+import { holding, propsCost, retake, takersOn, taking, type PropsCost, type Taken } from "./harness/applets";
+import { anyOne, holds, keysOf, pathsIn, valueAt } from "./harness/paths";
+// what a page offers, what its applets hold, and the paths in a document: each a module of its own (src/modelling/harness/), said here too
+export { controlsOn, goesTo, offers, placeOf, writesOn, type Control } from "./harness/controls";
+export { holding, MOST_PROPS, propsCost, retake, takersOn, taking } from "./harness/applets";
+export { anyOne, holds, pathsIn, valueAt } from "./harness/paths";
 
 // Runs an example's stories against it, over real sockets, and reports by story name: what each
 // step checks is docs/stories.md, "The harness". Canon 1 compares every member's page, drawn from
@@ -91,114 +97,6 @@ const UNDO: Write = walked("undo");
 const REDO: Write = walked("redo");
 
 
-// The patch stream, checked: what an applet holds must be what a fresh render gives it (`unheld`).
-
-/** An applet that takes a document's patches, as a member's page holds it: the props a render gave it, the document's version they hold when the mount says it (`data-v`), and the ops taken since. */
-type Taken = { applet: string; doc: string; under: string; props: string; v?: number; ops: PatchOp[] };
-
-/** Where a page keeps a mount: by its id, or its part, or else its applet and how many were found before it. */
-const mountKey = (el: HTMLRewriterTypes.Element, applet: string, before: number): string => el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${before}`;
-
-/** The applets on a page that take a document's patches, by their id (or part, or place). */
-export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
-  const found = new Map<string, Omit<Taken, "ops">>();
-  new HTMLRewriter()
-    .on("[data-doc]", {
-      element(el) {
-        const applet = el.getAttribute("data-applet") ?? "";
-        const v = el.getAttribute("data-v");
-        found.set(mountKey(el, applet, found.size), { applet, doc: el.getAttribute("data-doc")!, under: el.getAttribute("data-under") ?? "", props: decoded(el.getAttribute("data-props") ?? "null"), ...(v !== null && { v: Number(v) }) });
-      },
-    })
-    .transform(page);
-  return found;
-}
-
-// What props cost, said and not failed: props that carry an applet's data go again
-// whole with every change to it (`propsCost`).
-
-/** How big a mount's own props, as JSON, may be before the harness says so: the document it watches left out. */
-export const MOST_PROPS = 4096;
-
-/** A cost a render put on the wire in props: which kind, the applet, and what to say. */
-type PropsCost = { kind: "big" | "again"; applet: string; says: string };
-
-type Mount = { key: string; applet: string; own: string; watching: boolean };
-
-/** The applet mounts in some HTML, keyed as `takersOn` keys them, each with its own props: the document it watches left out. */
-function mountsIn(html: string): Mount[] {
-  const found: Mount[] = [];
-  new HTMLRewriter()
-    .on("[data-applet][data-props]", {
-      element(el) {
-        const applet = el.getAttribute("data-applet")!;
-        const key = mountKey(el, applet, found.length);
-        const props = decoded(el.getAttribute("data-props")!);
-        const watching = el.hasAttribute("data-doc");
-        found.push({ key, applet, watching, own: watching ? ownProps(props, decoded(el.getAttribute("data-under") ?? "")) : props });
-      },
-    })
-    .transform(html);
-  return found;
-}
-
-/** What a render sends `whose` page, drawn as `page`, costs in props: a mount whose own props pass MOST_PROPS; in parts, one sent with the props the page had for it. */
-export function propsCost(whose: string, page: string, message: Heard): PropsCost[] {
-  if (message.type !== "render") return [];
-  const sent = message.html !== undefined ? [{ html: message.html, op: undefined }] : (message.ops ?? []).flatMap((op) => (op.html === undefined ? [] : [{ html: op.html, op }]));
-  const had = new Map(mountsIn(page).map((m) => [m.key, m.own]));
-  const costs: PropsCost[] = [];
-  for (const { html, op } of sent) {
-    for (const m of mountsIn(html)) {
-      const bytes = Buffer.byteLength(m.own);
-      if (bytes > MOST_PROPS) {
-        const how = m.watching ? "keep them to what it shows, and for whom" : "let it watch the document they come from (appletProps(props, { doc })), and keep them to what it shows, and for whom";
-        costs.push({ kind: "big", applet: m.applet, says: `${whose} was sent the ${m.applet} applet's props, ${size(bytes)}${m.watching ? " beside the document it watches" : ""}, which go again whenever they change: ${how}` });
-      }
-      if (op && had.get(m.key) === m.own) {
-        const itself = mountsIn(splitTag(html)[0])[0]?.key === m.key; // the part is the mount
-        const how =
-          op.op === "tag" ? "with its tag, for something else on it: keep that beside its mount"
-          : itself ? "drawn again for what the server paints inside it, which the applet paints over: let it watch the document it paints from"
-          : `in a part drawn again around it (${op.target}) for something else in it: make what changed there a part of its own`;
-        costs.push({ kind: "again", applet: m.applet, says: `${whose} was sent the ${m.applet} applet's props again, as they were, ${how}` });
-      }
-    }
-  }
-  return costs;
-}
-
-/**
- * A control a page offers (src/rendering/html.ts `write`): the document, op and path it writes, and the value
- * a button carries (`data-value`, JSON, sent with its type: `true`, not "true"; an option's or a
- * radio's is its text). A field or a form writes whatever is typed, so any value. An applet draws its own controls in
- * the browser, so it offers only what its mount says it writes (`data-writes`, src/rendering/html.ts), where
- * a `*` segment of its path is any one, with any value or only the ones it names; one that says
- * nothing offers nothing, whatever document it reads (`data-doc`), as the clock's face writes
- * nothing to the clock it shows.
- */
-export type Control = { doc: string; op: string; path: string; value?: unknown; free: boolean; pattern?: true };
-
-/** The same value, as the wire carries it: by its type and its JSON, so `true` is not "true". */
-const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
-
-/** A `data-value` as the client parses it (src/rendering/client/form-value.ts `pressed`): `{ value }`, none when there is none, or why it is no JSON. */
-function pressedValue(attr: string | null): { value?: unknown } | string {
-  if (attr === null) return {};
-  try {
-    return { value: JSON.parse(decoded(attr)) };
-  } catch {
-    return decoded(attr);
-  }
-}
-
-/** Is this what `appletWrites` puts on a mount, one write of it: a document, an op and a JSON Pointer path, and the only values it sends, if it names them? */
-const isDeclared = (w: unknown): w is { doc: string; op: string; path: string; values?: (string | number | boolean)[] } => {
-  const { doc, op, path, values } = (typeof w === "object" && w !== null ? w : {}) as Record<string, unknown>;
-  const valued = values === undefined || (Array.isArray(values) && values.length > 0 && values.every((v) => ["string", "number", "boolean"].includes(typeof v)));
-  return typeof doc === "string" && doc !== "" && isVerb(op) && typeof path === "string" && (path === "" || path.startsWith("/")) && valued;
-};
-
 /** Is this a story's gesture (`Gesture`, src/modelling/stories.ts): a press on one selector, or a drag from one to another, and nothing else? */
 const isGesture = (g: unknown): boolean => {
   if (typeof g !== "object" || g === null || Object.keys(g).length !== 1) return false;
@@ -206,173 +104,11 @@ const isGesture = (g: unknown): boolean => {
   return typeof press === "string" || (Array.isArray(drag) && drag.length === 2 && drag.every((s) => typeof s === "string"));
 };
 
-// Where a page's elements end. A streaming parser is told of an end tag that is written, and of
-// one a parent's end implies; not of one the next start tag implies, as HTML leaves out `</p>`,
-// `</li>` and `</tr>`. So the elements open here are kept, and closed as HTML's rules close them.
-
-/** An element open where the parser is: its tag, and whether the browser lets anyone press what is in it. */
-type Open = { tag: string; blocks?: "always" | "fieldset"; legends?: number; frees?: boolean; closed?: true; ends?: () => void; disabled?: true };
-
-/** The start tags that close an open `<p>`: HTML's "close a p element" (in button scope). */
-const CLOSES_P = new Set(["address", "article", "aside", "blockquote", "center", "details", "dialog", "dir", "div", "dl", "dd", "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "li", "listing", "main", "menu", "nav", "ol", "p", "pre", "search", "section", "summary", "table", "ul", "xmp"]);
-/** Where looking for an element to close stops: the scopes HTML looks in. */
-const SCOPE = ["html", "table", "td", "th", "caption", "marquee", "object", "applet", "template", "button"];
-/** For each start tag, what open element it closes when that element's end tag was left out, and where looking stops. */
-const IMPLIED: Record<string, { closes: string[]; stops: string[] }> = {
-  li: { closes: ["li"], stops: [...SCOPE, "ul", "ol"] },
-  dt: { closes: ["dt", "dd"], stops: [...SCOPE, "dl"] },
-  dd: { closes: ["dt", "dd"], stops: [...SCOPE, "dl"] },
-  tr: { closes: ["tr"], stops: ["html", "template", "table", "tbody", "thead", "tfoot"] },
-  td: { closes: ["td", "th"], stops: ["html", "template", "table", "tr"] },
-  th: { closes: ["td", "th"], stops: ["html", "template", "table", "tr"] },
-  tbody: { closes: ["tbody", "thead", "tfoot"], stops: ["html", "template", "table"] },
-  thead: { closes: ["tbody", "thead", "tfoot"], stops: ["html", "template", "table"] },
-  tfoot: { closes: ["tbody", "thead", "tfoot"], stops: ["html", "template", "table"] },
-  option: { closes: ["option"], stops: ["select", "datalist", "optgroup", ...SCOPE] },
-  optgroup: { closes: ["option", "optgroup"], stops: ["select", ...SCOPE] },
-};
-
-/**
- * Every control on a page, as the server drew it: one the browser sends nothing from is none --
- * drawn `disabled`, or `inert`, `hidden`, in a `<template>` or in a disabled fieldset (but for
- * its first legend), itself or by what it is in. The page's address (`data-page-write`) is not on
- * the page: the URL bar and the back button send it, so it offers nothing. An applet's
- * declaration that is not `[doc, op, path]` (the form before ops, a hand-written attribute)
- * offers nothing, and is said in `misdeclared`. A plain form that posts to a route (no
- * `data-write`) is a control too: its op is `post`, its path the route's, and it names no document.
- */
-export function controlsOn(page: string, misdeclared: string[] = []): Control[] {
-  const found: Control[] = [];
-  const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(decoded(attr)) as { doc: string; op: string; path: string }));
-  const open: Open[] = [];
-  const closeTo = (at: number) =>
-    open.splice(at).reverse().forEach((e) => {
-      e.closed = true;
-      e.ends?.();
-    });
-  // a select that writes sends only what it can choose: each option not disabled, by its value or its words
-  let choosing: { spec: { doc: string; op: string; path: string }; option?: { text: string } } | undefined;
-  const pressable = (el: HTMLRewriterTypes.Element): boolean =>
-    !el.hasAttribute("inert") && !el.hasAttribute("hidden") && !open.some((e, i) => e.blocks === "always" || (e.blocks === "fieldset" && !open[i + 1]?.frees));
-  new HTMLRewriter()
-    .on("*", {
-      element(el) {
-        const tag = el.tagName;
-        for (const implied of [CLOSES_P.has(tag) && { closes: ["p"], stops: SCOPE }, IMPLIED[tag]]) {
-          if (!implied) continue;
-          for (let i = open.length - 1; i >= 0 && !implied.stops.includes(open[i]!.tag); i--) {
-            if (implied.closes.includes(open[i]!.tag)) {
-              closeTo(i);
-              break;
-            }
-          }
-        }
-        if (!el.canHaveContent || el.selfClosing) return; // nothing inside it: its own attributes say it (pressable)
-        const parent = open.at(-1);
-        const entry: Open = { tag };
-        if (el.hasAttribute("inert") || el.hasAttribute("hidden") || tag === "template") entry.blocks = "always";
-        else if (tag === "fieldset" && el.hasAttribute("disabled")) entry.blocks = "fieldset";
-        if (tag === "legend" && parent?.tag === "fieldset") entry.frees = (parent.legends = (parent.legends ?? 0) + 1) === 1; // its first legend is not disabled
-        if (tag === "option" && choosing && !el.hasAttribute("disabled") && !(parent?.tag === "optgroup" && parent.disabled)) {
-          const value = el.getAttribute("value");
-          const option = { text: "" };
-          const said = choosing;
-          if (value === null) choosing.option = option;
-          entry.ends = () => void found.push({ ...said.spec, value: value === null ? option.text.replace(/\s+/g, " ").trim() : decoded(value), free: false });
-        }
-        if (tag === "optgroup" && el.hasAttribute("disabled")) entry.disabled = true; // its options choose nothing
-        open.push(entry);
-        el.onEndTag(() => {
-          if (!entry.closed) closeTo(open.indexOf(entry));
-        });
-      },
-    })
-    .on("option:not([value])", { text: (t) => void (choosing?.option && (choosing.option.text += t.text)) })
-    .on("[data-write]", {
-      element(el) {
-        if (!pressable(el) || (el.hasAttribute("disabled") && ["button", "input", "textarea", "select"].includes(el.tagName))) return; // the browser sends nothing from it
-        const s = spec(el.getAttribute("data-write"))!;
-        if (el.tagName === "select") {
-          // what it can choose, as each option ends; several at once is no one value, which the client never sends
-          if (el.hasAttribute("multiple")) return;
-          const at = open.at(-1)!;
-          choosing = { spec: s };
-          at.ends = () => void (choosing = undefined);
-          return;
-        }
-        if (el.tagName === "input" && el.getAttribute("type") === "radio") return void found.push({ ...s, value: decoded(el.getAttribute("value") ?? "on"), free: false }); // a radio sends its own value
-        const value = pressedValue(el.getAttribute("data-value"));
-        if (typeof value === "string") return void misdeclared.push(`a data-value must be JSON: ${el.tagName} says ${value}`); // the client cannot send it
-        found.push({ ...s, value: value.value, free: ["form", "input", "textarea"].includes(el.tagName) });
-      },
-    })
-    .on("form[action]:not([data-write])", {
-      element(el) {
-        if (pressable(el) && el.getAttribute("method")?.toLowerCase() === "post") found.push({ doc: "", op: "post", path: decoded(el.getAttribute("action")!), free: true });
-      },
-    })
-    .on("[data-writes]", {
-      element(el) {
-        if (!pressable(el)) return;
-        const raw = decoded(el.getAttribute("data-writes")!);
-        const wrong = (what: string) => misdeclared.push(`applet declaration must be [doc, op, path]: ${el.getAttribute("data-applet") ?? "an applet"} says ${what}`);
-        let said: unknown;
-        try {
-          said = JSON.parse(raw);
-        } catch {
-          return void wrong(raw);
-        }
-        if (!Array.isArray(said)) return void wrong(raw);
-        for (const w of said) {
-          if (!isDeclared(w)) wrong(JSON.stringify(w));
-          else if (!w.values) found.push({ doc: w.doc, op: w.op, path: w.path, free: true, pattern: true });
-          else for (const value of w.values) found.push({ doc: w.doc, op: w.op, path: w.path, value, free: false, pattern: true });
-        }
-      },
-    })
-    .transform(page);
-  return found;
-}
-
-/** Where a page stands: its address, which the kernel's client mirrors in the URL (`data-page`). */
-export const placeOf = (page: string): string | undefined => {
-  const m = /\sdata-page="([^"]*)"/.exec(page);
-  return m ? decoded(m[1]!) : undefined;
-};
-
 /** A place's own address: what `where` says before any " @ " (what else the place holds). */
 const placeIn = (where: string): string => where.split(" @ ")[0]!;
 
-/** Does a path an applet names (`*` for any one member: an id, never `-`, the end of a list an append names as such) name this one? */
-const fits = (pattern: string, path: string): boolean => {
-  const want = pattern.split("/");
-  const have = path.split("/");
-  return want.length === have.length && want.every((segment, i) => (segment === "*" ? have[i] !== "-" : segment === have[i]));
-};
-
 /** Does `c` post this form to its route: a plain form that posts there? */
 const postsTo = (c: Control, how: Post): boolean => c.op === "post" && c.path === how.path;
-
-/** Does `c` send this op to this document? A free control sends any value; a button only its own. */
-export function offers(c: Control, doc: string, op: PatchOp | Test): boolean {
-  if (!sameDoc(c.doc, doc)) return false;
-  if (c.pattern) return c.op === op.op && fits(c.path, op.path) && (c.value === undefined || ("value" in op && same(op.value, c.value))); // an applet's own: exactly what its mount names
-  if (c.op !== op.op || c.path !== op.path) return false;
-  return c.free || (c.value === undefined ? !("value" in op) || op.value === undefined : "value" in op && same(op.value, c.value));
-}
-
-/**
- * Where a control goes, if it goes anywhere: the address `goTo` makes exactly its write of -- a
- * button's own value (`data-value`), the one write a person sends by pressing it, or one an
- * applet's mount names for a tap (`appletWrites`, with values). A field, a form and an applet that
- * names no value take any value, so they lead nowhere in particular; and the URL bar and the back
- * button are not on the page (`controlsOn`).
- */
-export function goesTo(c: Control, goTo: (address: string) => Write): string | undefined {
-  if (c.free || typeof c.value !== "string") return undefined; // an address is text
-  const w = goTo(c.value);
-  return sameDoc(w.doc, c.doc) && w.ops.some((op) => op.op === c.op && op.path === c.path && "value" in op && op.value === c.value) ? c.value : undefined; // the op of it that sets the address: going somewhere may put other things away too
-}
 
 /** One way on: from where a member stood, the control on their page there that took them to `to`. */
 type Step = { from: string; to: string; control: Control };
@@ -385,32 +121,7 @@ const stepKey = (step: Step): string => `${step.from}\n${JSON.stringify(step.con
 /** The most places the harness walks for one member, looking for a way to a place a story names: enough for any page's drawers, not for a calendar's every month. */
 const MOST_PLACES = 400;
 
-/**
- * A member's applets after a render, as the client keeps them: one the render carries (the page
- * whole, or in a part it sends) with props other than those it holds, patched since, starts again
- * from them; one it carries with what it holds, or does not carry, keeps the ops it has taken --
- * its attribute is still the render's that gave it them. Without `message`, the page came whole.
- */
-export function retake(taken: Map<string, Taken>, page: string, message?: Heard): void {
-  const now = takersOn(page);
-  const carried = message?.html !== undefined || !message ? undefined : new Set((message.ops ?? []).flatMap((op) => (op.html === undefined ? [] : [...takersOn(op.html).keys()])));
-  for (const key of taken.keys()) if (!now.has(key)) taken.delete(key);
-  for (const [key, a] of now) {
-    const held = taken.get(key);
-    if (held && carried && !carried.has(key)) continue;
-    const holds = held && holding(held);
-    if (!held || !("value" in holds!) || JSON.stringify(holds.value) !== a.props || held.doc !== a.doc || held.under !== a.under) taken.set(key, { ...a, ops: [] });
-  }
-}
-
-/** A patch a member is told, as its applets on that document take it: passed over at or below the version their props hold, taken above it, and the version with it. */
-export function taking(taken: Map<string, Taken>, message: { doc: string; version: number; ops: PatchOp[] }): void {
-  for (const t of taken.values()) {
-    if (t.doc !== message.doc || (t.v !== undefined && message.version <= t.v)) continue;
-    t.ops.push(...message.ops);
-    if (t.v !== undefined) t.v = message.version;
-  }
-}
+// The patch stream, checked: what an applet holds must be what a fresh render gives it (`unheld`).
 
 /** JSON with its keys in order, so two values compare by what they hold. */
 const stable = (value: unknown): string =>
@@ -428,15 +139,6 @@ export function unheld(whose: string, taken: Map<string, Taken>, freshPage: stri
     else if (stable(now.value) !== stable(JSON.parse(f.props))) failures.push(`${whose} ${t.applet} holds what a fresh render does not${excerpt(stable(JSON.parse(f.props)), stable(now.value))}`);
   }
   return failures;
-}
-
-/** What an applet holds now: its props with the ops it has taken laid on; or why the ops do not land. */
-export function holding(t: Taken): { value: unknown } | { error: string } {
-  try {
-    return { value: applyPatch(JSON.parse(t.props), t.ops.map((op) => ({ ...op, path: t.under + op.path }))) };
-  } catch (e) {
-    return { error: (e as Error).message };
-  }
 }
 
 /** The part a render op is about: the one its HTML carries (a part replaced, put in, or given a new tag), or the last its target names (one taken out). */
@@ -464,120 +166,6 @@ export function largest(raws: string[]): Part {
 /** A page without the versions its watching mounts say they hold (`data-v`): each change moves one on, an undo too, and nobody sees it. */
 export const unversioned = (page: string): string => page.replace(/\sdata-v="\d+"/g, "");
 
-
-// A hidden verb: a write the server takes that no story tells and no page offers.
-
-/** Every path in a document, as JSON Pointers: the whole (""), each member of each object and array, and an array's end (`-`), where an append goes. */
-export function pathsIn(value: unknown, at = ""): string[] {
-  if (typeof value !== "object" || value === null) return [at];
-  if (Array.isArray(value)) return [at, ...value.flatMap((v, i) => pathsIn(v, `${at}/${i}`)), `${at}/-`];
-  return [at, ...Object.entries(value).flatMap(([key, v]) => pathsIn(v, `${at}/${escapeSegment(key)}`))];
-}
-
-/** A JSON Pointer's keys, as delta reads them (`splitPath`); undefined for one that is no pointer. */
-function keysOf(path: string): string[] | undefined {
-  try {
-    return splitPath(path);
-  } catch {
-    return undefined;
-  }
-}
-
-/** What is at a JSON Pointer in a document, if anything; at an array's end (`-`), its first member, the shape an append takes. */
-export function valueAt(value: unknown, path: string): unknown {
-  const keys = keysOf(path);
-  if (!keys) return undefined;
-  for (const key of keys) {
-    if (typeof value !== "object" || value === null) return undefined;
-    value = Array.isArray(value) && key === "-" ? value[0] : (value as Record<string, unknown>)[key];
-  }
-  return value;
-}
-
-/** Does a document hold something at a JSON Pointer: each step a key of what is there, an array's by its index? */
-export function holds(value: unknown, path: string): boolean {
-  const keys = keysOf(path);
-  if (!keys) return false;
-  for (const key of keys) {
-    if (typeof value !== "object" || value === null || !Object.hasOwn(value, key) || (Array.isArray(value) && !/^(0|[1-9]\d*)$/.test(key))) return false;
-    value = (value as Record<string, unknown>)[key];
-  }
-  return true;
-}
-
-// The wire, checked: a control the server will not take leaves its page still, with no
-// word why. So every control on every page drawn is held to what the server asks of its write.
-
-/** What a control writes, the value it is drawn with (a button's with its type; a field's text; "" for none), and a short name for it. */
-type Writing = { doc: string; op: string; path: string; value: unknown; control: string };
-
-/** Each control a page draws that writes (`data-write`: a button, a form, an editing form's field), but one drawn `disabled`, which sends nothing; and a short name for it: its tag, and its label, name, value or id. */
-export function writesOn(page: string): Writing[] {
-  const found: Writing[] = [];
-  // a select sends the option it was drawn showing, by the browser's rule (`drawnOption`, src/rendering/client/form-value.ts):
-  // the last `selected`, else its first not disabled, or in a list (`size` over 1) none
-  let choosing: { options: { value: string | null; text: string; disabled: boolean; selected: boolean }[] } | undefined;
-  new HTMLRewriter()
-    .on("[data-write]:not([disabled])", {
-      element(el) {
-        const { doc, op, path } = JSON.parse(decoded(el.getAttribute("data-write")!)) as { doc: string; op: string; path: string };
-        const by = ["aria-label", "name", "data-value", "id"].find((a) => el.hasAttribute(a));
-        const name = (said: string | undefined) => (by ? `${el.tagName}[${by}=${said!.includes('"') ? `'${said}'` : `"${said}"`}]` : el.tagName);
-        if (el.tagName === "select") {
-          if (el.hasAttribute("multiple")) return; // several at once: no one value drawn to send
-          const list = Number(el.getAttribute("size") ?? "1") > 1;
-          const control = name(by && decoded(el.getAttribute(by)!));
-          const at: NonNullable<typeof choosing> = { options: [] };
-          choosing = at;
-          el.onEndTag(() => {
-            const open = at.options.filter((o) => !o.disabled);
-            const drawn = at.options.findLast((o) => o.selected) ?? (list ? undefined : open[0]);
-            if (drawn) found.push({ doc, op, path, value: drawn.value ?? drawn.text.replace(/\s+/g, " ").trim(), control });
-            choosing = undefined;
-          });
-          return;
-        }
-        const pressed = pressedValue(el.getAttribute("data-value"));
-        const text = decoded(el.getAttribute("value") ?? "");
-        const number = el.tagName === "input" && ["number", "range"].includes(el.getAttribute("type") ?? ""); // a number field sends a number, or null
-        const value = typeof pressed === "string" ? pressed : "value" in pressed ? pressed.value : number ? (text === "" ? null : Number(text)) : text;
-        found.push({ doc, op, path, value, control: name(by && decoded(el.getAttribute(by)!)) });
-      },
-    })
-    .on("select option", {
-      element(el) {
-        choosing?.options.push({ value: el.hasAttribute("value") ? decoded(el.getAttribute("value")!) : null, text: "", disabled: el.hasAttribute("disabled"), selected: el.hasAttribute("selected") });
-      },
-      text(t) {
-        const o = choosing?.options.at(-1);
-        if (o) o.text += t.text;
-      },
-    })
-    .on("select optgroup[disabled] option", { element: () => void (choosing?.options.at(-1) && (choosing.options.at(-1)!.disabled = true)) })
-    .transform(page);
-  return found;
-}
-
-/**
- * A path with each member of a collection in it as any one (`*`, as an applet names one): an id (a
- * run of digits), or a key of an object `doc` keeps rows under, objects of the same fields.
- * `/guests/0/coming` and `/guests/2/coming` are one verb, and so are the market's `/ALPH/price`
- * and `/BRVO/price`.
- */
-export function anyOne(path: string, doc?: unknown): string {
-  let at = doc;
-  return path
-    .split("/")
-    .map((key, i) => {
-      if (i === 0) return key;
-      const shapes = typeof at === "object" && at !== null && !Array.isArray(at) ? Object.values(at).map((v) => (typeof v === "object" && v !== null && !Array.isArray(v) ? Object.keys(v).sort().join() : undefined)) : [];
-      // every member an object of the same fields; fields, not ids: a list document's one table, its rows by number, is a table, not a row
-      const rows = shapes.length > 0 && shapes.every((s) => s !== undefined && s === shapes[0]) && shapes[0]!.split(",").some((f) => f !== "" && !/^\d+$/.test(f));
-      at = valueAt(at, `/${key}`);
-      return key !== "-" && (rows || /^\d+$/.test(key)) ? "*" : key; // the end of a list is where an append goes, not a member
-    })
-    .join("/");
-}
 
 /** Names, as a sentence says them: `ann`, `ann and bo`, `ann, bo and mo`. */
 const listed = (names: string[]): string => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
@@ -835,6 +423,9 @@ async function settle(r: Run, cast: Member[]): Promise<void> {
 
 /** The socket the server holds for `m`'s tab. */
 const socketOf = (r: Run, m: Member) => allOpenSockets().find((ws) => ws.data.sessionId === m.sessionId);
+
+// The wire, checked: a control the server will not take leaves its page still, with no
+// word why. So every control on every page drawn is held to what the server asks of its write.
 
 /** Every control on `m`'s page, as it stands, held to the wire (`miswritten`): one that fails is a warning, on the page it was first drawn on. */
 async function checkWire(r: Run, m: Member): Promise<void> {

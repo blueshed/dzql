@@ -43,7 +43,7 @@ function everyonePhoto(props: CrowdProps): string {
 
 ## When props cost
 
-`bun run stories` warns (`propsCost`, `src/modelling/harness.ts`), once each:
+`bun run stories` warns (`propsCost`, `src/modelling/harness/applets.ts`), once each:
 
 - a mount whose props, its document left out, pass 4 KB (`MOST_PROPS`): watch the document they
   come from;

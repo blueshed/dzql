@@ -45,6 +45,13 @@ export function sends(field: Field, value = held(field)): string | number | bool
   return isNumber(field) && typeof value === "string" ? (value === "" ? null : Number(value)) : value;
 }
 
+/**
+ * Can a person press it now: not inert, hidden, nor disabled, itself or by what it is in (a
+ * disabled fieldset, but for its first legend). The rule the stories hold a page to, said once for
+ * the browser (the dzql-app skill's reference/stories.md): a tool asks it, and so do the stories by hand.
+ */
+export const pressable = (el: Element): boolean => !el.closest("[inert],[hidden]") && !el.matches(":disabled");
+
 /** What a button or a row sends: its `data-value`, JSON (src/rendering/html.ts `write`), parsed, so `true` goes as true; none, nothing. */
 export const pressed = (el: HTMLElement): unknown => (el.dataset.value === undefined ? undefined : JSON.parse(el.dataset.value));
 

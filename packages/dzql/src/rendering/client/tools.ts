@@ -1,6 +1,6 @@
 import type { PatchOp } from "../json-patch";
 import { afterDrawing, ask, walked, type Answer, type Write } from "./app";
-import { groupOf, isBox, isField, isNumber, isRadio, namedFields, pressed, rendered, sends, type Field } from "./form-value";
+import { groupOf, isBox, isField, isNumber, isRadio, namedFields, pressable, pressed, rendered, sends, type Field } from "./form-value";
 
 // The page's writes as tools for an assistant, for an app that opts in: its client/main.ts
 // imports this after the kernel's client, `import "eta/client/tools"`. Every control a person
@@ -24,9 +24,6 @@ type Schema = { type?: string; enum?: unknown[]; format?: string; pattern?: stri
 type Tool = { name: string; title: string; description: string; inputSchema: Schema; write(input: Record<string, unknown>): Write | string };
 
 type Spec = { doc: string; op: PatchOp["op"]; path: string; values?: unknown[] };
-
-/** Can a person press it now: not inert, hidden, nor disabled, itself or by what it is in (the stories' rule). */
-const pressable = (el: Element): boolean => !el.closest("[inert],[hidden]") && !el.matches(":disabled");
 
 /** The longest label a tool takes of the app's. */
 const MOST_SAID = 80;

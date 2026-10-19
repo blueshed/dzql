@@ -46,6 +46,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The stories say the client's rules for a control once each** (20 October, #60, the review):
+  the harness walks a page's controls once for what each offers (`controlsOn`) and what each is
+  drawn sending (`writesOn`), a select's options read once for both, each rule beside the
+  `form-value.ts` function it follows. What a person can press is `pressable` in
+  `src/rendering/client/form-value.ts`, which an assistant's tools import and the stories by hand
+  run: their page script takes form-value.ts whole from its source, so a press is parsed and a
+  control refused by the client's own code, and only the reason is the script's. The rule's prose
+  is the dzql-app skill's `reference/stories.md`; `docs/stories.md` and `assistants.md` link to it.
+  `harness.ts` is split by job: `harness/controls.ts` (the page's controls), `harness/applets.ts`
+  (what its applets hold and what their props cost) and `harness/paths.ts` (a document's paths),
+  1,715 lines to 1,306; `dzql/modelling/harness` exports every name it did.
+
 - **The examples keep their tables' history** (20 October, #52): chat, the wedding and the ticker
   no longer turn it off; what is no history says so beside it (a session or a visit, a login or a
   token, the ticker's quotes). Hand-written SQL reads the standing rows, `current_<table>` (the
