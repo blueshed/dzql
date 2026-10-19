@@ -7,7 +7,7 @@
 import { tap, type Measured } from "dzql/modelling/costs";
 import { createServer } from "dzql/rendering/server";
 import { example } from "../index";
-import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "dzql/rendering/test-socket";
+import { connect as socketTo, heard as heardAll, rawOf } from "dzql/rendering/test-socket";
 
 const VIEWERS = 5;
 const server = createServer(example, 0);

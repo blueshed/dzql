@@ -15,7 +15,7 @@ import { addModal, addTool, choice, collectionPage, field, findControl, prop,rea
 import type { DressProps } from "../applets/dress";
 import { LOOK_FIELDS } from "../looks";
 import type { MenuProps } from "../applets/menu";
-import { esc, join, nav, open, write, appletProps, appletWrites } from "./html";
+import { esc, join, go, open, write, appletProps, appletWrites } from "./html";
 import { part } from "dzql/rendering/parts";
 import { watch } from "dzql/rendering/documents";
 import { icon, type IconName } from "./icons";
@@ -25,7 +25,7 @@ import { answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf,
 
 /** Opening something over the page this household is on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
 const open_ = (v: HouseholdView, what: string, which: string | number = ""): string => open(over(v.session.ui).path, what, which);
-const close = (v: HouseholdView): string => nav(over(v.session.ui).path);
+const close = (v: HouseholdView): string => go(over(v.session.ui).path);
 
 /** Everything a household's page reads: their own document, the wedding, and the lists. */
 export type HouseholdView = {
@@ -78,7 +78,7 @@ export function householdPage(v: HouseholdView): string {
   const everyone = read.as === "everyone" ? everyoneReading(v, read.family) : undefined;
   const trail: Crumb[] = [{ label: coupleName(v.w) }, ...(everyone?.crumbs ?? [{ label: v.h.code }])];
 
-  const reading = readingSwitch(READINGS.map(([text, as, path, mark]) => [text, mark, read.as === as, nav(path)]));
+  const reading = readingSwitch(READINGS.map(([text, as, path, mark]) => [text, mark, read.as === as, go(path)]));
   const owed = v.h.guests.filter((g) => g.named_by === "household").length < v.h.plus_ones;
   // find, on the people this reading shows: everyone's photo is nameless until the day
   const { word, hide } = findOf(v);
@@ -179,7 +179,7 @@ function everyonePhoto(props: CrowdProps): string {
 function everyoneReading(v: HouseholdView, familyKey: string | null): { body: string; crumbs: Crumb[] } {
   const props: CrowdProps = { everyone: weddingDoc.everyone(), open: familyKey, reveal: v.names };
   const { level, shown, total, open } = crowd(props);
-  const crumbs: Crumb[] = open ? [{ label: v.h.code, back: nav("") }, { label: "Everyone", back: nav("everyone") }, { label: "One family" }] : [{ label: v.h.code }];
+  const crumbs: Crumb[] = open ? [{ label: v.h.code, back: go("") }, { label: "Everyone", back: go("everyone") }, { label: "One family" }] : [{ label: v.h.code }];
   const note =
     level === "families" ? `${total} in the photo, in ${shown} families. Tap a family to see them. Nobody knows whose is whose until the day.`
     : level === "family" ? `${shown} of them.`

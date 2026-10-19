@@ -3,7 +3,7 @@
 // figure's own: a 100 x 140 box, feet at y = 140. The attitude is a class that styles.css animates.
 
 import type { Attitude, Face, Hair, Look } from "../looks";
-import { esc } from "../views/html";
+import { esc } from "dzql/rendering/html";
 
 /** What the drawing takes: a look, and the name to print on the chest when the caller may show one. */
 export type Spec = Omit<Look, "built_at"> & { name?: string };

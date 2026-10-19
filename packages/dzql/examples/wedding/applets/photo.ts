@@ -6,7 +6,7 @@
 
 import type { PatchOp } from "dzql/rendering/json-patch";
 import type { Figure } from "../documents/wedding";
-import { esc } from "../views/html";
+import { esc } from "dzql/rendering/html";
 import { arrange, figure, print, specOf, type Spec } from "./figure";
 
 export type Tap = { doc: string; op: PatchOp };

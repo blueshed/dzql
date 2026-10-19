@@ -4,7 +4,7 @@
 // plain write on the document (`replace /gifts/3/picture_key`), recorded and undoable like any other.
 
 import { registerApplet } from "dzql/rendering/applets";
-import { esc } from "../views/html";
+import { esc } from "dzql/rendering/html";
 
 export interface PictureProps {
   doc: string;

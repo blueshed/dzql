@@ -40,7 +40,7 @@ export type ModelDocument = {
   stories?: (string | number)[];
 };
 /** A model as its page keeps it: its stories and documents, each a row by its id; a list does as well. */
-export type AnyModel = { stories?: Record<string, ModelStory> | ModelStory[]; documents?: Record<string, ModelDocument> | ModelDocument[] };
+export type Model = { stories?: Record<string, ModelStory> | ModelStory[]; documents?: Record<string, ModelDocument> | ModelDocument[] };
 
 export type Story = { id: string; text: string; actor: string; kind: "does" | "cannot"; post: string | null; touches: string[]; writes: StoryWrite[]; requires: Requires[] };
 export type Held = { parent: string | null; fields: { name: string; type: string }[] };
@@ -97,7 +97,7 @@ export function says(type: string | undefined, stored: unknown, word: string): b
 export type Reading = ReturnType<typeof readingOf>;
 
 /** The model, read once. */
-export function readingOf(model: AnyModel) {
+export function readingOf(model: Model) {
   const stories: Story[] = rows(model.stories).map((s) => ({
     id: String(s.id),
     text: s.text,
@@ -199,3 +199,19 @@ export function readingOf(model: AnyModel) {
 
 /** What a story touches: what it says it touches, and what it writes. */
 export const touched = (s: { touches?: string[]; writes?: StoryWrite[] | null }): string[] => [...new Set([...(s.touches ?? []), ...(s.writes ?? []).map((w) => w.entity)])];
+
+/** Rows in order of their ids, as the page lists them (an id may be a number or its text). */
+export const byId = (a: { id: string | number }, b: { id: string | number }): number => Number(a.id) - Number(b.id);
+
+/** A document's shape: its name, then its root and each table it holds under the one it hangs from, indented; a table whose parent it does not hold hangs from the root. */
+export function shapeOf(head: string, root: string, include: string[], parentOf: (table: string) => string | null): { text: string; pad: number }[] {
+  const lines = [{ text: head, pad: 0 }];
+  const under = (p: string) => include.filter((t) => (include.includes(parentOf(t) ?? "") ? parentOf(t) : root) === p && t !== p);
+  const walk = (t: string, depth: number) => {
+    lines.push({ text: t, pad: 14 * depth });
+    for (const k of under(t)) walk(k, depth + 1);
+  };
+  walk(root, 1);
+  return lines;
+}
+

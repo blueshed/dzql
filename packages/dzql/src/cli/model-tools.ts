@@ -5,13 +5,7 @@
 // Apart from ./model.ts, which `dzql model` and `dzql model check` keep.
 import { writeFileSync } from "node:fs";
 import { basename } from "node:path";
-import { modelIn } from "./model";
-
-/** The model in its file, with its name, as the page keeps it. */
-export function rawIn(file: string) {
-  const { name, ...model } = modelIn(file);
-  return { models: { name }, ...model } as never;
-}
+import { rawIn } from "./model";
 
 /** Where to write: `--out <file>`, else stdout. */
 function emit(rest: string[], text: string) {

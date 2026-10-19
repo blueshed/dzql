@@ -16,7 +16,7 @@
 // A register that the model cannot answer says so, and is never counted as passed.
 
 import { esc } from "dzql/rendering/html";
-import { knownType, readingOf, refOf, typeOf } from "dzql/modelling/reading";
+import { byId, knownType, readingOf, refOf, typeOf } from "dzql/modelling/reading";
 import { saidWrite, singular, touched, type Raw, type StoryWrite } from "./heart";
 
 export type Register = {
@@ -32,7 +32,6 @@ export type Register = {
 
 /** A name delta's schema can take, as `dzql model export` writes it: a table's or a column's (hjeli's `SQL_IDENT`). */
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const byId = (a: { id: string | number }, b: { id: string | number }) => Number(a.id) - Number(b.id);
 
 /** The six registers over the model document as delta keeps it. */
 export function closureOf(raw: Raw): Register[] {

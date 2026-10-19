@@ -1,6 +1,7 @@
 import { defineDoc, defineSchema, type ColumnShorthand, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { diff, stateOf, writeMigration, type Change } from "@blueshed/delta/migrations";
-import { columnOf, readingOf, typeOf, valueOf, type AnyModel, type Document, type Entity, type Reading, type Story, type StoryWrite } from "./reading";
+import { columnOf, readingOf, typeOf, valueOf, type Model, type Document, type Entity, type Reading, type Story, type StoryWrite } from "./reading";
+export type { Model } from "./reading";
 
 // From the model to the app: the stories, the documents they need and what each holds, as the
 // model's page keeps them, made into delta's two definitions -- a schema (`defineSchema`, the
@@ -18,7 +19,6 @@ import { columnOf, readingOf, typeOf, valueOf, type AnyModel, type Document, typ
 
 export { knownType, parentIn, type ModelDocument, type ModelField, type ModelStory } from "./reading";
 /** The model as the model's page keeps it (`model:1`): its stories and documents, each a row by its id; a list does as well. */
-export type Model = AnyModel;
 
 
 /** The model as delta's definitions: the schema of its entities, and its documents over them. */

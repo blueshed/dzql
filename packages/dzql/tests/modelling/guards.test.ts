@@ -4,12 +4,12 @@ import { createLocal } from "@blueshed/delta/local";
 import { createTables, registerDocs } from "@blueshed/delta/sqlite";
 import { closureOf } from "../../src/modelling/page/closure";
 import { definitionsOf } from "../../src/modelling/definitions";
-import { check, guardSource, guardsOf, guardWrites, rowsIn, rowsInPostgres, type GuardModel, type RowOf } from "../../src/modelling/guards";
+import { check, guardSource, guardsOf, guardWrites, rowsIn, rowsInPostgres, type Model, type RowOf } from "../../src/modelling/guards";
 
 // The leave app's model, told as a modeller tells it: who asks, who approves, and what each write
 // presupposes. Every check is closed (hjeli's six, Easy's coverage: each write decided for both), so its guards may be generated.
 const field = (name: string, type = "text") => ({ name, type });
-const leave: GuardModel = {
+const leave: Model = {
   stories: {
     "1": { id: 1, text: "Mo starts a team", actor: "mo", kind: "does", writes: [{ entity: "teams", op: "add" }] },
     "2": { id: 2, text: "Mo opens the team to requests", actor: "mo", kind: "does", writes: [{ entity: "teams", op: "replace", path: "open", to: "yes" }] },
@@ -95,7 +95,7 @@ describe("the guarded write layer: the stories' writes, each with what it presup
   });
 
   test("each person's own document is the app's session, not guarded; rowsIn reads a SQLite row with its booleans", async () => {
-    const own: GuardModel = { ...leave, documents: { ...leave.documents, "9": { id: 9, name: "seat", root: "seats", own: 1, holds: { seats: { parent: null } } } } };
+    const own: Model = { ...leave, documents: { ...leave.documents, "9": { id: 9, name: "seat", root: "seats", own: 1, holds: { seats: { parent: null } } } } };
     expect(guardsOf(own).documents).toEqual(guardsOf(leave).documents);
     const db = new Database(":memory:");
     db.run('CREATE TABLE "cafe_invoices" (id INTEGER PRIMARY KEY, paid INTEGER, note TEXT)');
@@ -244,7 +244,7 @@ test("a story that changes a ref is said of its column, `<label>_id`, as the wri
 });
 
 test("a table that keeps its history: the guards read a row's open version, and a row removed is not there (it cannot be named again)", async () => {
-  const model = (await Bun.file(`${import.meta.dir}/fixtures/orders.json`).json()) as { tables: { stories: GuardModel["stories"]; documents: GuardModel["documents"] } };
+  const model = (await Bun.file(`${import.meta.dir}/fixtures/orders.json`).json()) as { tables: { stories: Model["stories"]; documents: Model["documents"] } };
   const { schema, docs } = definitionsOf({ documents: model.tables.documents as never });
   const guards = guardsOf({ stories: model.tables.stories, documents: model.tables.documents });
   const db = new Database(":memory:");

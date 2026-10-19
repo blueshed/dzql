@@ -12,13 +12,8 @@ import { frameworkSqlFiles } from "./bootstrap";
 import { authJwtSqlFile } from "./auth-jwt-sql";
 import type { Schema, DocDef } from "./index";
 
-const PKG_VERSION = (() => {
-  try {
-    return String(JSON.parse(readFileSync(join(import.meta.dir, "..", "..", "package.json"), "utf8")).version ?? "0.0.0");
-  } catch {
-    return "0.0.0";
-  }
-})();
+import pkg from "../../package.json";
+const PKG_VERSION = pkg.version; // read as the MCP server reads it (src/cli/mcp.ts)
 
 const USAGE =
     `Usage:\n` +
@@ -26,6 +21,8 @@ const USAGE =
     `                                           after every change, the checks, then the app's types, migrations and tests in <dir> (app)\n` +
     `  dzql model <login|story|document|...>    the model's CLI, against that page\n` +
     `  dzql model check [--out <dir>]           the same once; exit 1 while a check is open\n` +
+    `  dzql model site|guards [<file>] [--out <file>]   the model read back for a customer; the guarded write layer\n` +
+    `  dzql model mcp                           every model verb as an MCP tool, over stdio\n` +
     `  dzql sql <module> [--out <file>] [--force] [--schema-export <name>] [--docs-export <name>]\n` +
     `  dzql init <dir> [--with-auth] [--upgrade]\n` +
     `  dzql migrate <database> [--app <name>] [--dir <migrations>] [--status] [--json]\n` +

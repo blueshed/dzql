@@ -21,7 +21,7 @@ import type { PatchOp } from "dzql/rendering/json-patch";
 import { controlsOn, run, type Control, type Heard, type Trace } from "dzql/modelling/harness";
 import { allOpenSockets } from "dzql/rendering/resources/audience";
 import { activeDocuments } from "dzql/rendering/documents";
-import { appIn, storiesIn } from "dzql/rendering/names";
+import { appDir, appIn, storiesIn } from "dzql/rendering/names";
 
 /** One actor's dealings with one document, counted in stories: held (in front of them), written, refused, told of a change. */
 export type Cell = { held: number; written: number; refused: number; told: number };
@@ -367,9 +367,8 @@ function changes(step: Trace, named: (doc: string) => string | undefined, own: s
 
 /** Where an example is, and its name: `wedding` is `examples/wedding`; a path (it has a `/`) is a project of its own, named by its last part. */
 export function exampleAt(arg: string): { dir: string; name: string } {
-  if (!arg.includes("/")) return { dir: resolve(import.meta.dir, "../../../../examples", arg), name: arg };
-  const dir = resolve(arg);
-  return { dir, name: basename(dir) };
+  const dir = resolve(appDir(arg)); // the kernel's own reading of a name or a path
+  return { dir, name: arg.includes("/") ? basename(dir) : arg };
 }
 
 /**

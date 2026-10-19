@@ -11,7 +11,7 @@ import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import { over, type SessionDocument } from "../documents/session";
 import { addModal, addTool, choice, collectionPage, confirmModal, field, findControl, prop, readingSwitch, row, rows, drawer, surfaces, tool, type FieldOptions } from "./bento";
-import { appletWrites, esc, join, nav, open as openAt, write } from "./html";
+import { appletWrites, esc, join, go, open as openAt, write } from "./html";
 import { address } from "dzql/rendering/bento";
 import { part } from "dzql/rendering/parts";
 import { icon, type IconName } from "./icons";
@@ -24,7 +24,7 @@ import type { Op } from "dzql/rendering/html";
 
 /** Opening something over the page the couple are on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
 const open_ = (v: BoardView, what: string, which: string | number = ""): string => openAt(over(v.session.ui).path, what, which);
-const close = (v: BoardView): string => nav(over(v.session.ui).path);
+const close = (v: BoardView): string => go(over(v.session.ui).path);
 
 /** `may` is the couple's permit, asked by a page drawn from a collection's shape. */
 export type BoardView = { session: SessionDocument; b: BoardDocument; may(op: Op, path: string): boolean };
@@ -60,7 +60,7 @@ export function boardPage(v: BoardView): string {
     ["Everyone", !list, "", "camera"],
     ["List", list, "list", "list"],
   ];
-  const reading = readingSwitch(readings.map(([text, on, path, mark]) => [text, mark, on, nav(path)]));
+  const reading = readingSwitch(readings.map(([text, on, path, mark]) => [text, mark, on, go(path)]));
   const find = b.households.length ? findControl("households", { word, hide, shown: b.households.filter((h) => hits(h, word)).length, total: b.households.length }) : undefined;
   const kept = keptIn(v)?.table;
   const tools = [
@@ -69,7 +69,7 @@ export function boardPage(v: BoardView): string {
       const on = at.drawer === table || kept === table;
       return tool(KEEP[table].label, { icon: KEEP[table].mark, iconOnly: true, expanded: on, write: on ? close(v) : open_(v, table) });
     }),
-    tool("Venues", { icon: "map-pin", iconOnly: true, write: nav("venues") }),
+    tool("Venues", { icon: "map-pin", iconOnly: true, write: go("venues") }),
     addTool(open_(v, "new", "households"), "Invite a household"),
   ].filter(Boolean);
   const body = join(`<div class="photo-page">`, welcomeBubble(b, !!at.answering, open_(v, "answer")), list ? householdsList(v) : photoReading(v), `</div>`);
@@ -98,7 +98,7 @@ export function boardPage(v: BoardView): string {
 /** A collection nobody wrote a page for: drawn from its shape, under the couple's names. */
 function derivedBoard(v: BoardView, table: string): string {
   const page = v.session.ui.page ?? "";
-  const d = derivedPage(surfaces, { doc: "board", table: schema.tables[table]!, declared: derived[table]!, rows: v.b.derived[table]!, page, trail: [{ label: coupleName(v.b), back: nav("") }], may: v.may });
+  const d = derivedPage(surfaces, { doc: "board", table: schema.tables[table]!, declared: derived[table]!, rows: v.b.derived[table]!, page, trail: [{ label: coupleName(v.b), back: go("") }], may: v.may });
   return frame(false, layers(d.page, d.drawer, d.modal), page);
 }
 

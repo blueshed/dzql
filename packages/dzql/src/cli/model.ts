@@ -18,6 +18,12 @@ import { extractSessionFile, savedServer } from "../rendering/cli/commands";
 
 
 /** The model in its file: its name, stories and documents, as the page's `model:1` holds them. */
+/** The model in its file, with its name, as the page keeps it (`{ models: { name } }`): what the checks and the guards read. */
+export function rawIn(file: string) {
+  const { name, ...model } = modelIn(file);
+  return { models: { name }, ...model } as never;
+}
+
 export function modelIn(file: string): Model & { name: string } {
   if (!existsSync(file)) throw new Error(`No model in ${file}: start the model's page with \`dzql model\`, and tell it the stories.`);
   const { tables } = JSON.parse(readFileSync(file, "utf8")) as { tables: Record<string, Record<string, unknown>[]> };
@@ -48,7 +54,7 @@ export async function make(file: string, out: string, options: { drops?: boolean
 async function making(file: string, out: string, { drops = false }: { drops?: boolean }): Promise<{ ok: boolean; said: string }> {
   const { closureOf, plainClosure } = await import("../modelling/page/closure");
   const model = modelIn(file);
-  const registers = closureOf({ models: { name: model.name }, ...model } as Parameters<typeof closureOf>[0]);
+  const registers = closureOf(rawIn(file));
   const checks = plainClosure(registers);
   if (registers.some((r) => r.gaps.length > 0)) return { ok: false, said: `${checks}\n\nNothing made: close each gap first.` };
   if (Object.keys(model.stories ?? {}).length === 0) return { ok: true, said: "No stories yet: nothing made." };
@@ -87,7 +93,7 @@ async function making(file: string, out: string, { drops = false }: { drops?: bo
   const types = put("types.ts", () => typesOf(model, undefined, stateOf(history)));
   // hjeli's guarded write layer, once a story says what it writes (./model-tools.ts, ../modelling/guards.ts); the proof makes its writes through it
   const { guardsOf, guardSource } = await import("../modelling/guards");
-  const guards = guardsOf({ models: { name: model.name }, ...model } as Parameters<typeof guardsOf>[0]);
+  const guards = guardsOf(rawIn(file));
   const guarded = guards.rules.length ? put("guards.ts", () => guardSource(guards, basename(file))) : undefined;
   put("model.test.ts", () => testsOf(model, basename(resolve(out)), `./${types.replace(/\.ts$/, "")}`, guarded && `./${guarded.replace(/\.ts$/, "")}`));
   // the open step, as the model now says it: rewritten, or gone when the model is back at the committed steps
@@ -191,7 +197,6 @@ export async function run(argv: string[]): Promise<boolean> {
   }
   // the server the CLI signed in to (its link said where), else the model's own on its port
   if (!savedServer(extractSessionFile(rest).sessionFile)) process.env.ETA_URL ??= `ws://localhost:${port}/model`;
-  process.argv = [process.argv[0]!, process.argv[1]!, sub, ...rest];
-  await import("../rendering/cli");
+  await (await import("../rendering/cli")).main([sub, ...rest]);
   return true;
 }

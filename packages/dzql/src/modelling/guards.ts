@@ -22,11 +22,11 @@
 // a write it refuses is answered 403 with the reason; one it lets by goes on to the store. Each op
 // of a write is checked against the rows as they stand before it.
 
-import { readingOf, says as saysWord, type AnyModel, type StoryWrite } from "./reading";
+import { splitPath } from "@blueshed/delta/core";
+import { readingOf, says as saysWord, type Model, type StoryWrite } from "./reading";
+export type { Model } from "./reading";
 
 export type { Requires, StoryWrite } from "./reading";
-/** The model as the model's page keeps it: its stories and documents, each a row by its id; a list does as well. */
-export type GuardModel = AnyModel;
 
 /** One write one story says, and what it takes. */
 export type Rule = {
@@ -68,7 +68,7 @@ export type Verdict = { ok: true; story: string | number } | { ok: false; reason
 
 
 /** The guards the model's stories say, over the documents it describes. */
-export function guardsOf(model: GuardModel): Guards {
+export function guardsOf(model: Model): Guards {
   const m = readingOf(model);
   const rules: Rule[] = [];
   for (const s of m.stories) {
@@ -110,8 +110,14 @@ export function guardsOf(model: GuardModel): Guards {
 /** A type worth saying: any but text, which is how a value is compared when none is said. */
 const typed = (type: string | undefined) => (type && type !== "text" ? { type } : {});
 
-/** A write's path, as delta's: `/<entity>/<id>[/<field>]`, each segment unescaped (RFC 6901). */
-const segments = (path: string) => path.split("/").slice(1).map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~"));
+/** A write's path, as delta reads it (`splitPath`): `/<entity>/<id>[/<field>]`; one that is no pointer says nothing, and delta answers it. */
+const segments = (path: string): string[] => {
+  try {
+    return splitPath(path);
+  } catch {
+    return [];
+  }
+};
 const said = (op: Op, entity: string, field?: string) => `${op.op} ${entity}${field ? `.${field}` : ""}${field && op.op === "replace" ? `=${JSON.stringify(op.value)}` : ""}`;
 
 /** Does this rule say this op: the same entity and verb, and for a replace the field and value it sets? */

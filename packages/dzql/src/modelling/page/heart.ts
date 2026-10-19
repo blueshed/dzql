@@ -14,13 +14,10 @@
 //               only such documents hold: needed by no story.
 
 import { esc } from "dzql/rendering/html";
-import { readingOf } from "dzql/modelling/reading";
+import { byId, readingOf, shapeOf, type Requires, type StoryWrite } from "dzql/modelling/reading";
 
 export type Field = { name: string; type: string };
-/** What a story writes, as hjeli said it: an entity, the verb, the field it sets and the value it sets it to. */
-export type StoryWrite = { entity: string; op: "add" | "replace" | "remove"; path?: string; to?: string };
-/** A state a story presupposes, as hjeli said it: an entity's field holding a value. */
-export type Requires = { entity: string; path: string; value: string };
+export type { Requires, StoryWrite }; // reading's, the one statement of them
 export type Held = { parent: string | null; fields: Field[] };
 
 /** The model document as delta keeps it: its stories and its documents, each a row by its id. */
@@ -40,19 +37,9 @@ export function singular(word: string): string {
 }
 
 /** A document's shape: its name, then its root and each entity it holds under the one it hangs from, indented; one whose parent it does not hold hangs from the root. */
-export function shape(head: string, root: string, holds: Record<string, Held>): { text: string; pad: number }[] {
-  const lines = [{ text: head, pad: 0 }];
-  const held = Object.keys(holds).filter((e) => e !== root);
-  const parentOf = (e: string) => (holds[e]?.parent && (holds[e]!.parent === root || held.includes(holds[e]!.parent!)) ? holds[e]!.parent : root);
-  const walk = (e: string, depth: number) => {
-    lines.push({ text: e, pad: 14 * depth });
-    for (const k of held.filter((x) => parentOf(x) === e && x !== e)) walk(k, depth + 1);
-  };
-  walk(root, 1);
-  return lines;
-}
+export const shape = (head: string, root: string, holds: Record<string, Held>): { text: string; pad: number }[] =>
+  shapeOf(head, root, Object.keys(holds).filter((e) => e !== root), (e) => holds[e]?.parent ?? null);
 
-const byId = (a: { id: string | number }, b: { id: string | number }) => Number(a.id) - Number(b.id);
 
 /** What a story touches: what it says it touches, and what it writes. */
 export const touched = (s: { touches?: string[]; writes?: StoryWrite[] | null }): string[] => [...new Set([...(s.touches ?? []), ...(s.writes ?? []).map((w) => w.entity)])];

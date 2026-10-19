@@ -7,7 +7,7 @@
 // dress-applet.ts, imported only by client/main.ts.
 
 import { ATTITUDES, FACES, HAIRS, PALETTE, type Attitude, type LookField } from "../looks";
-import { esc } from "../views/html";
+import { esc } from "dzql/rendering/html";
 import { figure, figureSvg, print, type Spec } from "./figure";
 
 export const PARTS = ["hair", "face", "top", "arms", "legs"] as const;

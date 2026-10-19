@@ -4,7 +4,7 @@
 // row and turns a tap into a write is menu-applet.ts, imported only by client/main.ts
 //.
 
-import { esc } from "../views/html";
+import { esc } from "dzql/rendering/html";
 
 export interface MenuCourse {
   id: number;

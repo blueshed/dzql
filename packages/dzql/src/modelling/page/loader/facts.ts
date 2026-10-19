@@ -33,6 +33,7 @@ import type { PatchOp } from "dzql/rendering/json-patch";
 import type { Trace } from "dzql/modelling/harness";
 import { typeOf, type StoryRow, type Told } from "./documents";
 import { singular } from "./from-stories";
+import { shapeOf } from "dzql/modelling/reading";
 
 /** A document as delta.ts defines it (`documentsIn`). */
 export type Doc = { name: string; root: string | null; include: string[]; watch?: string[]; columns?: Record<string, string[]> };
@@ -121,17 +122,8 @@ export function readBy(file: File, at: number): string | null {
 /** The tables no document reaches. */
 export const unreached = (tables: string[], reaches: string[][]): string[] => tables.filter((t) => !reaches.some((r) => r.includes(t)));
 
-/** A document's shape: its name, then its root and each include under the table it hangs from (its schema parent), indented; an include whose parent it does not hold hangs from the root. */
-export function shape(head: string, root: string, include: string[], parentOf: (table: string) => string | null): { text: string; pad: number }[] {
-  const lines = [{ text: head, pad: 0 }];
-  const under = (p: string) => include.filter((t) => (include.includes(parentOf(t) ?? "") ? parentOf(t) : root) === p && t !== p);
-  const walk = (t: string, depth: number) => {
-    lines.push({ text: t, pad: 14 * depth });
-    for (const k of under(t)) walk(k, depth + 1);
-  };
-  walk(root, 1);
-  return lines;
-}
+/** A document's shape (reading's). */
+export const shape = shapeOf;
 
 /** A story as extract.ts reads it: what the heart needs of it. */
 type StoryFacts = { n: number; name: string; as: string; kind: string; offPage: boolean; post?: string | null; model?: number | false; ops: { table: string | null }[]; seen: Record<string, unknown>; untold: string[] };
