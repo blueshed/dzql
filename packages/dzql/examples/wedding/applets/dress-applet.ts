@@ -1,6 +1,6 @@
 // The dressing applet's mounting: which part is open is this applet's own DOM state; a choice is
 // one write on one field, and the figure redraws from the render that follows. Imported only by
-// client/main.ts, and measured from the pages that run it (src/client-coverage.ts); the drawing
+// client/main.ts, and measured from the pages that run it (src/rendering/client-coverage.ts); the drawing
 // is dress.ts.
 
 import { registerApplet } from "dzql/rendering/applets";

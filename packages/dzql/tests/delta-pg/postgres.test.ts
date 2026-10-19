@@ -1,7 +1,7 @@
 /**
  * Integration tests for the Postgres backend.
  *
- * Requires a live Postgres on $DELTA_TEST_PG_URL (defaults to the compose
+ * Requires a live Postgres on $DATABASE_URL (defaults to the compose
  * service on localhost:5433). Run with:
  *
  *   docker compose up -d --wait

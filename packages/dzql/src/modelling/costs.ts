@@ -2,7 +2,7 @@
 // The README marks each number it quotes (`<!-- measured:<name> -->…<!-- /measured -->`), and a run
 // measures them all: what one write sends everyone else, compressed, by each example's own script
 // (`examples/<name>/scripts/measure-render-cost.ts --json`, in a process of its own whose clock
-// stands still, src/costs-clock.ts); and the client and railroad, built and gzipped. Not the
+// stands still, src/modelling/costs-clock.ts); and the client and railroad, built and gzipped. Not the
 // stories: a count moves with every story added, and costs nothing. `bun run costs` writes them
 // into the README, and `--check` (src/costs.test.ts) fails where it differs; a size that moves a
 // little from run to run stands within 3% (`WITHIN`). Imported, nothing runs.
@@ -86,7 +86,7 @@ export async function measure(script: string): Promise<Measured> {
 }
 
 /**
- * A way in to the server on `port` for a measure, or the stories' cast (src/harness.ts), which sees
+ * A way in to the server on `port` for a measure, or the stories' cast (src/modelling/harness.ts), which sees
  * what crosses the wire: a socket opened to `url` is passed on to the server as it is, and the size
  * of each text frame the server sends back -- its payload, compressed when it was -- is kept under
  * the cookie its upgrade sends. `heard(cookie, raws)` sizes the last messages a

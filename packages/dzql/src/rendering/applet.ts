@@ -10,7 +10,7 @@ import type { PatchOp } from "./json-patch";
 // through `reduce` (`patch`). Built on railroad's `signal` and `mount` and nothing else.
 //
 // It draws only inside its element, and never binds the element's own attributes: those are
-// the page's, which the morph keeps (src/client/morph.ts), as it never descends into the element.
+// the page's, which the morph keeps (src/rendering/client/morph.ts), as it never descends into the element.
 // What the server rendered inside it -- the zones as `<option>`s -- is `render`'s to read, and is
 // then replaced by what `render` draws, so HTML stays the vocabulary.
 

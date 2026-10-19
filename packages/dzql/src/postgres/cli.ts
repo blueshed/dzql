@@ -33,7 +33,7 @@ const USAGE =
     `  dzql link <database> <person> [--origin <url>] [--opens <path>] [--json]\n` +
     `        a link to sign in as someone (link sign-in): the first person's, on the server\n` +
     `\n` +
-    `Exit codes: 0 done, 1 an error, 2 a bad argument.\n`;
+    `Exit codes: 0 done, 1 an error, 2 a bad argument, 3 a file it will not overwrite.\n`;
 
 let json = process.argv.includes("--json");
 
@@ -97,9 +97,8 @@ function backupFile(dest: string): string {
 // dzql sql
 // ---------------------------------------------------------------------------
 
-// Stable substring of the codegen header (see codegen.ts:
-// "GENERATED FROM types.ts — DO NOT EDIT"). Matching on the leading words
-// avoids depending on the em-dash byte sequence.
+// Stable substring of the codegen header (codegen.ts: "GENERATED FROM <module> by dzql — DO NOT
+// EDIT"). Matching on the leading words avoids depending on the em-dash byte sequence.
 const GENERATED_MARKER = "GENERATED FROM";
 
 async function cmdSql(modulePath: string | undefined, values: Record<string, unknown>) {
@@ -140,7 +139,7 @@ async function cmdSql(modulePath: string | undefined, values: Record<string, unk
     process.exit(2);
   }
 
-  const sql = generateSql(schema, docs);
+  const sql = generateSql(schema, docs, { from: modulePath });
   const out = values.out as string | undefined;
   const force = !!values.force;
 
@@ -278,14 +277,7 @@ async function cmdMigrate(target: string | undefined, values: Record<string, unk
 
   let answer: unknown;
   const pg = await import("./migrate");
-  let pool: any;
-  if (isUrl) {
-    const { Pool } = await import("pg");
-    pool = new Pool({ connectionString: target });
-  } else {
-    const { openPglite } = await import("./pglite");
-    pool = await openPglite(path);
-  }
+  const pool = await (await import("./pglite")).openDatabase(isUrl ? target : path);
   try {
     const list = await pg.fromFolder(dir);
     answer = status ? await pg.migrationStatus(pool, list, options) : await pg.migrate(pool, list, options);
@@ -325,14 +317,7 @@ async function cmdLink(target: string | undefined, person: string | undefined, v
   try { origin = (values.origin as string | undefined) ?? siteOrigin(); }
   catch (err) { usageError(`${(err as Error).message}, or pass --origin`); }
   const { postgresLinkStore } = await import("./auth-link");
-  let pool: any;
-  if (isUrl) {
-    const { Pool } = await import("pg");
-    pool = new Pool({ connectionString: target });
-  } else {
-    const { openPglite } = await import("./pglite");
-    pool = await openPglite(path);
-  }
+  const pool = await (await import("./pglite")).openDatabase(isUrl ? target : path);
   try {
     const made = await makeLink(await postgresLinkStore(pool), Number(person), { origin, opens: values.opens as string | undefined });
     if (json) return print(made);

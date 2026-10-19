@@ -63,7 +63,7 @@ export const pushRender = (view: Bun.WebView, html: string) => push(view, render
 /** The id of the last write this page sent, which its echo or its refusal hands back. */
 export const lastId = (view: Bun.WebView): Promise<number> => view.evaluate<number>(`window.__ids.at(-1)`);
 
-/** The server refusing this page's last write, and why if `reason`, then handing the page back whole, as src/server.ts does. */
+/** The server refusing this page's last write, and why if `reason`, then handing the page back whole, as src/rendering/server.ts does. */
 export async function pushRefused(view: Bun.WebView, html: string, reason?: string): Promise<void> {
   await push(view, { type: "refused", id: await lastId(view), reason });
   await pushRender(view, html);

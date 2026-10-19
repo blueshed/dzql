@@ -1,5 +1,5 @@
 // The client's coverage, bun test's preload. bun's table holds only what a test loads in
-// its own process, and the client runs in a page. So every view is Chrome (src/webview.ts), whose
+// its own process, and the client runs in a page. So every view is Chrome (src/rendering/webview.ts), whose
 // DevTools count what a page ran, block by block, and a bundle's source map takes each count back to
 // its file and line. A file a page ran that bun's table does not hold -- not a package's, not a
 // test's, not one a test loads itself -- is held to the same bar at the end of the run: every line
@@ -103,7 +103,7 @@ export function spans(lines: number[]): string {
   return runs.map((r) => (r.length > 1 ? `${r[0]}-${r.at(-1)}` : `${r[0]}`)).join(", ");
 }
 
-/** Each judged file with a line that never ran, and those lines: "src/client/morph.ts: 12, 40-42". */
+/** Each judged file with a line that never ran, and those lines: "src/rendering/client/morph.ts: 12, 40-42". */
 export function gaps(ran: Ran, judge: (file: string) => boolean = judged): string[] {
   const missed = [...ran].filter(([file]) => judge(file)).map(([file, lines]) => [file, [...lines].filter(([, r]) => !r).map(([n]) => n)] as const);
   return missed.filter(([, lines]) => lines.length > 0).map(([file, lines]) => `${relative(root, Bun.fileURLToPath(file))}: ${spans(lines)}`).sort();

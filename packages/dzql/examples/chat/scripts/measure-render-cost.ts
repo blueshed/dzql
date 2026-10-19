@@ -3,7 +3,7 @@
 // the one appended <li> -- each as it is and as it crosses the wire, compressed (a `tap` in front
 // of the server sees it). Not a test -- a report. Run with
 // `DB_PATH=:memory: bun examples/chat/scripts/measure-render-cost.ts`; with `--json`, what the
-// README says (src/costs.ts, `bun run costs`).
+// README says (src/modelling/costs.ts, `bun run costs`).
 import { tap, type Measured } from "dzql/modelling/costs";
 import { patchMessage } from "dzql/rendering/json-patch";
 import { createServer } from "dzql/rendering/server";

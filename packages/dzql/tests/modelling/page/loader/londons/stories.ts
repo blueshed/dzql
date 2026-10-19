@@ -96,7 +96,7 @@ const w = (doc: string, op: Op, path: string, value?: unknown): Write => ({ doc,
 const many = (doc: string, sets: [string, unknown][]): Write => ({ doc, ops: sets.map(([path, value]) => ({ op: "replace" as const, path, value })) });
 const code = (value: string): Write => w("session", "replace", "/code", value);
 
-/** Where someone stands, as one write to the session (`goTo`, src/stories.ts). */
+/** Where someone stands, as one write to the session (`goTo`, src/modelling/stories.ts). */
 const goTo = goToOn("session");
 
 export const stories: Stories = {

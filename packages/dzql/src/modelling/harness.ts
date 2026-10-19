@@ -23,8 +23,8 @@ import { escapeSegment, splitPath } from "@blueshed/delta/core";
 // Runs an example's stories against it, over real sockets, and reports by story name: what each
 // step checks is docs/stories.md, "The harness". Canon 1 compares every member's page, drawn from
 // the server's copy, before and after; Canon 2 holds each open page, kept as the client keeps it,
-// to a fresh render from delta's tables; by hand (src/by-hand.ts) a story is done in a browser the
-// size of a phone; and what each step hands each page is counted (src/costs.ts `tap`) and held to
+// to a fresh render from delta's tables; by hand (src/modelling/by-hand.ts) a story is done in a browser the
+// size of a phone; and what each step hands each page is counted (src/modelling/costs.ts `tap`) and held to
 // a budget. Each story runs in a transaction rolled back after it.
 
 /** What a story handed each member's page: the write's own size (none when a tab closes), and each member handed anything by its step, by its undo, and by its redo, when it has them. */
@@ -169,10 +169,10 @@ export function propsCost(whose: string, page: string, message: Heard): PropsCos
 }
 
 /**
- * A control a page offers (src/html.ts `write`): the document, op and path it writes, and the value
+ * A control a page offers (src/rendering/html.ts `write`): the document, op and path it writes, and the value
  * a button carries (`data-value`, JSON, sent with its type: `true`, not "true"; an option's or a
  * radio's is its text). A field or a form writes whatever is typed, so any value. An applet draws its own controls in
- * the browser, so it offers only what its mount says it writes (`data-writes`, src/html.ts), where
+ * the browser, so it offers only what its mount says it writes (`data-writes`, src/rendering/html.ts), where
  * a `*` segment of its path is any one, with any value or only the ones it names; one that says
  * nothing offers nothing, whatever document it reads (`data-doc`), as the clock's face writes
  * nothing to the clock it shows.
@@ -182,7 +182,7 @@ export type Control = { doc: string; op: string; path: string; value?: unknown; 
 /** The same value, as the wire carries it: by its type and its JSON, so `true` is not "true". */
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
 
-/** A `data-value` as the client parses it (src/client/form-value.ts `pressed`): `{ value }`, none when there is none, or why it is no JSON. */
+/** A `data-value` as the client parses it (src/rendering/client/form-value.ts `pressed`): `{ value }`, none when there is none, or why it is no JSON. */
 function pressedValue(attr: string | null): { value?: unknown } | string {
   if (attr === null) return {};
   try {
@@ -199,7 +199,7 @@ const isDeclared = (w: unknown): w is { doc: string; op: string; path: string; v
   return typeof doc === "string" && doc !== "" && isVerb(op) && typeof path === "string" && (path === "" || path.startsWith("/")) && valued;
 };
 
-/** Is this a story's gesture (`Gesture`, src/stories.ts): a press on one selector, or a drag from one to another, and nothing else? */
+/** Is this a story's gesture (`Gesture`, src/modelling/stories.ts): a press on one selector, or a drag from one to another, and nothing else? */
 const isGesture = (g: unknown): boolean => {
   if (typeof g !== "object" || g === null || Object.keys(g).length !== 1) return false;
   const { press, drag } = g as Record<string, unknown>;
@@ -514,7 +514,7 @@ type Writing = { doc: string; op: string; path: string; value: unknown; control:
 /** Each control a page draws that writes (`data-write`: a button, a form, an editing form's field), but one drawn `disabled`, which sends nothing; and a short name for it: its tag, and its label, name, value or id. */
 export function writesOn(page: string): Writing[] {
   const found: Writing[] = [];
-  // a select sends the option it was drawn showing, by the browser's rule (`drawnOption`, src/client/form-value.ts):
+  // a select sends the option it was drawn showing, by the browser's rule (`drawnOption`, src/rendering/client/form-value.ts):
   // the last `selected`, else its first not disabled, or in a list (`size` over 1) none
   let choosing: { options: { value: string | null; text: string; disabled: boolean; selected: boolean }[] } | undefined;
   new HTMLRewriter()
@@ -719,7 +719,7 @@ function drawFrom(r: Run, copy: Documents, sessionId: string): Promise<string> {
   });
 }
 
-/** A member's page as though they had been told nothing (src/refusal.ts), as a snapshot has it (`unversioned`): what they were told, left out, is checked on its own. */
+/** A member's page as though they had been told nothing (src/rendering/refusal.ts), as a snapshot has it (`unversioned`): what they were told, left out, is checked on its own. */
 const unsaid = async (r: Run, sessionId: string): Promise<string> => unversioned(await drawFrom(r, toldNothing(r.documents, sessionId), sessionId));
 
 /** Every member's page, drawn as a page is and without its watching mounts' versions (`unversioned`): `quiet`'s as though they had been told nothing, since what they are told is checked on its own (`checkTold`). */
@@ -784,7 +784,7 @@ async function open(r: Run, member: Member): Promise<void> {
   await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
 }
 
-/** What a session is told now (src/refusal.ts). */
+/** What a session is told now (src/rendering/refusal.ts). */
 const toldNow = (r: Run, sessionId: string): Promise<Line | undefined> => settled(r.documents, () => toldTo(sessionId));
 
 /**
@@ -980,7 +980,7 @@ function checkUntold(r: Run, cast: Member[], untold: string[] | undefined, from:
 }
 
 /**
- * What `who` was told by what they just did (src/refusal.ts): shown on their page, in its own
+ * What `who` was told by what they just did (src/rendering/refusal.ts): shown on their page, in its own
  * words, and what the story says, where it says. It is theirs, and of that moment -- the page
  * before it never said it, nor will the page after their next write -- so their pages are
  * compared without it; and a walk that is told just what the step before it was (`before`, and
@@ -1361,7 +1361,7 @@ async function reach(r: Run, told: { story: Story; outcome: Outcome }[], byHandT
 }
 
 /**
- * The story by hand, in a browser that is the author's tab (src/by-hand.ts): from where the
+ * The story by hand, in a browser that is the author's tab (src/modelling/by-hand.ts): from where the
  * story starts, the controls that lead to where it is done, pressed one by one, each landing
  * where it leads -- a step a person cannot take (covered on a phone, say) left for another way,
  * and only when none is left a failure; then the story's write, done with the control that sends
@@ -1497,7 +1497,7 @@ async function takes(r: Run, owner: Resource, ws: ReturnType<typeof allOpenSocke
 }
 
 /**
- * Which check refused `write` from `m`'s page, asked again as the server asks (src/server.ts
+ * Which check refused `write` from `m`'s page, asked again as the server asks (src/rendering/server.ts
  * `write`), as the failure says it: the page did not read its document, which the wire does not
  * write, or its resource's `permit` or `shape`; past them both, delta. Nothing is written.
  */

@@ -226,13 +226,9 @@ export function docTypeFromDef<I = unknown>(
       }
     : opts?.owns;
 
-  // its reads compiled for it (generateSql), or the framework's for a document registered by hand:
-  // asked until found, then remembered
-  let compiled = false;
-  const reads = async (): Promise<{ open: string; openAt: string }> => {
-    if (!compiled) compiled = (await pool.query("SELECT to_regprocedure($1) IS NOT NULL AS there", [`${openFunction(def.prefix)}(text)`])).rows[0].there;
-    return compiled ? { open: openFunction(def.prefix), openAt: openAtFunction(def.prefix) } : { open: "delta_open", openAt: "delta_open_at" };
-  };
+  // its reads, compiled for it by generateSql: a document generateSql did not compile has none, and
+  // reading it fails on the missing function, by name (nothing registered by hand is read)
+  const reads = { open: openFunction(def.prefix), openAt: openAtFunction(def.prefix) };
 
   return {
     prefix: def.prefix,
@@ -245,7 +241,7 @@ export function docTypeFromDef<I = unknown>(
     },
 
     async open(_ctx, docName, _msg, identity) {
-      const doc = await callAs(pool, (await reads()).open, [docName], auth, identity);
+      const doc = await callAs(pool, reads.open, [docName], auth, identity);
       if (!doc) return null;
       const version = doc._version ?? 0;
       delete doc._version;
@@ -267,7 +263,7 @@ export function docTypeFromDef<I = unknown>(
     },
 
     async openAt(_ctx, docName, at, identity) {
-      return (await callAs(pool, (await reads()).openAt, [docName, at], auth, identity)) ?? null;
+      return (await callAs(pool, reads.openAt, [docName, at], auth, identity)) ?? null;
     },
   };
 }

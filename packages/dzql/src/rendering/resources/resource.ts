@@ -56,7 +56,7 @@ export type Resource = {
    * Before a write: may this person make this change? Asked for each op.
    *
    * - Return false to refuse without a word: right for a write no page offers.
-   * - Throw `refuse(reason)` (src/refusal.ts) to refuse and say why, beside the control.
+   * - Throw `refuse(reason)` (src/rendering/refusal.ts) to refuse and say why, beside the control.
    * - Omitted: nobody may (a memory, source or static document).
    * - Asked only for a document the page can see, so a room you are in need not be checked again.
    */
@@ -85,7 +85,7 @@ export type Resource = {
    * - `ops` are as the page sent them (`add /requests/-`); `landed`, as delta applied them, in the
    *   wire's paths, the same its echo carried: a new row by its id and whole (`add
    *   /requests/<id>`), whether `shape` made the id or left `-` for the store to name.
-   * - Say what it did with `tell(ws.data.sessionId, { doc, path, said })` (src/refusal.ts), beside
+   * - Say what it did with `tell(ws.data.sessionId, { doc, path, said })` (src/rendering/refusal.ts), beside
    *   the control that sent it: what the writer was told before has gone by then.
    * - Never after an undo or redo: that is `afterWalk`'s.
    * - A throw here is the server's failure, reported; the write stands.

@@ -13,10 +13,7 @@ import { Pool } from "pg";
 import { applyFramework, applySql, defineDoc, defineSchema, generateSql } from "../../../src/postgres";
 import type { DeltaAuth } from "@blueshed/delta/auth";
 
-export const PG_URL =
-  process.env.EXAMPLE_PG_URL ??
-  process.env.DATABASE_URL ??
-  "postgres://dzql_test:dzql_test@localhost:5433/dzql_test";
+export const PG_URL = process.env.DATABASE_URL ?? "postgres://dzql_test:dzql_test@localhost:5433/dzql_test";
 
 export const schema = defineSchema({
   todos: {

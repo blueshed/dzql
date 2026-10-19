@@ -1,4 +1,4 @@
-/* The look of the kernel's bento surfaces (src/bento.ts), one way to draw the bento (docs/bento/README.md), a default an app may change: a page is a box, a tray with cells cut into it and the trail
+/* The look of the kernel's bento surfaces (src/rendering/bento.ts), one way to draw the bento (docs/bento/README.md), a default an app may change: a page is a box, a tray with cells cut into it and the trail
    above. A cell grows into the window: the trail floats top-left in it, the cell's
    tools stand at the right edge as stacks of square buttons, the page's tools are one more stack at
    the bottom right, and the reading keeps clear of them. A figure in the reading opens the drawer:
@@ -55,7 +55,7 @@
   /* the trail's weight; a row's words; the mark beside a name that opens */
   --trail-weight: var(--cap-weight); --row-size: inherit; --name-mark: 16px;
 }
-/* ── the frame: what layers() draws (src/bento.ts), the ground and the layers over it. Its elements --
+/* ── the frame: what layers() draws (src/rendering/bento.ts), the ground and the layers over it. Its elements --
    every box, button and field in it -- are drawn as the bento's; an element anywhere else on an
    app's page is left as the app draws it, and takes the bento's look only by a class of it. Each
    rule names the frame, not one block nesting them all, which a browser without CSS nesting
@@ -88,7 +88,7 @@
 .tool.danger { --tool-hover: var(--danger-hover); border-color: var(--danger); background: var(--danger-fill); color: var(--danger-ink); }
 .tool:is([aria-pressed="true"], [aria-expanded="true"], [role="radio"][aria-checked="true"]) { background: var(--accent); border-color: var(--accent); color: var(--card); } /* on, chosen, or its drawer open */
 .pick { display: inline-flex; gap: var(--space-xs); }
-/* what a write was told, beside the control that sent it (src/refusal.ts): why it was refused, or what it did */
+/* what a write was told, beside the control that sent it (src/rendering/refusal.ts): why it was refused, or what it did */
 .refused, .said { margin: var(--space-xs) 0 0; }
 .refused { color: var(--danger); }
 /* what an undo or redo did, or why it was refused: the kernel's, over the page, beside the page's
@@ -127,7 +127,7 @@ nav.crumbs { color: var(--trail-ink); font-weight: var(--trail-weight); } /* ove
 .crumbs a:hover, .crumbs a:focus-visible { text-decoration: underline; text-underline-offset: 3px; } /* and the ring */
 .crumbs b { font-weight: var(--here-weight); }
 
-/* ── the tray: cells cut into it, walled by its padding. Computed by src/grid.ts, which
+/* ── the tray: cells cut into it, walled by its padding. Computed by src/rendering/grid.ts, which
    hands over the areas for three columns and for one, and each cell's tray corners. ── */
 .cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: var(--tray-gap); padding: var(--tray-pad); background: var(--tray); border: var(--tray-border); border-radius: var(--radius-tray); box-shadow: var(--shadow-tray); }
 .cell { position: relative; display: flex; flex-direction: column; gap: var(--space-sm); min-height: var(--cell-min); min-width: 0; padding: var(--cell-pad); background: var(--card); border-radius: 0; overflow: hidden; }
@@ -293,13 +293,13 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 .modal-foot { display: flex; justify-content: flex-end; gap: var(--space-sm); margin-top: var(--space-lg); }
 
 
-/* the same element, two sizes: only the cell that moves is named (src/client/app.ts), and
+/* the same element, two sizes: only the cell that moves is named (src/rendering/client/app.ts), and
    its group is drawn over everything else while it moves */
 ::view-transition-group(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
 ::view-transition-group(moving) { z-index: 1; }
 
 /* the connection gone: the page stays as it was, inert, until the server draws it again, and its
-   status region beside the page says so (src/client/app.ts) */
+   status region beside the page says so (src/rendering/client/app.ts) */
 #app[data-offline] { opacity: 0.55; }
 .connection { margin: 0; }
 .connection:not(:empty) { position: fixed; top: var(--space-lg); left: 50%; translate: -50% 0; z-index: 90; padding: var(--space-xs) var(--space-md); border-radius: var(--radius-panel); background: var(--ink); color: var(--card); font-size: 13px; }

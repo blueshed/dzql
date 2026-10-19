@@ -2,7 +2,7 @@
  * Delta Postgres — schema wrappers + Postgres-specific utilities.
  *
  * The shared schema vocabulary (ColumnDef, TableDef, Schema, ResolvedTable,
- * DocDef, defineSchema, defineDoc) lives in `../../schema` and is identical
+ * DocDef, defineSchema, defineDoc) lives in delta (`@blueshed/delta/backend`) and is identical
  * across the Postgres and SQLite backends. This module re-exports those
  * types and adds the Postgres helpers that hit the live database
  * (time-travel, ops-log pruning, op validation).

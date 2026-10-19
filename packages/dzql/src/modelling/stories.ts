@@ -2,7 +2,7 @@ import { joinPath } from "@blueshed/delta/core";
 import type { PatchOp, Test } from "../rendering/json-patch";
 
 // A story is told in the wire's own words: a session, a `{doc, ops}` message, and who then sees
-// it, where. See docs/stories.md. `src/harness.ts` runs stories against a live example;
+// it, where. See docs/stories.md. `src/modelling/harness.ts` runs stories against a live example;
 // this is the shape it takes as its input.
 
 /** One message, exactly as the browser or the CLI would send it. The harness gives each an id of its own, as a page does, so what answers it -- its echo, or its refusal -- is its own. */
@@ -83,7 +83,7 @@ type Does = Budgeted & Modelled & {
   gesture?: Gesture;
   seen: Seen;
   /**
-   * What the author is told once Undo takes it back (`afterWalk`, src/refusal.ts `tell`): "Undone:
+   * What the author is told once Undo takes it back (`afterWalk`, src/rendering/refusal.ts `tell`): "Undone:
    * your answer." The undo must say it, and their page show it. Omitted: whatever an undo says is
    * only checked to be shown, and to be its own, as whatever the write says is.
    */
@@ -109,7 +109,7 @@ type Cannot = Budgeted & Modelled & {
   cannot: Write | Post;
   /** The address the author tries it from, as for a `does`. */
   from?: string;
-  /** What the refused person is told, beside the control that sent it (`refuse`, src/refusal.ts):
+  /** What the refused person is told, beside the control that sent it (`refuse`, src/rendering/refusal.ts):
    * the one change their page may show. Omitted: they are told nothing. */
   told?: string;
 };

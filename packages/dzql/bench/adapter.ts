@@ -1,5 +1,5 @@
 /**
- * Adapter contract + stats helpers for the 0.3.0 single-write bench.
+ * Adapter contract + stats helpers for the single-write bench.
  *
  * Each adapter owns its own pool and exposes three primitives:
  *   - setup()    seed N rows owned by `userId`
@@ -13,7 +13,7 @@
  */
 
 export interface Adapter {
-  /** Display name, e.g. "delta-new (1-RTT)". */
+  /** Display name, e.g. "delta (1-RTT)". */
   name: string;
   /** Declared round-trips per `writeOp` call. */
   rtt: number;

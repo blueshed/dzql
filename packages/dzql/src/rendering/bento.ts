@@ -1,7 +1,7 @@
 // The surfaces a page that is a box is made of, one way to draw the bento (docs/bento/README.md), a default an app may change: the trail (where am I), the tray and its cells, the window a
 // cell grows into, the stacks of tools that float in it, the rows of a list, the drawer (a
 // panel at the right from 820px, a sheet from the foot on a phone) and its properties, the modal.
-// `src/bento.css` is their look, in an example's own tokens. No example knowledge here: an example
+// `src/rendering/bento.css` is their look, in an example's own tokens. No example knowledge here: an example
 // binds this once to its own icons and to the document its page's state is written to
 // (`bento({icon, session})`), and every gesture is then a `data-write` the caller hands in, or one to
 // that document at the paths `patchCollections` below applies.
@@ -82,7 +82,7 @@ export interface ToolOptions<I extends string> {
   icon?: I | BentoIcon;
   /** `add` is the accent of making; `quiet` is plain ink (Cancel, Leave); `danger` is a removal. */
   kind?: "add" | "quiet" | "danger";
-  /** The write attributes (src/html.ts's write()). */
+  /** The write attributes (src/rendering/html.ts's write()). */
   write: string;
   label?: string;
   /** In a stack: a square button, the word for a screen reader only. */
@@ -195,7 +195,7 @@ export interface FieldOptions {
   on?: "blur" | "change" | "input";
   /** The permit's answer for this person: no, and it is read, not a control. */
   may?: boolean;
-  /** What this person was told at it (src/refusal.ts `toldAt`), drawn beside it as the status it is described by. Without it, there is none. */
+  /** What this person was told at it (src/rendering/refusal.ts `toldAt`), drawn beside it as the status it is described by. Without it, there is none. */
   said?: string;
   /** One of a row's own (a dish's name beside its marks): its label heard, not seen, and laid out as the row lays it out. */
   inRow?: boolean;
@@ -245,9 +245,9 @@ export function choice(label: string, options: Option[], locked = false): string
 /**
  * A page with what may open over it: the ground -- the page, and the drawer's layer over it -- and
  * the modal's layer. Each layer is always there, empty when nothing is open, so opening or closing
- * a drawer or a modal sends that layer alone (src/parts.ts); a modal puts the ground behind it
+ * a drawer or a modal sends that layer alone (src/rendering/parts.ts); a modal puts the ground behind it
  * `inert` by its own tag, which is sent alone too. The wrappers are `display: contents`, and the
- * bento's frame: `src/bento.css` draws the elements in them, and no others.
+ * bento's frame: `src/rendering/bento.css` draws the elements in them, and no others.
  */
 export function layers(page: string, drawer: string, modal: string): string {
   const ground = `<div class="ground"${modal ? " inert" : ""}>${page}${part("drawers", `<div class="layer">${drawer}</div>`)}</div>`;
@@ -404,7 +404,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
    * cells in the tray -- or, when `open` names one, that cell grown into the window
    * (opening goes nowhere: the same element, `data-moving`, bigger), with its trail floating top-left, its rail
    * at the right and the page's tools at the bottom right. The tray is computed
-   * (src/grid.ts): each cell lands in its area, first-fit in the box's own order, and learns
+   * (src/rendering/grid.ts): each cell lands in its area, first-fit in the box's own order, and learns
    * which of the tray's corners it sits in, for three columns and for one. While a window is open,
    * what is behind it -- the trail, the other cells, what is in place -- is `inert`: not to be
    * reached or heard until it closes. Given a `heading`, the place's name stands large under the
@@ -527,7 +527,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return join(`<div class="scrim modal-scrim" data-escape${close}></div>`, `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`);
   }
 
-  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs, typed or chosen. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/refusal.ts `toldAt`), beneath the fields. */
+  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs, typed or chosen. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/rendering/refusal.ts `toldAt`), beneath the fields. */
   function addModal(title: string, fields: Field[], add: string, close: string, verb = "Add", said = ""): string {
     const inputs = fields
       .map((f, i) => {

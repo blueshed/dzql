@@ -15,7 +15,7 @@ export const desk: Resource = {
   resolveDoc(ws) {
     return ws.data.sessionId;
   },
-  // what the desk's page writes: a page gone to, and how a collection is read, find's word and its eye (src/bento.ts)
+  // what the desk's page writes: a page gone to, and how a collection is read, find's word and its eye (src/rendering/bento.ts)
   permit: (_ws, op) => (op.op === "replace" && op.path === "/page") || collectionsWrite(op) !== undefined,
   shape: (_ws, sessionId, ops) => deskDoc.shape(deskDoc.read(sessionId), ops),
 };

@@ -1,6 +1,6 @@
 // HTML is the only vocabulary (CLAUDE.md): every view is a string of it, built with these. A
 // gesture is a `data-write` attribute naming a document, an op and a JSON Pointer path -- the
-// kernel's client (src/client/app.ts) forwards it as is -- with the value, if any, as JSON in
+// kernel's client (src/rendering/client/app.ts) forwards it as is -- with the value, if any, as JSON in
 // `data-value`, so it goes with its type: `true`, not "true".
 // Pure: an applet may import it in the browser.
 
@@ -67,10 +67,10 @@ export function appletWrites(...writes: (readonly [doc: string, op: Op, path: st
  * data-under="/everyone"`; the root when `under` is not given: the props are the document).
  *
  * - The document is held whole at `under`, as the page is told it; the rest is small: what to show,
- *   and for whom. `v` is its version as held (` data-v`): `watch(doc, under)` in src/documents.ts
+ *   and for whom. `v` is its version as held (` data-v`): `watch(doc, under)` in src/rendering/documents.ts
  *   gives all three, so the client passes over a patch the props already hold. The kernel's client lays each patch to the document on the props there and gives
  *   the applet them again (`update`), and a page is compared without the document, nor what is
- *   inside the mount (src/parts.ts): so a change to it sends the mount nothing but the patch.
+ *   inside the mount (src/rendering/parts.ts): so a change to it sends the mount nothing but the patch.
  * - Without a document, the applet is sent its props again whenever they change.
  */
 export function appletProps(props: unknown, watch?: { doc: string; under?: string; v?: number }): string {

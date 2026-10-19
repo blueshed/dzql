@@ -9,7 +9,7 @@ import type { Load } from "./writes";
 // The model as told against the model as built (`bun run model:check <example> --against-page`):
 // what is on the model page, and what the loader reads from the app, in the page's own words
 // (./writes.ts). Stories go by the number of the model story an app's story names (`model: 10`,
-// src/stories.ts), else by their words; documents by their names, fields by their names alone
+// src/modelling/stories.ts), else by their words; documents by their names, fields by their names alone
 // (the loader reads no types). Each gap is said as a question for the teller.
 
 type Held = { under: string | null; fields: string[] };

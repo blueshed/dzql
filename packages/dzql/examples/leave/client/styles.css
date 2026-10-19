@@ -1,4 +1,4 @@
-/* leave's look: the kernel's bento surfaces (src/bento.css) in a plain office ink, light and dark,
+/* leave's look: the kernel's bento surfaces (src/rendering/bento.css) in a plain office ink, light and dark,
    then the calendar. */
 
 @import "../../../src/rendering/bento.css";

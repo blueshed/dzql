@@ -3,7 +3,7 @@
 // data feed. Not a test -- a report. Run with
 // `DB_PATH=:memory: TICK_MS=0 bun examples/ticker/scripts/measure-render-cost.ts`
 // (TICK_MS=0 keeps the feed quiet so only the measured tick is counted); with `--json`, what the
-// README says (src/costs.ts, `bun run costs`).
+// README says (src/modelling/costs.ts, `bun run costs`).
 import { tap, type Measured } from "dzql/modelling/costs";
 import { createServer } from "dzql/rendering/server";
 import { example } from "../index";

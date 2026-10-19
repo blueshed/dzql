@@ -151,13 +151,12 @@ describe("generateSql", () => {
     expect(sql).toContain("'{}'");
   });
 
-  test("custom header / regenerate hint are honoured", () => {
-    const sql = generateSql(defineSchema({ x: { columns: { a: "text" } } }), [], {
-      header: "CUSTOM HEADER",
-      regenerate: "make sql",
-    });
-    expect(sql).toContain("-- CUSTOM HEADER");
-    expect(sql).toContain("-- Regenerate: make sql");
+  test("the header names the module it came from, how to make it again, and no date: the same definitions make the same file", () => {
+    const sql = generateSql(defineSchema({ x: { columns: { a: "text" } } }), [], { from: "src/model.ts" });
+    expect(sql).toContain("-- GENERATED FROM src/model.ts by dzql — DO NOT EDIT");
+    expect(sql).toContain("-- Regenerate: bunx dzql sql src/model.ts");
+    expect(sql).not.toContain("Generated:");
+    expect(generateSql(defineSchema({ x: { columns: { a: "text" } } }), [])).toContain("-- GENERATED FROM the app's definitions by dzql — DO NOT EDIT");
   });
 });
 

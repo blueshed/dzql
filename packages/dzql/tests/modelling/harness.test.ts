@@ -687,7 +687,7 @@ describe("stories harness", () => {
     expect(lying).toContain("the server failed writing room:general: its resource keeps it off the ledger (ledger: false), yet delta recorded the write");
   }, 30000);
 
-  // What happened, said to its author (src/refusal.ts): chat telling Ada her message is sent,
+  // What happened, said to its author (src/rendering/refusal.ts): chat telling Ada her message is sent,
   // beside the form, and what Undo took back, or Redo put back, over the page where Undo is.
   const saying = (at = { doc: "ledger", path: "/latest" }): Example => ({
     ...withRoom((room) => ({

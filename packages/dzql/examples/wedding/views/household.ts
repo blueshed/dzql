@@ -30,7 +30,7 @@ const close = (v: HouseholdView): string => nav(over(v.session.ui).path);
 /** Everything a household's page reads: their own document, the wedding, and the lists. */
 export type HouseholdView = {
   session: SessionDocument;
-  /** What this tab was last told beside the household's words: why they were refused (src/refusal.ts `toldAt`). */
+  /** What this tab was last told beside the household's words: why they were refused (src/rendering/refusal.ts `toldAt`). */
   wordsTold: string;
   h: HouseholdDocument;
   w: Wedding;

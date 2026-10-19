@@ -9,7 +9,7 @@ import { scope } from "../scope";
 // Who sees a document is derived, not declared: a connection sees what its page read
 // (`src/reading.ts`), and the one of each type it is on (`resolveDoc`). A session's own documents
 // (`perSession`) are seen by that session alone. Which sockets are open at all is the kernel's, kept
-// here; the kernel tells a change to its `audienceFor` and redraws its `readersOf` (src/server.ts).
+// here; the kernel tells a change to its `audienceFor` and redraws its `readersOf` (src/rendering/server.ts).
 
 // The app's resources and open sockets are its scope's (../scope.ts): a process may serve several.
 const open = () => scope().openSockets;

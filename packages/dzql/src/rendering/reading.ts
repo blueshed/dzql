@@ -17,7 +17,7 @@ export function reading(doc: string): void {
   drawings.at(-1)?.add(doc);
 }
 
-/** Draws the page for `ws`, in parts (src/parts.ts), and keeps what the drawing read in place of what its page read before. */
+/** Draws the page for `ws`, in parts (src/rendering/parts.ts), and keeps what the drawing read in place of what its page read before. */
 export function drawing(ws: ServerWebSocket<ConnectionData>, draw: () => string): Drawn {
   const read = new Set<string>();
   drawings.push(read);

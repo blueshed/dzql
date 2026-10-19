@@ -25,7 +25,7 @@ export type View = {
   market: MarketDocument;
   clock: ClockDocument;
   ui: Ui;
-  /** Why the last watch was refused, drawn beside the ask's field (src/refusal.ts `toldAt`), or "". */
+  /** Why the last watch was refused, drawn beside the ask's field (src/rendering/refusal.ts `toldAt`), or "". */
   said?: string;
 };
 
@@ -43,7 +43,7 @@ const NOTHING_WATCHED = "Nothing watched yet. The plus asks which symbol.";
  * line it lies over, which a reader then hears once, as the button. It is beside the applet's
  * mount, not around it, so the mount stands in the same place on the box and in the window and
  * keeps the ticks it has seen as the cell opens; and it is a part, so opening a drawer sends its
- * tag alone, never the mount's, whose props follow the patches (src/parts.ts).
+ * tag alone, never the mount's, whose props follow the patches (src/rendering/parts.ts).
  */
 export function boardMount(list: WatchlistDocument, market: MarketDocument, ui?: Ui): string {
   const symbols = list.symbols.filter((s) => market[s]);

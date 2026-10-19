@@ -1,9 +1,9 @@
 /**
  * Driver — three side-by-side comparisons between raw RLS and delta.
  *
- *   bun run examples/todos-vs-rls/run.ts
+ *   bun examples/delta/todos-vs-rls/run.ts
  *
- * Requires the dev compose running (`bun run db:up`). Drops and re-seeds the
+ * Requires the compose Postgres (`bun run test:setup`), or DATABASE_URL. Drops and re-seeds the
  * example tables on every invocation.
  */
 import { setLogLevel } from "@blueshed/delta/logger";

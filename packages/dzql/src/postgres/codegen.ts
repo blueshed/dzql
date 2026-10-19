@@ -41,10 +41,8 @@ import { compileTold } from "../compile/told";
 import { compileOwns } from "../compile/owns";
 
 export interface GenerateSqlOptions {
-  /** Header comment included at the top of the file. */
-  header?: string;
-  /** Override the regenerate-command hint printed in the header. */
-  regenerate?: string;
+  /** The module the definitions came from (`dzql sql` names it): the header says it, and how to make the file again. */
+  from?: string;
 }
 
 export function generateSql(
@@ -52,16 +50,11 @@ export function generateSql(
   docs: DocDef[],
   opts: GenerateSqlOptions = {},
 ): string {
-  const today = new Date().toISOString().slice(0, 10);
-  const header =
-    opts.header ?? "GENERATED FROM types.ts — DO NOT EDIT";
-  const regen = opts.regenerate ?? "bunx dzql sql ./types.ts";
-
+  // no date: the same definitions make the same file, so a committed one changes only with them
   const lines: string[] = [
     "-- =========================================================================",
-    `-- ${header}`,
-    `-- Generated: ${today}`,
-    `-- Regenerate: ${regen}`,
+    `-- GENERATED FROM ${opts.from ?? "the app's definitions"} by dzql — DO NOT EDIT`,
+    ...(opts.from ? [`-- Regenerate: bunx dzql sql ${opts.from}`] : []),
     "-- =========================================================================",
     "",
   ];

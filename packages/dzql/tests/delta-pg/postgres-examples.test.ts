@@ -18,7 +18,7 @@ import * as raw from "../../examples/delta/todos-vs-rls/raw-rls";
 import { serveTodos } from "../../examples/delta/todos-vs-rls/delta";
 
 setLogLevel("silent");
-const env = { EXAMPLE_PG_URL: PG_URL, PG_URL };
+const env = { DATABASE_URL: PG_URL };
 
 let pool: Pool;
 beforeAll(async () => { pool = await newPool(); });

@@ -13,7 +13,7 @@ const drop = (index: number): Write => ({ doc: "watchlist", ops: [{ op: "remove"
 const tick = (symbol: string, price: number): Write => ({ doc: "ticker", ops: [{ op: "replace", path: `/${symbol}/price`, value: price }] });
 const city = (tz: string): Write => ({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: tz }] });
 
-/** Where someone stands, as one write to the desk (`goTo`, src/stories.ts). */
+/** Where someone stands, as one write to the desk (`goTo`, src/modelling/stories.ts). */
 const goTo = goToOn("desk");
 
 export const stories: Stories = {

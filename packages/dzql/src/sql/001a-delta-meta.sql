@@ -212,7 +212,7 @@ BEGIN
      WHEN 'integer' THEN jsonb_typeof(val) = 'number' AND val::text::numeric = trunc(val::text::numeric)
      WHEN 'real' THEN jsonb_typeof(val) = 'number'
      WHEN 'boolean' THEN jsonb_typeof(val) = 'boolean'
-     -- ISO-8601, as isIsoTime (src/schema.ts) reads it; a day off the calendar is refused by the cast (22008, 400)
+     -- ISO-8601, as isIsoTime (src/postgres/schema.ts) reads it; a day off the calendar is refused by the cast (22008, 400)
      WHEN 'timestamptz' THEN jsonb_typeof(val) = 'string' AND (val #>> '{}') ~ '^\d{4}-\d{2}-\d{2}([T ]([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,6})?)?(Z|[+-]([01]\d|2[0-3])(:?[0-5]\d)?)?)?$'
      ELSE TRUE END;
   IF v_unknown IS NOT NULL THEN

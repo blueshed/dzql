@@ -2,7 +2,7 @@ import { WIRE, type WriteId } from "../json-patch";
 import { splitTag } from "../parts";
 
 /**
- * A page brought up to date in HTML's own terms (src/parts.ts works them out). `replace` morphs the
+ * A page brought up to date in HTML's own terms (src/rendering/parts.ts works them out). `replace` morphs the
  * target element with `html` (one element); `tag` gives the target the attributes of `html`, an
  * opening tag, and leaves what is inside it alone; `after` and `before` put `html` beside the
  * target (a row into a list); `remove` takes the target out. The target is a part's selector,
@@ -12,7 +12,7 @@ import { splitTag } from "../parts";
  */
 export type HtmlOp = { op: "replace" | "tag" | "after" | "before"; target: string; html: string } | { op: "remove"; target: string };
 
-/** A page sent whole says the wire it speaks (`WIRE`, src/json-patch.ts). */
+/** A page sent whole says the wire it speaks (`WIRE`, src/rendering/json-patch.ts). */
 export const renderMessage = (html: string): string => JSON.stringify({ type: "render", html, wire: WIRE });
 export const fragmentsMessage = (ops: HtmlOp[]): string => JSON.stringify({ type: "render", ops });
 

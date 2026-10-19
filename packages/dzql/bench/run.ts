@@ -6,7 +6,7 @@
  *
  *   bun run bench/run.ts
  *   BENCH_ITERATIONS=5000 bun run bench/run.ts
- *   BENCH_PG_URL=postgres://... bun run bench/run.ts
+ *   DATABASE_URL=postgres://... bun run bench/run.ts
  */
 import { Pool } from "pg";
 import { applyFramework } from "../src/postgres";
@@ -18,10 +18,7 @@ import { appUrl, ensureAppRole } from "./schema";
 import { runSingleWrite } from "./workloads/single-write";
 import { runFanout } from "./workloads/fanout";
 
-const PG_URL =
-  process.env.BENCH_PG_URL ??
-  process.env.DELTA_TEST_PG_URL ??
-  process.env.DATABASE_URL ?? "postgres://dzql_test:dzql_test@localhost:5433/dzql_test";
+const PG_URL = process.env.DATABASE_URL ?? "postgres://dzql_test:dzql_test@localhost:5433/dzql_test";
 
 const ITERATIONS = Number(process.env.BENCH_ITERATIONS ?? 10_000);
 const WARMUP = Number(process.env.BENCH_WARMUP ?? 200);

@@ -45,7 +45,7 @@ export function sends(field: Field, value = held(field)): string | number | bool
   return isNumber(field) && typeof value === "string" ? (value === "" ? null : Number(value)) : value;
 }
 
-/** What a button or a row sends: its `data-value`, JSON (src/html.ts `write`), parsed, so `true` goes as true; none, nothing. */
+/** What a button or a row sends: its `data-value`, JSON (src/rendering/html.ts `write`), parsed, so `true` goes as true; none, nothing. */
 export const pressed = (el: HTMLElement): unknown => (el.dataset.value === undefined ? undefined : JSON.parse(el.dataset.value));
 
 /** A form's named fields, in its order, that a write carries: none disabled, nor a button or a file; each radio of a group among them. */

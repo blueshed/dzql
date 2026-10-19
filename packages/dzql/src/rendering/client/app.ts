@@ -52,7 +52,7 @@ declare global {
       send(doc: string, ops: Op[]): Promise<Answer>;
       undo(change?: string): Promise<Answer>;
       redo(change?: string): Promise<Answer>;
-      /** An app that imports src/client/tools.ts: the page's writes as tools, and one used by name. */
+      /** An app that imports src/rendering/client/tools.ts: the page's writes as tools, and one used by name. */
       tools?(): { name: string; title: string; description: string; inputSchema: object }[];
       use?(name: string, input?: Record<string, unknown>): Promise<Answer>;
     };
@@ -78,7 +78,7 @@ function heard(id: unknown, answer: Answer): void {
 /** The ledger write that walks the session's last change, or the one `change` names (the handle a write's answer gave); the server says which handles are the session's. */
 export const walked = (way: "undo" | "redo", change?: unknown): Write => ({ doc: "ledger", ops: [{ op: way === "undo" ? "remove" : "add", path: `/${change ?? "latest"}` }] });
 
-/** What runs after each drawing, the page as it now is: a module an app opts into (src/client/tools.ts). */
+/** What runs after each drawing, the page as it now is: a module an app opts into (src/rendering/client/tools.ts). */
 const drawn: (() => void)[] = [];
 export const afterDrawing = (fn: () => void): void => void drawn.push(fn);
 
@@ -135,7 +135,7 @@ function watched(el: HTMLElement, held: Held, version: number, ops: PatchOp[]): 
   else applet?.update?.(el, held.props);
 }
 
-/** Asks the server for the page whole: a message that is no write is answered by the page (src/server.ts). Once, until it comes. */
+/** Asks the server for the page whole: a message that is no write is answered by the page (src/rendering/server.ts). Once, until it comes. */
 let askedAfresh = false;
 function askForThePage(): void {
   if (askedAfresh || socket?.readyState !== WebSocket.OPEN) return;
@@ -213,7 +213,7 @@ let pageWrite: string | undefined;
 /** The path the app is served under, as its shell says (`Example.at`): "" at the root. */
 const AT = document.querySelector<HTMLMetaElement>('meta[name="dzql-at"]')?.content.replace(/\/$/, "") ?? "";
 
-/** The page the URL names: its path under the app's and, after a `?`, the one thing open over it (src/bento.ts's address). */
+/** The page the URL names: its path under the app's and, after a `?`, the one thing open over it (src/rendering/bento.ts's address). */
 const pageInUrl = (): string => decodeURI(location.pathname.slice(AT.length).replace(/^\//, "") + location.search);
 
 function syncPage() {
@@ -515,7 +515,7 @@ function keyboardAfter(): () => void {
   };
 }
 
-// The page in parts: what changed since the last drawing, in HTML's terms (src/parts.ts). Each op
+// The page in parts: what changed since the last drawing, in HTML's terms (src/rendering/parts.ts). Each op
 // names a part; a target the page no longer has is skipped -- the next full render puts things
 // right, as it would after a reconnect. The ops keep a choice not yet drawn as one render does,
 // since a group of radios may span parts. Afterwards, the same care as a whole render.
@@ -767,7 +767,7 @@ app.addEventListener("input", (event) => {
 });
 
 // A page from another release than its server's -- a tab open over a deploy, or one rolled back --
-// is loaded again, so page and server speak one wire (src/json-patch.ts WIRE). Not twice in
+// is loaded again, so page and server speak one wire (src/rendering/json-patch.ts WIRE). Not twice in
 // a minute: behind one address, two releases must not keep a tab loading; the page is drawn, and
 // the mismatch said. True when it is loading again.
 function reloadForWire(): boolean {
@@ -837,7 +837,7 @@ function connect() {
   });
 
   // The connection gone, the page stays as it is -- what is typed, what applets hold -- but is not
-  // to be used (src/bento.css says so) until the server, reached again, draws it afresh.
+  // to be used (src/rendering/bento.css says so) until the server, reached again, draws it afresh.
   socket.addEventListener("close", () => {
     // What was on its way is unanswered: no server answers it on another socket. Its form's values go
     // back when the page is drawn afresh (`sending`) -- it may have landed: better there twice than lost.

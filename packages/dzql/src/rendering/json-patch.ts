@@ -7,7 +7,7 @@ import { applyOps, type DeltaOp } from "@blueshed/delta/core";
  *        would take it as no write);
  *   4 -- a value goes with its type: a button's `data-value` is JSON (`true`, not "true") and a
  *        number field sends a number (an older page would send text). A page that meets a server of another version loads
- * itself again (src/client/app.ts), so the two speak alike; a page older than ids never looks, and
+ * itself again (src/rendering/client/app.ts), so the two speak alike; a page older than ids never looks, and
  * a server answers a write without an id as it always did. Here, beside the write's words, since a
  * page's bundle reads it and must reach nothing of the server's (src/client/imports.test.ts).
  */

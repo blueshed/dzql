@@ -16,12 +16,9 @@
  * The session variable is set via `SET LOCAL` so it reverts on transaction
  * end — safe against pool reuse.
  *
- * Re-exports the `DeltaAuth` contract from `../auth` for convenience.
+ * The `DeltaAuth` contract is delta's: `@blueshed/delta/auth`.
  */
 import type { Pool, PoolClient } from "pg";
-
-export type { DeltaAuth, AuthError, AuthAction } from "@blueshed/delta/auth";
-export { isAuthError, wireAuth, upgradeWithAuth } from "@blueshed/delta/auth";
 
 /**
  * Run `fn` inside a transaction with `SET LOCAL app.user_id = <sqlArg>`. All

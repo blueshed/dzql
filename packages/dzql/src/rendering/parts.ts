@@ -69,7 +69,7 @@ function attributes(tag: string): Attribute[] {
   return found;
 }
 
-/** An attribute's value as a browser reads it: the five that `esc` escapes (src/html.ts), unescaped. */
+/** An attribute's value as a browser reads it: the five that `esc` escapes (src/rendering/html.ts), unescaped. */
 export const decoded = (value: string): string =>
   value.replaceAll("&quot;", '"').replaceAll("&#39;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
 
@@ -214,7 +214,7 @@ const target = (key: string): string => `[data-eta-part="${key.replaceAll('"', '
  * What to send to bring a page drawn as `prev` to `next`: HTML ops, `[]` when nothing on it
  * changed, or undefined when the page's own outline changed and it must go whole. An applet that
  * watches a document (`data-doc`) holds it in its props, and every change to it reaches the page
- * as a patch (the stories check they do, `unheld` in src/harness.ts), which the applet draws from.
+ * as a patch (the stories check they do, `unheld` in src/modelling/harness.ts), which the applet draws from.
  * So the document, and what is drawn inside the mount, are not compared (`comparable`), and a
  * change to them alone sends nothing; they go only with the mount itself, when a part that holds
  * it is replaced or its own tag changes -- its small props, a class -- as the render drew them.

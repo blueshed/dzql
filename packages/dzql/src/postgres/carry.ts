@@ -1,7 +1,7 @@
 /**
  * Carrying an app's rows into, and out of, a Postgres database -- a server, or
  * PGlite in this process. The same `Snapshot` every backend gives and takes
- * (`../../schema`), so the data moves along the path with its ids and
+ * (`@blueshed/delta/backend`), so the data moves along the path with its ids and
  * sequences unchanged.
  */
 import type { Pool } from "pg";

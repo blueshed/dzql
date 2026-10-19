@@ -1,7 +1,7 @@
 /**
  * Integration tests for Postgres custom docs (predicate-based membership).
  *
- * Requires a live Postgres on $DELTA_TEST_PG_URL. Run with:
+ * Requires a live Postgres on $DATABASE_URL. Run with:
  *
  *   docker compose up -d --wait
  *   bun test tests/postgres-custom.test.ts

@@ -16,7 +16,7 @@
 // `?gifts`, `?events`, `?places`) and a row of one (`?keep=courses/1`), and the modals that invite
 // (`?new=households`) and take off (`?confirm=courses/4`, `?confirm=households/2/guests/3`). The
 // venues they are choosing between are a page of their own, drawn from the venues' shape with no
-// view written for it (src/derive.ts): "venues", a venue's drawer (`venues?row=1`), and the modals
+// view written for it (src/rendering/derive.ts): "venues", a venue's drawer (`venues?row=1`), and the modals
 // that add one (`venues?new`) and cross one off (`venues?confirm=1`).
 import { goTo as goToOn, story, type Stories, type Write } from "dzql/modelling/stories";
 
@@ -35,7 +35,7 @@ const board = (op: "add" | "replace" | "remove", path: string, value?: unknown):
 /** A household's field typed in, as its editing form sends it: the value it was drawn with when the typing began (RFC 6902's `test`), then what is typed. */
 const typed = (path: string, was: string, value: string): Write => ({ doc: "household", ops: [{ op: "test", path, value: was }, { op: "replace", path, value }] });
 
-/** Where someone stands, as one write to the session (`goTo`, src/stories.ts). */
+/** Where someone stands, as one write to the session (`goTo`, src/modelling/stories.ts). */
 const goTo = goToOn("session");
 
 export const stories: Stories = {

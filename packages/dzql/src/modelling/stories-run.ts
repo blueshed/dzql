@@ -1,6 +1,6 @@
 // Runs one example's stories (`examples/<name>/stories.ts`) against it and prints the report.
 // `bun run stories` (chat, by default) or `ETA_EXAMPLE=wedding bun run stories`, or an app's own
-// folder (`ETA_EXAMPLE=./src`, src/names.ts `appDir`). See docs/stories.md.
+// folder (`ETA_EXAMPLE=./src`, src/rendering/names.ts `appDir`). See docs/stories.md.
 // Stories come first, so an example may have them before it has an app: that is said, as the next
 // thing to do, not as a missing module.
 import type { Stories } from "./stories";
@@ -25,7 +25,7 @@ if (!example) {
   process.exit(1);
 }
 
-// STORY_BY_HAND=1 does by hand too, in a browser the size of a phone (src/by-hand.ts), each write a
+// STORY_BY_HAND=1 does by hand too, in a browser the size of a phone (src/modelling/by-hand.ts), each write a
 // page sends and each refusal a control of it sends; a story that says its gesture, whenever it is told.
 // STORY_WIRE=1 says under each story what it handed each page, and as it crossed the wire.
 const report = await run(example, stories, undefined, { byHand: !!process.env.STORY_BY_HAND });

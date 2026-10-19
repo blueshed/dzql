@@ -96,7 +96,7 @@ if (!db.query("SELECT 1 FROM wedding_weddings").get()) db.run(await Bun.file(`${
 
 export const delta = createLocal();
 
-/** The couple's collections drawn from their shape (src/derive.ts): what each says beyond its columns. Text columns only: the board's shape takes them as text. */
+/** The couple's collections drawn from their shape (src/rendering/derive.ts): what each says beyond its columns. Text columns only: the board's shape takes them as text. */
 export const derived: Record<string, Declared> = {
   venues: { noun: "venue", fields: { picture_key: { label: "Picture", applet: "picture-field" } } },
 };

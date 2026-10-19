@@ -15,7 +15,7 @@ import { generateSql } from "./codegen";
 import { createDocListener } from "./listener";
 import { docTypeFromDef } from "./registry";
 import { fromFolder, migrate } from "./migrate";
-import { openPglite } from "./pglite";
+import { openDatabase } from "./pglite";
 import { storyStore } from "./story-store";
 
 export type StoreOptions = {
@@ -26,7 +26,7 @@ export type StoreOptions = {
 };
 
 export async function openStore({ schema, migrations }: StoreOptions) {
-  const pool: Pool = process.env.DATABASE_URL ? new (await import("pg")).Pool({ connectionString: process.env.DATABASE_URL }) : await openPglite(process.env.PGLITE_DIR || undefined);
+  const pool: Pool = await openDatabase(process.env.DATABASE_URL || process.env.PGLITE_DIR || undefined);
   if (migrations && existsSync(migrations.dir)) await migrate(pool, await fromFolder(migrations.dir), { app: migrations.app ?? "model", ...(migrations.schema && { schema: migrations.schema }) });
   await applyFramework(pool);
 

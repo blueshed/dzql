@@ -29,7 +29,7 @@ In memory, in one process.
 
 ## Run on Postgres
 
-From `packages/dzql`: `bun run test:setup` starts the compose Postgres on 5433 (`PG_URL` names
+From `packages/dzql`: `bun run test:setup` starts the compose Postgres on 5433 (`DATABASE_URL` names
 another).
 
 ```sh

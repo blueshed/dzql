@@ -1,7 +1,7 @@
 /**
  * Migrations on a Postgres server: two processes starting at once take turns
  * on an advisory lock, so each migration runs once and neither fails. Needs
- * the compose Postgres (`bun run db:up`); the rest of the rules run on PGlite
+ * the compose Postgres (`bun run test:setup`); the rest of the rules run on PGlite
  * in tests/migrate.test.ts.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";

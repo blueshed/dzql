@@ -5,17 +5,15 @@
  * own `@blueshed/delta/testing` (src/testing.ts).
  *
  * The compose service listens on localhost:5433 (so it won't fight with any
- * local Postgres on :5432). Override with DELTA_TEST_PG_URL if needed.
+ * local Postgres on :5432). Another is DATABASE_URL, as an app names its own.
  */
 import { Pool } from "pg";
 import type { DocDef, Schema } from "@blueshed/delta/backend";
 import { applyFramework as applyFrameworkFromPkg, applySql, defineDoc, defineSchema, generateSql } from "../../src/postgres";
 import { applyAuthJwtSchema } from "../../src/postgres/auth-jwt";
 
-export const PG_URL =
-  process.env.DELTA_TEST_PG_URL ??
-  process.env.DATABASE_URL ??
-  "postgres://dzql_test:dzql_test@localhost:5433/dzql_test";
+/** The suite's database: DATABASE_URL, else compose.yml's (bun run test:setup). Every test and example reads it so. */
+export const PG_URL = process.env.DATABASE_URL ?? "postgres://dzql_test:dzql_test@localhost:5433/dzql_test";
 
 export async function newPool(): Promise<Pool> {
   return new Pool({ connectionString: PG_URL, max: 8 });

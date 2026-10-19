@@ -2,8 +2,7 @@
 // applets: photo's update() diffing (arriving/descend) needs props changes app.test.ts never
 // triggers; picture-field needs a fake /api/picture rather than the couple's real one, and
 // `downsized` a photograph bigger than a screen; and the keyboard on a figure or a part of the
-// dress. Registers them directly, the same way morph-applet.test.ts does for chat's room-picker,
-// without the kernel needing to know any exists.
+// dress. Registers them directly, without the kernel needing to know any exists.
 import { applets } from "dzql/rendering/applets";
 import "../applets/dress-applet";
 import "../applets/photo-applet";

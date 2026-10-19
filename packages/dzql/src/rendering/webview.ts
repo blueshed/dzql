@@ -13,7 +13,7 @@ const HERE_ONLY = "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost, EXC
 
 /**
  * A test's view: on Chrome on every platform, whose DevTools say what of the client a page ran
- * (src/client-coverage.ts). A Chrome of the tests' own, never one already running.
+ * (src/rendering/client-coverage.ts). A Chrome of the tests' own, never one already running.
  */
 export function webview(options: Bun.WebView.ConstructorOptions = {}): Bun.WebView {
   const view = new Bun.WebView({ ...options, backend: { type: "chrome", url: false, argv: [HERE_ONLY] } });

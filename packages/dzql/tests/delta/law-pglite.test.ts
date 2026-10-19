@@ -9,6 +9,7 @@ import { describe, test } from "bun:test";
 import type { Pool } from "pg";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
 import { openPglite } from "../../src/postgres/pglite";
+import { quietOn } from "../helpers/pglite";
 import { createLocal } from "@blueshed/delta/local";
 import { setLogLevel } from "@blueshed/delta/logger";
 import {
@@ -34,18 +35,7 @@ async function onPglite(): Promise<Place> {
   const listener = await createDocListener(l.server, pool, { types: types(), ledger: true, auth, custom });
   const reading = createLocal();
   const readerListener = await createDocListener(reading.server, pool, { types: types(), ledger: true, auth, custom });
-  // NOTIFY is heard after the commit, and fetched then, by queries queued behind it on the one
-  // PGlite: quiet once a round trip through it, and a turn after, brings nothing more
-  const quiet = async () => {
-    let seen = -1;
-    while (seen !== heard.length) {
-      seen = heard.length;
-      for (let i = 0; i < 3; i++) {
-        await pool.query("SELECT 1");
-        await new Promise((r) => setTimeout(r, 0));
-      }
-    }
-  };
+  const quiet = () => quietOn(pool, heard); // tests/helpers/pglite.ts says when it is quiet
   const reader = { call: (a: string, m: Record<string, unknown>) => reading.as(people[0]!.me).call(a, m), done: async () => {} };
   return {
     name: "pglite", as: (me) => l.as(me), heard, reader: async () => reader, quiet,

@@ -1,8 +1,8 @@
 /**
  * Auth-JWT SQL helpers — pure filesystem access, no jose dependency.
  *
- * These are split out of `auth-jwt.ts` so the `delta init` CLI (which only
- * needs the file path) can run in projects that haven't installed jose.
+ * These are split out of `auth-jwt.ts` so `dzql init` (which only needs the
+ * file path) can run in projects that haven't installed jose.
  * Consumers of the `dzql/auth-jwt` subpath still get these via
  * re-export from `auth-jwt.ts`.
  */
@@ -25,7 +25,7 @@ export function authJwtSql(): string {
 /**
  * Apply the reference users schema + login/register stored functions to a
  * pool. Idempotent. Call once at boot alongside `applyFramework(pool)`, or
- * use `delta init --with-auth` to copy the file for docker-entrypoint use.
+ * use `dzql init --with-auth` to copy the file for docker-entrypoint use.
  */
 export async function applyAuthJwtSchema(pool: Pool): Promise<void> {
   await pool.query(authJwtSql());

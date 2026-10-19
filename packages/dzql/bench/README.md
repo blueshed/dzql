@@ -20,7 +20,7 @@ Options via env:
 |---|---|---|
 | `BENCH_ITERATIONS` | `10000` | measured iterations per adapter |
 | `BENCH_WARMUP` | `200` | discarded iterations before measurement |
-| `BENCH_PG_URL` | `$DATABASE_URL`, else `postgres://dzql_test:dzql_test@localhost:5433/dzql_test` | target DB (as an admin) |
+| `DATABASE_URL` | else `postgres://dzql_test:dzql_test@localhost:5433/dzql_test` | target DB (as an admin) |
 
 ## What it measures
 

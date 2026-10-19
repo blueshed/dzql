@@ -314,7 +314,7 @@ describe("the wedding in a real browser", () => {
     await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "?keep=gifts/${giftId}" }] }))`);
     await waitFor(view, `document.querySelector('.keep-drawer input[name=name]') !== null`, (v) => v === true);
 
-    // each field is a form of its own (src/bento.ts field()), written as it is left: blanking the
+    // each field is a form of its own (src/rendering/bento.ts field()), written as it is left: blanking the
     // name is a required field's write the server refuses (see documents/values.ts's `text`); the
     // description's is accepted, so exactly one of the two lands.
     await view.evaluate(`(() => {

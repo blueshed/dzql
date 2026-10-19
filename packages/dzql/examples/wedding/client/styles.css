@@ -26,7 +26,7 @@
   --serif: "Cinzel", "Trajan Pro", "Times New Roman", serif;
   --sans: "Josefin Sans", "Futura", "Avenir Next", "Helvetica Neue", sans-serif;
   --script: "Pinyon Script", "Snell Roundhand", "Brush Script MT", cursive;
-  /* what src/bento.css reads: the accent is the navy, the pencil is gold, making and removing are burgundy */
+  /* what src/rendering/bento.css reads: the accent is the navy, the pencil is gold, making and removing are burgundy */
   --accent: var(--navy); --mark: var(--gold-deep); --add: var(--burgundy); --danger: var(--burgundy);
 }
 
@@ -77,7 +77,7 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .resend summary { cursor: pointer; color: var(--ink); }
 .photo-card .welcome-pic { display: block; width: 100%; height: auto; border-radius: var(--radius-panel); border: 2px solid var(--gold); background: var(--well); }
 
-/* ── the bento's surfaces (src/bento.css), where the wedding's differ: serif heads, the photo, the answer ── */
+/* ── the bento's surfaces (src/rendering/bento.css), where the wedding's differ: serif heads, the photo, the answer ── */
 .drawer-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); }
 dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy); }
 /* a chosen answer in its own colour; the kernel lights any other checked radio in the accent */

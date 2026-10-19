@@ -25,6 +25,14 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **Exports nothing imported are gone** (19 October): `dzql/modelling/definitions`, `dzql/rendering/cli`
+  (importing it ran it), and dzql/postgres's re-export of delta's auth (`DeltaAuth`, `wireAuth`,
+  `upgradeWithAuth`, `isAuthError`...): take those from `@blueshed/delta/auth`.
+- **`generateSql`'s options are `{ from }`**, the module the definitions came from (`header` and
+  `regenerate` are gone); the compiled file carries no date, so the same definitions make the same file.
+- **A document's reads are its compiled functions**: one `generateSql` did not compile is not read
+  through `delta_open` (which could only refuse); its read fails on the missing function, by name.
+
 - **An island is an applet** (19 October, Peter: "we agreed on applet"): `dzql/rendering/island` is
   `dzql/rendering/applet`, and `island(render, reduce?)` is `applet(render, reduce?)`, an applet
   drawn by railroad. To move: `import { applet } from "dzql/rendering/applet"`. railroad is still

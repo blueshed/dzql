@@ -9,7 +9,7 @@ export type { Person, Request, Role, Span, Status, Team } from "./calendar";
 
 // leave's two documents as its pages read them, and the rules a write to each follows. The team
 // (`team:1`): its people and every request. A session (`session:<id>`): who is signed in, if anyone,
-// where they are -- one address, `path?what=which` (src/bento.ts) -- and their draft: the days
+// where they are -- one address, `path?what=which` (src/rendering/bento.ts) -- and their draft: the days
 // they have dragged across and not yet asked for, theirs alone until they ask.
 
 /** The one team. */

@@ -3,7 +3,7 @@ import { address, collectionsWrite, parseAddress, type Collections } from "dzql/
 import type { PatchOp } from "dzql/rendering/json-patch";
 
 // The desk, kept in delta (`desk:<id>`, ../delta.ts): where this session is on the page -- one
-// address (src/bento.ts): the cell grown into the window, and the one thing open over it,
+// address (src/rendering/bento.ts): the cell grown into the window, and the one thing open over it,
 // a symbol's drawer or the clock's, or the modal that asks -- and how the board is read and what
 // find says. Nothing here is history: it is never on the ledger, and Undo passes over it.
 
@@ -32,7 +32,7 @@ function placed(value: unknown): string | undefined {
   return undefined;
 }
 
-/** What a write to the desk becomes, applied to `ui` an op at a time: an address it keeps, or a reading, find's word or the eye (src/bento.ts), each field it moves replaced whole. */
+/** What a write to the desk becomes, applied to `ui` an op at a time: an address it keeps, or a reading, find's word or the eye (src/rendering/bento.ts), each field it moves replaced whole. */
 export function shape(ui: Ui, ops: PatchOp[]): PatchOp[] {
   return ops.flatMap((op): PatchOp[] => {
     const bento = collectionsWrite(op, ui);

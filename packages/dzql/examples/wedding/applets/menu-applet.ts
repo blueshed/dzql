@@ -1,6 +1,6 @@
 // The menu applet's mounting: which course is open is this applet's own DOM state; a choice is
 // one write, and the pills redraw from the render that follows. Imported only by client/main.ts,
-// and measured from the pages that run it (client/app.test.ts, src/client-coverage.ts); the
+// and measured from the pages that run it (client/app.test.ts, src/rendering/client-coverage.ts); the
 // drawing above it is menu.ts.
 
 import { registerApplet } from "dzql/rendering/applets";

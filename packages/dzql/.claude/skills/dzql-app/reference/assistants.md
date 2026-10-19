@@ -5,8 +5,8 @@ writes, not its pixels, where the app opts in. The writes are [wire.md](wire.md)
 
 ```ts
 // examples/chat/client/main.ts
-import "../../../src/client/app";
-import "../../../src/client/tools"; // one line, for this app alone
+import "dzql/rendering/client/app";
+import "dzql/rendering/client/tools"; // one line, for this app alone
 ```
 
 ```ts

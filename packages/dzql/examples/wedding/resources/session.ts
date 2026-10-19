@@ -16,7 +16,7 @@ import { keepEveryone } from "../everyone";
 const BEFORE_CODE = new Set(["code", "resend"]);
 
 /** What a visit's page writes: a code entered or forgotten, a resend, a page gone to; and how a
- * collection is read, find's word and its eye (`collectionsWrite`, src/bento.ts). */
+ * collection is read, find's word and its eye (`collectionsWrite`, src/rendering/bento.ts). */
 const RULES: { path: RegExp; ops: PatchOp["op"][] }[] = [
   { path: /^\/code$/, ops: ["replace", "remove"] },
   { path: /^\/(resend|page)$/, ops: ["replace"] },

@@ -29,7 +29,7 @@ export type BoardDocument = Wedding & {
   gifts: Gift[];
   events: Event[];
   places: Place[];
-  /** The collections drawn from their shape (src/derive.ts), by name: their rows, as delta holds them. */
+  /** The collections drawn from their shape (src/rendering/derive.ts), by name: their rows, as delta holds them. */
   derived: Record<string, Row[]>;
   totals: Totals;
 };

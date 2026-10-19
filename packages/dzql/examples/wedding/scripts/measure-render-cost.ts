@@ -2,7 +2,7 @@
 // top changed to green, with the sender's own household open in a second tab, the couple on
 // their photo of families, another household on its photo, and a third reading everyone's. Not a
 // test -- a report. Run with `DB_PATH=:memory: bun examples/wedding/scripts/measure-render-cost.ts`;
-// with `--json`, what the README says (src/costs.ts, `bun run costs`).
+// with `--json`, what the README says (src/modelling/costs.ts, `bun run costs`).
 import { tap, type Measured } from "dzql/modelling/costs";
 import { createServer } from "dzql/rendering/server";
 import { asCouple, asHousehold, board, household } from "../setup";

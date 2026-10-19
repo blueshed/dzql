@@ -3,9 +3,9 @@
  * database. Every process serving it hears every write (LISTEN/NOTIFY), so a
  * box open on one is told of a site moved through another.
  *
- *   PORT=3100 bun examples/sites-bbox/server-pg.ts
+ *   PORT=3100 bun examples/delta/sites-bbox/server-pg.ts
  *
- * PG_URL names the database (the compose one on 5433 by default).
+ * DATABASE_URL names the database (the compose one on 5433 by default).
  */
 import { Pool } from "pg";
 import {
@@ -28,7 +28,7 @@ const sitesInBbox = defineCustomDoc<BBox>("sites-in-bbox:", {
   matches,
 });
 
-const pool = new Pool({ connectionString: process.env.PG_URL ?? process.env.DATABASE_URL ?? "postgres://dzql_test:dzql_test@localhost:5433/dzql_test" });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL ?? "postgres://dzql_test:dzql_test@localhost:5433/dzql_test" });
 await applyFramework(pool);
 await applySql(pool, generateSql(schema, [worldDoc]));
 await pool.query("INSERT INTO worlds (label) SELECT 'Earth' WHERE NOT EXISTS (SELECT 1 FROM worlds)");

@@ -10,6 +10,7 @@ import { setLogLevel } from "@blueshed/delta/logger";
 import { createRowCases, errorCodeCases, uniqueCases, writeScopeCases, type CaseApp, type CaseBackend } from "@blueshed/delta/testing";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
 import { openPglite } from "../../src/postgres/pglite";
+import { PG_URL } from "../delta-pg/setup";
 
 setLogLevel("silent");
 
@@ -32,7 +33,7 @@ const onPglite: CaseBackend = async (app) => {
 
 /** The suite's test database: the app's `case_*` tables and their documents dropped before and after. */
 const onServer: CaseBackend = async (app) => {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL || "postgres://dzql_test:dzql_test@localhost:5433/dzql_test" });
+  const pool = new Pool({ connectionString: PG_URL });
   const tables = Object.values(app.schema.tables).map((t) => t.name);
   const drop = async () => {
     await pool.query(`DROP TABLE IF EXISTS ${tables.join(", ")} CASCADE`);

@@ -37,7 +37,7 @@ export function sessionCookie(cookie: string): string {
   return new Bun.Cookie(name, cookie, { path, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" }).serialize();
 }
 
-// What each connection was last sent, so the next drawing sends only what differs (src/parts.ts).
+// What each connection was last sent, so the next drawing sends only what differs (src/rendering/parts.ts).
 const sent = new WeakMap<Socket, Drawn>();
 
 // A connection's redraws happen one after another, so a drawing that waited for a document can
@@ -361,7 +361,7 @@ export function appOf(example: Example): DzqlApp {
     }
     // A write that applied something is told from its change, its echo carrying its id. Nothing
     // applied is answered `refused` (by its id, if it has one, and why when the refusal says, kept
-    // for the page until the session's next write: src/refusal.ts), then the page as what differs.
+    // for the page until the session's next write: src/rendering/refusal.ts), then the page as what differs.
     // A message that is no write at all asks for the page whole.
     const id = idOf(message);
     const asWrite = isWrite(message) ? message : undefined;
@@ -376,7 +376,7 @@ export function appOf(example: Example): DzqlApp {
     if (!wrote) {
       if (id !== undefined) send(ws, refusedMessage(id, refusal?.reason));
       if (asWrite) await tell(ws.data.sessionId, refusal && { doc: asWrite.doc, path: asWrite.ops[0]!.path, reason: refusal.reason });
-      void redraw(ws, !asWrite); // a message that is no write asks for the page (src/client/app.ts)
+      void redraw(ws, !asWrite); // a message that is no write asks for the page (src/rendering/client/app.ts)
     }
     await quiet(documents);
     for (const claim of claims()) if (claim.ws === ws) claims().delete(claim); // its change told by now, or never to be

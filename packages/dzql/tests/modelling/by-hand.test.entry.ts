@@ -18,7 +18,7 @@ registerApplet("calendar", {
       for (const type of ["pointerdown", "pointermove", "pointerup", "click"]) el.addEventListener(type, (e) => e.stopImmediatePropagation(), true);
       setTimeout(() => send("session", [draft]), Number(wrong.slice(5)));
     }
-    // unasked: another draft written by itself, as soon as the page is taken in hand (src/by-hand.ts)
+    // unasked: another draft written by itself, as soon as the page is taken in hand (src/modelling/by-hand.ts)
     if (wrong === "unasked") {
       let hand: unknown;
       const other: PatchOp = { op: "replace", path: "/draft", value: { starts: "2026-10-13", ends: "2026-10-14" } };

@@ -1,5 +1,5 @@
 /**
- * @blueshed/delta/pglite — Postgres in this process.
+ * dzql/pglite — Postgres in this process.
  *
  * The same stored functions, the same listener, the same documents as a
  * Postgres server, on PGlite (Postgres compiled to WASM): no database to run,
@@ -136,7 +136,7 @@ export async function openPglite(dir?: string): Promise<Pool> {
   try {
     ({ PGlite } = await import("@electric-sql/pglite"));
   } catch {
-    throw new Error("[delta/pglite] @electric-sql/pglite is not installed -- bun add @electric-sql/pglite");
+    throw new Error("[dzql/pglite] @electric-sql/pglite is not installed -- bun add @electric-sql/pglite");
   }
   // pgcrypto, which dzql/auth-jwt hashes passwords with: PGlite has an extension only when it is
   // given one at start (loaded when a database creates it)
@@ -145,4 +145,13 @@ export async function openPglite(dir?: string): Promise<Pool> {
   if (dir) mkdirSync(dir, { recursive: true });
   const db: PGliteish = await PGlite.create(dir, { extensions: { pgcrypto } });
   return pglitePool(db);
+}
+
+/**
+ * A Postgres to talk to, said one way everywhere (`dzql migrate`, `dzql link`, `openStore`): a server
+ * at a `postgres://` URL, else PGlite in a folder, else PGlite in memory.
+ */
+export async function openDatabase(target?: string): Promise<Pool> {
+  if (target && /^postgres(ql)?:\/\//.test(target)) return new (await import("pg")).Pool({ connectionString: target });
+  return openPglite(target);
 }

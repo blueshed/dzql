@@ -1,5 +1,5 @@
 // The marks beside words: our names for them, and lucide's outlines behind each (the `lucide`
-// package, ISC). The kernel's `svg` (src/icons.ts) does the drawing; this file only says which
+// package, ISC). The kernel's `svg` (src/rendering/icons.ts) does the drawing; this file only says which
 // outline a name means. Decorative by default; give one a `label` when it stands alone.
 import {
   ArrowDown,

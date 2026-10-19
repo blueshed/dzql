@@ -27,8 +27,8 @@ They give the same answers. What delta adds is everything the policy cannot say:
 ## Run
 
 ```sh
-bun run db:up
-bun run examples/todos-vs-rls/run.ts
+bun run test:setup                       # the compose Postgres on 5433
+bun examples/delta/todos-vs-rls/run.ts
 ```
 
 Each run drops and re-seeds its `example_*` tables, and makes the `example_app` role the first

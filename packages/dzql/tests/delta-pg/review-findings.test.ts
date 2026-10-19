@@ -1,7 +1,7 @@
 /**
  * Regression tests for findings from the 0.4.12 deep review.
  *
- * Requires a live Postgres on $DELTA_TEST_PG_URL (see CLAUDE.md for the
+ * Requires a live Postgres on $DATABASE_URL (see CLAUDE.md for the
  * Docker-free local setup). Each test below pins a specific reviewed
  * behaviour so a future change is forced to acknowledge it:
  *

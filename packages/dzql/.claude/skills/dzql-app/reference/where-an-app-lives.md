@@ -14,12 +14,16 @@ bun test                 # bun run stories and bun run cli work on src/ too
 ## A project made with `bun create dzql`
 
 ```
+stories.ts    what the app was asked to make true, each told by a test
 src/          the app (begun as dzql's examples/starter):
   routes.ts                 the server: the app, its HTTP routes, the model's page in development
+  store.ts                  where the documents are kept (PGlite, or a server at DATABASE_URL)
   page.ts                   the page, each resource's part in its place
   resources/<name>/         a document: <name>-api.ts, <name>.ts (its Resource), <name>-view.ts
-  stories.ts, index.html, main.ts, styles.css, icons.ts
-migrations/   made with the first schema: a field renamed or dropped, data moved; never edit one that has run
+  index.html, main.ts, styles.css, icons.ts
+model/        what `dzql model` makes: types.ts, guards.ts, model.test.ts, and migrations/ (a field
+              renamed or dropped, data moved, is a step of its own; never edit one that has run)
+tests/        what the stories cannot say
 package.json  the app's: dzql and @blueshed/delta as dependencies
 CLAUDE.md, README.md, .claude/skills/ (from `delta install-skills`, run by `bun install`)
 ```

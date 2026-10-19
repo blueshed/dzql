@@ -240,7 +240,7 @@ export function read<T = any>(doc: string): T {
 
 /**
  * A document an applet watches, for its mount (`appletProps(props, watch("everyone:1", "/everyone"))`,
- * src/html.ts): its name, where it sits in the props, and the version it is held at as the page is
+ * src/rendering/html.ts): its name, where it sits in the props, and the version it is held at as the page is
  * drawn -- the one `read` gives -- so the client passes over a patch the props already hold. Read
  * like any document, so the page is told its every change.
  */

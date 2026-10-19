@@ -1,10 +1,8 @@
 # dzql's compile and Postgres tests (bun run test:pg: tests/compile, tests/delta, tests/delta-pg).
 [test]
-# Collect coverage on every `bun test` run.
+# Coverage on every run, said in the terminal (nothing reads an lcov file).
 coverage = true
-# Report to the terminal and emit lcov for CI/editor tooling.
-coverageReporter = ["text", "lcov"]
-coverageDir = "coverage"
+coverageReporter = ["text"]
 # Don't count the test files themselves toward coverage.
 coverageSkipTestFiles = true
 # No hard threshold yet — measure first, then ratchet up in CI once a

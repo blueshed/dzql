@@ -2,7 +2,7 @@
 // changed where each figure stands -- a newcomer walking in
 // from the nearest side, the names coming down on the day, once the walk is over the attitude
 // takes over. Imported only by client/main.ts, and measured from the pages that run it
-// (src/client-coverage.ts); the drawing is photo.ts.
+// (src/rendering/client-coverage.ts); the drawing is photo.ts.
 
 import { registerApplet, type Applet } from "dzql/rendering/applets";
 import { crowd, onlyFadeChanged, photoSvg, type CrowdProps, type PhotoProps } from "./photo";

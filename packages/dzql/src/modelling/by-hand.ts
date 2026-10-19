@@ -1,7 +1,7 @@
 // The stories by hand (docs/stories.md, "By hand"). The harness finds a story's control in the page
 // the server drew, which says only that it is there: it may be hidden by a stylesheet, covered by
 // something drawn over it, of no size, off a phone's screen, or a field no form sends. Here a real
-// browser (`Bun.WebView`, src/webview.ts) is the author's tab: it goes where the story is done by
+// browser (`Bun.WebView`, src/rendering/webview.ts) is the author's tab: it goes where the story is done by
 // pressing the controls that lead there, then does the story's write by pressing, typing into or
 // choosing in the control itself, or by the gesture the story says, and what it sent is what the
 // harness checks. A tap is a native click at the control's middle, once it holds still and nothing
@@ -36,7 +36,7 @@ type Plan = { how: "press" | "submit" | "edit" | "open"; control: string; fields
 export const sameDoc = (a: string, b: string): boolean => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
 
 // The page's side, a string since it runs in the browser: the elements that send a write, as the
-// kernel's client sends them (src/client/app.ts), and why a person could not press one.
+// kernel's client sends them (src/rendering/client/app.ts), and why a person could not press one.
 const PAGE = `(() => {
   const same = ${sameDoc};
   const specOf = (el) => { try { return JSON.parse(el.dataset.write); } catch { return undefined; } };
@@ -162,7 +162,7 @@ const PAGE = `(() => {
     send(JSON.stringify({ type: "inspect" }));
   });
   const stands = () => document.querySelector("#app [data-page]")?.dataset.page;
-  // a drag, as a mouse makes one (src/webview.ts): pressed at the middle of one element, moved in
+  // a drag, as a mouse makes one (src/rendering/webview.ts): pressed at the middle of one element, moved in
   // four steps to the middle of another, let go
   function drag(from, to) {
     const a = document.querySelector(from), b = document.querySelector(to);

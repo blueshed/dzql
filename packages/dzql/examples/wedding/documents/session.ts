@@ -16,13 +16,13 @@ export type Kind = "household" | "couple";
 
 export type Ui = {
   /**
-   * Where the visit is: one address (src/bento.ts). The page -- "" is the household's photo or
+   * Where the visit is: one address (src/rendering/bento.ts). The page -- "" is the household's photo or
    * the couple's, of every family; "list", "everyone" -- and after a `?` the one thing open over
    * it: a guest's drawer (`?guest=2`), a family's (`?family=2`), one opened by its name alone
    * (`?gifts`, `?day`, `?stay` for a household; `?courses`, `?gifts`, `?events`, `?places` for
    * the couple), a row's keep drawer (`?keep=courses/2`), the answer (`?answer`), the modal asking
    * a new thing's name (`?new=guests`), the modal confirming a removal (`?confirm=courses/2`). A
-   * page drawn from its shape ("venues", src/derive.ts) reads its own: `?row=1`, `?new`, `?confirm=1`.
+   * page drawn from its shape ("venues", src/rendering/derive.ts) reads its own: `?row=1`, `?new`, `?confirm=1`.
    */
   page?: string;
 } & Collections; // how each collection is read, find's word, the eye: by the collection's name
@@ -91,7 +91,7 @@ function after(before: Visit, ops: PatchOp[]): Visit {
     if (field === "code") {
       const code = removing ? "" : String(op.value ?? "").trim().toUpperCase();
       if (removing) Object.assign(next, { code: null, page: null, reading: null, filter: null, hide: null, note: null });
-      // Said beside the code box (src/refusal.ts): the page would otherwise look exactly as before.
+      // Said beside the code box (src/rendering/refusal.ts): the page would otherwise look exactly as before.
       else if (!code || !whose(code)) throw refuse("That code was not recognised.");
       else Object.assign(next, { code, page: null, reading: null, filter: null, hide: null, note: null });
     } else if (field === "resend") {
@@ -132,7 +132,7 @@ export function answered(session: SessionDocument, ops: { op: string; path: stri
   const at = over(session.ui);
   if (at.new !== undefined && ops.some((op) => op.op === "add" && op.path.endsWith("/-"))) return [{ op: "replace", path: "/visits/page", value: at.path }];
   if (at.confirm === undefined || !ops.some((op) => op.op === "remove")) return [];
-  // a row of a page drawn from its shape (src/derive.ts) is confirmed by its id alone, and goes back to that page
+  // a row of a page drawn from its shape (src/rendering/derive.ts) is confirmed by its id alone, and goes back to that page
   const [list, family] = at.confirm.split("/");
   const back = family === undefined ? at.path : list === "households" ? address(at.path, "family", family) : address(at.path, list);
   return [{ op: "replace", path: "/visits/page", value: back }];

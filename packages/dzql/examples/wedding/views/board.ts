@@ -5,7 +5,7 @@
 // or a name; the plus invites a household. The four lists the couple keep -- courses,
 // gifts, events, where to stay -- are tools on the rail, each a drawer of rows that takes a new one
 // in place, and a row opens a drawer of its own, whose × goes back to its list. The venues are a
-// page nobody wrote: drawn from their shape (src/derive.ts), by what delta.ts declares of them.
+// page nobody wrote: drawn from their shape (src/rendering/derive.ts), by what delta.ts declares of them.
 
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
@@ -188,7 +188,7 @@ function householdsList(v: BoardView): string {
 
 // ───────────────────────────── a family ─────────────────────────────
 
-/** A field of the board's, edited where it is (src/bento.ts `field`): a property, or with `inRow`, one of a row's own. */
+/** A field of the board's, edited where it is (src/rendering/bento.ts `field`): a property, or with `inRow`, one of a row's own. */
 const edit = (path: string, value: FieldOptions["value"], label: string, more: Partial<FieldOptions> = {}): string => field({ doc: "board", path, value, label, ...more });
 
 /** A form that adds one thing by its name, in place, at the foot of what it adds to. */

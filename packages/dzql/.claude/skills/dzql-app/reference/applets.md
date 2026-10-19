@@ -20,7 +20,7 @@ registerApplet("calendar", {
 
 // examples/leave/client/main.ts: applets first, then the kernel's client
 import "../applets/calendar-applet";
-import "../../../src/client/app";
+import "dzql/rendering/client/app";
 ```
 
 The contract is `Applet` in `src/rendering/applets.ts`; `appletWrites` and `appletProps` are `src/rendering/html.ts`.

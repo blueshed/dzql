@@ -399,7 +399,7 @@ describe("the stylesheet", () => {
 });
 
 // The surfaces as a person meets them: drawn in a real browser with the kernel's stylesheet and its
-// client (src/client/app.ts), the socket stubbed as src/client/app.test.ts stubs it -- what the
+// client (src/rendering/client/app.ts), the socket stubbed as src/client/app.test.ts stubs it -- what the
 // client would send is kept in `window.__sent`, and a render is a message on its own socket.
 describe("the surfaces in a browser", () => {
   let server: ReturnType<typeof Bun.serve>;
@@ -532,7 +532,7 @@ describe("the surfaces in a browser", () => {
     expect(await view.evaluate<unknown[]>(same)).toEqual([true, true, true, "half typed"]);
   });
 
-  // the page whole, or in parts as the ticker's goes: the site a part, the layers in it (src/parts.ts works out what changed)
+  // the page whole, or in parts as the ticker's goes: the site a part, the layers in it (src/rendering/parts.ts works out what changed)
   for (const sent_ of ["whole", "in parts"] as const) {
     test(`the keyboard goes with the cell: opening a window puts it on the way back, closing it puts it back on the cell (the page sent ${sent_})`, async () => {
       const page = (market: boolean) => {

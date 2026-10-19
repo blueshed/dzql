@@ -1,6 +1,5 @@
 node_modules/
 .server.pid
-.eta-secret
 data/
 .env
 .DS_Store

@@ -5,7 +5,7 @@ import { push, pushRender, quietPages } from "./socket.test.helpers";
 import fixture from "./tools.test.html";
 import plain from "./app.test.html";
 
-// The page's writes as tools (src/client/tools.ts), and a script's write answered by its id
+// The page's writes as tools (src/rendering/client/tools.ts), and a script's write answered by its id
 //, in a real browser, on a socket that goes quiet (socket.test.helpers.ts).
 const open = quietPages({ "/": fixture, "/plain": plain });
 
