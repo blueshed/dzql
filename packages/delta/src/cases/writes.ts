@@ -172,7 +172,9 @@ export function uniqueCases(backend: CaseBackend): void {
     const loans = async (member: number) => Object.values((await fresh(up.ws, `case-member:${member}`)).case_loans ?? {}).map((l: any) => ({ tool: l.tool, out: l.returned === null }));
 
     test("a second tool of the same name is refused, 409, and a rename onto one too", async () => {
-      expect((await write("case-shed:", [{ op: "add", path: "/case_tools/-", value: { name: "spade" } }])).error?.code).toBe(409);
+      const twin = (await write("case-shed:", [{ op: "add", path: "/case_tools/-", value: { name: "spade" } }])).error;
+      expect(twin?.code).toBe(409);
+      expect(twin?.message).toStartWith("Already there: another row has the same"); // in delta's words on every backend, never the database's
       expect((await write("case-shed:", [{ op: "replace", path: "/case_tools/2/name", value: "spade" }])).error?.code).toBe(409);
       const tools = Object.values((await fresh(up.ws, "case-shed:")).case_tools).map((t: any) => t.name).sort();
       expect(tools).toEqual(["rake", "spade"]);

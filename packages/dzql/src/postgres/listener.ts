@@ -76,6 +76,10 @@ async function declaredSchema(pool: Pool): Promise<Schema> {
 }
 
 function errMsg(err: unknown): string {
+  // a unique constraint the schema says (delta's idx_<table>_unique_<columns>): in delta's words, as SQLite says it
+  const e = err as { code?: unknown; constraint?: string; table?: string; detail?: string } | null;
+  const key = e?.code === "23505" && e.constraint?.includes("_unique_") ? /^Key \((.+?)\)=/.exec(e.detail ?? "")?.[1] : undefined;
+  if (key) return `Already there: another row has the same ${key.split(", ").map((c) => `${e!.table}.${c}`).join(", ")} (a unique constraint)`;
   return err instanceof Error ? err.message : String(err);
 }
 

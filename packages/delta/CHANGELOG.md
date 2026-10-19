@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`uniqueCases` asks the words too**: a refused duplicate says "Already there: another row has the
+  same ...", on every backend (dzql answers it on Postgres).
 - **The JSON file keeps what its schema does not declare** (19 October): an older app saving the
   file a newer one wrote erased the newer one's tables and columns, against "a store may hold more,
   never less". Other tables, undeclared columns (by the row's id), other keys and a ledger nobody

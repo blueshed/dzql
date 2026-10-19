@@ -92,6 +92,9 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **A duplicate is refused in delta's words on Postgres** (19 October, the Shed's run 3): a write
+  that breaks a unique constraint the schema says answered 409 with Postgres's message; it says
+  `Already there: another row has the same <table>.<column> (a unique constraint)`, as SQLite does.
 - **Importing `dzql/modelling` (or `dzql/rendering/test-socket`) made a `db.sqlite` in the folder**
   (19 October, the DRY/YAGNI/KISS review): the harness imported `dzql/rendering/db`, which opens the
   database as it loads. The harness opens the app's SQLite only when a run asks for it, and `hear`,
