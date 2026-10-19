@@ -25,3 +25,6 @@ packages/paintbrush/.server.pid
 packages/paintbrush/data/
 packages/paintbrush/tests/out/
 packages/create-blueshed/template/
+
+# Bun's build artifacts, left by a test's bun build --compile
+*.bun-build
