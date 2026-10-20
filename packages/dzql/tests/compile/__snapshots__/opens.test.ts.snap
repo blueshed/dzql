@@ -2241,7 +2241,7 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 exports[`on the seed, every name opens (and opens at a time) as the framework opens it fo-seats-kept:maybe 1`] = `
 {
   "doc": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -2251,7 +2251,7 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 {
   "at": "2019-06-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -2261,7 +2261,7 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 {
   "at": "2021-01-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -2271,7 +2271,7 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 {
   "at": "2999-01-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -2678,7 +2678,7 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 exports[`on the seed, every name opens (and opens at a time) as the framework opens it fo-seats-wished:abc 1`] = `
 {
   "doc": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -2688,7 +2688,7 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 {
   "at": "2019-06-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -2698,7 +2698,7 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 {
   "at": "2021-01-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -2708,7 +2708,7 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 {
   "at": "2999-01-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -7660,7 +7660,7 @@ exports[`after writes of every kind, still fo-seats-kept:yes, open_at 3`] = `
 exports[`after writes of every kind, still fo-seats-kept:maybe 1`] = `
 {
   "doc": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -7670,7 +7670,7 @@ exports[`after writes of every kind, still fo-seats-kept:maybe, open_at 1`] = `
 {
   "at": "2019-06-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -7680,7 +7680,7 @@ exports[`after writes of every kind, still fo-seats-kept:maybe, open_at 2`] = `
 {
   "at": "2021-01-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -7690,7 +7690,7 @@ exports[`after writes of every kind, still fo-seats-kept:maybe, open_at 3`] = `
 {
   "at": "2999-01-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -8097,7 +8097,7 @@ exports[`after writes of every kind, still fo-seats-wished:[1, 2], open_at 3`] =
 exports[`after writes of every kind, still fo-seats-wished:abc 1`] = `
 {
   "doc": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -8107,7 +8107,7 @@ exports[`after writes of every kind, still fo-seats-wished:abc, open_at 1`] = `
 {
   "at": "2019-06-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -8117,7 +8117,7 @@ exports[`after writes of every kind, still fo-seats-wished:abc, open_at 2`] = `
 {
   "at": "2021-01-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -8127,7 +8127,7 @@ exports[`after writes of every kind, still fo-seats-wished:abc, open_at 3`] = `
 {
   "at": "2999-01-01T00:00:00Z",
   "doc": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -11766,6 +11766,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_seats" t WHERE (v_s1 IS NULL OR t."kept" = v_s1::BOOLEAN);
   v_doc := jsonb_build_object('seats', v_rows);
   INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
@@ -11799,6 +11806,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   p_at := p_given;
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_seats" t WHERE (v_s1 IS NULL OR t."kept" = v_s1::BOOLEAN);
   v_doc := jsonb_build_object('seats', v_rows);
@@ -11832,6 +11846,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_seats" t WHERE (v_s1 IS NULL OR t."kept" <= v_s1::BOOLEAN);
   v_doc := jsonb_build_object('seats', v_rows);
   INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
@@ -11865,6 +11886,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   p_at := p_given;
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_seats" t WHERE (v_s1 IS NULL OR t."kept" <= v_s1::BOOLEAN);
   v_doc := jsonb_build_object('seats', v_rows);
@@ -11974,6 +12002,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 17), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::JSONB;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'wishes must be JSON, not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_seats" t WHERE (v_s1 IS NULL OR t."wishes" = v_s1::JSONB);
   v_doc := jsonb_build_object('seats', v_rows);
   INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
@@ -12007,6 +12042,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 17), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::JSONB;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'wishes must be JSON, not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   p_at := p_given;
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_seats" t WHERE (v_s1 IS NULL OR t."wishes" = v_s1::JSONB);
   v_doc := jsonb_build_object('seats', v_rows);

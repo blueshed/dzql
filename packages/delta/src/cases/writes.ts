@@ -102,6 +102,15 @@ export function errorCodeCases(backend: CaseBackend): void {
         expect(Object.values(other.case_messages)).toEqual([{ id: 8, case_rooms_id: 2, text: "elsewhere" }]);
       });
     }
+
+    test("a document whose root is not there: not found (404), opened or written through, in the same words", async () => {
+      const c = mockClient();
+      expect((await sendAndAwait(up.ws, c, { action: "open", doc: "case-room:3" })).error).toEqual({
+        code: 404, message: "Not found: no case_rooms row 3. Make the row first, or declare the document implied: true",
+      });
+      const written = await sendAndAwait(up.ws, c, { action: "delta", doc: "case-room:3", ops: [{ op: "add", path: "/case_messages/-", value: { text: "x" } }] });
+      expect(written.error).toEqual({ code: 404, message: "Document not found: case-room:3 (its root, /case_rooms/3, is not there)" });
+    });
   });
 }
 
@@ -167,6 +176,11 @@ export const refusals: Record<string, { ops: unknown[]; message: string }> = {
   "a null json where none is taken": { ops: [{ op: "replace", path: "/case_shelves/data", value: null }], message: "/case_shelves/data: data cannot be null" },
   "a parent key set to null": { ops: [{ op: "replace", path: "/case_jars/1/case_shelves_id", value: null }], message: "/case_jars/1/case_shelves_id: case_shelves_id cannot be null" },
   "a parent key that is no id": { ops: [{ op: "replace", path: "/case_jars/1/case_shelves_id", value: 1.5 }], message: "/case_jars/1/case_shelves_id: case_shelves_id must be an id: an integer, or text" },
+  // text that is no whole number names no row: the sentence alone, once the value is otherwise as it may be written
+  "a parent key that is text and no number": { ops: [{ op: "replace", path: "/case_jars/1/case_shelves_id", value: "x" }], message: `case_shelves "x" names no row: an id is a whole number` },
+  "a row moved under text that is no number": { ops: [{ op: "replace", path: "/case_jars/1", value: { name: "jam", case_shelves_id: "top" } }], message: `case_shelves "top" names no row: an id is a whole number` },
+  "a time the calendar has not": { ops: [{ op: "replace", path: "/case_shelves/checked", value: "2026-02-30" }], message: "/case_shelves/checked: checked must be an ISO-8601 time" },
+  "a time in a month there is not": { ops: [{ op: "replace", path: "/case_shelves/checked", value: "2026-13-01T10:00:00Z" }], message: "/case_shelves/checked: checked must be an ISO-8601 time" },
   // an op wrong in several ways: every refusal of it, joined by "; " -- the fields there are not, then
   // each value not as it may be written, then each required field left out, each kind by name
   "a row added wrong in several ways": {

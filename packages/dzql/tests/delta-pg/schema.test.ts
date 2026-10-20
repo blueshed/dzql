@@ -332,7 +332,7 @@ describe("validateOps", () => {
       // one definition, two modes: the name says which
       const all = defineDoc("all:", { root: "households", include: [] });
       const rootField = [{ op: "replace", path: "/households/email", value: "x" }] as const;
-      expect(messages(validateOps(wedding, all, [...rootField], { doc: "all:" }))).toEqual([expect.stringMatching(/^Row id "email" in \/households\/email is not a number/)]);
+      expect(messages(validateOps(wedding, all, [...rootField], { doc: "all:" }))).toEqual([expect.stringMatching(/^Row id "email" is not a number/)]);
       expect(validateOps(wedding, all, [...rootField], { doc: "all:1" })).toEqual([]);
       expect(validateOps(wedding, labelled, [{ op: "add", path: "/tags/-", value: {} }], { doc: "labelled:blue" })).toEqual([]);
       expect(validateOps(wedding, labelled, [{ op: "replace", path: "/tags/label", value: "red" }], { doc: "labelled:red" }).length).toBe(1);

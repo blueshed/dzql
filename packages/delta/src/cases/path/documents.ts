@@ -87,8 +87,10 @@ export function documentCases(backend: () => PathBackend): void {
       expect(content(result)).toEqual({ courses: course(1, "Soup"), drinks: { "1": drink(1, 1, "Sherry") } });
     });
 
-    test("a document whose root row is not there is not found", async () => {
-      expect((await backend().process.call("open", { doc: "fo-household:99" })).error?.code).toBe(404);
+    test("a document whose root row is not there is not found, in delta's words", async () => {
+      expect((await backend().process.call("open", { doc: "fo-household:99" })).error).toEqual({
+        code: 404, message: "Not found: no households row 99. Make the row first, or declare the document implied: true",
+      });
     });
 
     test("a list-mode document reads every row of its root; one with a condition, the rows that meet it", async () => {
@@ -115,13 +117,18 @@ export function documentCases(backend: () => PathBackend): void {
       expect(await seats("fo-seats-wished:[1, 2]")).toEqual({ doc: "fo-seats-wished:[1, 2]", seats: [2] });
     });
 
-    test("a name its column cannot take is refused as a mistake (400), opened or written through: a boolean's maybe, an integer's abc or 3.5, a json value that is not JSON", async () => {
+    test("a name its column cannot take is refused as a mistake (400), opened or written through, in the same words: a boolean's maybe, an integer's abc or 3.5, a json value that is not JSON", async () => {
       const b = backend();
       const add = [{ op: "add", path: "/seats/-", value: { weddings_id: 1, table_no: 4, kept: true } }];
-      for (const doc of ["fo-seats-kept:maybe", "fo-seats-upto:maybe", "fo-seats-at:abc", "fo-seats-at:3.5", "fo-seats-wished:abc"]) {
-        const open = (await b.process.call("open", { doc })).error?.code;
-        const written = (await b.process.call("delta", { doc, ops: add })).error?.code;
-        expect({ doc, open, written }).toEqual({ doc, open: 400, written: 400 });
+      const boolean = (v: string) => `kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "${v}"`;
+      for (const [doc, message] of [
+        ["fo-seats-kept:maybe", boolean("maybe")], ["fo-seats-upto:maybe", boolean("maybe")], ["fo-seats-kept:+3", boolean("+3")],
+        ["fo-seats-at:abc", `table_no must be an integer, not "abc"`], ["fo-seats-at:3.5", `table_no must be an integer, not "3.5"`],
+        ["fo-seats-wished:abc", `wishes must be JSON, not "abc"`],
+      ]) {
+        const open = (await b.process.call("open", { doc })).error;
+        const written = (await b.process.call("delta", { doc, ops: add })).error;
+        expect({ doc, open, written }).toEqual({ doc, open: { code: 400, message }, written: { code: 400, message } });
       }
     });
 
@@ -496,13 +503,13 @@ export function documentCases(backend: () => PathBackend): void {
       await assertCopiesHold(b, copies);
     });
 
-    test("an empty write through a document that is not there is not found (404): never there, or its root gone since", async () => {
+    test("an empty write through a document that is not there is not found (404): never there, or its root gone since, in the same words", async () => {
       const b = backend();
       await openAll(b.process, ["fo-board:1", "fo-household:2"]);
-      expect((await b.process.call("delta", { doc: "fo-board:99", ops: [] })).error?.code).toBe(404);
+      expect((await b.process.call("delta", { doc: "fo-board:99", ops: [] })).error).toEqual({ code: 404, message: "Document not found: fo-board:99 (its root, /weddings/99, is not there)" });
       await write(b.process, "fo-board:1", [{ op: "remove", path: "/households/2" }]);
       await b.quiet();
-      expect((await b.process.call("delta", { doc: "fo-household:2", ops: [] })).error?.code).toBe(404);
+      expect((await b.process.call("delta", { doc: "fo-household:2", ops: [] })).error).toEqual({ code: 404, message: "Document not found: fo-household:2 (its root, /households/2, is not there)" });
     });
 
     test("history says what was written through a document, newest first, and whose it was", async () => {

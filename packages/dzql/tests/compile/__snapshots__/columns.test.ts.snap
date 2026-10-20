@@ -19483,7 +19483,7 @@ BEGIN
           ('weddings_id', CASE WHEN jsonb_typeof((p_value->'weddings_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'weddings_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'weddings_id')) = 'string' OR (jsonb_typeof((p_value->'weddings_id')) = 'number' AND (p_value->'weddings_id')::text::numeric = trunc((p_value->'weddings_id')::text::numeric))) THEN 'weddings_id must be an id: an integer, or text' END),
           ('price', CASE WHEN jsonb_typeof((p_value->'price')) <> 'null' AND NOT (jsonb_typeof((p_value->'price')) = 'number') THEN 'price must be a number' END),
-          ('starts', CASE WHEN jsonb_typeof((p_value->'starts')) <> 'null' AND NOT (jsonb_typeof((p_value->'starts')) = 'string' AND ((p_value->'starts') #>> '{}') ~ '^\\d{4}-\\d{2}-\\d{2}([T ]([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d{1,6})?)?(Z|[+-]([01]\\d|2[0-3])(:?[0-5]\\d)?)?)?$') THEN 'starts must be an ISO-8601 time' END)) AS x(k, m) WHERE m IS NOT NULL;
+          ('starts', CASE WHEN jsonb_typeof((p_value->'starts')) <> 'null' AND NOT (jsonb_typeof((p_value->'starts')) = 'string' AND ((p_value->'starts') #>> '{}') ~ '^\\d{4}-\\d{2}-\\d{2}([T ]([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d{1,6})?)?(Z|[+-]([01]\\d|2[0-3])(:?[0-5]\\d)?)?)?$' AND _delta_on_calendar((p_value->'starts') #>> '{}')) THEN 'starts must be an ISO-8601 time' END)) AS x(k, m) WHERE m IS NOT NULL;
         IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
         IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;

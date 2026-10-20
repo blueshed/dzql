@@ -603,12 +603,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:maybe 1`
   "name": "fo-seats-kept:maybe",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": "maybe",
-    },
-    "where": "kept = 'maybe'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
 }
 `;
@@ -620,10 +616,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:maybe 2`
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": "maybe",
-    },
-    "where": "kept = 'maybe'",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -744,12 +739,8 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:abc 1`
   "name": "fo-seats-wished:abc",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "wishes": "abc",
-    },
-    "where": "wishes = 'abc'",
+    "code": "22P02",
+    "error": "wishes must be JSON, not "abc"",
   },
 }
 `;
@@ -761,10 +752,9 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:abc 2`
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "wishes": "abc",
-    },
-    "where": "wishes = 'abc'",
+    "refused": "wishes must be JSON, not "abc"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6090,12 +6080,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept: 2  1`] 
   "name": "fo-seats-kept: 2 ",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": " 2 ",
-    },
-    "where": "kept = ' 2 '",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not " 2 "",
   },
 }
 `;
@@ -6107,10 +6093,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept: 2  2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": " 2 ",
-    },
-    "where": "kept = ' 2 '",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not " 2 "",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6120,12 +6105,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:+3 1`] =
   "name": "fo-seats-kept:+3",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": "+3",
-    },
-    "where": "kept = '+3'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "+3"",
   },
 }
 `;
@@ -6137,10 +6118,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:+3 2`] =
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": "+3",
-    },
-    "where": "kept = '+3'",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "+3"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6150,12 +6130,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:-4 1`] =
   "name": "fo-seats-kept:-4",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": "-4",
-    },
-    "where": "kept = '-4'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "-4"",
   },
 }
 `;
@@ -6167,10 +6143,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:-4 2`] =
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": "-4",
-    },
-    "where": "kept = '-4'",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "-4"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6210,12 +6185,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:90071992
   "name": "fo-seats-kept:9007199254740992",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": "9007199254740992",
-    },
-    "where": "kept = '9007199254740992'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "9007199254740992"",
   },
 }
 `;
@@ -6227,10 +6198,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:90071992
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": "9007199254740992",
-    },
-    "where": "kept = '9007199254740992'",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "9007199254740992"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6240,12 +6210,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:1.5 1`] 
   "name": "fo-seats-kept:1.5",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": "1.5",
-    },
-    "where": "kept = '1.5'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "1.5"",
   },
 }
 `;
@@ -6257,10 +6223,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:1.5 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": "1.5",
-    },
-    "where": "kept = '1.5'",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "1.5"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6270,12 +6235,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:abc 1`] 
   "name": "fo-seats-kept:abc",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": "abc",
-    },
-    "where": "kept = 'abc'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "abc"",
   },
 }
 `;
@@ -6287,10 +6248,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:abc 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": "abc",
-    },
-    "where": "kept = 'abc'",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "abc"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6300,12 +6260,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:a'b 1`] 
   "name": "fo-seats-kept:a'b",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": "a'b",
-    },
-    "where": "kept = 'a''b'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "a'b"",
   },
 }
 `;
@@ -6317,10 +6273,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:a'b 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": "a'b",
-    },
-    "where": "kept = 'a''b'",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "a'b"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6356,12 +6311,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:2026-02-
   "name": "fo-seats-kept:2026-02-29",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": "2026-02-29",
-    },
-    "where": "kept = '2026-02-29'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2026-02-29"",
   },
 }
 `;
@@ -6373,10 +6324,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:2026-02-
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": "2026-02-29",
-    },
-    "where": "kept = '2026-02-29'",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2026-02-29"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6386,12 +6336,8 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:2024-02-
   "name": "fo-seats-kept:2024-02-29",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "kept": "2024-02-29",
-    },
-    "where": "kept = '2024-02-29'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2024-02-29"",
   },
 }
 `;
@@ -6403,10 +6349,9 @@ exports[`every name resolves as the framework resolved it fo-seats-kept:2024-02-
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "kept": "2024-02-29",
-    },
-    "where": "kept = '2024-02-29'",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2024-02-29"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -6472,10 +6417,8 @@ exports[`every name resolves as the framework resolved it fo-seats-upto: 2  1`] 
   "name": "fo-seats-upto: 2 ",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {},
-    "where": "kept <= ' 2 '",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not " 2 "",
   },
 }
 `;
@@ -6487,8 +6430,9 @@ exports[`every name resolves as the framework resolved it fo-seats-upto: 2  2`] 
   "scope": {
     "at": null,
     "mode": "list",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not " 2 "",
     "values": {},
-    "where": "kept <= ' 2 '",
+    "where": "FALSE",
   },
 }
 `;
@@ -6498,10 +6442,8 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:+3 1`] =
   "name": "fo-seats-upto:+3",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {},
-    "where": "kept <= '+3'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "+3"",
   },
 }
 `;
@@ -6513,8 +6455,9 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:+3 2`] =
   "scope": {
     "at": null,
     "mode": "list",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "+3"",
     "values": {},
-    "where": "kept <= '+3'",
+    "where": "FALSE",
   },
 }
 `;
@@ -6524,10 +6467,8 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:-4 1`] =
   "name": "fo-seats-upto:-4",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {},
-    "where": "kept <= '-4'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "-4"",
   },
 }
 `;
@@ -6539,8 +6480,9 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:-4 2`] =
   "scope": {
     "at": null,
     "mode": "list",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "-4"",
     "values": {},
-    "where": "kept <= '-4'",
+    "where": "FALSE",
   },
 }
 `;
@@ -6576,10 +6518,8 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:90071992
   "name": "fo-seats-upto:9007199254740992",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {},
-    "where": "kept <= '9007199254740992'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "9007199254740992"",
   },
 }
 `;
@@ -6591,8 +6531,9 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:90071992
   "scope": {
     "at": null,
     "mode": "list",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "9007199254740992"",
     "values": {},
-    "where": "kept <= '9007199254740992'",
+    "where": "FALSE",
   },
 }
 `;
@@ -6602,10 +6543,8 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:1.5 1`] 
   "name": "fo-seats-upto:1.5",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {},
-    "where": "kept <= '1.5'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "1.5"",
   },
 }
 `;
@@ -6617,8 +6556,9 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:1.5 2`] 
   "scope": {
     "at": null,
     "mode": "list",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "1.5"",
     "values": {},
-    "where": "kept <= '1.5'",
+    "where": "FALSE",
   },
 }
 `;
@@ -6628,10 +6568,8 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:abc 1`] 
   "name": "fo-seats-upto:abc",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {},
-    "where": "kept <= 'abc'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "abc"",
   },
 }
 `;
@@ -6643,8 +6581,9 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:abc 2`] 
   "scope": {
     "at": null,
     "mode": "list",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "abc"",
     "values": {},
-    "where": "kept <= 'abc'",
+    "where": "FALSE",
   },
 }
 `;
@@ -6654,10 +6593,8 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:a'b 1`] 
   "name": "fo-seats-upto:a'b",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {},
-    "where": "kept <= 'a''b'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "a'b"",
   },
 }
 `;
@@ -6669,8 +6606,9 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:a'b 2`] 
   "scope": {
     "at": null,
     "mode": "list",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "a'b"",
     "values": {},
-    "where": "kept <= 'a''b'",
+    "where": "FALSE",
   },
 }
 `;
@@ -6706,10 +6644,8 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:2026-02-
   "name": "fo-seats-upto:2026-02-29",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {},
-    "where": "kept <= '2026-02-29'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2026-02-29"",
   },
 }
 `;
@@ -6721,8 +6657,9 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:2026-02-
   "scope": {
     "at": null,
     "mode": "list",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2026-02-29"",
     "values": {},
-    "where": "kept <= '2026-02-29'",
+    "where": "FALSE",
   },
 }
 `;
@@ -6732,10 +6669,8 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:2024-02-
   "name": "fo-seats-upto:2024-02-29",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {},
-    "where": "kept <= '2024-02-29'",
+    "code": "22P02",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2024-02-29"",
   },
 }
 `;
@@ -6747,8 +6682,9 @@ exports[`every name resolves as the framework resolved it fo-seats-upto:2024-02-
   "scope": {
     "at": null,
     "mode": "list",
+    "refused": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2024-02-29"",
     "values": {},
-    "where": "kept <= '2024-02-29'",
+    "where": "FALSE",
   },
 }
 `;
@@ -7170,12 +7106,8 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:+3 1`]
   "name": "fo-seats-wished:+3",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "wishes": "+3",
-    },
-    "where": "wishes = '+3'",
+    "code": "22P02",
+    "error": "wishes must be JSON, not "+3"",
   },
 }
 `;
@@ -7187,10 +7119,9 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:+3 2`]
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "wishes": "+3",
-    },
-    "where": "wishes = '+3'",
+    "refused": "wishes must be JSON, not "+3"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -7320,12 +7251,8 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:a'b 1`
   "name": "fo-seats-wished:a'b",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "wishes": "a'b",
-    },
-    "where": "wishes = 'a''b'",
+    "code": "22P02",
+    "error": "wishes must be JSON, not "a'b"",
   },
 }
 `;
@@ -7337,10 +7264,9 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:a'b 2`
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "wishes": "a'b",
-    },
-    "where": "wishes = 'a''b'",
+    "refused": "wishes must be JSON, not "a'b"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -7376,12 +7302,8 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:2026-0
   "name": "fo-seats-wished:2026-02-29",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "wishes": "2026-02-29",
-    },
-    "where": "wishes = '2026-02-29'",
+    "code": "22P02",
+    "error": "wishes must be JSON, not "2026-02-29"",
   },
 }
 `;
@@ -7393,10 +7315,9 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:2026-0
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "wishes": "2026-02-29",
-    },
-    "where": "wishes = '2026-02-29'",
+    "refused": "wishes must be JSON, not "2026-02-29"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -7406,12 +7327,8 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:2024-0
   "name": "fo-seats-wished:2024-02-29",
   "refuse": true,
   "scope": {
-    "at": null,
-    "mode": "list",
-    "values": {
-      "wishes": "2024-02-29",
-    },
-    "where": "wishes = '2024-02-29'",
+    "code": "22P02",
+    "error": "wishes must be JSON, not "2024-02-29"",
   },
 }
 `;
@@ -7423,10 +7340,9 @@ exports[`every name resolves as the framework resolved it fo-seats-wished:2024-0
   "scope": {
     "at": null,
     "mode": "list",
-    "values": {
-      "wishes": "2024-02-29",
-    },
-    "where": "wishes = '2024-02-29'",
+    "refused": "wishes must be JSON, not "2024-02-29"",
+    "values": {},
+    "where": "FALSE",
   },
 }
 `;
@@ -15822,6 +15738,14 @@ DECLARE
 BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      IF p_refuse THEN RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%s"', v_s1));
+    END;
+  END IF;
   IF v_s1 IS NOT NULL THEN v_where := v_where || CASE WHEN v_where <> '' THEN ' AND ' ELSE '' END || format('%I = %L', 'kept', v_s1); END IF;
   IF v_s1 IS NOT NULL THEN v_values := v_values || jsonb_build_object('kept', v_s1); END IF;
   IF v_where = '' THEN v_where := 'TRUE'; END IF;
@@ -15841,6 +15765,14 @@ DECLARE
 BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      IF p_refuse THEN RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%s"', v_s1));
+    END;
+  END IF;
   IF v_s1 IS NOT NULL THEN v_where := v_where || CASE WHEN v_where <> '' THEN ' AND ' ELSE '' END || format('%I <= %L', 'kept', v_s1); END IF;
   IF v_where = '' THEN v_where := 'TRUE'; END IF;
   RETURN jsonb_build_object('where', v_where, 'values', v_values, 'mode', CASE WHEN v_values ? 'id' THEN 'single' ELSE 'list' END, 'at', v_at);
@@ -15885,6 +15817,14 @@ DECLARE
 BEGIN
   v_parts := string_to_array(substring(p_name FROM 17), ':');
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::JSONB;
+    EXCEPTION WHEN invalid_text_representation THEN
+      IF p_refuse THEN RAISE EXCEPTION 'wishes must be JSON, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('wishes must be JSON, not "%s"', v_s1));
+    END;
+  END IF;
   IF v_s1 IS NOT NULL THEN v_where := v_where || CASE WHEN v_where <> '' THEN ' AND ' ELSE '' END || format('%I = %L', 'wishes', v_s1); END IF;
   IF v_s1 IS NOT NULL THEN v_values := v_values || jsonb_build_object('wishes', v_s1); END IF;
   IF v_where = '' THEN v_where := 'TRUE'; END IF;

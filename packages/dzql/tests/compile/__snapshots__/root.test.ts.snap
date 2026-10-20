@@ -273,7 +273,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-kept:maybe",
   "there": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
 }
 `;
@@ -327,7 +327,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-wished:abc",
   "there": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
 }
 `;
@@ -1875,7 +1875,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-kept:+3",
   "there": {
-    "error": "invalid input syntax for type boolean: "+3"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "+3"",
   },
 }
 `;
@@ -1896,7 +1896,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-kept:9007199254740992",
   "there": {
-    "error": "invalid input syntax for type boolean: "9007199254740992"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "9007199254740992"",
   },
 }
 `;
@@ -1905,7 +1905,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-kept:1.5",
   "there": {
-    "error": "invalid input syntax for type boolean: "1.5"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "1.5"",
   },
 }
 `;
@@ -1914,7 +1914,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-kept:abc",
   "there": {
-    "error": "invalid input syntax for type boolean: "abc"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "abc"",
   },
 }
 `;
@@ -1935,7 +1935,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-kept:2026-02-30",
   "there": {
-    "error": "invalid input syntax for type boolean: "2026-02-30"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2026-02-30"",
   },
 }
 `;
@@ -1956,7 +1956,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-upto:+3",
   "there": {
-    "error": "invalid input syntax for type boolean: "+3"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "+3"",
   },
 }
 `;
@@ -1977,7 +1977,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-upto:9007199254740992",
   "there": {
-    "error": "invalid input syntax for type boolean: "9007199254740992"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "9007199254740992"",
   },
 }
 `;
@@ -1986,7 +1986,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-upto:1.5",
   "there": {
-    "error": "invalid input syntax for type boolean: "1.5"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "1.5"",
   },
 }
 `;
@@ -1995,7 +1995,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-upto:abc",
   "there": {
-    "error": "invalid input syntax for type boolean: "abc"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "abc"",
   },
 }
 `;
@@ -2016,7 +2016,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-upto:2026-02-30",
   "there": {
-    "error": "invalid input syntax for type boolean: "2026-02-30"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2026-02-30"",
   },
 }
 `;
@@ -2112,7 +2112,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-wished:+3",
   "there": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "+3"",
   },
 }
 `;
@@ -2169,7 +2169,7 @@ exports[`on the seed, every root is there where the framework finds it fo-seats-
 {
   "name": "fo-seats-wished:2026-02-30",
   "there": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "2026-02-30"",
   },
 }
 `;
@@ -4401,7 +4401,7 @@ exports[`after writes that close and remove roots, still fo-seats-kept:maybe 1`]
 {
   "name": "fo-seats-kept:maybe",
   "there": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
 }
 `;
@@ -4455,7 +4455,7 @@ exports[`after writes that close and remove roots, still fo-seats-wished:abc 1`]
 {
   "name": "fo-seats-wished:abc",
   "there": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
 }
 `;
@@ -6007,7 +6007,7 @@ exports[`after writes that close and remove roots, still fo-seats-kept:+3 1`] = 
 {
   "name": "fo-seats-kept:+3",
   "there": {
-    "error": "invalid input syntax for type boolean: "+3"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "+3"",
   },
 }
 `;
@@ -6028,7 +6028,7 @@ exports[`after writes that close and remove roots, still fo-seats-kept:900719925
 {
   "name": "fo-seats-kept:9007199254740992",
   "there": {
-    "error": "invalid input syntax for type boolean: "9007199254740992"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "9007199254740992"",
   },
 }
 `;
@@ -6037,7 +6037,7 @@ exports[`after writes that close and remove roots, still fo-seats-kept:1.5 1`] =
 {
   "name": "fo-seats-kept:1.5",
   "there": {
-    "error": "invalid input syntax for type boolean: "1.5"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "1.5"",
   },
 }
 `;
@@ -6046,7 +6046,7 @@ exports[`after writes that close and remove roots, still fo-seats-kept:abc 1`] =
 {
   "name": "fo-seats-kept:abc",
   "there": {
-    "error": "invalid input syntax for type boolean: "abc"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "abc"",
   },
 }
 `;
@@ -6067,7 +6067,7 @@ exports[`after writes that close and remove roots, still fo-seats-kept:2026-02-3
 {
   "name": "fo-seats-kept:2026-02-30",
   "there": {
-    "error": "invalid input syntax for type boolean: "2026-02-30"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2026-02-30"",
   },
 }
 `;
@@ -6088,7 +6088,7 @@ exports[`after writes that close and remove roots, still fo-seats-upto:+3 1`] = 
 {
   "name": "fo-seats-upto:+3",
   "there": {
-    "error": "invalid input syntax for type boolean: "+3"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "+3"",
   },
 }
 `;
@@ -6109,7 +6109,7 @@ exports[`after writes that close and remove roots, still fo-seats-upto:900719925
 {
   "name": "fo-seats-upto:9007199254740992",
   "there": {
-    "error": "invalid input syntax for type boolean: "9007199254740992"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "9007199254740992"",
   },
 }
 `;
@@ -6118,7 +6118,7 @@ exports[`after writes that close and remove roots, still fo-seats-upto:1.5 1`] =
 {
   "name": "fo-seats-upto:1.5",
   "there": {
-    "error": "invalid input syntax for type boolean: "1.5"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "1.5"",
   },
 }
 `;
@@ -6127,7 +6127,7 @@ exports[`after writes that close and remove roots, still fo-seats-upto:abc 1`] =
 {
   "name": "fo-seats-upto:abc",
   "there": {
-    "error": "invalid input syntax for type boolean: "abc"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "abc"",
   },
 }
 `;
@@ -6148,7 +6148,7 @@ exports[`after writes that close and remove roots, still fo-seats-upto:2026-02-3
 {
   "name": "fo-seats-upto:2026-02-30",
   "there": {
-    "error": "invalid input syntax for type boolean: "2026-02-30"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "2026-02-30"",
   },
 }
 `;
@@ -6244,7 +6244,7 @@ exports[`after writes that close and remove roots, still fo-seats-wished:+3 1`] 
 {
   "name": "fo-seats-wished:+3",
   "there": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "+3"",
   },
 }
 `;
@@ -6301,7 +6301,7 @@ exports[`after writes that close and remove roots, still fo-seats-wished:2026-02
 {
   "name": "fo-seats-wished:2026-02-30",
   "there": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "2026-02-30"",
   },
 }
 `;
@@ -8428,6 +8428,13 @@ DECLARE
 BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."kept" = v_s1::BOOLEAN));
 END;
 $$ LANGUAGE plpgsql STABLE;
@@ -8441,6 +8448,13 @@ DECLARE
 BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."kept" <= v_s1::BOOLEAN));
 END;
 $$ LANGUAGE plpgsql STABLE;
@@ -8472,6 +8486,13 @@ DECLARE
 BEGIN
   v_parts := string_to_array(substring(p_name FROM 17), ':');
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::JSONB;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'wishes must be JSON, not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."wishes" = v_s1::JSONB));
 END;
 $$ LANGUAGE plpgsql STABLE;

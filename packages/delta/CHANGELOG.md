@@ -67,6 +67,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   said them as its keys came, with what it left out before the values; Postgres keeps no value's
   key order (jsonb). Each refusal's words are as they were.
 
+- **The case suite asks the last refusals in their words, and the law every refusal's** (20
+  October, root #135). `refusals` asks a parent key that is text and no number (`case_shelves
+  "x" names no row: an id is a whole number`, the sentence alone, for a field and for a row
+  replaced whole) and a time the calendar has not (`2026-02-30`, `2026-13-01T10:00:00Z`:
+  `/case_shelves/checked: checked must be an ISO-8601 time`); `errorCodeCases` a document whose
+  root is not there, opened (`Not found: no case_rooms row 3. Make the row first, or declare the
+  document implied: true`) and written through (`Document not found: case-room:3 (its root,
+  /case_rooms/3, is not there)`); `permissionCases` a row handed away whole (`post:1: that would
+  take it out of your reach (its owns: @author_id)`, and venue's two-hop path). The path cases ask
+  whole what they asked by code: a name's boolean, integer or json value its column cannot take
+  (`kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"`, `wishes
+  must be JSON, not "abc"`), opened and written through; a time that is none; a parent key that is
+  text and no number; an empty write through a document not there. **The law asks each step's
+  refusal whole** (`take` in `src/cases/law.ts`): its code and its words, where it asked the code
+  alone, so a backend's words are held to SQLite's over every generated write (20 seeds of 300
+  steps agree on SQLite, the JSON file and PGlite).
+
 - **A socket server writes its own memory document** (20 October, #88): `registerMemory` returns
   `write(name, ops)` beside `peek` and `forget`, applied, versioned and told to every holder as a
   `delta` from this process is, and answered as one is (`MemoryAnswer`: `{ result: { ack,
@@ -110,6 +127,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     each now an open item in `todo.jsonl` (#88-#91) with the change that would remove it.
 
 ### Fixed
+
+- **A write through a single document whose root is not there says so** (20 October, root
+  #135): SQLite and the JSON file answered a write through a document not open here, whose root
+  is not there (never there, or taken out since), `Doc not loaded: open <doc> before writing to it`
+  (404); it is `Document not found: <doc> (its root, /<root>/<id>, is not there)`, the words a
+  write through one open says, and Postgres's. A document there but not opened here is `Doc not
+  loaded` as before.
 
 - **`everyone<P>()` takes an app's `Person` declared as an interface** (20 October, #90): its `P`
   is constrained to `{ id: number }`, as `linkAuth`'s is on the server, where it was

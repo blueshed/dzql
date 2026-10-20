@@ -832,7 +832,7 @@ exports[`on the seed, every name may write what the framework says it may fo-sea
 exports[`on the seed, every name may write what the framework says it may fo-seats-kept:maybe 1`] = `
 {
   "allowed": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -973,7 +973,7 @@ exports[`on the seed, every name may write what the framework says it may fo-sea
 exports[`on the seed, every name may write what the framework says it may fo-seats-wished:abc 1`] = `
 {
   "allowed": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -3014,7 +3014,7 @@ exports[`after writes of every kind, still fo-seats-kept:1 1`] = `
 exports[`after writes of every kind, still fo-seats-kept:maybe 1`] = `
 {
   "allowed": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "maybe"",
   },
   "name": "fo-seats-kept:maybe",
 }
@@ -3164,7 +3164,7 @@ exports[`after writes of every kind, still fo-seats-wished:5 1`] = `
 exports[`after writes of every kind, still fo-seats-wished:abc 1`] = `
 {
   "allowed": {
-    "error": "invalid input syntax for type json",
+    "error": "wishes must be JSON, not "abc"",
   },
   "name": "fo-seats-wished:abc",
 }
@@ -4877,6 +4877,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   IF NOT v_single THEN
     -- a list holds its included collections whole; its root rows by the name's conditions
     IF p_coll IS DISTINCT FROM 'seats' THEN RETURN TRUE; END IF;
@@ -4912,6 +4919,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   IF NOT v_single THEN
     -- a list holds its included collections whole; its root rows by the name's conditions
     IF p_coll IS DISTINCT FROM 'seats' THEN RETURN TRUE; END IF;
@@ -4987,6 +5001,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 17), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::JSONB;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'wishes must be JSON, not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
   IF NOT v_single THEN
     -- a list holds its included collections whole; its root rows by the name's conditions
     IF p_coll IS DISTINCT FROM 'seats' THEN RETURN TRUE; END IF;

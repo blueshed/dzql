@@ -106,7 +106,8 @@ describe("row-level security beneath the compiled functions", () => {
     await admin.query("UPDATE posts SET title = 'Ben''s' WHERE id = 2");
 
     const held = await serve(app);
-    expect((await held(ann).call("open", { doc: "post:2" })).error).toEqual(NOT_FOUND);   // the row is not there for her
+    // the row is not there for her: not found, as a document whose root is not there (in delta's words)
+    expect((await held(ann).call("open", { doc: "post:2" })).error).toEqual({ code: 404, message: "Not found: no posts row 2. Make the row first, or declare the document implied: true" });
     expect((await held(ann).call("delta", write)).error?.code).toBe(404);
     expect(await title(2)).toBe("Ben's");
     expect((await held(ben).call("open", { doc: "post:2" })).result.posts.title).toBe("Ben's");   // and still is for him

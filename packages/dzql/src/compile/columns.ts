@@ -56,7 +56,7 @@ const MUST: Record<string, [string, (v: string) => string]> = {
   real: ["a number", (v) => `jsonb_typeof(${v}) = 'number'`],
   boolean: ["a boolean", (v) => `jsonb_typeof(${v}) = 'boolean'`],
   timestamptz: ["an ISO-8601 time", (v) =>
-    `jsonb_typeof(${v}) = 'string' AND (${v} #>> '{}') ~ '^\\d{4}-\\d{2}-\\d{2}([T ]([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d{1,6})?)?(Z|[+-]([01]\\d|2[0-3])(:?[0-5]\\d)?)?)?$'`],
+    `jsonb_typeof(${v}) = 'string' AND (${v} #>> '{}') ~ '^\\d{4}-\\d{2}-\\d{2}([T ]([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d{1,6})?)?(Z|[+-]([01]\\d|2[0-3])(:?[0-5]\\d)?)?)?$' AND _delta_on_calendar(${v} #>> '{}')`],   // and a day the calendar has, as delta's isIsoTime asks it
 };
 
 /**

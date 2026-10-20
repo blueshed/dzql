@@ -276,6 +276,16 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
   END IF;`);
     } else if (def!.type === "timestamptz") {
       check(dayOf(v, key, refuse));
+    } else if (def!.type === "boolean" || def!.type === "json") {
+      // as the column casts it (a boolean as Postgres reads one; JSON), in delta's words
+      const what = def!.type === "boolean" ? `a boolean (true/false, yes/no, on/off, 1/0, or a prefix)` : "JSON";
+      check(`IF ${v} IS NOT NULL THEN
+    BEGIN
+      PERFORM ${v}::${columnSqlType(def!)};
+    EXCEPTION WHEN invalid_text_representation THEN
+      ${refuse(`${key} must be ${what}, not "%"`, v)}
+    END;
+  END IF;`);
     }
     conds.push(`(${v} IS NULL OR t.${q(key)} ${sqlOp} ${v}::${columnSqlType(def!)})`);
     where(v, `format('%I ${op} %L', ${lit(key)}, ${v})`);

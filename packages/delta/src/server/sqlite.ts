@@ -24,7 +24,7 @@ import type { WsServer } from "./server";
 import { trackSubscribe, trackUnsubscribe, onClientDrop, failure } from "./server";
 import { authless, isAuthError, ownerless, type DeltaAuth } from "./auth";
 import { assertOnePrefix, assertOwned, createCustomDocs, isPromise, NOT_FOUND, type CustomDoc } from "./custom";
-import { type DeltaOp, splitPath } from "../core";
+import { type DeltaOp, joinPath, splitPath } from "../core";
 import { createLogger } from "./logger";
 import { createLedger, ledgerWho, socketCursor } from "./ledger";
 import { assertScopeKeys, resolveScope, rowId, whereOf } from "./scope";
@@ -450,6 +450,11 @@ export function registerDocs<I = unknown>(
       // a name its root's columns cannot take is the writer's mistake (400), before it is a document not open
       try { whereOf(resolveScope(match.def, match.docId), keeping(db, schema.tables[match.def.root]!)); }
       catch (err: any) { if (typeof err.code === "number") return respond({ error: { code: err.code, message: err.message } }); }
+      // a single document whose root is not there is not found, in the words a write through one open says it (write.ts)
+      const scope = resolveScope(match.def, match.docId);
+      if (scope.mode === "single" && !match.def.implied && !readDoc(db, schema, match.def, scope)) {
+        return respond({ error: { code: 404, message: `Document not found: ${docName} (its root, ${joinPath(match.def.root, String(rowId(scope.id!)))}, is not there)` } });
+      }
       respond({ error: { code: 404, message: `Doc not loaded: open ${docName} before writing to it` } });
       return;
     }

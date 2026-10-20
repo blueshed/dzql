@@ -57,9 +57,10 @@ export function drivenCases(backend: () => PathBackend): void {
     test("a value is of its column's type on every backend: a time is ISO-8601 (400 for anything else, not a 500) and reads back in UTC as Postgres gives it; a parent key that is text and no number is a mistake (400) (review)", async () => {
       const b = backend();
       const copies = await openAll(b.process, ["fo-slots-of:1", "fo-seating:1", "fo-all-courses:"]);
-      const code = async (doc: string, ops: unknown[]) => (await b.process.call("delta", { doc, ops })).error?.code;
-      for (const starts of ["nope", "2021-02-30", "2021-01-01T24:00", "Jan 1 2021", 5]) {
-        expect({ starts, code: await code("fo-slots-of:1", [{ op: "add", path: "/slots/-", value: { starts } }]) }).toEqual({ starts, code: 400 });
+      const refused = async (doc: string, ops: unknown[]) => (await b.process.call("delta", { doc, ops })).error;
+      for (const starts of ["nope", "2021-02-30", "2021-13-01", "2021-01-01T24:00", "Jan 1 2021", 5]) {
+        expect({ starts, error: await refused("fo-slots-of:1", [{ op: "add", path: "/slots/-", value: { starts } }]) })
+          .toEqual({ starts, error: { code: 400, message: "/slots/-/starts: starts must be an ISO-8601 time" } });
       }
       const { ops } = await write(b.process, "fo-slots-of:1", [
         { op: "add", path: "/slots/-", value: { starts: "2021-01-01T10:00:00+02:00", price: 3 } },
@@ -67,10 +68,12 @@ export function drivenCases(backend: () => PathBackend): void {
         { op: "add", path: "/slots/-", value: { starts: "2021-01-01 10:00:00.5" } },
       ]);
       expect(ops.map((o: any) => o.value.starts)).toEqual(["2021-01-01T08:00:00+00:00", "2021-01-01T00:00:00+00:00", "2021-01-01T10:00:00.5+00:00"]);
-      expect(await code("fo-seating:1", [{ op: "add", path: "/seats/-", value: { table_no: 5, kept: 1 } }])).toBe(400);
-      expect(await code("fo-seating:1", [{ op: "add", path: "/seats/-", value: { table_no: "5", kept: true } }])).toBe(400);
-      expect(await code("fo-seating:1", [{ op: "replace", path: "/seats/1/weddings_id", value: "abc" }])).toBe(400);
-      expect(await code("fo-all-courses:", [{ op: "add", path: "/courses/-", value: { name: "x", weddings_id: "abc" } }])).toBe(400);
+      expect(await refused("fo-seating:1", [{ op: "add", path: "/seats/-", value: { table_no: 5, kept: 1 } }])).toEqual({ code: 400, message: "/seats/-/kept: kept must be a boolean" });
+      expect(await refused("fo-seating:1", [{ op: "add", path: "/seats/-", value: { table_no: "5", kept: true } }])).toEqual({ code: 400, message: "/seats/-/table_no: table_no must be an integer" });
+      // a parent key that is text and no number names no row, the sentence alone
+      const noRow = { code: 400, message: `weddings "abc" names no row: an id is a whole number` };
+      expect(await refused("fo-seating:1", [{ op: "replace", path: "/seats/1/weddings_id", value: "abc" }])).toEqual(noRow);
+      expect(await refused("fo-all-courses:", [{ op: "add", path: "/courses/-", value: { name: "x", weddings_id: "abc" } }])).toEqual(noRow);
       await assertCopiesHold(b, copies);
     });
 

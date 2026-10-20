@@ -400,7 +400,7 @@ exports[`on the seed, every row is held by the documents the framework names sea
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": null,
 }
@@ -410,7 +410,7 @@ exports[`on the seed, every row is held by the documents the framework names sea
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-board:1",
 }
@@ -420,7 +420,7 @@ exports[`on the seed, every row is held by the documents the framework names sea
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-all-courses:",
 }
@@ -430,7 +430,7 @@ exports[`on the seed, every row is held by the documents the framework names sea
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-guest:1:a@x",
 }
@@ -440,7 +440,7 @@ exports[`on the seed, every row is held by the documents the framework names sea
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-board:99",
 }
@@ -450,7 +450,7 @@ exports[`on the seed, every row is held by the documents the framework names sea
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-course:2",
 }
@@ -1948,7 +1948,7 @@ exports[`after writes of every kind, still seats 1`] = `
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": null,
 }
@@ -1958,7 +1958,7 @@ exports[`after writes of every kind, still seats 2`] = `
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-board:1",
 }
@@ -1968,7 +1968,7 @@ exports[`after writes of every kind, still seats 3`] = `
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-all-courses:",
 }
@@ -1978,7 +1978,7 @@ exports[`after writes of every kind, still seats 4`] = `
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-guest:1:a@x",
 }
@@ -1988,7 +1988,7 @@ exports[`after writes of every kind, still seats 5`] = `
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-board:99",
 }
@@ -1998,7 +1998,7 @@ exports[`after writes of every kind, still seats 6`] = `
 {
   "coll": "seats",
   "holders": {
-    "error": "invalid input syntax for type boolean: "maybe"",
+    "error": "cannot call populate_composite on a scalar",
   },
   "writer": "fo-course:2",
 }

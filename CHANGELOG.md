@@ -56,6 +56,19 @@ differ, fixed where each differs.
   through the step but `health` (an unknown page opens on the box), and the step writes no test
   of the message's.
 
+### The last refusals in one set of words, and the law asks them all (20 October, root #135)
+
+- dzql's Postgres says a row handed away with its document's path (`... out of your reach (its
+  owns: <path>)`, row-level security's refusal too), a parent key that is text and no number (`<coll>
+  "x" names no row: an id is a whole number`), a document opened whose root is not there, a name's
+  boolean or json value its column cannot take and a time off the calendar as delta's SQLite does;
+  SQLite says a write through a document whose root is not there as Postgres does (`Document not
+  found: ...`, not `Doc not loaded`); dzql's `validateOps` says what `delta_apply` says. Found by
+  comparing every refusal delta's case suites raise on SQLite and on Postgres (PGlite and the
+  server): each of the 325 is now said in the same words, and the law asks each step's refusal
+  whole. Left, root #136: a time zone past ±15:59 and a year 0000, which SQLite keeps and Postgres
+  cannot. dzql's and delta's CHANGELOGs have the detail.
+
 ### A document's refusals, and an op wrong in several ways, in one set of words (20 October, root #134)
 
 - dzql's Postgres says a row the document does not hold (`Row not found: ...`), another root row

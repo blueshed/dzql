@@ -1111,9 +1111,55 @@ exports[`on the seed, every name holds what the framework says it holds fo-seats
 
 exports[`on the seed, every name holds what the framework says it holds fo-seats-kept:maybe 1`] = `
 {
-  "holds": {
-    "error": "invalid input syntax for type boolean: "maybe"",
-  },
+  "holds": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ],
   "name": "fo-seats-kept:maybe",
 }
 `;
@@ -1340,9 +1386,55 @@ exports[`on the seed, every name holds what the framework says it holds fo-seats
 
 exports[`on the seed, every name holds what the framework says it holds fo-seats-wished:abc 1`] = `
 {
-  "holds": {
-    "error": "invalid input syntax for type json",
-  },
+  "holds": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ],
   "name": "fo-seats-wished:abc",
 }
 `;
@@ -4223,9 +4315,58 @@ exports[`after writes of every kind, still fo-seats-kept:1 1`] = `
 
 exports[`after writes of every kind, still fo-seats-kept:maybe 1`] = `
 {
-  "holds": {
-    "error": "invalid input syntax for type boolean: "maybe"",
-  },
+  "holds": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ],
   "name": "fo-seats-kept:maybe",
 }
 `;
@@ -4464,9 +4605,58 @@ exports[`after writes of every kind, still fo-seats-wished:5 1`] = `
 
 exports[`after writes of every kind, still fo-seats-wished:abc 1`] = `
 {
-  "holds": {
-    "error": "invalid input syntax for type json",
-  },
+  "holds": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ],
   "name": "fo-seats-wished:abc",
 }
 `;
@@ -6613,6 +6803,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RETURN FALSE;
+    END;
+  END IF;
   CASE p_coll
     WHEN 'seats' THEN
       IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
@@ -6635,6 +6832,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 15), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::BOOLEAN;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RETURN FALSE;
+    END;
+  END IF;
   CASE p_coll
     WHEN 'seats' THEN
       IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
@@ -6684,6 +6888,13 @@ BEGIN
   v_parts := string_to_array(substring(p_name FROM 17), ':');
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    BEGIN
+      PERFORM v_s1::JSONB;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RETURN FALSE;
+    END;
+  END IF;
   CASE p_coll
     WHEN 'seats' THEN
       IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;

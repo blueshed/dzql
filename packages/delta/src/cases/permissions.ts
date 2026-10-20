@@ -111,15 +111,17 @@ export function permissionCases(name: string, backend: () => PermissionBackend):
       expect((await p.as(ben).call("open", { doc: "venue:1" })).error).toBeUndefined();
     });
 
-    test("a row is never handed away: a write that would take it out of the writer's reach is refused (403), and changes nothing", async () => {
+    test("a row is never handed away: a write that would take it out of the writer's reach is refused (403), in delta's words with its path, and changes nothing", async () => {
       const p = await backend().start(all);
       await p.as(ann).call("open", { doc: "post:1" });
       const given = await p.as(ann).call("delta", { doc: "post:1", ops: [{ op: "replace", path: "/posts/author_id", value: 2 }] });
-      expect(given.error?.code).toBe(403);
+      expect(given.error).toEqual({ code: 403, message: "post:1: that would take it out of your reach (its owns: @author_id)" });
       expect((await p.as(ann).call("open", { doc: "post:1" })).result.posts.author_id).toBe(1);
       expect((await p.as(ben).call("open", { doc: "post:1" })).error).toEqual(NOT_FOUND);
       await p.as(ann).call("open", { doc: "venue:1" });
-      expect((await p.as(ann).call("delta", { doc: "venue:1", ops: [{ op: "replace", path: "/venues/org_id", value: 2 }] })).error?.code).toBe(403);
+      expect((await p.as(ann).call("delta", { doc: "venue:1", ops: [{ op: "replace", path: "/venues/org_id", value: 2 }] })).error).toEqual({
+        code: 403, message: "venue:1: that would take it out of your reach (its owns: @org_id->members[org_id=$]{active}.person_id)",
+      });
     });
 
     test("removing one's own row is no handing away: the post goes", async () => {

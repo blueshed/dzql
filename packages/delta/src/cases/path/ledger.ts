@@ -273,7 +273,8 @@ export function ledgerCases(backend: () => PathBackend): void {
       }
       for (const name of ["maybe", "o", "onx"]) {
         await b.process.call("open", { doc: `fo-seats-kept:${name}` }); // refused here already (400): the write is asked on its own
-        expect({ name, code: (await b.process.call("delta", { doc: `fo-seats-kept:${name}`, ops: add })).error?.code }).toEqual({ name, code: 400 });
+        expect({ name, error: (await b.process.call("delta", { doc: `fo-seats-kept:${name}`, ops: add })).error })
+          .toEqual({ name, error: { code: 400, message: `kept must be a boolean (true/false, yes/no, on/off, 1/0, or a prefix), not "${name}"` } });
       }
       await expectTold(b, "fo-seating:1", told);
       await assertCopiesHold(b, copies);

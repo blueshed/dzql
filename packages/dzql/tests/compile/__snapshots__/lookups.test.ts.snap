@@ -252,6 +252,7 @@ exports[`every name's document, and names of none, as the framework finds it 1`]
       "tags",
       "notes",
     ],
+    "owns": null,
     "prefix": "fo-board:",
     "root_collection": "weddings",
     "scope": {},
@@ -272,6 +273,7 @@ exports[`every name's document, and names of none, as the framework finds it 2`]
       "tags",
       "notes",
     ],
+    "owns": null,
     "prefix": "fo-board:",
     "root_collection": "weddings",
     "scope": {},
@@ -292,6 +294,7 @@ exports[`every name's document, and names of none, as the framework finds it 3`]
       "tags",
       "notes",
     ],
+    "owns": null,
     "prefix": "fo-board:",
     "root_collection": "weddings",
     "scope": {},
@@ -312,6 +315,7 @@ exports[`every name's document, and names of none, as the framework finds it 4`]
       "tags",
       "notes",
     ],
+    "owns": null,
     "prefix": "fo-board:",
     "root_collection": "weddings",
     "scope": {},
@@ -329,6 +333,7 @@ exports[`every name's document, and names of none, as the framework finds it 5`]
       "courses",
       "drinks",
     ],
+    "owns": null,
     "prefix": "fo-menu:",
     "root_collection": "weddings",
     "scope": {},
@@ -343,6 +348,7 @@ exports[`every name's document, and names of none, as the framework finds it 6`]
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-household:",
     "root_collection": "households",
     "scope": {},
@@ -359,6 +365,7 @@ exports[`every name's document, and names of none, as the framework finds it 7`]
     "include": [
       "drinks",
     ],
+    "owns": null,
     "prefix": "fo-course:",
     "root_collection": "courses",
     "scope": {},
@@ -373,6 +380,7 @@ exports[`every name's document, and names of none, as the framework finds it 8`]
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-title:",
     "root_collection": "weddings",
     "scope": {},
@@ -389,6 +397,7 @@ exports[`every name's document, and names of none, as the framework finds it 9`]
     "include": [
       "tags",
     ],
+    "owns": null,
     "prefix": "fo-tagged:",
     "root_collection": "weddings",
     "scope": {},
@@ -405,6 +414,7 @@ exports[`every name's document, and names of none, as the framework finds it 10`
     "include": [
       "notes",
     ],
+    "owns": null,
     "prefix": "fo-notes:",
     "root_collection": "weddings",
     "scope": {},
@@ -419,6 +429,7 @@ exports[`every name's document, and names of none, as the framework finds it 11`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-all-courses:",
     "root_collection": "courses",
     "scope": {},
@@ -435,6 +446,7 @@ exports[`every name's document, and names of none, as the framework finds it 12`
     "include": [
       "drinks",
     ],
+    "owns": null,
     "prefix": "fo-catalog:",
     "root_collection": "courses",
     "scope": {},
@@ -449,6 +461,7 @@ exports[`every name's document, and names of none, as the framework finds it 13`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-courses-like:",
     "root_collection": "courses",
     "scope": {
@@ -467,6 +480,7 @@ exports[`every name's document, and names of none, as the framework finds it 14`
     "include": [
       "seats",
     ],
+    "owns": null,
     "prefix": "fo-seating:",
     "root_collection": "weddings",
     "scope": {},
@@ -481,6 +495,7 @@ exports[`every name's document, and names of none, as the framework finds it 15`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-seats-kept:",
     "root_collection": "seats",
     "scope": {
@@ -497,6 +512,7 @@ exports[`every name's document, and names of none, as the framework finds it 16`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-slots-of:",
     "root_collection": "slots",
     "scope": {
@@ -513,6 +529,7 @@ exports[`every name's document, and names of none, as the framework finds it 17`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-slots-by:",
     "root_collection": "slots",
     "scope": {
@@ -529,6 +546,7 @@ exports[`every name's document, and names of none, as the framework finds it 18`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-note:",
     "root_collection": "notes",
     "scope": {},
@@ -543,6 +561,7 @@ exports[`every name's document, and names of none, as the framework finds it 19`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-all-notes:",
     "root_collection": "notes",
     "scope": {},
@@ -559,6 +578,7 @@ exports[`every name's document, and names of none, as the framework finds it 20`
     "include": [
       "drinks",
     ],
+    "owns": null,
     "prefix": "fo-drinks:",
     "root_collection": "weddings",
     "scope": {},
@@ -576,6 +596,7 @@ exports[`every name's document, and names of none, as the framework finds it 21`
       "courses",
       "drinks",
     ],
+    "owns": null,
     "prefix": "fo-plan:",
     "root_collection": "weddings",
     "scope": {},
@@ -593,6 +614,7 @@ exports[`every name's document, and names of none, as the framework finds it 22`
       "courses",
       "drinks",
     ],
+    "owns": null,
     "prefix": "fo-plan:",
     "root_collection": "weddings",
     "scope": {},
@@ -609,6 +631,7 @@ exports[`every name's document, and names of none, as the framework finds it 23`
     "include": [
       "courses",
     ],
+    "owns": null,
     "prefix": "fo-weddings:",
     "root_collection": "weddings",
     "scope": {},
@@ -623,6 +646,7 @@ exports[`every name's document, and names of none, as the framework finds it 24`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-guest:",
     "root_collection": "households",
     "scope": {
@@ -640,6 +664,7 @@ exports[`every name's document, and names of none, as the framework finds it 25`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-seat-of:",
     "root_collection": "seats",
     "scope": {
@@ -657,6 +682,7 @@ exports[`every name's document, and names of none, as the framework finds it 26`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-all-households:",
     "root_collection": "households",
     "scope": {},
@@ -674,6 +700,7 @@ exports[`every name's document, and names of none, as the framework finds it 27`
       "households",
       "favours",
     ],
+    "owns": null,
     "prefix": "fo-party:",
     "root_collection": "weddings",
     "scope": {},
@@ -698,6 +725,7 @@ exports[`every name's document, and names of none, as the framework finds it 28`
       "households",
       "seats",
     ],
+    "owns": null,
     "prefix": "fo-slim:",
     "root_collection": "weddings",
     "scope": {},
@@ -712,6 +740,7 @@ exports[`every name's document, and names of none, as the framework finds it 29`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-notes-on:",
     "root_collection": "notes",
     "scope": {
@@ -730,6 +759,7 @@ exports[`every name's document, and names of none, as the framework finds it 30`
     "include": [
       "notes",
     ],
+    "owns": null,
     "prefix": "fo-board-on:",
     "root_collection": "weddings",
     "scope": {
@@ -749,6 +779,7 @@ exports[`every name's document, and names of none, as the framework finds it 31`
     "include": [
       "asks",
     ],
+    "owns": null,
     "prefix": "fo-asks:",
     "root_collection": "weddings",
     "scope": {},
@@ -763,6 +794,7 @@ exports[`every name's document, and names of none, as the framework finds it 32`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-pub-courses:",
     "root_collection": "courses",
     "scope": {},
@@ -818,6 +850,7 @@ exports[`every name's document, and names of none, as the framework finds it 38`
       "tags",
       "notes",
     ],
+    "owns": null,
     "prefix": "fo-board:",
     "root_collection": "weddings",
     "scope": {},
@@ -841,6 +874,7 @@ exports[`every name's document, and names of none, as the framework finds it 40`
     "include": [
       "notes",
     ],
+    "owns": null,
     "prefix": "fo-board-on:",
     "root_collection": "weddings",
     "scope": {
@@ -860,6 +894,7 @@ exports[`every name's document, and names of none, as the framework finds it 41`
     "include": [
       "notes",
     ],
+    "owns": null,
     "prefix": "fo-courses-noted-on:",
     "root_collection": "courses",
     "scope": {
@@ -883,6 +918,7 @@ exports[`every name's document, and names of none, as the framework finds it 43`
     "held": {},
     "implied": false,
     "include": [],
+    "owns": null,
     "prefix": "fo-all-courses:",
     "root_collection": "courses",
     "scope": {},
