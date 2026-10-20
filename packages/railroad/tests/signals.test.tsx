@@ -1,5 +1,5 @@
 import { describe, test, expect, spyOn } from "bun:test";
-import { signal, computed, effect, batch, untrack, pushDisposeScope, popDisposeScope } from "../src/signals";
+import { signal, computed, effect, batch, untrack, collection, pushDisposeScope, popDisposeScope } from "../src/signals";
 import type { ReadonlySignal } from "../src/signals";
 import { createElement, when, mount } from "../src/jsx";
 
@@ -125,6 +125,98 @@ describe("Signal.touch", () => {
     s.peek().items.push(3);
     s.touch();
     expect(runs).toBe(1);
+  });
+});
+
+describe("collection: a keyed list of rows, changed a row at a time", () => {
+  // Until 20 October a list changed in place was .touch()ed, which said that something changed but not
+  // which row, and one row was followed through a projection with { equals: () => false } that woke
+  // on every patch to any row (todos #4, #5). A collection replaces the row it changes, and at(key)
+  // is notified for its key alone.
+  type Job = { id: number; status: string };
+  const seed = (): Job[] => [{ id: 1, status: "queued" }, { id: 2, status: "queued" }];
+
+  test("put adds or replaces where the row is; patch replaces with a new object; remove takes it out", () => {
+    const jobs = collection((j: Job) => j.id, seed());
+    const first = jobs.peek()[0];
+    expect(jobs.put({ id: 3, status: "queued" })).toBeUndefined();
+    expect(jobs.patch(2, { status: "running" })).toEqual({ id: 2, status: "queued" });
+    expect(jobs.put({ id: 1, status: "passed" })).toBe(first!);
+    expect(jobs.peek()).toEqual([{ id: 1, status: "passed" }, { id: 2, status: "running" }, { id: 3, status: "queued" }]);
+    expect(jobs.patch(9, { status: "x" })).toBeUndefined(); // no such row: nothing
+    expect(jobs.remove(9)).toBeUndefined();
+    expect(jobs.remove(1)).toEqual({ id: 1, status: "passed" });
+    expect(jobs.peek().map((j) => j.id)).toEqual([2, 3]);
+  });
+
+  test("a change leaves the other rows the objects they were, and get() is a fresh array after it", () => {
+    const jobs = collection((j: Job) => j.id, seed());
+    const before = jobs.peek();
+    expect(jobs.peek()).toBe(before); // no change, no copy
+    jobs.patch(2, { status: "running" });
+    const after = jobs.peek();
+    expect(after).not.toBe(before);
+    expect(before[1]).toEqual({ id: 2, status: "queued" }); // what a reader was handed never changes
+    expect(after[0]).toBe(before[0]!);
+    expect(after[1]).not.toBe(before[1]!);
+  });
+
+  test("each change notifies once, and a projection of the rows follows it", () => {
+    const jobs = collection((j: Job) => j.id, seed());
+    let runs = 0;
+    const running = jobs.map((all) => all.filter((j) => j.status === "running").length);
+    const all = computed(() => jobs.get()); // the array itself: fresh on every change
+    effect(() => {
+      jobs.get();
+      runs++;
+    });
+    runs = 0;
+    jobs.patch(1, { status: "running" });
+    expect(runs).toBe(1);
+    expect(running.get()).toBe(1);
+    expect(all.get()[0]!.status).toBe("running");
+    jobs.set([{ id: 2, status: "running" }, { id: 4, status: "queued" }]);
+    expect(runs).toBe(2);
+    expect(running.get()).toBe(1);
+  });
+
+  test("at(key) is notified when its row changes, and not when another does", () => {
+    const jobs = collection((j: Job) => j.id, seed());
+    const one = jobs.at(1);
+    expect(jobs.at(1)).toBe(one); // one signal a key
+    let runs = 0;
+    effect(() => {
+      one.get();
+      runs++;
+    });
+    runs = 0;
+    jobs.patch(2, { status: "running" });
+    jobs.put({ id: 3, status: "queued" });
+    expect(runs).toBe(0);
+    jobs.patch(1, { status: "running" });
+    expect(runs).toBe(1);
+    expect(one.peek()).toEqual({ id: 1, status: "running" });
+    jobs.remove(1);
+    expect(one.peek()).toBeNull();
+    jobs.put({ id: 1, status: "queued" }); // put again: followed again
+    expect(one.peek()).toEqual({ id: 1, status: "queued" });
+    jobs.set([{ id: 2, status: "passed" }]); // a snapshot without it: gone
+    expect(one.peek()).toBeNull();
+    expect(jobs.at(7).peek()).toBeNull(); // asked before it exists
+    jobs.put({ id: 7, status: "queued" });
+    expect(jobs.at(7).peek()).toEqual({ id: 7, status: "queued" });
+  });
+
+  test("at(key) and the rows agree when anything runs", () => {
+    const jobs = collection((j: Job) => j.id, seed());
+    const seen: string[] = [];
+    effect(() => {
+      const row = jobs.at(1).get();
+      seen.push(`${row?.status}:${jobs.get().find((j) => j.id === 1)?.status}`);
+    });
+    jobs.patch(1, { status: "running" });
+    jobs.remove(1);
+    expect(seen).toEqual(["queued:queued", "running:running", "undefined:undefined"]);
   });
 });
 

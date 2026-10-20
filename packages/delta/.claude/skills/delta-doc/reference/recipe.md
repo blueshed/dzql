@@ -78,7 +78,7 @@ export function RoomView() {
   return (
     <>
       <div id="log">
-        {list(messages, (m) => m.id, (m$) => <div><b>{m$.map((m) => m.author)}</b> <span>{m$.map((m) => m.text)}</span></div>)}
+        {list(messages, (m) => m.id, ({ author, text }) => <div><b>{author}</b> <span>{text}</span></div>)}
       </div>
       <form id="say" onsubmit={say}><input name="text" autocomplete="off" autofocus /> <button>Send</button></form>
     </>

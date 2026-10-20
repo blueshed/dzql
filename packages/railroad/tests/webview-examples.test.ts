@@ -3,7 +3,7 @@
 //   jobs -- examples/jobs: `bun examples/jobs/routes.ts` serves a live list of build jobs fed by
 //           a WebSocket. Each test starts the server afresh (TICK_MS=0: no simulated runners, the
 //           test reports for them as a runner would, POST /api/jobs/:id) and asserts what a rule of
-//           the railroad skill is about: a row changed in place re-renders that row's nodes and no
+//           the railroad skill is about: a job the feed changes re-renders that row's nodes and no
 //           other, a disposed scope's effects stop, a keyed route runs again, and so on.
 //
 // Servers run in child processes, and happy-dom (preloaded here) replaces fetch, so the test
@@ -92,10 +92,29 @@ test("the README's server: the page, a runner's report, and the logger's line fo
   expect(output).toMatch(/INFO {2}\[api\] POST \/api\/jobs\/2 → 200/);
 });
 
-test("realtime: a job changed in place re-renders that row's nodes and no other, in one pass", async () => {
+test("realtime: a job the feed changes re-renders that row's nodes and no other, and runs no other row's projections", async () => {
   await list();
+  // Each job the feed sends from here on counts the reads of its progress. Only its row's
+  // `progress` field reads it (the list is sorted by id, and the count is of status), so the
+  // reads say which rows' projections ran. A report for each job puts a counting one in every row.
+  await view.evaluate(`(() => {
+    window.__reads = {};
+    const parse = JSON.parse;
+    JSON.parse = (text, reviver) => {
+      const msg = parse(text, reviver);
+      const job = msg?.job;
+      if (job) {
+        const progress = job.progress;
+        Object.defineProperty(job, "progress", { enumerable: true, get: () => ((__reads[job.id] = (__reads[job.id] ?? 0) + 1), progress) });
+      }
+      return msg;
+    };
+  })()`);
+  for (const id of [1, 2, 3, 4, 5, 6]) await report(id, { progress: 0 });
+  await waitFor(`Object.keys(__reads).length === 6`); // a message is applied whole, its writes with it
   // Every DOM write the list and the summary take from here on, by the row it is in
   await view.evaluate(`(() => {
+    window.__reads = {};
     window.__row2 = document.querySelector('.rows li[data-id="2"]');
     window.__writes = [];
     const by = (n) => (n.nodeType === 1 ? n : n.parentElement).closest("li")?.dataset.id ?? "summary";
@@ -111,6 +130,8 @@ test("realtime: a job changed in place re-renders that row's nodes and no other,
   // directly and through `shown`, a diamond, settled in one pass); nothing in any other row
   expect([...new Set(writes)].sort()).toEqual(["2", "summary"]);
   expect(writes.filter((w) => w === "summary").length).toBe(1);
+  // and of the rows' projections, only row 2's ran: no other row read its job
+  expect(await view.evaluate<Record<string, number>>("__reads")).toEqual({ 2: 1 });
   expect(await view.evaluate<boolean>(`__row2 === document.querySelector('.rows li[data-id="2"]')`)).toBe(true);
   expect(await text(row(2, ".progress"))).toBe("40%");
   expect(await view.evaluate<string>(`document.querySelector('.rows li[data-id="2"]').style.getPropertyValue("--progress")`)).toBe("40%");
@@ -291,7 +312,7 @@ test("realtime: two windows on one feed: a retry and a removal in one are seen i
   expect(await view.evaluate<boolean>(`__row5 === document.querySelector('.rows li[data-id="5"]')`)).toBe(true);
 });
 
-test("the README's simulated runners: a long list, patched in place as they report", async () => {
+test("the README's simulated runners: a long list, a row at a time as they report", async () => {
   await stop(app);
   app = await start({ JOBS: "2000", TICK_MS: "30" });
   await open();

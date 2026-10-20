@@ -49,9 +49,9 @@ function RunnerPanel({ name$ }: { name$: ReadonlySignal<string> }): JSX.Element 
       {when(info, (i$) => <p class="host">{i$.map((i) => `${i.host} · ${i.slots} slots`)}</p>,
         () => <p class="host">looking it up…</p>)}
       <ul>
-        {list(theirs, (j) => j.id, (j$) => (
-          <li><a href={j$.map((j) => `#/jobs/${j.id}`)}>{j$.map((j) => `#${j.id} ${j.name}: ${j.status}`)}</a></li>
-        ), { equals: () => false })}
+        {list(theirs, jobs.key, ({ id, name, status }) => (
+          <li><a href={`#/jobs/${id.peek()}`}>#{id} {name}: {status}</a></li>
+        ))}
       </ul>
     </div>
   );

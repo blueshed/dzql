@@ -104,6 +104,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A keyed `list()` row is its fields** (20 October, railroad's #6): railroad hands a keyed row
+  as a signal per field, its own signal third. The examples take their rows apart (lists'
+  `lists-view.tsx` and `people-view.tsx`, lobby's `here-view.tsx`), kanban hands `row$` on whole
+  (`(_, _i, c$) => <CardItem card$={c$} />`), and so do `recipe.md`'s room and
+  `tests/railroad-client.test.ts`. Nothing in `src/` changes: the client still freshens the row an
+  op lands in, which is what lets `list()` update that row alone.
 - **Each delta-doc reference page says where its rules are shown working** (20 October, root
   #114): a line starting `Working:`, linking an example on GitHub (kanban, sites-bbox, lists, lobby,
   the create-blueshed template, dzql's), or for `recipe.md`, `tests/recipe.test.ts`. kanban's

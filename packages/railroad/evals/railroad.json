@@ -1,14 +1,14 @@
 [
   {
     "skills": ["railroad"],
-    "query": "In a Bun app using @blueshed/railroad, show a live list of build jobs. A WebSocket at /ws sends messages like {\"id\": 3, \"status\": \"running\"}; a message for a new id adds a job, and a message for a known id changes that job's status. There can be thousands of jobs, so change the job objects in place rather than cloning the array on every message. Render each job as an <li> with its id and status, and a button that removes it from the list.",
+    "query": "In a Bun app using @blueshed/railroad, show a live list of build jobs. A WebSocket at /ws sends messages like {\"id\": 3, \"status\": \"running\"}; a message for a new id adds a job, and a message for a known id changes that job's status. There can be thousands of jobs, so a message must not clone the whole list or re-render every row. Render each job as an <li> with its id and status, and a button that removes it from the list.",
     "files": [],
     "expected_behavior": [
-      "Renders the jobs with keyed list(jobs, (j) => j.id, (job$) => ...), not jobs.get().map(...) or jobs.peek().map(...) in JSX",
-      "Reads row fields through the row signal (job$.map((j) => j.status)), never by destructuring the row argument",
-      "Passes { equals: () => false } as list()'s fourth argument, because rows are changed in place",
-      "On a message, mutates the existing array or job object from jobs.peek() and then calls jobs.touch(); does not .set() a spread copy",
-      "No .get() inside JSX or a component body; the text binds {job$.map(...)} or a function child",
+      "Keeps the jobs in a collection((j) => j.id) and applies each message with put or patch (and remove for the button); never changes a job object in place",
+      "Renders the jobs with keyed list(jobs, jobs.key or (j) => j.id, ...), not jobs.get().map(...) or jobs.peek().map(...) in JSX",
+      "Takes the row apart into its fields, each a signal (({ id, status }) => ...), binding {status} directly; reads a key once with id.peek()",
+      "Writes no .touch() and no { equals: () => false }",
+      "No .get() inside JSX or a component body; the text binds a field signal or a function child",
       "The remove button uses a lowercase onclick with a function: onclick={() => ...}",
       "The page is started with mount() or routes(), not a bare append of the component"
     ]

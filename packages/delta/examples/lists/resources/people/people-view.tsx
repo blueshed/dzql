@@ -23,7 +23,7 @@ export function WhoAreYou(): JSX.Element {
     <div class="who">
       <p>Who are you?</p>
       {when(people.map((p) => p.length > 0),
-        () => <div class="pick">{list(people, (p) => p.id, (p$) => <button onclick={() => void becomeAs(p$.peek().id)}>{p$.map((p) => p.name)}</button>)}</div>,
+        () => <div class="pick">{list(people, (p) => p.id, ({ id, name }) => <button onclick={() => void becomeAs(id.peek())}>{name}</button>)}</div>,
         () => <p class="note">Ask someone here for your link.</p>)}
     </div>
   );
@@ -37,8 +37,8 @@ export function PeopleView(): JSX.Element {
   return (
     <section class="people">
       <h2>People</h2>
-      {list(all, (p) => p.id, (p$) => (
-        <p>{p$.map((p) => p.name)} <button class="link" onclick={() => void linkFor(p$.peek().id).then(({ url }) => sent.set(url))}>their link</button></p>
+      {list(all, (p) => p.id, ({ id, name }) => (
+        <p>{name} <button class="link" onclick={() => void linkFor(id.peek()).then(({ url }) => sent.set(url))}>their link</button></p>
       ))}
       {when(sent, (s$) => <p class="note">For them to tap once: <code>{s$}</code></p>)}
     </section>

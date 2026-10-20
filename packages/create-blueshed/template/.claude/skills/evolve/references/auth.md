@@ -178,7 +178,7 @@ function WhoAreYou() {
       <p class="note">Who are you?</p>
       {when(
         people.map((p) => p.length > 0),
-        () => <div class="pick">{list(people, (p) => p.id, (p$) => tool(p$.peek().name, { className: "be", on: () => void becomeAs(p$.peek().id).catch((err) => toast(err.message, "alert")) }))}</div>,
+        () => <div class="pick">{list(people, (p) => p.id, ({ id, name }) => tool(name.peek(), { className: "be", on: () => void becomeAs(id.peek()).catch((err) => toast(err.message, "alert")) }))}</div>,
         () => <p class="help">Ask someone here for your link.</p>,
       )}
     </>

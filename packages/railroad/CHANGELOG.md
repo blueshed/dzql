@@ -8,6 +8,22 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Breaking
 
+- **A keyed `list()` row is its fields, each a signal** (20 October, Peter's word; #6). render's
+  first argument was `ReadonlySignal<T>`, read field by field as `row$.map((r) => r.x)`, and
+  destructuring it read nothing live. It is now `Row<T>`: for a row that is an object, a signal per
+  field (made on first read, one per field, under the row's own scope and disposed with it), so
+  `({ name, status }) => <li>{name} {status}</li>` is right; for a string or a number, its signal,
+  as before. The row's own signal is a new third argument: `render(row, index$, row$)`. To move
+  across: `(row$) => <li>{row$.map((r) => r.name)}</li>` is `({ name }) => <li>{name}</li>`;
+  `row$.peek().id` is `id.peek()`; where the whole row is wanted (handed to a component, or
+  `selected.set(row$.peek())`), `(row$, i$) => …` is `(_, i$, row$) => …`. TypeScript names every
+  place (`Property 'map' does not exist`), and in development `row.map`, `.get` or `.peek` on a
+  row with no such field warns. The index form, `list(items, (item, i) => …)`, is unchanged.
+- **`list()`'s fourth argument, `options`, is gone** (20 October, Peter's word; #4). It existed for
+  `{ equals: () => false }`, which re-ran every row's projections on every in-place patch. A row is
+  pushed on with `Object.is`: a changed row is a new object. Rows changed in place and `.touch()`ed
+  move to a `collection()` (below): `Object.assign(known, row); rows.touch()` is `rows.put(row)`,
+  and the `options` argument is dropped. `items` may now be a `ReadonlySignal<readonly T[]>`.
 - **`Signal.patch()` is gone** (20 October, root #37): nothing used it. For an object signal,
   `s.update((v) => ({ ...v, ...partial }))` says the same, and an array was never patchable.
 - **A custom root is `scoped(build)`** (20 October, root #37): it gives `{ value, dispose }`, its
@@ -18,6 +34,22 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Added
 
+- **`collection(key, rows?)`: a keyed list of rows, changed a row at a time** (20 October, Peter's
+  word; #4, #5). `set(rows)` for a snapshot, `put(row)` to add or replace by key, `patch(key,
+  fields)` for `{ ...row, ...fields }`, `remove(key)`; `put`, `patch` and `remove` return the row as
+  it was. Each change replaces the row it names with a new object and leaves the others as they
+  were, so a keyed `list()` over the collection, or over anything filtered or sorted from it, runs
+  that row's projections and no other's: no `.touch()`, no `{ equals: () => false }`. `.get()` is a
+  fresh array after each change (copied once, when first read), every change notifies once, and
+  `at(key)` is a `ReadonlySignal<T | null>` told when that key's row changes and no other (null
+  while there is none), in place of a projection over every row with `{ equals: () => false }`.
+  `key` is the key function, for `list(rows, rows.key, …)`. Exported with `Collection` from the
+  root and `./signals`; the `Row<T>` type from the root and `./jsx`.
+- **`examples/jobs` shows them** (20 October): its feed `put`s each job in a collection
+  (`jobs.ts`: no `Object.assign`, no `touch`), `JobRow` takes its row apart (no `job$.map((j) =>
+  j.x)`), and a job's page and each toast follow `jobs.at(id)` (`job(id)` and its `equals` are
+  gone). `tests/webview-examples.test.ts` asserts that a job the feed changes writes only its
+  row's nodes and runs no other row's projections (the other rows read nothing of their jobs).
 - **`examples/jobs`, the skill's worked answer** (20 October, Peter's word: a package's examples
   are its skill's worked answers): a live list of build jobs fed by a WebSocket, in the one shape
   (`routes.ts` given to a plain `Bun.serve`, `resources/jobs/` and `resources/runners/`, each
@@ -35,6 +67,11 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **The skill says the new way, and only it** (20 October): SKILL.md's rules 3 and 9,
+  `when-list.md`, `realtime.md` and `signals.md` teach a row taken apart into its fields and a
+  `collection` for rows changed one at a time; `.touch()` and `{ equals: () => false }` are no
+  longer taught (`.touch()` stays on `Signal`, for a document changed in place, as delta's client
+  does). The first eval scenario (`evals/railroad.json`) expects a collection and a row's fields.
 - **Each reference page says where its rules are shown working** (20 October, root #114): a line
   starting `Working:`, linking `examples/jobs` on GitHub (bun-route's `server.md` also the
   create-blueshed template, `webview-recipes.md` dzql's leave); `one-copy.md` says `none` and why.

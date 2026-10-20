@@ -3,9 +3,9 @@
  * (`#/jobs/new`). Each component runs once and returns real nodes; what changes later is a signal
  * or a function bound in the JSX, never a re-render.
  */
-import { batch, computed, inject, list, navigate, signal, when, type JSX, type ReadonlySignal } from "@blueshed/railroad";
+import { batch, computed, inject, list, navigate, signal, when, type JSX, type ReadonlySignal, type Row } from "@blueshed/railroad";
 import type { Job } from "./jobs-api";
-import { detail, failedCount, FEED, job, jobs, logOf } from "./jobs";
+import { detail, failedCount, FEED, jobs, logOf } from "./jobs";
 import { runners } from "../runners/runners";
 
 const STATUSES = ["all", "queued", "running", "passed", "failed"];
@@ -16,8 +16,8 @@ export function JobsPage(): JSX.Element {
   const status = signal("all");
   const sort = signal({ by: "id", desc: false });
 
-  // Derived in the component body, beside what reads it: a fresh array on every change, so it
-  // follows the feed's touch()
+  // Derived in the component body, beside what reads it. A changed job is a new object and the
+  // others are as they were, so list() below updates that one row however these are sorted
   const shown = computed(() => {
     const q = search.get().toLowerCase();
     const s = status.get();
@@ -51,29 +51,27 @@ export function JobsPage(): JSX.Element {
       {when(failedCount, (n$) => <p class="banner">{n$.map((n) => `${n} failed`)}</p>)}
       <p class="summary">{() => `${shown.get().length} of ${jobs.get().length} jobs`}</p>
       <ul class="rows">
-        {list(shown, (j) => j.id, (job$) => <JobRow job$={job$} />, { equals: () => false })}
+        {list(shown, jobs.key, (job) => <JobRow job={job} />)}
       </ul>
       {when(() => shown.get().length === 0, () => <p class="empty">No jobs match.</p>)}
     </section>
   );
 }
 
-/** A row: everything read through `job$`, the row's signal. */
-function JobRow({ job$ }: { job$: ReadonlySignal<Job> }): JSX.Element {
+/** A row: its fields, each a signal, so it is taken apart and each field bound where it shows. */
+function JobRow({ job }: { job: Row<Job> }): JSX.Element {
   const feed = inject(FEED);
-  const id = job$.peek().id; // the key: it never changes, so read once
-  // A string style, not an object: every row's projections re-run on each patch (equals: () =>
-  // false), and an unchanged string stops there, where a fresh object would set every row's style
+  const { name, status, progress } = job;
+  const id = job.id.peek(); // the key: it never changes, so read once
   return (
-    <li class={job$.map((j) => `job ${j.status}`)} data-id={id}
-        style={job$.map((j) => `--progress: ${j.progress}%`)}>
+    <li class={status.map((s) => `job ${s}`)} data-id={id} style={progress.map((p) => `--progress: ${p}%`)}>
       <a href={`#/jobs/${id}`}>#{id}</a>
       {/* onchange: on commit (Enter, or leaving the field), not per keystroke */}
-      <input class="name" aria-label="name" value={job$.map((j) => j.name)}
+      <input class="name" aria-label="name" value={name}
              onchange={(e) => feed.send({ op: "rename", id, name: e.currentTarget.value })} />
-      <span class="status">{job$.map((j) => j.status)}</span>
-      <span class="progress">{job$.map((j) => (j.status === "running" ? `${j.progress}%` : null))}</span>
-      <button class="retry" disabled={job$.map((j) => j.status !== "failed")}
+      <span class="status">{status}</span>
+      <span class="progress">{() => (status.get() === "running" ? `${progress.get()}%` : null)}</span>
+      <button class="retry" disabled={status.map((s) => s !== "failed")}
               onclick={() => feed.send({ op: "retry", id })}>retry</button>
       <button class="remove" onclick={() => feed.send({ op: "remove", id })}>remove</button>
     </li>
@@ -102,8 +100,8 @@ export async function JobPage({ id: param = "" }: Record<string, string>): Promi
 
 /** The job as the feed has it now, or word that it has gone. */
 function JobLive({ id }: { id: number }): JSX.Element {
-  // job(id) changes in place, so its projection says equals: () => false (jobs.ts)
-  return when(job(id), (j$) => (
+  // told when this job changes, and not when another does
+  return when(jobs.at(id), (j$) => (
     <div class="live" style={j$.map((j) => ({ "--accent": `var(--${j.status})` }))}>
       <Ring progress$={j$.map((j) => j.progress)} />
       <p class="status">{j$.map((j) => j.status)}</p>

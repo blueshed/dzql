@@ -4,7 +4,8 @@
  * Two patterns:
  *
  *   1. board.data.map(d => …)                     — derive sorted lists from the doc
- *   2. list(items$, keyFn, item$ => <Component>)  — keyed render; per-row updates
+ *   2. list(items$, keyFn, (_, _i, item$) => <Component>)  — keyed render, the row's
+ *      signal handed on whole (render's third argument); per-row updates
  *
  * No applyOpsToCollection — railroad's `list()` is the higher-level idiom for
  * keyed iteration. The Signal under each row is a stable reference, so a
@@ -77,7 +78,7 @@ function ColumnView({ column$ }: { column$: ReadonlySignal<Column> }): JSX.Eleme
   return (
     <div class="column">
       <h3 ondblclick={() => renameColumn(column$.peek())}>{column$.map((c) => c.title)}</h3>
-      {list<Card>(cards$, (c: Card) => c.id, (c$) => <CardItem card$={c$} />)}
+      {list<Card>(cards$, (c: Card) => c.id, (_, _i, c$) => <CardItem card$={c$} />)}
       <button onclick={() => addCard(column$.peek().id)}>+ add card</button>
     </div>
   );
@@ -98,7 +99,7 @@ export function BoardView(): JSX.Element {
     <div class="board">
       <h1>{title$}</h1>
       <div class="columns">
-        {list<Column>(columns$, (c: Column) => c.id, (c$) => <ColumnView column$={c$} />)}
+        {list<Column>(columns$, (c: Column) => c.id, (_, _i, c$) => <ColumnView column$={c$} />)}
       </div>
     </div>
   );

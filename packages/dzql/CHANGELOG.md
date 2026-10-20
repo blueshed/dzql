@@ -123,6 +123,9 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The ticker's city picker takes its row apart** (20 October, railroad's #6): a keyed `list()`
+  row is its fields now, so `examples/ticker/applets/city-picker-applet.tsx` reads `({ tz, label },
+  i$)` in place of `z$.peek().tz` and `z$.map((z) => z.label)`.
 - **Each reference page of dzql-app and modelling says where its rules are shown working** (20
   October, root #114): a line starting `Working:`, linking an example on GitHub (cafe, chat, leave,
   ticker, wedding, create-dzql's template). `scope.md` shows only part of its rule working and

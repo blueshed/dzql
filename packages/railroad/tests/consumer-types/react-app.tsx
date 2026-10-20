@@ -26,7 +26,7 @@ function App(): JSX.Element {
   return (
     <>
       <div class={count.map((n) => `n${n}`)}>{count}</div>
-      <ul>{list(rows, (r) => r.id, (r$) => <li>{r$.map((r) => r.text)}</li>)}</ul>
+      <ul>{list(rows, (r) => r.id, ({ text }) => <li>{text}</li>)}</ul>
       {when(count, () => <p>positive</p>)}
       <AsyncProfile id={1} fallback={() => <p>loading</p>} />
     </>

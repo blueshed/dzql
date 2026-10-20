@@ -53,7 +53,10 @@
  *                                   current truthy value (NonNullable<T>), so the
  *                                   branch follows a value change without a rebuild:
  *                                   when(detail, (d$) => <Site id={d$.map(d => d.id)} />)
- *   list(signal, keyFn, render, options?) — keyed reactive list, render receives Signal<T>
+ *   list(signal, keyFn, render)   — keyed reactive list; render receives the row as
+ *                                   its fields, each a ReadonlySignal (Row<T>), so
+ *                                   destructuring is right: ({ name }) => <li>{name}</li>;
+ *                                   then index$, then the row's own signal row$
  *   list(signal, render)          — index-based reactive list, render receives raw T
  *
  * when() and list() warn (in development) if created outside a dispose scope
@@ -84,7 +87,7 @@
  */
 
 import { Signal, signal, effect, computed, untrack, untrackRender, scoped, trackDispose, hasActiveDisposeScope, assertOwnSignal, warn } from "./signals";
-import type { Dispose, ReadonlySignal, SignalOptions } from "./signals";
+import type { Dispose, ReadonlySignal } from "./signals";
 
 // === SVG namespace ===
 
@@ -623,9 +626,14 @@ export function when<T>(
 // rows outside the longest run already in order, so a row that didn't move
 // keeps its focus, selection and scroll position.
 //
-// Keyed form — render receives Signal<T> and Signal<number> so item
+// Keyed form — render receives the row as its fields, each a ReadonlySignal,
+// then the index as a ReadonlySignal, then the row's own signal, so item
 // updates flow into existing DOM without re-creating nodes:
-//   list(items, (t) => t.id, (item$) => <li>{item$.map(t => t.name)}</li>)
+//   list(items, (t) => t.id, ({ name }) => <li>{name}</li>)
+//   list(items, (t) => t.id, (_, i$, item$) => <Card card$={item$} />)
+// A row is pushed on with Object.is: a changed row must be a new object (a
+// collection() makes it one), and a row that is the same object is not
+// touched, so a change costs the rows it changed and no other.
 //
 // Non-keyed form (index-based, raw values):
 //   list(items, (item, index) => <li>{item}</li>)
@@ -633,34 +641,64 @@ export function when<T>(
 // Each row is bracketed by <!--row--> / <!--/row--> comment markers, so nodes
 // that a when() (or nested list()) at the row's top level inserts beside its
 // anchor after render time still move and remove with the row.
-//
-// options (keyed form) forwards SignalOptions to each row's item signal. The
-// default Object.is is right for immutable updates (a changed row is a new
-// object), but a patch stream that MUTATES row objects in place and notifies
-// via touch() (delta docs, hand-rolled applyPatch) re-delivers the same
-// reference — which Object.is swallows, leaving row DOM stale. Pass
-// { equals: () => false } to force per-row re-projection; the row's own
-// .map() computeds still bail on unchanged values, so DOM writes stay minimal.
 
-// Keyed form — render receives Signal<T> / Signal<number>. Real overloads (not
-// a union-typed param) so the keyFn's item parameter is inferred from T; the
-// bare-arrow form `list(rows, r => r.id, ...)` type-checks under strict.
+/**
+ * A keyed list() row, as render receives it: for a row that is an object, its
+ * fields, each a ReadonlySignal of that field (so `({ name, status }) => …`
+ * destructures it and binds each); for a primitive, its signal.
+ */
+export type Row<T> = [T] extends [object] ? { readonly [K in keyof T]-?: ReadonlySignal<T[K]> } : ReadonlySignal<T>;
+
+// The fields of a row: each a projection of row$, made the first time it is
+// read and kept, so every read of `row.name` is the one signal. They are made
+// under a scope of their own, not the reader's (a field first read in a when()
+// branch must outlive that branch), and disposed with the row through `own`.
+// Only keys the row's value has, or doesn't share with Object.prototype, are
+// fields: String(row) still works.
+function rowOf<T>(row$: ReadonlySignal<T>, own: Dispose[]): Row<T> {
+  const value = () => row$.peek() as object;
+  if (typeof value() !== "object" || value() === null) return row$ as Row<T>;
+  const fields = new Map<string, ReadonlySignal<unknown>>();
+  const field = (k: string) => {
+    let s = fields.get(k);
+    if (!s) {
+      if (warn && (k === "get" || k === "peek" || k === "map") && !(k in value())) warn.rowAsSignal(k);
+      const made = scoped(() => computed(() => (row$.get() as Record<string, unknown>)[k]));
+      own.push(made.dispose);
+      fields.set(k, (s = made.value));
+    }
+    return s;
+  };
+  return new Proxy({}, {
+    get: (target, k) =>
+      typeof k === "symbol" || (k in target && !Object.hasOwn(value(), k)) ? Reflect.get(target, k) : field(k),
+    has: (_, k) => k in value(),
+    ownKeys: () => Object.keys(value()),
+    getOwnPropertyDescriptor: (_, k) =>
+      typeof k === "string" && Object.hasOwn(value(), k)
+        ? { configurable: true, enumerable: true, writable: false, value: field(k) }
+        : undefined,
+    set: () => false, // a row is changed at its source, never through its fields
+  }) as Row<T>;
+}
+
+// Keyed form. Real overloads (not a union-typed param) so the keyFn's item
+// parameter is inferred from T; the bare-arrow form `list(rows, r => r.id, ...)`
+// type-checks under strict.
 export function list<T>(
-  items: ReadonlySignal<T[]>,
+  items: ReadonlySignal<readonly T[]>,
   keyFn: (item: T) => string | number,
-  render: (item: ReadonlySignal<T>, index: ReadonlySignal<number>) => Node,
-  options?: SignalOptions<T>,
+  render: (row: Row<T>, index: ReadonlySignal<number>, row$: ReadonlySignal<T>) => Node,
 ): Node;
 // Index-based form — render receives raw T.
 export function list<T>(
-  items: ReadonlySignal<T[]>,
+  items: ReadonlySignal<readonly T[]>,
   render: (item: T, index: number) => Node,
 ): Node;
 export function list<T>(
-  items: ReadonlySignal<T[]>,
+  items: ReadonlySignal<readonly T[]>,
   keyFnOrRender: ((item: T) => string | number) | ((item: T, index: number) => Node),
-  maybeRender?: (item: ReadonlySignal<T>, index: ReadonlySignal<number>) => Node,
-  options?: SignalOptions<T>,
+  maybeRender?: (row: Row<T>, index: ReadonlySignal<number>, row$: ReadonlySignal<T>) => Node,
 ): Node {
   if (!hasActiveDisposeScope()) warn?.scopeless("list");
   assertOwnSignal(items);
@@ -766,11 +804,18 @@ export function list<T>(
         const end = document.createComment("/row");
         let row: { value: Node; dispose: Dispose } | null;
         if (hasKeyFn) {
-          const itemSig = signal(arr[i]!, options);
+          const itemSig = signal(arr[i]!);
           const indexSig = signal(i);
-          row = scopedRow(() => untrackRender("a list() row", maybeRender!, () => maybeRender!(itemSig, indexSig)));
-          if (!row) continue; // left out: the next sync finds it new
-          entry = { start, end, dispose: row.dispose, item: itemSig, index: indexSig };
+          const own: Dispose[] = []; // the row's fields
+          const fields = rowOf(itemSig, own);
+          const release = () => { for (const d of own.splice(0)) d(); };
+          row = scopedRow(() => untrackRender("a list() row", maybeRender!, () => maybeRender!(fields, indexSig, itemSig)));
+          if (!row) { // left out: the next sync finds it new
+            release();
+            continue;
+          }
+          const rowDispose = row.dispose;
+          entry = { start, end, dispose: () => { rowDispose(); release(); }, item: itemSig, index: indexSig };
         } else {
           row = scopedRow(() => renderRow(arr[i]!, i));
           if (!row) continue;

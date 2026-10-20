@@ -1,6 +1,6 @@
 import { describe, test, expect, spyOn, beforeEach, afterEach, mock } from "bun:test";
-import { signal, effect, untrack, pushDisposeScope, popDisposeScope, trackDispose, hasActiveDisposeScope } from "../src/signals";
-import type { ReadonlySignal } from "../src/signals";
+import { signal, effect, computed, collection, untrack, pushDisposeScope, popDisposeScope, trackDispose, hasActiveDisposeScope } from "../src/signals";
+import type { ReadonlySignal, Signal } from "../src/signals";
 import { createElement, when, list, mount, Fragment } from "../src/jsx";
 import type { JSX } from "../src/jsx";
 import { routes } from "../src/routes";
@@ -59,10 +59,7 @@ describe("SVG namespace adoption inside list() and when()", () => {
         {list(
           items,
           (i: Item) => i.id,
-          (i$) => {
-            const v = i$.peek();
-            return <circle r="10" fill={v.fill} data-id={String(v.id)} />;
-          },
+          ({ id, fill }) => <circle r="10" fill={fill.peek()} data-id={String(id.peek())} />,
         )}
       </svg>
     ) as SVGElement;
@@ -1098,7 +1095,7 @@ describe("async components: thunk resolution + fallback", () => {
     const root = document.createElement("div");
     document.body.append(root);
     const dispose = mount(root, () =>
-      list(rows, (r) => r.id, (r$) => <Title label={r$.peek().label} />),
+      list(rows, (r) => r.id, ({ label }) => <Title label={label.peek()} />),
     );
     await tick(); // list sync, then each row's resolution
     expect(root.textContent).toBe("onetwo");
@@ -1186,7 +1183,7 @@ describe("render bodies are untracked: a .get() there subscribes nothing around 
     const sel = signal(1);
     const root = document.createElement("div");
     const dispose = mount(root, () => (
-      <ul>{list(items, (r) => r.id, (r$) => <li>{r$.peek().id}{sel.get()}</li>)}</ul>
+      <ul>{list(items, (r) => r.id, ({ id }) => <li>{id.peek()}{sel.get()}</li>)}</ul>
     ));
     const reads = countReads(items);
     sel.set(2);
@@ -1291,7 +1288,7 @@ describe("a .get() in a render body warns once per render body, in development",
       function Row() { return <b>{n.get()}</b>; }
       const dispose = mount(document.createElement("div"), () => (
         <div>
-          <ul>{list(rows, (r) => r.id, (r$) => <li>{r$.get().text}</li>)}</ul>
+          <ul>{list(rows, (r) => r.id, (_, _i, r$) => <li>{r$.get().text}</li>)}</ul>
           <Row /><Row /><Row />
         </div>
       ));
@@ -1322,7 +1319,7 @@ describe("a .get() in a render body warns once per render body, in development",
         <div>
           {when(show, () => <View />)}
           {when(() => x.get() > 0, () => <i />)}
-          {list(rows, (r) => r.id, (r$) => <b>{r$.map((r) => r.id)}</b>)}
+          {list(rows, (r) => r.id, ({ id }) => <b>{id}</b>)}
           {list(rows, (r) => <b>{r.id}</b>)}
         </div>
       ));
@@ -1425,10 +1422,9 @@ describe("when() and list() composition", () => {
     ]);
     const root = (
       <ul>
-        {list(items, (i: Item) => i.id, (i$) => {
-          const open = i$.map((i) => i.open);
+        {list(items, (i: Item) => i.id, ({ id, open }) => {
           return (
-            <li data-id={String(i$.peek().id)}>
+            <li data-id={String(id.peek())}>
               {when(open, () => <span class="body">open</span>)}
             </li>
           );
@@ -1513,10 +1509,10 @@ describe("when()/list(): synchronous first render, dispose guards, row brackets"
     const root = document.createElement("div");
     document.body.append(root);
     const dispose = mount(root, () =>
-      list(rows, (r) => r.id, (r$) =>
+      list(rows, (r) => r.id, ({ label }) =>
         when(signal(true), () => {
           const s = document.createElement("span");
-          s.textContent = r$.peek().label;
+          s.textContent = label.peek();
           return s;
         }),
       ),
@@ -1538,10 +1534,10 @@ describe("when()/list(): synchronous first render, dispose guards, row brackets"
     const root = document.createElement("div");
     document.body.append(root);
     const dispose = mount(root, () =>
-      list(rows, (r) => r.id, (r$) => (
+      list(rows, (r) => r.id, ({ id }) => (
         <>
-          <b>{r$.peek().id}</b>
-          <i>{r$.peek().id}</i>
+          <b>{id.peek()}</b>
+          <i>{id.peek()}</i>
         </>
       )),
     );
@@ -1598,7 +1594,7 @@ describe("when()/list(): content is in the DOM when mount() returns", () => {
     const root = document.createElement("div");
     const rows = signal([{ id: 1, t: "a" }, { id: 2, t: "b" }]);
     const dispose = mount(root, () => (
-      <ul>{list(rows, (r) => r.id, (r$) => <li>{when(signal(true), () => <span>{r$.map((r) => r.t)}</span>)}</li>)}</ul>
+      <ul>{list(rows, (r) => r.id, ({ t }) => <li>{when(signal(true), () => <span>{t}</span>)}</li>)}</ul>
     ));
     expect(root.textContent).toBe("ab");
     dispose();
@@ -1798,7 +1794,7 @@ describe("list(): duplicate keys warn, and collapse into one row", () => {
     const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
     const rows = signal([{ id: 1, t: "a" }, { id: 1, t: "b" }]);
     const ul = (
-      <ul>{list(rows, (r) => r.id, (r$) => <li>{r$.map((r) => r.t)}</li>)}</ul>
+      <ul>{list(rows, (r) => r.id, ({ t }) => <li>{t}</li>)}</ul>
     ) as HTMLElement;
     document.body.append(ul);
     await flush();
@@ -1812,71 +1808,180 @@ describe("list(): duplicate keys warn, and collapse into one row", () => {
     const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
     const rows = signal([{ id: 1, t: "a" }, { id: 1, t: "b" }, { id: 2, t: "c" }]);
     const ul = (
-      <ul>{list(rows, (r) => r.id, (r$) => <li>{r$.map((r) => r.t)}</li>)}</ul>
+      <ul>{list(rows, (r) => r.id, ({ t }) => <li>{t}</li>)}</ul>
     ) as HTMLElement;
     expect([...ul.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["a", "c"]);
     warnSpy.mockRestore();
   });
 });
 
-describe("list(): item-signal equals option for in-place patch streams", () => {
-  beforeEach(() => { document.body.innerHTML = ""; });
-  type Card = { id: number; title: string };
-  const makeDoc = () =>
-    signal<{ cards: Record<string, Card> }>({
-      cards: { "1": { id: 1, title: "one" }, "2": { id: 2, title: "two" } },
-    });
-  const mountCards = (
-    doc: ReturnType<typeof makeDoc>,
-    root: HTMLElement,
-    options?: { equals: (a: Card, b: Card) => boolean },
-  ) => {
-    const cards = doc.map((d) => Object.values(d.cards));
-    return mount(root, () =>
-      list(cards, (c) => c.id, (c$) => {
-        const li = document.createElement("li");
-        effect(() => { li.textContent = c$.get().title; });
-        return li;
-      }, options),
-    );
-  };
-  test("default Object.is: in-place row mutation + touch() leaves the row stale (why the option exists)", async () => {
-    const doc = makeDoc();
-    const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mountCards(doc, root);
-    await tick();
-    expect(root.textContent).toBe("onetwo");
+describe("list(): a keyed row is its fields, each a signal", () => {
+  // Until 20 October a keyed row was one ReadonlySignal<T>, read field by field as row$.map((r) => r.x),
+  // and destructuring it read nothing live (todo #6). Now it is its fields: destructured, each
+  // binds; the row's own signal is the third argument.
+  type Card = { id: number; title: string; done?: boolean };
+  const texts = (root: Element) => [...root.querySelectorAll("li")].map((li) => li.textContent);
 
-    // delta-style field-level op: mutate the row object in place, touch().
-    // The sync re-delivers the SAME reference, so the item signal bails —
-    // the immutable-update contract. { equals } exists for the other case.
-    doc.peek().cards["1"]!.title = "ONE";
-    doc.touch();
-    expect(root.textContent).toBe("onetwo");
+  test("destructured fields bind: a changed row updates in place, the same node", () => {
+    const cards = signal<Card[]>([{ id: 1, title: "one" }, { id: 2, title: "two" }]);
+    const root = document.createElement("div");
+    const dispose = mount(root, () => <ul>{list(cards, (c) => c.id, ({ title }) => <li>{title}</li>)}</ul>);
+    const first = root.querySelector("li");
+    cards.update((all) => [{ ...all[0]!, title: "ONE" }, all[1]!]);
+    expect(texts(root)).toEqual(["ONE", "two"]);
+    expect(root.querySelector("li")).toBe(first);
     dispose();
   });
 
-  test("{ equals: () => false }: in-place mutation + touch() updates row DOM", async () => {
-    const doc = makeDoc();
+  test("a row that is the same object runs none of its projections; a new one runs its own", () => {
+    // Each row counts the reads of its title: only its own field projection reads it.
+    const reads = new Map<number, number>();
+    const card = (id: number, title: string): Card => ({
+      id,
+      get title() {
+        reads.set(id, (reads.get(id) ?? 0) + 1);
+        return title;
+      },
+    });
+    const cards = signal([card(1, "one"), card(2, "two"), card(3, "three")]);
     const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mountCards(doc, root, { equals: () => false });
-    await tick();
-    expect(root.textContent).toBe("onetwo");
+    const dispose = mount(root, () => <ul>{list(cards, (c) => c.id, ({ title }) => <li>{title}</li>)}</ul>);
+    reads.clear();
+    cards.update((all) => [all[0]!, card(2, "TWO"), all[2]!]);
+    expect([...reads.keys()]).toEqual([2]);
+    expect(texts(root)).toEqual(["one", "TWO", "three"]);
+    dispose();
+  });
 
-    doc.peek().cards["1"]!.title = "ONE";
-    doc.touch();
-    expect(root.textContent).toBe("ONEtwo");
+  test("a field is one signal however often it is read; row$ and index$ come after it", () => {
+    const cards = signal<Card[]>([{ id: 1, title: "one" }]);
+    let seen: { a: unknown; b: unknown; row$: ReadonlySignal<Card>; spread: Record<string, unknown> } | undefined;
+    const dispose = mount(document.createElement("div"), () => (
+      <ul>{list(cards, (c) => c.id, (row, i$, row$) => {
+        seen = { a: row.title, b: row.title, row$, spread: { ...row } };
+        expect(i$.peek()).toBe(0);
+        expect("title" in row).toBe(true);
+        expect(String(row)).toBe("[object Object]");
+        return <li />;
+      })}</ul>
+    ));
+    expect(seen!.a).toBe(seen!.b);
+    expect(seen!.row$.peek()).toEqual({ id: 1, title: "one" });
+    expect(Object.keys(seen!.spread)).toEqual(["id", "title"]);
+    expect(seen!.spread.title).toBe(seen!.a); // a spread hands on the same field signals
+    dispose();
+  });
 
-    // Whole-row replacement and removal keep working under the option.
-    doc.peek().cards["2"] = { id: 2, title: "TWO" };
-    doc.touch();
-    expect(root.textContent).toBe("ONETWO");
+  test("a primitive row is its signal", () => {
+    const names = signal(["a", "b"]);
+    const root = document.createElement("div");
+    const dispose = mount(root, () => <ul>{list(names, (n) => n, (name$) => <li>{name$.map((n) => n.toUpperCase())}</li>)}</ul>);
+    expect(texts(root)).toEqual(["A", "B"]);
+    dispose();
+  });
 
-    delete doc.peek().cards["1"];
-    doc.touch();
-    expect(root.textContent).toBe("TWO");
+  test("a field first read in a branch outlives the branch: rebuilt, it still follows the row", () => {
+    const cards = signal<Card[]>([{ id: 1, title: "one" }]);
+    const open = signal(true);
+    const root = document.createElement("div");
+    const dispose = mount(root, () => (
+      <ul>{list(cards, (c) => c.id, (row) => <li>{when(open, () => <b>{row.title}</b>)}</li>)}</ul>
+    ));
+    open.set(false); // the branch that first read row.title is disposed
+    open.set(true); // and built again, reading the same field
+    cards.set([{ id: 1, title: "ONE" }]);
+    expect(texts(root)).toEqual(["ONE"]);
+    dispose();
+  });
+
+  test("a row's fields are disposed with it", () => {
+    const cards = signal<Card[]>([{ id: 1, title: "one" }]);
+    let title: ReadonlySignal<string> | undefined;
+    let row$: ReadonlySignal<Card> | undefined;
+    const dispose = mount(document.createElement("div"), () => (
+      <ul>{list(cards, (c) => c.id, (row, _i, r$) => {
+        title = row.title;
+        row$ = r$;
+        return <li />;
+      })}</ul>
+    ));
+    cards.set([]);
+    (row$ as Signal<Card>).set({ id: 1, title: "after" }); // nothing writes a removed row; if it did
+    expect(title!.peek()).toBe("one");
+    dispose();
+  });
+
+  test("a field is read-only: a row is changed at its source", () => {
+    const cards = signal<Card[]>([{ id: 1, title: "one" }]);
+    const dispose = mount(document.createElement("div"), () => (
+      <ul>{list(cards, (c) => c.id, (row) => {
+        expect(() => { (row as unknown as Record<string, unknown>).title = "x"; }).toThrow(TypeError);
+        return <li />;
+      })}</ul>
+    ));
+    dispose();
+  });
+
+  test("row.map on a row with no field \"map\" warns: the row's signal is the third argument", () => {
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+    const cards = signal<Card[]>([{ id: 1, title: "one" }]);
+    const dispose = mount(document.createElement("div"), () => (
+      <ul>{list(cards, (c) => c.id, (row) => {
+        void (row as unknown as Record<string, unknown>).map;
+        return <li />;
+      })}</ul>
+    ));
+    expect(warnSpy.mock.calls.some(([m]) => String(m).includes("render's third argument"))).toBe(true);
+    warnSpy.mockRestore();
+    dispose();
+  });
+});
+
+describe("list() over a collection: a change costs the rows it changed", () => {
+  // Until 20 October a list changed in place was .touch()ed and listed with { equals: () => false }, and
+  // every row re-projected on every patch (todo #4). A collection replaces the row it changes and
+  // leaves the rest, so list() pushes on that row alone, over the collection or over anything
+  // filtered or sorted from it.
+  type Job = { id: number; name: string; status: string };
+  test("a patch runs the changed row's projections and no other, through a filter and a sort", () => {
+    const runs = new Map<number, number>();
+    const jobs = collection((j: Job) => j.id, [
+      { id: 1, name: "a", status: "queued" },
+      { id: 2, name: "b", status: "queued" },
+      { id: 3, name: "c", status: "queued" },
+    ]);
+    const shown = computed(() => jobs.get().filter((j) => j.name !== "x").sort((a, b) => b.id - a.id));
+    const root = document.createElement("div");
+    const dispose = mount(root, () => (
+      <ul>{list(shown, jobs.key, ({ id, status }) => (
+        <li>{status.map((s) => {
+          runs.set(id.peek(), (runs.get(id.peek()) ?? 0) + 1);
+          return s;
+        })}</li>
+      ))}</ul>
+    ));
+    runs.clear();
+    jobs.patch(2, { status: "running" });
+    expect([...runs.keys()]).toEqual([2]);
+    expect([...root.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["queued", "running", "queued"]);
+    jobs.remove(3);
+    jobs.put({ id: 4, name: "d", status: "queued" });
+    expect([...root.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["queued", "running", "queued"]);
+    expect(runs.get(1)).toBeUndefined(); // still untouched
+    dispose();
+  });
+
+  test("a collection is a list's source itself, keyed by its own key; a snapshot keeps the rows it keeps", () => {
+    const jobs = collection((j: Job) => j.id, [{ id: 1, name: "a", status: "queued" }, { id: 2, name: "b", status: "queued" }]);
+    const root = document.createElement("div");
+    const dispose = mount(root, () => <ul>{list(jobs, jobs.key, ({ name, status }) => <li>{name} {status}</li>)}</ul>);
+    const second = root.querySelectorAll("li")[1];
+    jobs.put({ id: 3, name: "c", status: "queued" });
+    jobs.patch(1, { status: "passed" });
+    expect([...root.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["a passed", "b queued", "c queued"]);
+    jobs.set([{ id: 2, name: "b", status: "running" }, { id: 3, name: "c", status: "queued" }]);
+    expect([...root.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["b running", "c queued"]);
+    expect(root.querySelector("li")).toBe(second!); // row 2 moved, never rebuilt
     dispose();
   });
 });
@@ -1909,8 +2014,8 @@ describe("list(): a row that throws", () => {
     let partial = 0; // runs of the effect the throwing row made before it threw
     let siblings = 0; // runs of the other rows' effects
     let failing = 3;
-    const Row = (r$: ReadonlySignal<{ id: number }>) => {
-      const { id } = r$.peek();
+    const Row = (row: { id: ReadonlySignal<number> }) => {
+      const id = row.id.peek();
       if (id === failing) {
         effect(() => { probe.get(); partial++; });
         throw new Error(`row ${id}`);
@@ -2194,7 +2299,7 @@ describe("list(): a reorder moves only the rows that moved", () => {
   const setup = (ids: number[]) => {
     const items = signal(ids.map((id) => ({ id })));
     const root = document.createElement("div");
-    const dispose = mount(root, () => <ul>{list(items, (r) => r.id, (r$) => <li id={`r${r$.peek().id}`} />)}</ul>);
+    const dispose = mount(root, () => <ul>{list(items, (r) => r.id, ({ id }) => <li id={`r${id.peek()}`} />)}</ul>);
     const ul = root.querySelector("ul")!;
     const moved = new Set<string>();
     const insertBefore = ul.insertBefore.bind(ul);

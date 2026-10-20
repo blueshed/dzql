@@ -19,11 +19,11 @@ export function HereView(): JSX.Element {
     <section class="here">
       <h2>Here now</h2>
       <ul>
-        {list(people, (p) => p.id, (p$) => (
+        {list(people, (p) => p.id, ({ id, colour, name }) => (
           <li class="person">
-            <span class="swatch" style={p$.map((p) => `background: ${p.colour}`)} />
-            <span class="name">{p$.map((p) => p.name)}</span>
-            {when(() => p$.get().id === myId.get(), () => <em> (you)</em>)}
+            <span class="swatch" style={colour.map((c) => `background: ${c}`)} />
+            <span class="name">{name}</span>
+            {when(() => id.get() === myId.get(), () => <em> (you)</em>)}
           </li>
         ))}
       </ul>
