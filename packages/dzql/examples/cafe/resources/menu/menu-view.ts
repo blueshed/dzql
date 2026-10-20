@@ -44,7 +44,7 @@ export function ordering(items: Item[], open: Invoice | undefined, at: At, sessi
     part.sheet = drawer("item", item.name, join(
       `<div class="props">${prop("Price", `<span>${money(item.price)}</span>`)}</div>`,
       toldAt(sessionId, "table", "/orders/-"),
-      open ? `<div class="drawer-foot">${tool("Order", { icon: "plus", kind: "add", write: write("table", "add", "/orders/-", { invoices_id: Number(open.id), items_id: Number(item.id) }) })}</div>` : `<p class="note">You can order once you are seated.</p>`,
+      open ? `<div class="drawer-foot">${tool("Order", { icon: "plus", kind: "add", write: write("table", "add", "/orders/-", { invoices_id: Number(open.id), dish_id: Number(item.id) }) })}</div>` : `<p class="note">You can order once you are seated.</p>`,
     ), go("menu"), "item-drawer");
   return part;
 }

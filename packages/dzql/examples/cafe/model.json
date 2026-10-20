@@ -343,6 +343,26 @@
      }
     ],
     "requires": null
+   },
+   {
+    "id": 14,
+    "models_id": 1,
+    "text": "The manager cannot change the menu: that is the cook's",
+    "actor": "manager",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "items",
+      "op": "add"
+     },
+     {
+      "entity": "items",
+      "op": "remove"
+     }
+    ],
+    "requires": null
    }
   ],
   "documents": [
@@ -380,11 +400,15 @@
       "parent": "invoices",
       "fields": [
        {
-        "name": "item",
+        "name": "dish",
+        "type": "menu:/items"
+       },
+       {
+        "name": "dish_name",
         "type": "text"
        },
        {
-        "name": "price",
+        "name": "dish_price",
         "type": "real"
        },
        {
@@ -433,12 +457,14 @@
      }
     },
     "held_by": [
+     "manager",
      "cook",
      "customer"
     ],
     "stories": [
      2,
-     13
+     13,
+     14
     ]
    },
    {
@@ -498,11 +524,15 @@
       "parent": "invoices",
       "fields": [
        {
-        "name": "item",
+        "name": "dish",
+        "type": "menu:/items"
+       },
+       {
+        "name": "dish_name",
         "type": "text"
        },
        {
-        "name": "price",
+        "name": "dish_price",
         "type": "real"
        },
        {

@@ -10,7 +10,7 @@ import { links } from "./links";
 // first dish ordered onto it is order 1.
 
 const seat = (table: number): Write => ({ doc: "floor", ops: [{ op: "add", path: "/invoices/-", value: { tables_id: table } }] });
-const order = (invoice: number, item: number): Write => ({ doc: "table", ops: [{ op: "add", path: "/orders/-", value: { invoices_id: invoice, items_id: item } }] });
+const order = (invoice: number, item: number): Write => ({ doc: "table", ops: [{ op: "add", path: "/orders/-", value: { invoices_id: invoice, dish_id: item } }] });
 const status = (doc: string, id: number, value: "ready" | "placed"): Write => ({ doc, ops: [{ op: "replace", path: `/orders/${id}/status`, value }] });
 const pay = (doc: string, invoice: number): Write => ({ doc, ops: [{ op: "replace", path: `/invoices/${invoice}/paid`, value: true }] });
 const leave: Write = { doc: "visit", ops: [{ op: "remove", path: "/role" }] };
@@ -37,6 +37,9 @@ export const stories: Stories = {
     story("Mo adds Table 5, and sees it on the floor; Cy at the door sees a way in to it", { model: 1, as: "mo", from: "tables?new", does: { doc: "floor", ops: [{ op: "add", path: "/tables/-", value: "Table 5" }] }, seen: { mo: "tables", cy: "" } }),
     story("Kit puts Cake on the menu, and Ann and Bo at their tables see it", { model: 2, as: "kit", from: "menu?new", does: addItem("Cake", 4), seen: { kit: "menu", ann: "menu", bo: "menu" } }),
     story("Kit takes Toast off the menu, and Ann and Bo see it gone", { model: 2, as: "kit", from: "menu?confirm=2", does: { doc: "menu", ops: [{ op: "remove", path: "/items/2" }] }, seen: { kit: "menu", ann: "menu", bo: "menu" } }),
+    // an order keeps its dish's surrogate (its name and price, copied as it was ordered): the dish
+    // taken off, Ann's invoice still says Soup at £5.50, so only her menu changes
+    story("Kit takes Soup off the menu after Ann has ordered it, and Ann and Bo see it gone from the menu; her invoice still says Soup", { model: 2, premise: ordered, as: "kit", from: "menu?confirm=1", does: { doc: "menu", ops: [{ op: "remove", path: "/items/1" }] }, seen: { kit: "menu", ann: "menu", bo: "menu" } }),
 
     // ── coming in, and being seated ──
     story("Cy scans the code on Table 3, and her page says she is waiting there", { model: 3, as: "cy", does: post("/scan", { table: "3" }), offPage: true, seen: ["cy"] }),
@@ -59,6 +62,7 @@ export const stories: Stories = {
     story("Kit cannot seat Table 1: that is Mo's job", { model: 12, as: "kit", cannot: seat(1) }),
     story("Kit cannot mark Ann's ready Soup placed: that is Mo's job", { model: 12, premise: ready, as: "kit", from: "orders?order=1", cannot: status("floor", 1, "placed"), told: "The cook cannot say what tables there are, seat, open invoices, order, pay or place an order: that is the manager's and the customer's" }),
     story("Ann cannot put Cake on the menu", { model: 13, as: "ann", cannot: addItem("Cake", 4) }),
+    story("Mo cannot put Cake on the menu: that is Kit's", { model: 14, as: "mo", cannot: addItem("Cake", 4) }),
     story("Ann cannot say her own Soup is ready", { model: 13, premise: ordered, as: "ann", cannot: status("table", 1, "ready") }),
     // the app's own, told on no model page (`model: false`): someone who is no customer yet, and going
     story("Cy, who has scanned no table, cannot order", { model: false, as: "cy", cannot: order(1, 1) }),

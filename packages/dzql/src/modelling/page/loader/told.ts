@@ -1,7 +1,7 @@
 import { connectCli } from "dzql/rendering/cli/commands";
 import { cookieNameForUrl } from "dzql/rendering/scope";
 import { decoded } from "dzql/rendering/parts";
-import { readingOf } from "dzql/modelling/reading";
+import { columnOf, readingOf } from "dzql/modelling/reading";
 import { list as and, type Raw } from "../heart";
 import { MODEL } from "../model";
 import type { Load } from "./writes";
@@ -9,7 +9,7 @@ import type { Load } from "./writes";
 // The model as told against the model as built (`bun run model:check <example> --against-page`):
 // what is on the model page, and what the loader reads from the app, in the page's own words
 // (./writes.ts). Stories go by the number of the model story an app's story names (`model: 10`,
-// src/modelling/stories.ts), else by their words; documents by their names, fields by their names alone
+// src/modelling/stories.ts), else by their words; documents by their names, fields by their names alone (a ref by its column, `dish_id`)
 // (the loader reads no types). Each gap is said as a question for the teller.
 
 type Held = { under: string | null; fields: string[] };
@@ -32,7 +32,7 @@ export function told(raw: Raw): Model {
       root: d.root,
       own: d.own,
       held_by: d.held_by,
-      holds: new Map(Object.entries(d.holds).map(([e, h]) => [e, { under: h.parent, fields: h.fields.map((f) => f.name) }])),
+      holds: new Map(Object.entries(d.holds).map(([e, h]) => [e, { under: h.parent, fields: h.fields.map(columnOf) }])), // a ref as its column keeps it (`dish` is `dish_id`)
       serves: d.serves.flatMap((id) => byId.get(id) ?? []),
     },
   ]);

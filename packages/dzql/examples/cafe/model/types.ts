@@ -7,7 +7,7 @@ import { defineDoc, defineSchema } from "@blueshed/delta/json";
 export const tables: Parameters<typeof defineSchema>[0] = {
   tables: { columns: { name: "text?", seated: "boolean?" }, temporal: true },
   invoices: { columns: { paid: "boolean?" }, temporal: true, parent: "tables" },
-  orders: { columns: { item: "text?", price: "real?", status: "text?" }, temporal: true, parent: "invoices" },
+  orders: { columns: { dish_id: "integer?", dish_name: "text?", dish_price: "real?", status: "text?" }, temporal: true, parent: "invoices" },
   items: { columns: { name: "text?", price: "real?" }, temporal: true },
   visits: { columns: { table: "text?" }, temporal: true },
 };
@@ -28,6 +28,7 @@ export const docs = [
   defineDoc("floor:", { root: "tables", include: ["invoices", "orders"] }),
   // for: The cook says what is on the menu
   // for: A customer cannot change the menu, say what tables there are, seat, open invoices, or say an order is ready or placed
+  // for: The manager cannot change the menu: that is the cook's
   // every items: opened as "menu:"
   defineDoc("menu:", { root: "items", include: [] }),
   // for: A customer scans the code on their table
@@ -50,7 +51,7 @@ export const docs = [
 
 export type TablesRow = { id: number; name: string | null; seated: boolean | null; };
 export type InvoicesRow = { id: number; tables_id: number; paid: boolean | null; };
-export type OrdersRow = { id: number; invoices_id: number; item: string | null; price: number | null; status: string | null; };
+export type OrdersRow = { id: number; invoices_id: number; dish_id: number | null; dish_name: string | null; dish_price: number | null; status: string | null; };
 export type ItemsRow = { id: number; name: string | null; price: number | null; };
 export type VisitsRow = { id: number; table: string | null; };
 

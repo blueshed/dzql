@@ -33,7 +33,7 @@ export function definitionsOf(model: Model, made: Made = {}): { schema: Schema; 
   const columnsOf = (e: Entity) =>
     Object.fromEntries([...e.fields].map(([f, type]) => [columnOf({ name: f, type }), type] as const).filter(([c]) => c !== "id" && !(e.parent && c === `${e.parent}_id`)).map(([c, type]) => [c, `${typeOf(type)}?` as ColumnShorthand]));
   // every table keeps its history (delta's default): a row removed is closed, never gone, so what
-  // names it still names a row, and any document can be read as it stood (`open_at`). A table an
+  // names it still names a row (and keeps its surrogate, `<ref>_<field>`, to show it). A table an
   // app's migrations made already stays as they made it: its database says so
   const schema = defineSchema(Object.fromEntries(held.map((e) => [e.name, { columns: columnsOf(e), temporal: made[e.name]?.temporal ?? true, ...(e.parent ? { parent: e.parent } : {}) }])));
   // a document that names fewer of an entity's fields than another gives it shows, is told and takes

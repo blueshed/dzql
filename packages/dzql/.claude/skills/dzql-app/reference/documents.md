@@ -36,6 +36,16 @@ again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server
   then a missing table (delta's `createTables`), then a missing column (`migrateSchema`). That is all a new table or column needs. A field renamed or
   dropped, or data moved, is a migration: [migrations.md](migrations.md). Never delete a database
   to change its shape: people keep real data in it.
+- A row that names a row of another document (a **ref**, `dish: menu:/items`, kept as `dish_id`)
+  keeps its **surrogate** beside the key when a story can remove what it names: what it shows of
+  it, copied as it is written (`dish_name`, `dish_price`). Show the named row while it stands, and
+  the copy once it is gone; whoever holds the order holds the menu too. The cafe's `orderOf`
+  (`examples/cafe/resources/floor/floor-api.ts`):
+
+  ```ts
+  const dish = items.find((i) => i.id === String(o.dish_id));
+  return { ..., item: dish?.name ?? o.dish_name ?? "", price: dish?.price ?? o.dish_price ?? 0 };
+  ```
 - Address a row by its id, never its position: others write between a write and its undo. Make ids
   in `shape` (`Bun.randomUUIDv7()` is time-ordered). Ids are text on the wire: compare them as text.
 - A value a column cannot default in SQL (an object) goes in the schema's `default`; treat null as

@@ -432,6 +432,23 @@ test("advice: whose copy goes quiet once their own document names it, or a row i
   expect(of(cafe("colour"), "actor-closure").advice!.map((a) => a.where)).toEqual(["invoice (john)"]);
 });
 
+test("a ref to a row some story removes keeps its surrogate beside its key: advised until it does", () => {
+  const cafe = (orders: ReturnType<typeof field>[]) => closureOf({
+    models: { name: "Cafe" },
+    stories: {
+      "1": { id: 1, text: "The cook puts a dish on", actor: "cook", kind: "does", writes: [{ entity: "items", op: "add" }] },
+      "2": { id: 2, text: "Ann orders it", actor: "ann", kind: "does", writes: [{ entity: "orders", op: "add" }] },
+      "3": { id: 3, text: "The cook takes a dish off", actor: "cook", kind: "does", writes: [{ entity: "items", op: "remove" }] },
+    },
+    documents: {
+      "1": { id: 1, name: "menu", root: "items", list: 1, holds: { items: { parent: null, fields: [field("name"), field("price", "real")] } }, held_by: ["cook", "ann"], stories: [1, 3] },
+      "2": { id: 2, name: "bill", root: "orders", list: 1, holds: { orders: { parent: null, fields: orders } }, held_by: ["ann"], stories: [2] },
+    },
+  });
+  expect(of(cafe([field("dish", "menu:/items")]), "referential-closure").advice).toEqual([{ kind: "ref-surrogate", where: "orders.dish", detail: "orders.dish names a row of menu:/items, which story 3 (cook) removes: keep its surrogate beside it, what orders shows of it copied as it is written (holds 2 orders ... dish_name), shown once the row is gone" }]);
+  expect(of(cafe([field("dish", "menu:/items"), field("dish_name"), field("dish_price", "real")]), "referential-closure").advice).toEqual([]);
+});
+
 test("a ref: a path into a list its holders hold, naming a row some story adds; it says whose copy outright", () => {
   const cafe = (dish: string, menuHolders: string[], adds = true) => closureOf({
     models: { name: "Cafe" },
@@ -457,6 +474,6 @@ test("a ref: a path into a list its holders hold, naming a row some story adds; 
   expect(of(cafe("table:/tables", ["cook", "ann"]), "referential-closure").gaps.map((g) => g.detail)).toContain("orders.dish names a row of table:/tables, and table is one table, not a list: a ref names a row of a list (list 5)");
   // the visit's ref names a table: whose copy is said, never asked
   expect(of(cafe("menu:/items", ["cook", "ann"]), "actor-closure").advice!.map((a) => a.where)).not.toContain("table (ann)");
-  // a row that names one and says no time is advised to: the named row is read as it stood then
-  expect(of(cafe("menu:/items", ["cook", "ann"]), "referential-closure").advice).toContainEqual({ kind: "undated-ref", where: "orders.dish", detail: "orders names a row of menu:/items and says no time: give it one (holds 2 orders ... made_at:timestamptz) to read menu as it stood then" });
+  // a ref to a row nothing removes always stands: no surrogate is asked for
+  expect(of(cafe("menu:/items", ["cook", "ann"]), "referential-closure").advice).toEqual([]);
 });

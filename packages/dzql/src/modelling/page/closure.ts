@@ -204,11 +204,19 @@ export function closureOf(raw: Raw): Register[] {
         ),
       ),
     ],
-    // every table keeps its history, so the row a ref names is there as it stood: a row that names
-    // one and says when (a time) can be read with the dish as it was then, its price that day
+    // a ref names a row by its key; a row some story removes is closed, so no new row names it, and
+    // what named it before must still show what it named. So it keeps a surrogate (genoa's: the
+    // label that stands in for a key) beside the key, copied as it is written: `<ref>_<field>`,
+    // `dish_name` and `dish_price` beside `dish`. While the dish stands, the page shows the menu's
+    // row; once it is gone, the order's copy. A row nothing removes always stands, and needs none
     advice: [...new Map(refsHeld.map((r) => [`${r.e}.${r.label}`, r])).values()]
-      .filter((r) => ![...(m.entities.get(r.e)?.fields.values() ?? [])].some((t) => typeOf(t) === "timestamptz"))
-      .map((r) => ({ kind: "undated-ref", where: `${r.e}.${r.label}`, detail: `${r.e} names a row of ${r.doc}:/${r.collection} and says no time: give it one (holds ${r.d.id} ${r.e} ... made_at:timestamptz) to read ${r.doc} as it stood then` })),
+      .flatMap((r) => {
+        const remover = said.find(({ w }) => w.entity === r.collection && w.op === "remove");
+        const fields = [...(m.entities.get(r.e)?.fields.keys() ?? [])];
+        if (!remover || fields.some((f) => f.startsWith(`${r.label}_`))) return [];
+        const label = ["name", "label", "title"].find((f) => m.entities.get(r.collection)?.fields.has(f)) ?? "name";
+        return [{ kind: "ref-surrogate", where: `${r.e}.${r.label}`, detail: `${r.e}.${r.label} names a row of ${r.doc}:/${r.collection}, which ${story(remover.s)} removes: keep its surrogate beside it, what ${r.e} shows of it copied as it is written (holds ${r.d.id} ${r.e} ... ${r.label}_${label}), shown once the row is gone` }];
+      }),
   };
 
   const authorization: Register = {

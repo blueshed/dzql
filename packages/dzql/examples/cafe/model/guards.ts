@@ -441,6 +441,30 @@ export const guards: Guards = {
         "table"
       ],
       "requires": []
+    },
+    {
+      "story": 14,
+      "text": "The manager cannot change the menu: that is the cook's",
+      "actor": "manager",
+      "allow": false,
+      "entity": "items",
+      "op": "add",
+      "docs": [
+        "menu"
+      ],
+      "requires": []
+    },
+    {
+      "story": 14,
+      "text": "The manager cannot change the menu: that is the cook's",
+      "actor": "manager",
+      "allow": false,
+      "entity": "items",
+      "op": "remove",
+      "docs": [
+        "menu"
+      ],
+      "requires": []
     }
   ],
   "roots": {

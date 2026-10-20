@@ -50,6 +50,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **A ref keeps its surrogate** (20 October, #79, on Peter's design): a row that names a row a story
+  can remove keeps, beside the key, what it shows of it, copied as it is written (`dish_name`,
+  `dish_price` beside `dish`); the page shows the named row while it stands, and the copy once it
+  is gone. The model's check advises it (`ref-surrogate`) in place of a time on the row
+  (`undated-ref`, gone); the modelling and dzql-app skills say it. The cafe does it: its orders
+  name their dish, migration 002 renames the copy they kept to the surrogate, the manager holds the
+  menu (and model story 14 says the manager cannot change it), and two stories more. The model's
+  read-back compares a ref by its column (`dish_id`).
+
 - **The stories say the client's rules for a control once each** (20 October, #60, the review):
   the harness walks a page's controls once for what each offers (`controlsOn`) and what each is
   drawn sending (`writesOn`), a select's options read once for both, each rule beside the
