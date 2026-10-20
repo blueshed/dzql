@@ -38,6 +38,10 @@ Use `field()` for a field that edits a document: it cannot be wired wrong. Its o
 
 `write(doc, op, path, value?)` (`src/rendering/html.ts`) gives `data-write='{"doc","op","path"}'`.
 
+- A single document's root row is written by its id (`/messages/1/text`, through `message:1`) or
+  as the document holds it (`/messages/text`): delta takes both, and the stories resolve a path as
+  delta does. Say one, the same in the control, its permit and its story.
+
 - A **form** writes on submit: its one field's value, or a record of every named field. A box is
   `true` or `false`; a number field a number, or `null` when empty; a group of radios one field, the
   value chosen or `null`; a `multiple` select its last choice or `null`; anything else its text (a

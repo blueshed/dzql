@@ -20,11 +20,11 @@ import { prefixDoc, splitDoc } from "../rendering/names";
 import { size, sum, tap } from "./costs";
 import { controlsOn, goesTo, offers, placeOf, writesOn, type Control, type Writing } from "./harness/controls";
 import { holding, propsCost, retake, takersOn, taking, type PropsCost, type Taken } from "./harness/applets";
-import { anyOne, holds, keysOf, pathsIn, valueAt } from "./harness/paths";
+import { anyOne, asHeld, holds, keysOf, pathsIn, valueAt } from "./harness/paths";
 // what a page offers, what its applets hold, and the paths in a document: each a module of its own (src/modelling/harness/), said here too
 export { controlsOn, goesTo, offers, placeOf, writesOn, type Control } from "./harness/controls";
 export { holding, MOST_PROPS, propsCost, retake, takersOn, taking } from "./harness/applets";
-export { anyOne, holds, pathsIn, valueAt } from "./harness/paths";
+export { anyOne, asHeld, holds, pathsIn, valueAt } from "./harness/paths";
 
 // Runs an example's stories against it, over real sockets, and reports by story name: what each
 // step checks is docs/stories.md, "The harness". Canon 1 compares every member's page, drawn from
@@ -470,7 +470,7 @@ async function miswritten(r: Run, ws: Tab, w: Writing): Promise<string | undefin
   if (w.op !== "replace") return undefined;
   const { owner, docId } = target;
   const value = valueAt(await settled(r.documents, () => r.documents.read(prefixDoc(owner.docType, docId))), owner.under ?? "");
-  if (holds(value, w.path)) return undefined;
+  if (holds(value, asHeld(value, w.path))) return undefined; // as delta takes it: a single document's root by its id too
   if (!owner.shape) return `${w.doc} holds nothing at ${w.path} to replace`;
   // the example's own words, which its shape translates: its permit must take them, or say why not
   try {
@@ -1185,14 +1185,14 @@ async function hiddenVerbs(r: Run): Promise<Warning[]> {
         const owner = r.byDocType.get(docType)!;
         if (!owner.permit || docType === "ledger" || !isStored(owner)) continue;
         const value = valueAt(await settled(r.documents, () => r.documents.read(prefixDoc(docType, docId))), owner.under ?? "");
-        const saying = (op: string, path: string): string => `${op} ${anyOne(path, value) || "the document"}`; // a verb, as the warning says it
+        const saying = (op: string, path: string): string => `${op} ${anyOne(asHeld(value, path), value) || "the document"}`; // a verb, as the warning says it: a path as delta takes it
         const known = new Set(toldTo(doc, m.name).map((w) => saying(w.op, w.path)));
         const written = toldTo(doc); // anyone's: more paths to try, and the values written there
         const paths = new Set([...pathsIn(value), ...written.filter((w) => !w.pattern).map((w) => w.path)]);
         const verbs = found.get(doc) ?? found.set(doc, new Map()).get(doc)!;
         for (const path of paths) {
-          const any = anyOne(path, value);
-          const values = new Map([valueAt(value, path) ?? null, ...written.filter((w) => w.value !== undefined && anyOne(w.path, value) === any).map((w) => w.value)].map((v) => [JSON.stringify(v), v]));
+          const any = anyOne(asHeld(value, path), value);
+          const values = new Map([valueAt(value, asHeld(value, path)) ?? null, ...written.filter((w) => w.value !== undefined && anyOne(asHeld(value, w.path), value) === any).map((w) => w.value)].map((v) => [JSON.stringify(v), v]));
           for (const verb of ["add", "replace", "remove"] as const) {
             const said = saying(verb, path);
             if (known.has(said) || verbs.get(said)?.includes(m.name)) continue;

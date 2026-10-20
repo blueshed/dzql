@@ -325,6 +325,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **The stories resolve a path as delta does** (20 October, root #127): delta takes a single
+  document's root row by its id (`/messages/1/text`, through `message:1`) and as the document
+  holds it (`/messages/text`); the harness held a control to the second alone, and warned a page
+  that wrote the first ("message holds nothing at /messages/1/text to replace"), which the light
+  page writes. `asHeld(doc, path)` (`dzql/modelling/harness`) gives a path as the document holds
+  it, and the check of what a control writes and the search for a hidden verb read each path so.
+  So the light page's path carries to the thin client unchanged. A story still says the path its
+  page's control sends (the dzql-app skill's `controls.md`).
+
 - **An implied document not made yet is read as it stood as `open` reads it** (20 October, root
   #120): the compiled `dzql_open_at__<doc>` answers its id and its columns' defaults, each included
   collection empty, where it answered null, as delta's SQLite now does (delta's

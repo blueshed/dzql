@@ -4,7 +4,7 @@ import { tmpdir as osTmp } from "node:os";
 import type { PatchOp } from "../../src/rendering/json-patch";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
-import { defineDoc, registerDocs } from "@blueshed/delta/sqlite";
+import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { app as example } from "../../examples/chat/routes";
 import { db, schema } from "../../examples/chat/store";
 import { stories } from "../../examples/chat/stories";
@@ -13,7 +13,7 @@ import { read } from "../../src/rendering/documents";
 import { appletProps, appletWrites, write } from "../../src/rendering/html";
 import type { Example } from "../../src/rendering/example";
 import { size } from "../../src/modelling/costs";
-import { anyOne, controlsOn, goesTo, hear, holding, holds, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, writesOn, type Outcome, type Report, type Trace, type Wire } from "../../src/modelling/harness";
+import { anyOne, asHeld, controlsOn, goesTo, hear, holding, holds, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, writesOn, type Outcome, type Report, type Trace, type Wire } from "../../src/modelling/harness";
 import { comparable, diff, drawParts, part, splitTag } from "../../src/rendering/parts";
 import { post, story, toldOf, untold, type Stories, type Story } from "../../src/modelling/stories";
 import { keyed } from "./keyed";
@@ -37,7 +37,7 @@ const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, p
 /** What the types refuse, as a story file that is not type-checked says it. */
 const misshapen = (story: object) => story as Story;
 /** Every failure of `told`, told among `of`'s cast (chat's, unless it says). */
-const failuresOf = async (broken: Example, told: Story[], of: Stories = stories): Promise<string[]> => (await run(broken, { ...of, stories: keyed(told)})).outcomes.flatMap((o) => o.failures);
+const failuresOf = async (broken: Example, told: Story[], of: Stories = stories): Promise<string[]> => (await run(broken, { ...of, stories: keyed(told) })).outcomes.flatMap((o) => o.failures);
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
 // cast's setup shared by all. What each story finds is the example's business (a failing story is
@@ -534,7 +534,7 @@ describe("stories harness", () => {
     expect(months.map((s) => s.from)).toEqual(["2026-11?request=2", "2026-10", "2026-12?request=3"]);
     setSystemTime(new Date("2026-10-15T12:00:00Z"));
     try {
-      const report = await run(leave, { ...among(told, "ann"), stories: keyed(months)});
+      const report = await run(leave, { ...among(told, "ann"), stories: keyed(months) });
       expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
     } finally {
       setSystemTime();
@@ -544,16 +544,16 @@ describe("stories harness", () => {
   test("an applet on a document offers only what its mount says it writes: a drawer that lost its picker fails the story, though the clock's face reads the same document", async () => {
     const { example: ticker, stories: told } = await load("ticker");
     const tokyo = toldOf(told).filter((s) => s.name.startsWith("Ann sets her clock to Tokyo"));
-    expect((await run(ticker, { ...told, stories: keyed(tokyo)})).outcomes[0]!.failures).toEqual([]);
+    expect((await run(ticker, { ...told, stories: keyed(tokyo) })).outcomes[0]!.failures).toEqual([]);
     const pickerless: Example = { ...ticker, render: (sessionId, address) => ticker.render(sessionId, address).replace(/<div id="city"[^]*?<\/datalist><\/div>/, "") };
-    expect((await run(pickerless, { ...told, stories: keyed(tokyo)})).outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /tz on clock"]);
+    expect((await run(pickerless, { ...told, stories: keyed(tokyo) })).outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /tz on clock"]);
   }, 30000);
 
   test("an applet offers only what its mount says it writes: a drawer that lost its control fails its story, whatever applet is beside it", async () => {
     const { example: leave, stories: told } = await load("leave");
     const approve = write("team", "replace", "/requests/1/status", "approved");
     const lost: Example = { ...leave, render: (sessionId, address) => leave.render(sessionId, address).replace(approve, "") };
-    const report = await run(lost, { ...among(told, "mo"), stories: keyed(toldOf(told).filter((s) => s.name.startsWith("Mo approves")))});
+    const report = await run(lost, { ...among(told, "mo"), stories: keyed(toldOf(told).filter((s) => s.name.startsWith("Mo approves"))) });
     expect(report.outcomes.flatMap((o) => o.failures)).toContain("mo has no control on their page for replace /requests/1/status on team");
   }, 30000);
 
@@ -587,7 +587,7 @@ describe("stories harness", () => {
 
     const { example: leave, stories: told } = await load("leave");
     const stale: Example = { ...leave, render: (sessionId, address) => leave.render(sessionId, address).replace(/data-writes='[^']*'/, `data-writes='{"doc":"team","path":"/draft"}'`) };
-    const report = await run(stale, { ...among(told, "ann"), stories: keyed(toldOf(told).filter((s) => s.name.startsWith("Ann drags across") || s.name.startsWith("Ann cannot move Bo's week")))});
+    const report = await run(stale, { ...among(told, "ann"), stories: keyed(toldOf(told).filter((s) => s.name.startsWith("Ann drags across") || s.name.startsWith("Ann cannot move Bo's week"))) });
     expect(report.outcomes.map((o) => o.failures.filter((f) => f.startsWith("applet declaration")))).toEqual([
       ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],
       ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],
@@ -838,13 +838,13 @@ describe("stories harness", () => {
     }, 30000);
 
     test("a story whose from no page offers a way to fails by name, though the harness can put its author there", async () => {
-      const report = await run(without(deskButton("board?new")), { ...told, stories: keyed(named("Ann watches Charlie Metals, and only her board grows"))});
+      const report = await run(without(deskButton("board?new")), { ...told, stories: keyed(named("Ann watches Charlie Metals, and only her board grows")) });
       expect(report.outcomes[0]!.failures).toEqual(['no control leads ann to "board?new", where the story has them act']);
-      expect((await run(ticker, { ...told, stories: keyed(named("Ann watches Charlie Metals, and only her board grows"))})).failed).toBe(0);
+      expect((await run(ticker, { ...told, stories: keyed(named("Ann watches Charlie Metals, and only her board grows")) })).failed).toBe(0);
     }, 30000);
 
     test("so does a place a seen puts someone, and what a place holds after \" @ \" must be sent from the page there", async () => {
-      const report = await run(without(deskButton("market?symbol=BRVO"), write("desk", "replace", "/reading/board", "list")), { ...told, stories: keyed(named("Bravo ticks"))});
+      const report = await run(without(deskButton("market?symbol=BRVO"), write("desk", "replace", "/reading/board", "list")), { ...told, stories: keyed(named("Bravo ticks")) });
       expect(report.outcomes.map((o) => o.failures)).toEqual([
         [],
         ['no control leads ann to "board @ reading.board=list", where the story has them see it: nothing on their page at "board" sends replace /reading/board'],
@@ -855,8 +855,8 @@ describe("stories harness", () => {
     test("a place named with \" @ \" is stood on, so what its page sends is asked, though no other place is wanted past it", async () => {
       // told alone, Ann's board is only the end of her way from where the cast left her
       const alone = named("Bravo ticks; Ann, reading her board as a list");
-      expect((await run(ticker, { ...told, stories: keyed(alone)})).outcomes[0]!.failures).toEqual([]);
-      expect((await run(without(write("desk", "replace", "/reading/board", "list")), { ...told, stories: keyed(alone)})).outcomes[0]!.failures).toEqual([
+      expect((await run(ticker, { ...told, stories: keyed(alone) })).outcomes[0]!.failures).toEqual([]);
+      expect((await run(without(write("desk", "replace", "/reading/board", "list")), { ...told, stories: keyed(alone) })).outcomes[0]!.failures).toEqual([
         'no control leads ann to "board @ reading.board=list", where the story has them see it: nothing on their page at "board" sends replace /reading/board',
       ]);
     }, 30000);
@@ -864,8 +864,8 @@ describe("stories harness", () => {
     test("a way through a place no story stands on is walked, and one a page never offers is not a way at all", async () => {
       // Ann stands only where the cast put her; the way to Alpha's modal is through the market and Alpha's drawer
       const drops = named("Ann drops Alpha");
-      expect((await run(ticker, { ...told, stories: keyed(drops)})).outcomes[0]!.failures).toEqual([]);
-      expect((await run(without(deskButton("market")), { ...told, stories: keyed(drops)})).outcomes[0]!.failures).toEqual(['no control leads ann to "market?confirm=ALPH", where the story has them act']);
+      expect((await run(ticker, { ...told, stories: keyed(drops) })).outcomes[0]!.failures).toEqual([]);
+      expect((await run(without(deskButton("market")), { ...told, stories: keyed(drops) })).outcomes[0]!.failures).toEqual(['no control leads ann to "market?confirm=ALPH", where the story has them act']);
     }, 30000);
   });
 
@@ -1280,7 +1280,7 @@ describe("a failure that says why", () => {
           ].join(""),
         ),
     };
-    const report = await run(careless, { ...stories, stories: keyed(only("Bob closes his tab"))});
+    const report = await run(careless, { ...stories, stories: keyed(only("Bob closes his tab")) });
     expect(report.warnings!.filter((w) => w.story.startsWith("a control the wire refuses")).map((w) => `${w.story} | ${w.says}`)).toEqual([
       `a control the wire refuses, on ada's page | button[data-value='"psst"'], add /messages/- on room:kitchen: the page did not read room:kitchen`,
       `a control the wire refuses, on ada's page | button[data-value='"general"'], replace room on session: room is not a JSON Pointer`,
@@ -1289,6 +1289,62 @@ describe("a failure that says why", () => {
       `a control the wire refuses, on ada's page | button[data-value='"x"'], replace /topic on room: the page did not read room`, // her page before she has a name: in no room
       `a control the wire refuses, on ada's page | button[data-value='"x"'], replace /topic on room: room holds nothing at /topic to replace`,
     ]);
+  }, 30000);
+
+  test("an implied document not made yet is read from storage as the page reads it, by its columns' defaults: the fresh render draws the same page", async () => {
+    // chat's sessions, with a document of one row not made until someone writes it: its text says Hello till then
+    const notes = defineSchema({ notes: { table: "implied_notes", columns: { text: { type: "text", default: "Hello" } }, temporal: false } });
+    createTables(db, notes);
+    const local = createLocal();
+    registerDocs(local.server, db, notes, [defineDoc("note:", { root: "notes", include: [], implied: true })], [], { ledger: true });
+    const reading: Example = {
+      ...example,
+      delta: local,
+      resources: [{ docType: "note", resolveDoc: () => "1", permit: (_ws, op) => op.op === "replace" && op.path === "/notes/text" }],
+      render: () => `<p>${read<{ notes: { text: string } }>("note:1").notes.text}</p><button${write("note", "replace", "/notes/text", "Hi")}>Hi</button>`,
+      session: undefined,
+      address: undefined,
+      active: () => true,
+    };
+    const report = await run(reading, {
+      cast: { ann: [], bob: [] },
+      stories: {
+        // refused, nothing is made: the page read from storage is the note not made yet
+        blank: story("Bob cannot blank the note out", { as: "bob", cannot: { doc: "note", ops: [{ op: "remove", path: "/notes/text" }] } }),
+        hi: story("Ann says Hi in place of Hello, and Bob sees it", { as: "ann", does: { doc: "note", ops: [{ op: "replace", path: "/notes/text", value: "Hi" }] }, seen: ["ann", "bob"] }),
+      },
+    });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([[], []]);
+  }, 30000);
+
+  test("a path is resolved as delta takes it: a single document's root row by its id is the root the document holds; anything else is as it is", () => {
+    const single = { messages: { id: 1, text: "Hello" } };
+    expect(asHeld(single, "/messages/1/text")).toBe("/messages/text");
+    expect(asHeld(single, "/messages/1")).toBe("/messages");
+    expect(["/messages/text", "/messages/2/text", "/messages", "", "no pointer"].map((p) => asHeld(single, p))).toEqual(["/messages/text", "/messages/2/text", "/messages", "", "no pointer"]);
+    expect(asHeld({ messages: { "1": { id: 1, text: "Hello" } } }, "/messages/1/text")).toBe("/messages/1/text"); // a list's row is held by its id
+    expect(asHeld({ messages: null }, "/messages/1/text")).toBe("/messages/1/text"); // a root removed holds nothing
+  });
+
+  test("a control that writes a single document's root row by its id, as delta takes it, is no control the wire refuses, nor a hidden verb", async () => {
+    // the light page's message writes /messages/1/text, the row by its id; the document holds messages.text
+    const notes = defineSchema({ notes: { table: "by_id_notes", columns: { text: { type: "text", default: "Hello" } }, temporal: false } });
+    createTables(db, notes);
+    const local = createLocal();
+    registerDocs(local.server, db, notes, [defineDoc("note:", { root: "notes", include: [], implied: true })], [], { ledger: true });
+    const TEXT = "/notes/1/text";
+    const byId: Example = {
+      ...example,
+      delta: local,
+      resources: [{ docType: "note", resolveDoc: () => "1", permit: (_ws, op) => op.op === "replace" && /^\/notes(\/1)?\/text$/.test(op.path) }], // either way, as delta takes either
+      render: () => `<p>${read<{ notes: { text: string } }>("note:1").notes.text}</p><input name="text"${write("note", "replace", TEXT)}>`,
+      session: undefined,
+      address: undefined,
+      active: () => true,
+    };
+    const report = await run(byId, { cast: { ann: [], bob: [] }, stories: { hi: story("Ann says Hi in place of Hello, and Bob sees it", { as: "ann", does: { doc: "note", ops: [{ op: "replace", path: TEXT, value: "Hi" }] }, seen: ["ann", "bob"] }) } });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([[]]);
+    expect(report.warnings).toBeUndefined();
   }, 30000);
 
   test("a JSON Pointer is held where each step is a key of what is there, an array's by its index", () => {
