@@ -450,6 +450,21 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   as it does on SQLite. delta's `acceptCases` run in `tests/delta/writes.test.ts`, and
   `tests/delta/accept-pglite.test.ts` has a list everyone reads and an admin writes.
 
+- **`openStore` takes what an app with sign-in needs** (20 October, root #140). The Shed's run 5
+  had sign-in, two custom documents and three histories, so it wired dzql by hand (two listeners)
+  and raised `dzql.definer` itself to read who is signed in. Now the store takes delta's `auth`
+  (a `DeltaAuth`, as `registerDocs` takes it) and `who`; `register(docs, { shared, owns, ledger,
+  custom })` says who has a document that names no path, refused as it is registered when it says
+  no owner, and puts a resource's custom documents (`defineCustomDoc`) beside its own; and
+  `migrations` takes a history per resource, `[{ app, list | dir, schema, imported }]`, each its own
+  `app`, run in the order given (a list with an app missing or twice is refused). `imported: true`
+  is delta's new `migrate` option: the rows come from the store before, so on a new database no
+  `up` runs. What the server reads past the documents' paths it reads with `asOwner(pool, fn)`, now
+  exported from `dzql/postgres` (with the types `AppStore`, `History`, `Registration`).
+  `tests/delta-pg/app-store-signed-in-pglite.test.ts` proves an app with sign-in, a custom
+  document and two histories through `openStore` alone, on PGlite; the app-store tests now run in
+  the fast tier. dzql-app's `reference/documents.md` says it.
+
 - **`openStore` takes several schemas** (20 October, root #130): `openStore({ schema: [order.schema,
   message.schema] })`, each resource's own, kept as one, where an app spread their `.tables` into
   one; a table two of them declare is refused as the store is said

@@ -33,8 +33,8 @@ export interface RegisterOptions<I = unknown> {
   namespace?: string;
 }
 
-/** The listener for `docs` and `customDocs`, compiled already: `registerDocs` without its `generateSql`, as `openStore` serves them after its `prepare`. */
-export function serveDocs<I = unknown>(ws: WsServer, pool: Pool, schema: Schema, docs: DocDef[], customDocs: CustomDocDef<any, I>[] = [], options: RegisterOptions<I> = {}) {
+/** The listener for `docs` and `customDocs`, compiled already: `registerDocs` without its `generateSql`. */
+function serveDocs<I = unknown>(ws: WsServer, pool: Pool, schema: Schema, docs: DocDef[], customDocs: CustomDocDef<any, I>[] = [], options: RegisterOptions<I> = {}) {
   const { auth, owns, shared } = options;
   // as SQLite refuses them, by this call's name: with auth, a document says who has it (a path, or owns, or shared)
   if (auth) {

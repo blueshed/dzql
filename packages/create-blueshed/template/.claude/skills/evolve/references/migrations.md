@@ -131,5 +131,6 @@ The kitchen's test, on a new data folder, shows the other side: a new database r
 Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md and sqlite.md) and runs its type check and tests (`bun run test:evolve`).
 
 - **Change the schema, then `make`.** Never write a migration's changes by hand, and never edit one that has run anywhere, nor rename its file: write the next one.
-- What `make` cannot know it says as `// By hand:` lines (a rename, a changed type); data is an `up`, the backend's SQL. How a history runs (once, in order, each in its own transaction, under its `app`), where undo stops, expand and contract, and `bunx @blueshed/delta migrate ... --status`: delta-doc's `reference/migrations.md`.
+- What `make` cannot know it says as `// By hand:` lines (a rename, a changed type); data is an `up`, the backend's SQL.
+- **An `up` is the SQL of the backend it was written on.** When the app moves to Postgres, the new database is made by the history's changes and takes the rows migrated already (`importTables`), so an `up` written for SQLite never runs there: the history says `imported: true` ([postgres.md](postgres.md), "The history moves with the app"). The next `up` is Postgres's. Never edit one that has run to hold both. How a history runs (once, in order, each in its own transaction, under its `app`), where undo stops, expand and contract, and `bunx @blueshed/delta migrate ... --status`: delta-doc's `reference/migrations.md`.
 - The JSON file has no migrations: it is for documents you can reset.

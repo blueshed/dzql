@@ -81,6 +81,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   backend outside the package asks it. It is `registerDoc`'s `accept`, which went with it on 20
   October and left such a rule only a socket handler of the app's, back where the document is defined.
 
+- **`migrate` takes `imported`: a new database whose rows come migrated already runs no `up`**
+  (20 October, root #140, create-blueshed template #15). An `up` is the SQL of the backend it was
+  written on, and a history written on SQLite runs on Postgres too, from its first migration. When
+  an app moves, the new database is made by the history's changes and takes its rows by
+  `importTables`, so `migrate(db, list, { app, schema, imported: true })` records each `up` as run
+  and runs none, where nothing of the app's is recorded; once it is, the next `up` runs, so it is
+  safe left on. `migrationCases` asks it of every backend (SQLite here, PGlite and Postgres in
+  dzql); delta-doc's `reference/migrations.md` and `reference/postgres.md` say it.
+
 - **The case suite asks a schema's refusal in its words** (20 October, root #132): `refusalCases`
   (`./testing`, `src/cases/writes.ts`, beside `errorCodeCases`) asks every backend each of
   `refusals` -- a path that is no pointer, an empty one, a collection the schema or the document

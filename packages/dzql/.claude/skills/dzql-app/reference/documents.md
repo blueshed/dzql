@@ -63,7 +63,15 @@ ref's surrogate (`orderOf`, `resources/kitchen/kitchen-api.ts`) and a seed in `p
 - The tables are said in `store.ts`, the app's one schema: that is the default, and the starter's
   and the cafe's. `openStore({ schema })` also takes several (`[order.schema, message.schema]`),
   kept as one, a table two of them declare refused: only for an app that already keeps each
-  resource's tables in its `-api.ts`.
+  resource's tables in its `-api.ts`. Such an app keeps a history per resource too:
+  `migrations: [{ app: "order", list, schema: order.schema }, { app: "menu", ... }]`, each its own
+  `app`, run in the order given; `imported: true` on one whose rows come from the store before,
+  migrated there, so its `up`s never run on the new database.
+- A resource's custom documents (`defineCustomDoc`) are registered beside its own:
+  `store.register(docs, { custom: [summary] })`. What one works out past the documents' paths it
+  reads as the tables' owner, `asOwner(pool, (db) => db.query(...))` (`dzql/postgres`), never by
+  raising dzql's settings itself. `openStore`'s `auth` is for a page that is delta's client; a page
+  dzql draws signs in by its session ([signin.md](signin.md)).
 - A row that names a row of another document (a **ref**, `dish: menu:/items`, kept as `dish_id`)
   keeps its **surrogate** beside the key when a story can remove what it names: what it shows of
   it, copied as it is written (`dish_name`, `dish_price`). Show the named row while it stands, and

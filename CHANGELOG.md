@@ -15,6 +15,15 @@ what is open across them. Newest first.
   write is a path for the reading and a rule for the writing. delta-doc's `schema.md` and
   `ownership.md` teach it, and evolve's `document.md` points there.
 
+### `openStore` for an app with sign-in, and the step to Postgres whole (20 October, root #140)
+
+- dzql's `openStore` takes `auth`, custom documents (`register(docs, { custom })`) and a history
+  per resource, and exports `asOwner` for what the server reads past the documents' paths: an app
+  like the Shed's run 5 no longer wires dzql by hand or raises `dzql.definer` itself. delta's
+  `migrate` takes `imported`, so a new database whose rows come migrated runs no `up` (template
+  #15). evolve's Postgres step keeps every document in one store, the message included (template
+  #16). Each package's changelog has the detail.
+
 ### Every skill's evaluations run, and what they found fixed (20 October, root #113)
 
 - `scripts/evals.ts` ran every shipped skill's scenarios as fresh `claude -p` sessions (round 2,
