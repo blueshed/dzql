@@ -72,6 +72,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is are `resources/schema.ts`, which both resources import, and dzql's Postgres server of the
   example too (`server-pg.ts`'s one import moved). `server.ts` became `routes.ts`;
   `bun examples/sites-bbox/routes.ts` runs it.
+- **The recipe is routes and resources** (20 October): delta-doc's chat room is `routes.ts`, the
+  page (`app.tsx`, `index.html`) and its `tsconfig.json`, and `resources/room/`: `room-api.ts`
+  (the schema, `room:` and `roomApi(ws)`, which registers it on the JSON file), `room.ts` (the
+  `openDoc` handle) and `room-view.tsx` (its `list()`). `types.ts`, `server.ts` and `client.tsx`
+  are gone into them, so someone's first app is laid out as every app after it. Moving to SQLite
+  changes `room-api.ts` alone. `tests/recipe.test.ts` writes each block to the path its heading
+  names and runs it as before; the skill's server, backends, write-loop and rendering pages
+  quote the new files.
 
 - **The recipe's client is railroad's** (20 October, root #30): `client.tsx` draws the room with
   `list()` over `doc.data`, as the recipe's first line says the client needs, in place of raw DOM

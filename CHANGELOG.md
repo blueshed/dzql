@@ -9,8 +9,8 @@ what is open across them. Newest first.
 ### delta's examples are routes and resources (20 October)
 
 - **Every app is routes and resources, joined by documents** (Peter's word), as paintbrush is:
-  delta's kanban and sites-bbox are now `routes.ts` and `resources/<name>/` (`<name>-api.ts`,
-  and for a page, `<name>.ts` and `<name>-view.tsx`). dzql's Postgres server of sites-bbox
+  delta's kanban and sites-bbox, and delta-doc's recipe, are now `routes.ts` and
+  `resources/<name>/` (`<name>-api.ts`, and for a page, `<name>.ts` and `<name>-view.tsx`). dzql's Postgres server of sites-bbox
   imports the example's schema from its new path, `resources/schema.ts`. delta's CHANGELOG has
   each move.
 

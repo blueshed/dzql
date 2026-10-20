@@ -22,8 +22,7 @@ mount(document.getElementById("root")!, () =>
   when(board.data, () => <BoardView />, () => <div class="pending">connecting…</div>));
 ```
 
-Without JSX, the recipe's `applyOpsToCollection` (`recipe.md`; `DomCollection` in
-`src/client/dom-ops.ts`): one `render(ops)` for the first paint
+Without JSX, `applyOpsToCollection` (`DomCollection` in `src/client/dom-ops.ts`): one `render(ops)` for the first paint
 (`render([{ op: "replace", path: "", value: doc.data.get() }])` after `await doc.ready`), every
 `doc.onOps`, and the reconnect's whole-document replace.
 

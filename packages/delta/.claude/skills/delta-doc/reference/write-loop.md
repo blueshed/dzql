@@ -1,14 +1,14 @@
 # The write loop: send, and let the echo render
 
-From the recipe's `client.ts` (`recipe.md`):
+From the recipe's `room-view.tsx` (`recipe.md`):
 
 ```ts
 // WRONG: the op echoes back and the message shows twice
 log.append(renderMessage(m));
-await doc.send([{ op: "add", path: "/messages/-", value: m }]);
+await room.send([{ op: "add", path: "/messages/-", value: m }]);
 
-// RIGHT: send only; onOps / doc.data render it when it echoes back
-await doc.send([{ op: "add", path: "/messages/-", value: m }]);
+// RIGHT: send only; onOps / room.data render it when it echoes back
+await room.send([{ op: "add", path: "/messages/-", value: m }]);
 ```
 
 `doc.send(ops)` does not change your view. The server applies the ops and broadcasts them to

@@ -1,6 +1,7 @@
 # Backends: where documents are kept
 
-Moving the recipe's chat from the JSON file to SQLite changes `server.ts`'s wiring only:
+Moving the recipe's chat from the JSON file to SQLite changes `room-api.ts` only (its imports
+from `./sqlite`, and `roomApi`'s wiring):
 
 ```ts
 import { Database } from "bun:sqlite";
@@ -10,7 +11,7 @@ import { createTables, importTables, registerDocs } from "@blueshed/delta/sqlite
 const db = new Database("chat.db");
 createTables(db, schema);
 importTables(db, schema, exportTables("./chat.json", schema));   // once, into empty tables
-registerDocs(ws, db, schema, [room]);
+registerDocs(ws, db, schema, docs);
 ```
 
 ## Pick the smallest that fits
