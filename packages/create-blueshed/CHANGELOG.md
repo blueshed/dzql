@@ -75,6 +75,20 @@ section up.
 
 ### Added
 
+- **The kitchen has a view: the cook's cell** (20 October, root #122). evolve's `sqlite.md`, which
+  adds the kitchen document, gives the light page a cell for it: each open order and what is on
+  it (`KitchenCell`, `kitchen` in `order.ts`, the `Kitchen` type in `order-api.ts`), its story
+  the cook's ("The cook sees each open order: ..."), and a test of it in the browser
+  (`tests/kitchen.test.ts`). So the thin-client step carries the kitchen across as a part like any
+  other (`kitchenCell`, a `kitchen` resource), and dzql's harness tells its story. A document is
+  what someone needs in front of them: one no page draws was the gap. An app past `sqlite.md`
+  takes the same blocks.
+- **Undo and Redo are on the light page once undo is** (20 October, root #126). `sqlite.md` gives
+  `bento()` the page's Undo and Redo (`undo()` and `redo()` from `@blueshed/delta/client`), since
+  the undo story needs a control a person presses; its test presses Undo. Both bentos now draw
+  them only when asked (dzql's `bento({ undo: true })`, which the thin-client step says), so the
+  page keeps its tools as it moves; `tests/bento-page.tsx` holds the two equal for a box with
+  none, open and closed.
 - **The evolve skill's last step: the page drawn on the server** (20 October, root #73):
   `references/thin-client.md`, applied after two-documents, sqlite and postgres by
   `tests/evolve.ts`, moves the order app to dzql's thin client in the shape `bun create dzql`

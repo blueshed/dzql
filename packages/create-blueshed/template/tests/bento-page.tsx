@@ -16,7 +16,9 @@ const NODES: Record<string, IconNode> = {
   search: Search as IconNode, eye: Eye as IconNode, "eye-off": EyeOff as IconNode, "log-out": LogOut as IconNode, list: List as IconNode, map: MapIcon as IconNode, coffee: Coffee as IconNode,
   "chef-hat": ChefHat as IconNode, "map-pin": MapPin as IconNode, clock: Clock as IconNode,
 };
-const s = server.bento({ icon: (n: string, size = 16) => svg(NODES[n]!, { size, name: n }), session: "visit", leave: { text: "Sign out", icon: "log-out", path: "/who" } });
+const icon = (n: string, size = 16) => svg(NODES[n]!, { size, name: n });
+const s = server.bento({ icon, session: "visit", undo: true, leave: { text: "Sign out", icon: "log-out", path: "/who" } });
+const s0 = server.bento({ icon, session: "visit" }); // asked for no undo and no leave: no page's tools, as railroad's `quiet`
 const w = write("order", "replace", "/x", 1); // any write: it is left out of the comparison
 
 declare global {
@@ -66,6 +68,8 @@ const cases: [name: string, server: string, browser: () => Node][] = [
       ["a box with a heading, at the root", s.boxPage([{ label: "Corner Café" }], [], cells(), undefined, {}), () => b.boxPage([{ label: "Corner Café" }], [], ours(), undefined, {})],
       ["a box with a heading", s.boxPage(trail, [], cells(), undefined, { logo: '<img src="logo.png" alt="">', actions: [s.tool("Add to the menu", { icon: "plus", write: w })] }), () => b.boxPage(ourTrail, [], ours(), undefined, { logo: <img src="logo.png" alt="" />, actions: [b.tool("Add to the menu", { icon: Plus })] })],
       ["a box, a cell open", s.boxPage(trail, ["<p>in place</p>"], cells(), open), () => b.boxPage(ourTrail, [<p>in place</p>], ours(), ourOpen())],
+      ["a box with no page's tools", s0.boxPage(trail, [], cells()), () => quiet.boxPage(ourTrail, [], ours())],
+      ["a box with no page's tools, a cell open", s0.boxPage(trail, [], cells(), open), () => quiet.boxPage(ourTrail, [], ours(), ourOpen())],
       ["a box, a cell open, its way back found", s.boxPage([{ label: "Corner Café" }], [], cells(), { key: "kitchen", body: "" }), () => b.boxPage([{ label: "Corner Café" }], [], ours(), { key: "kitchen", body: <></> })],
       ["a collection", s.collectionPage([{ label: "The kitchen" }], { key: "orders", body: "<p>orders</p>" }), () => b.collectionPage([{ label: "The kitchen" }], { key: "orders", body: <p>orders</p> })],
     ] as [string, string, () => Node][];
@@ -93,7 +97,7 @@ const cases: [name: string, server: string, browser: () => Node][] = [
   ["removing, in a modal", s.confirmModal("Take it off the menu?", "Nobody can order it.", w, w, "Take it off"), () => b.confirmModal("Take it off the menu?", "Nobody can order it.", press("take off"), press("never mind"), "Take it off")],
   ["the layers, a drawer and a modal open", server.layers("<p>page</p>", "<p>drawer</p>", "<p>modal</p>"), () => layers(<p>page</p>, <p>drawer</p>, <p>modal</p>)],
   ["the layers, nothing open", server.layers("<p>page</p>", "", ""), () => layers(<p>page</p>, null, null)],
-  ["the page's tools, none", "", () => quiet.pageTools() ?? <></>],
+  ["the page's tools, none", s0.pageTools(), () => quiet.pageTools() ?? <></>],
 ];
 
 // The element as the browser holds it, in words: its tag, its attributes in order (a field's value,

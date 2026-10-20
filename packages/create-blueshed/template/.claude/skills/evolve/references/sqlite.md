@@ -1,6 +1,6 @@
 # Store documents in SQLite
 
-When the JSON file is rewritten too often to keep up (it is saved whole after every change), or the schema must change on data people already have ([migrations.md](migrations.md)). The documents of [two-documents.md](two-documents.md) and the page stay as they are: `order-api.ts` takes its definitions from `@blueshed/delta/sqlite` in place of `@blueshed/delta/json`, a database in place of the file, and carries the file's rows across. The tables are made by the resource's history of migrations, from its first, `001-order`. Added here, as they would be on the JSON file: the kitchen, every open order, a third document over the same rows; and undo.
+When the JSON file is rewritten too often to keep up (it is saved whole after every change), or the schema must change on data people already have ([migrations.md](migrations.md)). The documents of [two-documents.md](two-documents.md) and the page stay as they are: `order-api.ts` takes its definitions from `@blueshed/delta/sqlite` in place of `@blueshed/delta/json`, a database in place of the file, and carries the file's rows across. The tables are made by the resource's history of migrations, from its first, `001-order`. Added here, as they would be on the JSON file: the kitchen, every open order, a third document over the same rows, and the cook's cell on the page that shows it; and undo, with Undo and Redo among the page's tools.
 
 ```ts
 // src/resources/order/order-api.ts
@@ -16,6 +16,8 @@ export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
 export type Catalogue = { items: Record<string, Item> };
 export type Order = { lines: Record<string, Line> };
+/** What `kitchen:` holds: every order, and every line, each naming its order. */
+export type Kitchen = { orders: Record<string, { id: number }>; lines: Record<string, Line & { orders_id: number }> };
 
 export const schema = defineSchema({
   items: { columns: { name: "text", price: "real" } },
@@ -74,39 +76,100 @@ export const migrations = [
 ];
 ```
 
-The page and its test are as they were. The kitchen and undo are stories of their own:
+The page and its test are as they were, and gain the kitchen, a document someone needs in front of them: the cook's cell, each open order and what is on it, named from the catalogue:
+
+```ts
+// src/resources/order/order.ts: in place of import type { Catalogue, Order } from "./order-api";
+import type { Catalogue, Kitchen, Order } from "./order-api";
+```
+
+```ts
+// src/resources/order/order.ts: after export const order = openDoc<Order>("order:1");
+export const kitchen = openDoc<Kitchen>("kitchen:");
+```
+
+```tsx
+// src/resources/order/order-view.tsx: in place of import { catalogue, order } from "./order";
+import { catalogue, kitchen, order } from "./order";
+```
+
+```tsx
+// src/resources/order/order-view.tsx: before /** Your order on the box
+/** The kitchen on the box, the cook's: each open order, and what is on it. */
+export function KitchenCell() {
+  const open = kitchen.data.map((k) =>
+    Object.values(k?.orders ?? {})
+      .map((o) => ({ id: o.id, items: Object.values(k!.lines).filter((l) => l.orders_id === o.id).map((l) => l.item) }))
+      .filter((o) => o.items.length > 0),
+  );
+  return cell({
+    name: "Kitchen",
+    body: rowsOf(open, (o) => o.id, (o$) => row({ what: () => `Order ${o$.get().id}`, note: () => o$.get().items.map((i) => item(i)?.name ?? "").join(", ") }), "No open orders."),
+  });
+}
+
+```
+
+Undo is the ledger's (`{ ledger: true }`, above), and a person presses it: the page's tools, given to the bento, beside its name:
+
+```tsx
+// src/app.tsx: in place of import { connectWs, WS } from "@blueshed/delta/client";
+import { connectWs, redo, undo, WS } from "@blueshed/delta/client";
+```
+
+```tsx
+// src/app.tsx: in place of const { boxPage } = bento();
+const { boxPage } = bento({ undo: () => void undo(), redo: () => void redo() }); // this page's last change, taken back and put back
+```
+
+```tsx
+// src/app.tsx: in place of import { CatalogueCell, OrderCell } from "./resources/order/order-view";
+import { CatalogueCell, KitchenCell, OrderCell } from "./resources/order/order-view";
+```
+
+```tsx
+// src/app.tsx: after OrderCell(),
+KitchenCell(),
+```
+
+The kitchen and undo are stories of their own:
 
 ```ts
 // stories.ts: after stories: {
   // The kitchen
-  kitchen: story("The kitchen sees every open order: a line added to any order, or changed, reaches it."),
+  kitchen: story("The cook sees each open order: a line added to any order, or changed, reaches the kitchen."),
   undo: story("Undo takes back your last change, wherever it shows."),
 ```
 
-Their test holds the documents from the test process, as a page reads them (`tests/documents.ts`):
+Their test holds the documents from the test process, as a page reads them (`tests/documents.ts`), and then the page, where the cook reads them and Undo is pressed:
 
 ```ts
 // tests/kitchen.test.ts
-import { test, expect, afterAll } from "bun:test";
+import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
 import type { DeltaOp } from "@blueshed/delta/core";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
-import type { Line, Order } from "../src/resources/order/order-api";
+import type { Kitchen, Order } from "../src/resources/order/order-api";
 import { stories } from "../stories";
+import { browser } from "./browser";
 import { documents } from "./documents";
+
+setDefaultTimeout(30_000);
 
 const dataDir = mkdtempSync(`${tmpdir()}/kitchen-`);
 const server = await startServer({ port: 0, dev: false, dataDir });
 const client = await documents(server);
+const { view, open, waitFor, close } = browser(() => server.url);
 
 afterAll(async () => {
+  close();
   client.close();
   await server.stop(true);
   rmSync(dataDir, { recursive: true, force: true });
 });
 
-const kitchen = await client.open<{ lines: Record<string, Line & { orders_id: number }> }>("kitchen:");
+const kitchen = await client.open<Kitchen>("kitchen:");
 const first = await client.open<Order>("order:1");
 const second = await client.open<Order>("order:2");
 
@@ -139,6 +202,25 @@ test(`${stories.stories.kitchen.name} -- a line changed is told as the field tha
   await until(() => kitchenLines()[0]![1] === 2);
   stop();
   expect(told).toEqual([[{ op: "replace", path: `/lines/${line!.id}/item`, value: 2 }]]);
+});
+
+// The cook's cell, as the page draws it: each open order, and what is on it
+const KITCHEN = `.cell[data-key="kitchen"]`;
+const orders = `[...document.querySelectorAll('${KITCHEN} .rows .row')].map((r) => r.querySelector(".what").textContent.trim() + ": " + r.querySelector(".note").textContent.trim()).join("; ")`;
+
+test(`${stories.stories.kitchen.name} -- on the page, the cook's cell has each open order, and a line added to any order reaches it`, async () => {
+  await open();
+  await waitFor(`${orders} === "Order 1: Cake"`);
+  await second.send([{ op: "add", path: "/lines/-", value: { item: 1 } }]);
+  await waitFor(`${orders} === "Order 1: Cake; Order 2: Tea"`);
+});
+
+test(`${stories.stories.undo.name} -- Undo, pressed on the page, takes back the line it added, from the order and from the kitchen`, async () => {
+  await view.click(`.cell[data-key="catalogue"] .rows > .row:nth-child(1) > .tool`); // a Tea on order 1
+  await waitFor(`${orders} === "Order 1: Cake, Tea; Order 2: Tea"`);
+  await view.click(`.page-tools [aria-label="Undo"]`);
+  await waitFor(`${orders} === "Order 1: Cake; Order 2: Tea"`);
+  expect(Object.values(first.value().lines).map((l) => l.item)).toEqual([2]);
 });
 ```
 

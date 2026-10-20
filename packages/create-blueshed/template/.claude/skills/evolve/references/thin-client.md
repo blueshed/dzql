@@ -25,6 +25,8 @@ export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
 export type Catalogue = { items: Record<string, Item> };
 export type Order = { lines: Record<string, Line> };
+/** What `kitchen:` holds: every order, and every line, each naming its order. */
+export type Kitchen = { orders: Record<string, { id: number }>; lines: Record<string, Line & { orders_id: number }> };
 
 export const schema = defineSchema({
   items: { columns: { name: "text", price: "real" } },
@@ -47,6 +49,12 @@ export const items = (): Item[] => byId(read<Catalogue>("catalogue:").items);
 
 /** Order `id`'s lines, as the page reads them. */
 export const lines = (id: string): Line[] => byId(read<Order>(`order:${id}`).lines);
+
+/** Each open order, as the cook's cell reads them: its id, and the items on it. */
+export function openOrders(): { id: number; items: number[] }[] {
+  const { orders, lines } = read<Kitchen>("kitchen:");
+  return byId(orders).map((o) => ({ id: o.id, items: byId(lines).filter((l) => l.orders_id === o.id).map((l) => l.item) })).filter((o) => o.items.length > 0);
+}
 ```
 
 ```ts
@@ -164,12 +172,17 @@ export const message: Resource = {
 // src/resources/order/order.ts
 import type { Resource } from "dzql/rendering/resources/resource";
 
-// The catalogue, read by everyone and written by nobody; and the order, which everyone adds a line
-// to, or takes one off. Everyone is on order 1, as the light page was. The kitchen is read by no
-// page yet: its document is served, and a page that reads it is told.
+// The catalogue, read by everyone and written by nobody; the order, which everyone adds a line
+// to, or takes one off (everyone is on order 1, as the light page was); and the kitchen, every
+// open order, read by the cook's cell and written by nobody.
 
 export const catalogue: Resource = {
   docType: "catalogue",
+  resolveDoc: () => "",
+};
+
+export const kitchen: Resource = {
+  docType: "kitchen",
   resolveDoc: () => "",
 };
 
@@ -205,7 +218,7 @@ import { bento } from "dzql/rendering/bento";
 import { icon } from "./icons";
 
 /** The bento's surfaces, drawn with the app's marks, where a tab stands written to the session. */
-export const surfaces = bento({ icon, session: "session" });
+export const surfaces = bento({ icon, session: "session", undo: true }); // Undo and Redo: the order is on the ledger
 ```
 
 ```ts
@@ -246,7 +259,7 @@ export function messageDrawer(sessionId: string): string {
 import { rows } from "dzql/rendering/bento";
 import { write } from "dzql/rendering/html";
 import { surfaces } from "../../surfaces";
-import { items, lines, type Item } from "./order-api";
+import { items, lines, openOrders, type Item } from "./order-api";
 
 const { cell, row, tool } = surfaces;
 const money = (n: number) => n.toFixed(2);
@@ -255,6 +268,13 @@ const money = (n: number) => n.toFixed(2);
 export function catalogueCell() {
   const add = (i: Item) => tool("Add", { icon: "plus", label: `Add ${i.name}`, write: write("order", "add", "/lines/-", { item: i.id }) });
   return cell({ name: "Catalogue", span: 2, body: rows(items().map((i) => row({ id: `i${i.id}`, what: i.name, state: money(i.price), act: add(i) })), "Nothing to order yet.", "catalogue-rows") });
+}
+
+/** The kitchen on the box, the cook's: each open order, and what is on it. */
+export function kitchenCell() {
+  const all = items();
+  const named = (ids: number[]) => ids.map((id) => all.find((i) => i.id === id)?.name ?? "").join(", ");
+  return cell({ name: "Kitchen", body: rows(openOrders().map((o) => row({ id: `k${o.id}`, what: `Order ${o.id}`, note: named(o.items) })), "No open orders.", "kitchen-rows") });
 }
 
 /** The order on the box: each line named and priced from the catalogue, × to take it off, and the total. */
@@ -291,7 +311,7 @@ export function statusCell() {
 import { layers, parseAddress } from "dzql/rendering/bento";
 import { surfaces } from "./surfaces";
 import { messageCell, messageDrawer } from "./resources/message/message-view";
-import { catalogueCell, orderCell } from "./resources/order/order-view";
+import { catalogueCell, kitchenCell, orderCell } from "./resources/order/order-view";
 import { statusCell } from "./resources/status/status-view";
 
 // The page, drawn by the server for a session where one of its tabs stands (its address, the tab's
@@ -305,7 +325,7 @@ const name = (await Bun.file(`${import.meta.dir}/index.html`).text()).match(/<ti
 
 export function render(sessionId: string, page: string): string {
   const at = parseAddress(page);
-  const cells = [messageCell(at), statusCell(), catalogueCell(), orderCell()];
+  const cells = [messageCell(at), statusCell(), catalogueCell(), orderCell(), kitchenCell()];
   const drawer = at.what === "message" ? messageDrawer(sessionId) : "";
   return site(page, layers(boxPage([{ label: name }], [], cells, undefined, { actions: [] }), drawer, ""));
 }
@@ -343,7 +363,7 @@ import { render } from "./page";
 import { store } from "./store";
 import { session } from "./resources/session/session";
 import { message } from "./resources/message/message";
-import { catalogue, order } from "./resources/order/order";
+import { catalogue, kitchen, order } from "./resources/order/order";
 import { statusApi } from "./resources/status/status-api";
 
 // The app is its routes and its resources. The server is delta's: `serve` puts these routes and
@@ -357,7 +377,7 @@ export const app: Example = {
   index: homepage,
   delta: store.delta,
   store, // opened as a server starts, closed as it stops; the stories begin and end each story on it
-  resources: [session, message, catalogue, order],
+  resources: [session, message, catalogue, order, kitchen],
   render,
   active: () => true, // nobody signs in: anyone may write
   address: { doc: "session", path: "/page" }, // a tab's URL is where it stands: the session says where it may (./resources/session/session.ts)
@@ -418,6 +438,11 @@ goTo: goTo("session"),
 ```ts
 // stories.ts: in place of ordering: story(
 ordering: story("Someone ordering has the catalogue and their order on one page, with its total, and what one window orders shows in another.", { as: "ann", does: add(1), seen: ["ann", "bob"] }),
+```
+
+```ts
+// stories.ts: in place of kitchen: story(
+kitchen: story("The cook sees each open order: a line added to any order, or changed, reaches the kitchen.", { as: "bob", does: add(2), seen: ["ann", "bob"] }),
 ```
 
 ```ts
@@ -565,8 +590,7 @@ test(`${stories.stories.refused.name} -- a save the server refuses is handed bac
 Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md, sqlite.md and postgres.md) and runs its type check and tests (`bun run test:evolve`).
 
 - `bun run stories` says each story; `STORY_BY_HAND=1 bun run stories` does each with the page's own controls, in a browser the size of a phone.
-- **What changed for the people using it**, each by where it is drawn: Saved is said beside the box, not in a toast; a refusal delta makes is handed back to the box without a word, where the toast said Not saved; Cmd+Enter does not save (the box saves by its button); typing not yet saved is kept while the caret is in the box; the page has Undo and Redo (the server's box always draws them); an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
+- **What changed for the people using it**, each by where it is drawn: Saved is said beside the box, not in a toast; a refusal delta makes is handed back to the box without a word, where the toast said Not saved; Cmd+Enter does not save (the box saves by its button); typing not yet saved is kept while the caret is in the box; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
 - **The session:** nobody signs in, so the cookie is the session and no row is kept by it (`Example.session` left out). Sign-in by link, a session kept as a row (`sessionRows`), is dzql-app's `signin.md`; delta's `auth-link` ([auth.md](auth.md)) is for a page that is delta's client, not this one.
-- **The kitchen** is read by no page: the socket serves only what a page reads, so its test holds it from the test's process (`documents.ts`). A cook's cell would make it a story the harness tells.
 - **The store is the server's**, as `orderDocs`'s was: opened as it starts, on its data folder, and closed as it stops, so a test runs servers on folders of its own, and `bun dev`'s reload closes the last store before it opens the next (its ids carry on).
 - From here the app grows with `dzql-app`; the other references here are the light page's. `CLAUDE.md` and `README.md` still describe the light page: say the thin one, as create-dzql's do.

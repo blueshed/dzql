@@ -6,6 +6,17 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### What still differed between the light page and the thin client, made one (20 October, roots #122-#126, #130)
+
+Peter's word (20 October): what the thin-client step still rewrote because the two clients
+differ, fixed where each differs.
+
+- **The kitchen has a view** (#122, create-blueshed): `sqlite.md` gives the light page the cook's
+  cell, with its story and test, so the step carries it as a part and the harness tells it.
+- **Undo and Redo only when asked** (#126, breaking in dzql): dzql's `bento({ undo: true })`, as
+  railroad's `bento({ undo, redo })`; the examples ask, and `sqlite.md` gives the light page its
+  Undo, which its test presses.
+
 ### The traps delta's examples found, removed (20 October, delta #88-#91)
 
 - What root #116's examples had to work around is now delta's API (Peter's word: "ok - let's do
