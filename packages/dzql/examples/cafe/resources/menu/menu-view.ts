@@ -2,7 +2,8 @@ import { address, prop, rows } from "dzql/rendering/bento";
 import { join, write } from "dzql/rendering/html";
 import { toldAt } from "dzql/rendering/refusal";
 import { surfaces } from "../../surfaces";
-import { money, type Invoice } from "../floor/floor-api";
+import { money } from "../floor/floor-api";
+import type { Invoice } from "../table/table-api";
 import type { At, Part } from "../floor/floor-view";
 import type { Item } from "./menu-api";
 

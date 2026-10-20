@@ -176,6 +176,20 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The cafe's staff hold only what is open** (20 October, dzql #81): scope.md's rule, shown
+  working. The floor held every table with every invoice and order the cafe ever took, the manager's
+  and the cook's both. Now the model's `floor` is the tables alone (the manager's), and a new
+  `kitchen`, a list of the orders, is scoped by the app as it registers it to what is not yet
+  placed (`kitchen:placed`, `{ status: "!=:id" }`): the cook's orders and the manager's ready to
+  take. Placing an order at its table takes it out, and every page that read it is told; paying
+  for it changes nothing there. A table's invoices are its own document's (`table:1`), which the
+  manager now holds too, to seat it and to place an order there; an order names its table
+  (`table: door:/tables`, `table_id`, migration `003-orders`), as a kitchen ticket does, so the
+  kitchen says where each goes by the door's names. Driven by the story "Ann pays her invoice
+  before her Soup comes, and Mo sees Table 1 free; Kit, still cooking it, is not told", which
+  failed while Kit held the floor; "Mo takes Ann's Soup ... and it leaves the kitchen" says the
+  rest. Still 24 stories, all done by hand too. `scope.md`'s `Working:` names it.
+
 - **An app with no applets and no tools has no `main.ts`** (20 October, root #37). Its
   `index.html` loads the kernel's client itself, `<script type="module"
   src="dzql/rendering/client/app"></script>` (Bun bundles a package's entry named there, in

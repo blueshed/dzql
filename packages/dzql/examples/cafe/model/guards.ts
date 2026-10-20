@@ -10,7 +10,8 @@ export const guards: Guards = {
     "floor",
     "menu",
     "table",
-    "door"
+    "door",
+    "kitchen"
   ],
   "rules": [
     {
@@ -24,7 +25,9 @@ export const guards: Guards = {
       "to": "false",
       "type": "boolean",
       "docs": [
-        "floor"
+        "floor",
+        "table",
+        "door"
       ],
       "requires": []
     },
@@ -63,7 +66,7 @@ export const guards: Guards = {
       "to": "false",
       "type": "boolean",
       "docs": [
-        "floor"
+        "table"
       ],
       "requires": [
         {
@@ -88,7 +91,9 @@ export const guards: Guards = {
       "to": "true",
       "type": "boolean",
       "docs": [
-        "floor"
+        "floor",
+        "table",
+        "door"
       ],
       "requires": [
         {
@@ -108,7 +113,7 @@ export const guards: Guards = {
       "entity": "invoices",
       "op": "add",
       "docs": [
-        "floor"
+        "table"
       ],
       "requires": [
         {
@@ -156,7 +161,7 @@ export const guards: Guards = {
       "field": "status",
       "to": "ready",
       "docs": [
-        "floor"
+        "kitchen"
       ],
       "requires": [
         {
@@ -177,7 +182,8 @@ export const guards: Guards = {
       "field": "status",
       "to": "placed",
       "docs": [
-        "floor"
+        "table",
+        "kitchen"
       ],
       "requires": [
         {
@@ -257,7 +263,8 @@ export const guards: Guards = {
       "entity": "orders",
       "op": "add",
       "docs": [
-        "floor"
+        "table",
+        "kitchen"
       ],
       "requires": []
     },
@@ -270,7 +277,7 @@ export const guards: Guards = {
       "op": "replace",
       "field": "paid",
       "docs": [
-        "floor"
+        "table"
       ],
       "requires": []
     },
@@ -284,7 +291,8 @@ export const guards: Guards = {
       "field": "status",
       "to": "ready",
       "docs": [
-        "floor"
+        "table",
+        "kitchen"
       ],
       "requires": []
     },
@@ -296,7 +304,7 @@ export const guards: Guards = {
       "entity": "tables",
       "op": "add",
       "docs": [
-        "floor"
+        "door"
       ],
       "requires": []
     },
@@ -309,7 +317,7 @@ export const guards: Guards = {
       "op": "replace",
       "field": "seated",
       "docs": [
-        "floor"
+        "door"
       ],
       "requires": []
     },
@@ -320,9 +328,7 @@ export const guards: Guards = {
       "allow": false,
       "entity": "invoices",
       "op": "add",
-      "docs": [
-        "floor"
-      ],
+      "docs": [],
       "requires": []
     },
     {
@@ -333,7 +339,7 @@ export const guards: Guards = {
       "entity": "orders",
       "op": "add",
       "docs": [
-        "floor"
+        "kitchen"
       ],
       "requires": []
     },
@@ -345,9 +351,7 @@ export const guards: Guards = {
       "entity": "invoices",
       "op": "replace",
       "field": "paid",
-      "docs": [
-        "floor"
-      ],
+      "docs": [],
       "requires": []
     },
     {
@@ -360,7 +364,7 @@ export const guards: Guards = {
       "field": "status",
       "to": "placed",
       "docs": [
-        "floor"
+        "kitchen"
       ],
       "requires": []
     },
@@ -472,7 +476,8 @@ export const guards: Guards = {
     "menu": "items",
     "visit": "visits",
     "table": "tables",
-    "door": "tables"
+    "door": "tables",
+    "kitchen": "orders"
   },
   "there": [
     "visits",

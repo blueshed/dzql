@@ -1,9 +1,9 @@
 import { rows } from "dzql/rendering/bento";
 import { write } from "dzql/rendering/html";
 import { surfaces } from "../../surfaces";
-import { money, openInvoice, total } from "../floor/floor-api";
+import { money } from "../floor/floor-api";
 import { WORD, type At, type Part } from "../floor/floor-view";
-import type { TableView } from "./table-api";
+import { openInvoice, total, type TableView } from "./table-api";
 
 // A table's part of the page: the customer's invoice, what is on it, and paying.
 

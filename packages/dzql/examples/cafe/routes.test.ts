@@ -4,7 +4,7 @@ import { open, pageOf } from "dzql/rendering/test-socket";
 import { links } from "./links";
 import { stories } from "./stories";
 import { app, startServer } from "./routes";
-import { orderOf } from "./resources/floor/floor-api";
+import { orderOf } from "./resources/kitchen/kitchen-api";
 
 // What the stories cannot say: the door, the links and the codes on the tables, as a browser meets them.
 let server: Awaited<ReturnType<typeof startServer>>;
@@ -66,7 +66,7 @@ test("every story passes", async () => {
 }, 60_000); // on Postgres in this process, the store put back after each story
 
 test("an order shows its dish by the menu while the dish is on it, and by its own copy once it is taken off", () => {
-  const order = { id: 1, invoices_id: 1, dish_id: 1, dish_name: "Soup", dish_price: 5.5, status: "ordered" };
+  const order = { id: 1, invoices_id: 1, table_id: 1, dish_id: 1, dish_name: "Soup", dish_price: 5.5, status: "ordered" };
   expect(orderOf(order, [{ id: "1", name: "Soup of the day", price: 6 }])).toMatchObject({ dish: "1", item: "Soup of the day", price: 6 }); // the menu's, while it stands
   expect(orderOf(order, [{ id: "2", name: "Toast", price: 3 }])).toMatchObject({ dish: "1", item: "Soup", price: 5.5 }); // its surrogate, once it is gone
 });

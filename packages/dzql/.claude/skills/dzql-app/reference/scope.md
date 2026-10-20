@@ -9,9 +9,11 @@ that. How documents are declared is [documents.md](documents.md); the scope's sy
 
 Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/resources/room/room-api.ts), a list scoped by a column
 (`room:general`, every message whose `room` it is: `resources/room/room-api.ts`), read back in a
-window by a keyset (`/before`, `resources/session/session.ts`). The day as the root, and a list of
-only what is open, none yet: leave's `team:1` and the cafe's `floor:` still hold every row; dzql
-todo #81.
+window by a keyset (`/before`, `resources/session/session.ts`); and
+[examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/resources/kitchen/kitchen-api.ts), a list of only what is open:
+`kitchen:placed`, every order not yet placed, the model's `kitchen` scoped as the app registers it
+(`resources/kitchen/kitchen-api.ts`). Placing an order at its table takes it out, and every page
+that read it is told; paying for it changes nothing there. The day as the root, none yet.
 
 ## Today's, or one shift's: make the day the root
 
@@ -38,6 +40,9 @@ A scope that does not bind `id` is a list: every root row it admits.
 ```ts
 defineDoc("bills-by:", { root: "bills", include: [], scope: { paid: ":id" } }), // bills-by:false
 defineDoc("leave-from:", { root: "requests", include: [], scope: { ends: ">=:id" } }), // leave-from:2026-10-14, what is not over
+
+// the cafe's: the model says the list, the app what is open in it
+register(docs.filter((d) => d.prefix === "kitchen:").map((d) => ({ ...d, scope: { status: "!=:id" } }))); // kitchen:placed
 ```
 
 - A list includes its collections **in full**: give it none, or every order ever comes with it.
