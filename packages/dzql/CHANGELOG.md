@@ -25,6 +25,14 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **Undo and Redo are drawn only when the page asks for them** (20 October, root #126). dzql's
+  `bento({ icon, session, undo, leave })` draws the page's tools it is given, as railroad's
+  `bento({ undo, redo, leave })` always has: `undo: true` draws Undo and Redo (writes to the
+  ledger), `leave` the way out, and with neither, `pageTools()` is `""` and a box has no tools
+  beside its trail. So a page keeps its tools as it moves from the light client to the thin one.
+  To move across: an app whose documents are on the ledger says `undo: true` in its `surfaces.ts`.
+  The five examples do, and their stories pass at the same counts.
+
 - **Where data lives is the data folder, one way in both starters** (20 October, root #129).
   `openStore`'s `open({ dataDir })` keeps PGlite in the folder's `pg/` (`DATABASE_URL` a server
   in its place, `database` whatever the folder; none, or `:memory:`, in memory), and `appOf(app, {
