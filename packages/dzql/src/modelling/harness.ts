@@ -1008,8 +1008,8 @@ async function reach(r: Run, told: { story: Story; outcome: Outcome }[], byHandT
  * and it must not land. A step or a write that only an applet's own control sends is sent as the
  * applet declares it, unless the story says its gesture. Everything else the story says was
  * checked when it was told; this checks that a person could do it. A story with nothing to do
- * by hand (a tab closing, a write from no page, a refusal no control sends where the cast
- * stands) is not pressed.
+ * by hand (a tab closing, a write from no page, a refusal no control sends, or none sends with
+ * its value, where the cast stands) is not pressed.
  */
 async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: State | undefined): Promise<string[]> {
   if (story.closesTab || !r.stories.cast[story.as]) return [];
@@ -1033,6 +1033,12 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
     if (wrong) return by(wrong);
 
     let none = false; // the last press found nothing on the page that could send its write at all
+    /** A refusal nobody could send from the page: the wire's, as the story says, and not done by hand -- but for the way to it, if it was walked. */
+    const untried = (): string[] => {
+      tally.presses--;
+      if (target === undefined) tally.stories--;
+      return failures;
+    };
     /** Sends `write` from the page -- by `gesture`, where the story says one -- or as an applet declares it when only an applet's own control sends it; why a person could not, if they could not. */
     const press = async (write: Write, gesture?: Gesture): Promise<string | undefined> => {
       const own = controlsOn(who.page).filter((c) => write.ops.some((op) => offers(c, write.doc, op)));
@@ -1082,7 +1088,7 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
       const toldBefore = JSON.stringify((await toldNow(r, who.sessionId)) ?? null);
       tally.presses++;
       const sent = await hand.post(tried);
-      if ("failure" in sent) return story.cannot && sent.none ? failures : by(`${who.name} could not post to ${tried.path}: ${sent.failure}`);
+      if ("failure" in sent) return story.cannot && sent.none ? untried() : by(`${who.name} could not post to ${tried.path}: ${sent.failure}`);
       const line = await toldNow(r, who.sessionId);
       const reason = line?.reason !== undefined && JSON.stringify(line) !== toldBefore ? line.reason : undefined;
       const refused = !sent.app || reason !== undefined;
@@ -1091,7 +1097,7 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
     } else if (tried) {
       const from = mark(r, cast);
       const why = await press(tried, story.gesture);
-      if (why !== undefined && story.cannot && none) return failures; // nobody could send it from the page: the refusal is for the wire's, as the story says
+      if (why !== undefined && story.cannot && none) return untried();
       if (why !== undefined) return by(`${who.name} could not ${tried.ops.map((op) => `${op.op} ${op.path}`).join(", ")} on ${tried.doc}: ${why}`);
       const landed = landedSince(r, cast, from) || (await hand.echoed()); // their tab's own echo: a write that moves only it is told to nobody else
       if (story.does && !landed) return by(`nothing landed: ${who.name}'s write was refused`);

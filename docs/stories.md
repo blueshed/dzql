@@ -343,8 +343,13 @@ in `packages/dzql` (`packages/dzql/src/modelling/stories-run.ts`; `ETA_EXAMPLE` 
      story's gesture. What the page sent must be the story's write, and it must land: `by hand,
      ann could not replace /draft on session: the page sent replace /draft {…} on session`.
    - a refusal whose write a control of the page's own sent when it was told: walked to, then
-     tried so, and it must not land. Where the control cannot make it (a select without that
-     choice), nobody can send it from the page, as the story says.
+     tried so, and it must not land. Where the control cannot make it -- a select without that
+     choice, or a field that sends no such value (a number to a date field or to words, words to
+     a number field, anything but true or false to a box) -- nobody can send it from the page,
+     as the story says: it is not tried, and is not done by hand (but for the way to it, walked
+     from its `from`), never failed. So a value of the wrong type, which the schema or a permit
+     refuses, is a `cannot` story like any other (leave's: `Ann cannot move her day in November
+     to a number`).
    - any other refusal told from a place (`from`): walked to, and nothing pressed. One told where
      the cast stands with no control that sends it is not done by hand: that none does is the
      point. Nor is a write from no page, nor a tab closing.

@@ -404,6 +404,17 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **By hand, a refusal whose value no field can send is not tried** (20 October, root #128). A
+  `cannot` story whose write a field on the page offers, with a value that field cannot send (a
+  number to a date field or to words, words to a number field), was tried with what the field
+  sends, which landed, and failed (`the page sent replace /requests/2/starts ""`). By hand now asks
+  the field first, by the client's own rule (`sends`): one that cannot send the value is nobody's
+  way to it, so the refusal is the wire's, as the story says, not done by hand and never failed,
+  as a select without that choice already was; neither is counted as done by hand, but for the
+  way to it walked from its `from`. So a value of the wrong type is a `cannot` story again:
+  leave's "Ann cannot move her day in November to a number: a day is a date" (26 stories, from
+  25). `docs/stories.md` step 7 says it.
+
 - **A tab moved through a resource that keeps no document is answered, not refused** (20 October,
   found re-walking the evolve skill's thin-client step): a session with no row (the cookie is the
   session) that says where a tab may stand moved the tab, then failed reading the version of a

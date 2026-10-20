@@ -6,10 +6,10 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
-### The last of the code review's changes for Peter (20 October, root #37)
+### The todo lists finished (20 October, roots #37, #128)
 
-Peter's word (20 October): finish the todo lists. Root #37's last two parts, and the item closed
-with where each of its parts went.
+Peter's word (20 October): finish the todo lists. Root #37's last two parts, the item closed
+with where each of its parts went; and #128.
 
 - **An app with no applets and no tools has no `main.ts`** (dzql, create-dzql, create-blueshed):
   its `index.html` loads `dzql/rendering/client/app` itself. The cafe, create-dzql's template,
@@ -20,6 +20,9 @@ with where each of its parts went.
   browser; and Chrome, for the client's coverage, with a person per window and a mouse's press,
   whose parts dzql's stories by hand ship with), and neither can take the other's without a new
   requirement. dzql's one test on railroad's kit moves to its own.
+- **By hand, a refusal no field can send with its value is not tried** (#128, dzql): a value of
+  the wrong type is a `cannot` story again (leave's day moved to a number), as `docs/stories.md`
+  step 7 says.
 
 ### What still differed between the light page and the thin client, made one (20 October, roots #122-#126, #130)
 

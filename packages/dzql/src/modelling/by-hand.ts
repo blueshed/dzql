@@ -31,7 +31,7 @@ const QUIET = 250;
 type Pressed = { sent: Write[] } | { failure: string; none?: true };
 
 /** One control the page found for a write, and how a person sends it: a press, a form's fields and its submit, or an editing form's fields; or, first, the summary that opens the `<details>` it is folded in. */
-type Plan = { how: "press" | "submit" | "edit" | "open"; control: string; fields: { at: string; kind: "type" | "choose" | "tick"; text: string; none?: boolean }[]; submit?: string };
+type Plan = { how: "press" | "submit" | "edit" | "open"; control: string; fields: { at: string; kind: "type" | "choose" | "tick"; text: string; none?: boolean; unsent?: string }[]; submit?: string };
 
 /** The same document: named whole on one side and by its type alone on the other (`room`, `room:general`) counts. */
 export const sameDoc = (a: string, b: string): boolean => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
@@ -47,7 +47,7 @@ const FORM_VALUE = new Bun.Transpiler({ loader: "ts" }).transformSync(readFileSy
 // The page's side, a string since it runs in the browser: the elements that send a write, as the
 // kernel's client sends them (src/rendering/client/app.ts), and why a person could not press one.
 const PAGE = `(() => {
-  const client = (() => { ${FORM_VALUE}; return { pressable, pressed }; })();
+  const client = (() => { ${FORM_VALUE}; return { pressable, pressed, sends }; })();
   const same = ${sameDoc};
   const specOf = (el) => { try { return JSON.parse(el.dataset.write); } catch { return undefined; } };
   const named = ${NAMED};
@@ -84,11 +84,15 @@ const PAGE = `(() => {
     return found;
   }
 
+  // what a field can send, with its type, as the client sends it (sends): a box true or false, a
+  // radio its own words, any other what is typed or chosen in it -- a number field a number, the rest words
+  const sendable = (el, value) => (el.matches("[type=checkbox]") ? typeof value === "boolean" : el.matches("[type=radio]") ? typeof value === "string" : sameValue(client.sends(el, text(value)), value));
+
   function field(el, value) {
     // a select's menu and a date's picker are the system's: chosen as the browser chooses, not typed
     const kind = el.matches("select, [type=date], [type=time], [type=datetime-local], [type=month], [type=week], [type=color]") ? "choose" : el.matches("[type=checkbox], [type=radio]") ? "tick" : "type";
     const none = el.matches("select") && ![...el.options].some((o) => !o.disabled && o.value === text(value)); // a choice it does not offer
-    return { at: mark(el), kind, text: text(value), none };
+    return { at: mark(el), kind, text: text(value), none, unsent: sendable(el, value) ? undefined : JSON.stringify(value) };
   }
 
   // how to send a form, its fields typed into and its button pressed, or why nobody can: each field
@@ -191,11 +195,14 @@ const PAGE = `(() => {
   const choose = (selector, value) => { const el = document.querySelector(selector); el.value = value; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); };
   const clear = (selector) => { const el = document.querySelector(selector); el.focus(); el.select?.(); };
   const leave = () => document.activeElement?.blur();
-  // ...and a choice the page does not offer is one nobody can make
+  // ...and a choice the page does not offer, or a value its field cannot send (a number where it
+  // sends words), is one nobody can make
   const planned = (doc, ops) => {
     const p = plan(doc, ops);
     const unchosen = p.fields && p.fields.find((f) => f.none);
-    return unchosen ? { failure: "it offers no choice of " + JSON.stringify(unchosen.text), none: true } : p;
+    if (unchosen) return { failure: "it offers no choice of " + JSON.stringify(unchosen.text), none: true };
+    const unsent = p.fields && p.fields.find((f) => f.unsent !== undefined);
+    return unsent ? { failure: "its field cannot send " + unsent.unsent, none: true } : p;
   };
   window.__hand = { plan: planned, posting, why: (selector) => { const el = document.querySelector(selector); return el ? why(el) : "not on the page"; }, drag, asked, stands, choose, clear, leave, echoed };
   return true;
