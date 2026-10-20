@@ -55,8 +55,6 @@ const me = await call<Person | null>("me");          // null: nobody: show "Who 
   instead of a password. Tests: `await auth.signInAs(id)` is a cookie header. None of these
   answers in production.
 - **Sign out:** `signOut()` ends the session and reloads the page.
-- **Your `Person` is a `type`, not an `interface`**, for `everyone<P>()`: its constraint has an
-  index signature, which an interface does not meet.
 - **Outside a browser `connectWs` sends no cookie.** A script or test signed in by link opens
   Bun's own `WebSocket` with a `cookie` header and speaks the wire (`signedIn` in
   `tests/helpers/examples.ts`).

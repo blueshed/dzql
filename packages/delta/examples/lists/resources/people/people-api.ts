@@ -14,7 +14,8 @@ import type { WsServer } from "@blueshed/delta/server";
 import { defineDoc, defineSchema, importTables, migrate, registerDocs } from "@blueshed/delta/sqlite";
 import { migrations } from "./migrations";
 
-export type Person = { id: number; name: string };   // a type, not an interface: auth-link/client's Person has an index signature
+/** Someone here. */
+export interface Person { id: number; name: string }
 /** What `people:` holds: everyone here, by id. */
 export interface People { people: Record<string, Person> }
 

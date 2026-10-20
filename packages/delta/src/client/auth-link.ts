@@ -37,8 +37,8 @@ export async function signOut(): Promise<void> {
   location.reload();
 }
 
-/** Development only: everyone, for "Who are you?". Empty in production. */
-export async function everyone<P extends Person = Person>(): Promise<P[]> {
+/** Development only: everyone, for "Who are you?", as your own `P` (a type or an interface with an `id`). Empty in production. */
+export async function everyone<P extends { id: number } = Person>(): Promise<P[]> {
   const res = await fetch("/api/dev/people");
   return res.ok ? ((await res.json()) as P[]) : [];
 }

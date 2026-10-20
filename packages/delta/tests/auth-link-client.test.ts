@@ -79,6 +79,10 @@ test("a page opened by no link does nothing", async () => {
 
 test("in development: everyone, be anyone, and sign out", async () => {
   expect(await everyone()).toEqual(people);
+  // an app's Person as an interface (no index signature) is taken, as a type alias is (#90; bun check)
+  interface Named { id: number; name: string }
+  const named: Named[] = await everyone<Named>();
+  expect(named.map((p) => p.name)).toEqual(["Ann", "Bob"]);
   await becomeAs(2);
   expect([cookie !== "", reloads]).toEqual([true, 1]);
   await signOut();

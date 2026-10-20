@@ -72,6 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`everyone<P>()` takes an app's `Person` declared as an interface** (20 October, #90): its `P`
+  is constrained to `{ id: number }`, as `linkAuth`'s is on the server, where it was
+  auth-link/client's `Person`, whose index signature an interface does not meet (TS2344).
+  `examples/lists` declares `Person` as an interface, and `auth.md`'s gotcha is gone.
 - **`install-skills` in development installs railroad's skill from railroad** (20 October): delta's
   own skills are the ones its `package.json` ships (`files`), so the copy of railroad's skill that
   `prepare` puts beside them is no longer taken for delta's, and no longer stays at the version it
