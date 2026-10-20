@@ -48,6 +48,68 @@ const files = filesApi(s3);
 "/api/files/:name": { GET: files.get, PUT: files.put },
 ```
 
+On the page, a file is made as anything is, in a modal: Upload beside the page's name opens it, its field takes the file (`type: "file"`, there in the form's data), and the cell keeps a link to each file this page put:
+
+```ts
+// src/resources/files/files.ts
+import { signal } from "@blueshed/railroad";
+
+/** A link to each file this page has put, the newest first. */
+export const links = signal<{ name: string; href: string }[]>([]);
+
+/** Puts a file on the site, and keeps its link. */
+export async function upload(file: File) {
+  const href = `/api/files/${encodeURIComponent(file.name)}`;
+  const res = await fetch(href, { method: "PUT", body: file });
+  if (!res.ok) throw new Error(`PUT ${href} answered ${res.status}`);
+  links.set([{ name: file.name, href }, ...links.peek().filter((l) => l.href !== href)]);
+}
+```
+
+```tsx
+// src/resources/files/files-view.tsx
+import { Upload } from "lucide";
+import { bento, go, rowsOf } from "../bento";
+import { toast } from "../toast";
+import { links, upload } from "./files";
+
+const { cell, row, tool, addModal } = bento();
+
+/** The files on the box: a link to each this page put. */
+export function FilesCell() {
+  return cell({ name: "Files", body: rowsOf(links, (l) => l.href, (l$) => row({ what: () => l$.get().name, state: <a href={l$.peek().href}>Link</a> }), "No files yet.") });
+}
+
+/** Beside the page's name: a file to put. */
+export const AddFile = () => tool("Upload", { icon: Upload, on: go("", "upload") });
+
+/** What uploading asks over the box: the file. */
+export function UploadModal() {
+  const done = go("");
+  return addModal("Upload a file", [{ name: "file", label: "The file", type: "file" }], (_, form) => void upload(form.get("file") as File).then(done, () => toast("Not uploaded", "alert")), done, "Upload");
+}
+```
+
+```tsx
+// src/app.tsx: after import { StatusCell } from "./resources/status/status-view";
+import { AddFile, FilesCell, UploadModal } from "./resources/files/files-view";
+```
+
+```tsx
+// src/app.tsx: after StatusCell(),
+FilesCell(),
+```
+
+```tsx
+// src/app.tsx: after const actions = (): Node[] => [
+  AddFile(),
+```
+
+```tsx
+// src/app.tsx: before return null; // nothing asks
+if (at.what === "upload") return UploadModal();
+```
+
 Its story:
 
 ```ts
@@ -60,12 +122,15 @@ Tests need no real bucket: a stand-in of a few lines answers a write, `exists()`
 
 ```ts
 // tests/files.test.ts
-import { test, expect, afterAll } from "bun:test";
+import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
 import { S3Client } from "bun";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import { stories } from "../stories";
+import { browser } from "./browser";
+
+setDefaultTimeout(30_000);
 
 // A stand-in bucket: PUT keeps an object, HEAD and GET answer it
 const objects = new Map<string, Blob>();
@@ -86,7 +151,9 @@ const s3 = new S3Client({ endpoint: bucket.url.href, bucket: "files", accessKeyI
 
 const dataDir = mkdtempSync(`${tmpdir()}/files-`);
 const server = await startServer({ port: 0, dev: false, dataDir, s3 });
+const { view, open, waitFor, close } = browser(() => server.url);
 afterAll(async () => {
+  close();
   await server.stop(true);
   await bucket.stop(true);
   rmSync(dataDir, { recursive: true, force: true });
@@ -105,10 +172,28 @@ test(`${stories.stories.files.name} -- a file that is not there is a 404`, async
   expect(res.status).toBe(404);
   expect(await res.json()).toEqual({ error: "no such file" });
 });
+
+test(`${stories.stories.files.name} -- on the page, a file put in the modal gives its link`, async () => {
+  await open();
+  await view.click(".heading > .tool"); // Upload, beside the page's name
+  await waitFor(`document.querySelector("dialog input[name=file]")`);
+  // a file chosen, as the picker would (a test cannot drive the system's picker)
+  await view.evaluate(`(() => {
+    const files = new DataTransfer();
+    files.items.add(new File(["a photo"], "photo.jpg", { type: "image/jpeg" }));
+    document.querySelector("dialog input[name=file]").files = files.files;
+  })()`);
+  await view.click("dialog .tool.add");
+  await waitFor(`!document.querySelector("dialog")`); // the modal goes once it is put
+  const href = await view.evaluate<string>(`document.querySelector('.cell[data-key="files"] .row a')?.getAttribute("href")`);
+  expect(href).toBe("/api/files/photo.jpg");
+  expect(await (await api(href)).text()).toBe("a photo");
+});
 ```
 
 Working: `tests/evolve.ts` makes a new app from this template, applies this page and runs its type check and tests (`bun run test:evolve`).
 
+- An upload is made in a modal, as anything new is: `addModal`'s field `type: "file"`, and the file from the form's data, its second argument.
 - Any other route copies `status` (`src/resources/status/`): a handler returning a `Response`; a signal and a `load()` that fetches; a view that calls `load()` in its body, keeps a `failed` signal, and draws with `when()` once there is data.
 - `/health` is a route in `src/routes.ts`.
 - Validate what a client sends and answer 400 with `{ error }`. Test every route and method, a 400 included. The view says when a load fails.

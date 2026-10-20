@@ -57,9 +57,11 @@ test(`${stories.stories.kitchen.name} -- a line changed is told as the field tha
   expect(told).toEqual([[{ op: "replace", path: `/lines/${line!.id}/item`, value: 2 }]]);
 });
 
-// The cook's cell, as the page draws it: each open order, and what is on it
+// The cook's cell, as the page draws it: each open order, and what is on it; and your order's cell
 const KITCHEN = `.cell[data-key="kitchen"]`;
+const ORDER = `.cell[data-key="your-order"]`;
 const orders = `[...document.querySelectorAll('${KITCHEN} .rows .row')].map((r) => r.querySelector(".what").textContent.trim() + ": " + r.querySelector(".note").textContent.trim()).join("; ")`;
+const teas = (cell: string) => `(document.querySelector('${cell} .rows')?.textContent ?? "").split("Tea").length - 1`; // how many Teas a cell shows
 
 test(`${stories.stories.kitchen.name} -- on the page, the cook's cell has each open order, and a line added to any order reaches it`, async () => {
   await open();
@@ -68,10 +70,10 @@ test(`${stories.stories.kitchen.name} -- on the page, the cook's cell has each o
   await waitFor(`${orders} === "Order 1: Cake; Order 2: Tea"`);
 });
 
-test(`${stories.stories.undo.name} -- Undo, pressed on the page, takes back the line it added, from the order and from the kitchen`, async () => {
-  await view.click(`.cell[data-key="catalogue"] .rows > .row:nth-child(1) > .tool`); // a Tea on order 1
-  await waitFor(`${orders} === "Order 1: Cake, Tea; Order 2: Tea"`);
+test(`${stories.stories.undo.name} -- Undo, pressed on the page, takes back the Tea it added, from your order and from the kitchen`, async () => {
+  await waitFor(`${teas(ORDER)} === 0 && ${teas(KITCHEN)} === 1`); // order 2's Tea
+  await view.click(`.cell[data-key="catalogue"] .rows > .row:nth-child(1) > .tool`); // a Tea on your order
+  await waitFor(`${teas(ORDER)} === 1 && ${teas(KITCHEN)} === 2`);
   await view.click(`.page-tools [aria-label="Undo"]`);
-  await waitFor(`${orders} === "Order 1: Cake; Order 2: Tea"`);
-  expect(Object.values(first.value().lines).map((l) => l.item)).toEqual([2]);
+  await waitFor(`${teas(ORDER)} === 0 && ${teas(KITCHEN)} === 1`); // gone from both, as a person sees them
 });

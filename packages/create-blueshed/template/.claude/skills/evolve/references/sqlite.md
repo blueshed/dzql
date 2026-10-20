@@ -16,6 +16,7 @@ export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
 export type Catalogue = { items: Record<string, Item> };
 export type Order = { lines: Record<string, Line> };
+export type Orders = { orders: Record<string, { id: number }> };
 /** What `kitchen:` holds: every order, and every line, each naming its order. */
 export type Kitchen = { orders: Record<string, { id: number }>; lines: Record<string, Line & { orders_id: number }> };
 
@@ -28,6 +29,7 @@ export const schema = defineSchema({
 export const docs = [
   defineDoc("catalogue:", { root: "items", include: [] }), // every item
   defineDoc("order:", { root: "orders", include: ["lines"], implied: true }), // order:1 is order 1 and its lines
+  defineDoc("orders:", { root: "orders", include: [] }), // every order's number: a page takes the next for its own
   defineDoc("kitchen:", { root: "orders", include: ["lines"] }), // every order, and every line
 ];
 
@@ -42,7 +44,15 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
   const file = `${dataDir}/order.json`;
   if (!db.query("SELECT 1 FROM items").get()) importTables(db, schema, existsSync(file) ? exportTables(file, schema) : catalogue);
   registerDocs(ws, db, schema, docs, [], { ledger: true }); // undo, redo and history
+  return async () => db.close(); // for the server to close as it stops
 }
+```
+
+The server closes the database as it stops, as it waited for the file:
+
+```ts
+// src/routes.ts: in place of closing.push((await orderDocs(ws, dataDir)).persisted);
+closing.push(await orderDocs(ws, dataDir)); // the database closed once the server stops
 ```
 
 The tables are the history's first migration. Never written by hand: `make` writes what the schema says beyond the migrations before it, so this one is every table:
@@ -79,18 +89,18 @@ export const migrations = [
 The page and its test are as they were, and gain the kitchen, a document someone needs in front of them: the cook's cell, each open order and what is on it, named from the catalogue:
 
 ```ts
-// src/resources/order/order.ts: in place of import type { Catalogue, Order } from "./order-api";
-import type { Catalogue, Kitchen, Order } from "./order-api";
+// src/resources/order/order.ts: in place of import type { Catalogue, Order, Orders } from "./order-api";
+import type { Catalogue, Kitchen, Order, Orders } from "./order-api";
 ```
 
 ```ts
-// src/resources/order/order.ts: after export const order = openDoc<Order>("order:1");
+// src/resources/order/order.ts: after export const catalogue = openDoc<Catalogue>("catalogue:");
 export const kitchen = openDoc<Kitchen>("kitchen:");
 ```
 
 ```tsx
-// src/resources/order/order-view.tsx: in place of import { catalogue, order } from "./order";
-import { catalogue, kitchen, order } from "./order";
+// src/resources/order/order-view.tsx: in place of import { catalogue, order, yourOrder } from "./order";
+import { catalogue, kitchen, order, yourOrder } from "./order";
 ```
 
 ```tsx
@@ -204,9 +214,11 @@ test(`${stories.stories.kitchen.name} -- a line changed is told as the field tha
   expect(told).toEqual([[{ op: "replace", path: `/lines/${line!.id}/item`, value: 2 }]]);
 });
 
-// The cook's cell, as the page draws it: each open order, and what is on it
+// The cook's cell, as the page draws it: each open order, and what is on it; and your order's cell
 const KITCHEN = `.cell[data-key="kitchen"]`;
+const ORDER = `.cell[data-key="your-order"]`;
 const orders = `[...document.querySelectorAll('${KITCHEN} .rows .row')].map((r) => r.querySelector(".what").textContent.trim() + ": " + r.querySelector(".note").textContent.trim()).join("; ")`;
+const teas = (cell: string) => `(document.querySelector('${cell} .rows')?.textContent ?? "").split("Tea").length - 1`; // how many Teas a cell shows
 
 test(`${stories.stories.kitchen.name} -- on the page, the cook's cell has each open order, and a line added to any order reaches it`, async () => {
   await open();
@@ -215,12 +227,12 @@ test(`${stories.stories.kitchen.name} -- on the page, the cook's cell has each o
   await waitFor(`${orders} === "Order 1: Cake; Order 2: Tea"`);
 });
 
-test(`${stories.stories.undo.name} -- Undo, pressed on the page, takes back the line it added, from the order and from the kitchen`, async () => {
-  await view.click(`.cell[data-key="catalogue"] .rows > .row:nth-child(1) > .tool`); // a Tea on order 1
-  await waitFor(`${orders} === "Order 1: Cake, Tea; Order 2: Tea"`);
+test(`${stories.stories.undo.name} -- Undo, pressed on the page, takes back the Tea it added, from your order and from the kitchen`, async () => {
+  await waitFor(`${teas(ORDER)} === 0 && ${teas(KITCHEN)} === 1`); // order 2's Tea
+  await view.click(`.cell[data-key="catalogue"] .rows > .row:nth-child(1) > .tool`); // a Tea on your order
+  await waitFor(`${teas(ORDER)} === 1 && ${teas(KITCHEN)} === 2`);
   await view.click(`.page-tools [aria-label="Undo"]`);
-  await waitFor(`${orders} === "Order 1: Cake; Order 2: Tea"`);
-  expect(Object.values(first.value().lines).map((l) => l.item)).toEqual([2]);
+  await waitFor(`${teas(ORDER)} === 0 && ${teas(KITCHEN)} === 1`); // gone from both, as a person sees them
 });
 ```
 

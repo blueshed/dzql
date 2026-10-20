@@ -56,13 +56,13 @@
     ],
     "query": "The order page is live and people have orders in it. Now an order should count an item: two teas are one line with a quantity of 2, not two lines. Don't lose anyone's order.",
     "files": [
-      "packages/create-blueshed/template/evals/fixtures/orders: the order app as two-documents.md and sqlite.md leave it (app/, over a new app), its three tests (tests/, each copied to tests/<name>.test.ts: stored without .test so the template's own bun test leaves them), and data/app.db as that version left it: 001-order run, and three orders with repeated lines (order 1 two Teas and a Cake, order 2 three Cakes and a Tea, order 3 a Tea)"
+      "packages/create-blueshed/template/evals/fixtures/orders: the order app as two-documents.md and sqlite.md leave it (app/, over a new app), its three tests (tests/, each copied to tests/<name>.test.ts: stored without .test so the template's own bun test leaves them), and data/app.db as that version left it: 001-order run, and three orders with repeated lines (order 1 two Teas and a Cake, order 2 three Cakes and a Tea, order 3 a Tea, and a Tea taken off: its row closed, valid_to set); its README says how it is made"
     ],
     "expected_behavior": [
-      "Declares quantity in the schema, then lets `delta migrations make` write the next migration (an addColumn), and adds beside it an up that folds an order's lines of one item into one, with its count",
+      "Declares quantity in the schema, then lets `delta migrations make` write the next migration (an addColumn), and adds beside it an up that folds an order's live lines of one item into one, with its count, closing the rest (valid_to set) rather than deleting them",
       "Keeps the history from empty: migrate runs it at start-up, with the resource's app and schema, before any document opens; no createTables",
       "Tests an upgrade: a database as the earlier version left it, with lines in it, comes through with every order kept, and a second start runs nothing",
-      "Leaves the page and its documents as they were: the order, kitchen and Undo tests pass unchanged",
+      "Leaves the documents as they were: the order, kitchen and Undo tests pass unchanged, and Add counts on the item's line (and × takes one off) rather than making a second line",
       "bun test passes at 100% coverage and bun run typecheck is clean"
     ],
     "copy": [

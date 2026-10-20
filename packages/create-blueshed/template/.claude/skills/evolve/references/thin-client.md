@@ -2,9 +2,9 @@
 
 When the page should be drawn where the documents are: many people at once, slow phones, documents too big to send whole, or applets (a railroad component) on a page the server draws. That is **dzql's thin client**, the shape `bun create dzql` makes (the `dzql-app` skill): the server draws each person's page from the documents it reads and sends only the parts that changed; the browser runs dzql's client, which morphs what it is sent and sends the write a control names. It follows [postgres.md](postgres.md), and needs every document in that one Postgres: the stories put that store back after each, and no other.
 
-**What stays:** the documents' definitions, their paths and the history of migrations; the rows, in the same data folder (`DATA_PATH`, else `data/`), and the rows kept before; `startServer({ port, dev, dataDir })`, which opens the store as the server starts and closes it as it stops; the HTTP route (`/api/status`); the look; `stories.ts`, each story under its key, a few gaining a body on their own line; and the tests of a document (`documents.ts` says where they are held) and of the page in a browser (both pages are the bento's HTML): `site.test.ts`, `message.test.ts`, `order.test.ts`, `kitchen.test.ts` and the moves'.
+**What stays:** the documents' definitions, their paths and the history of migrations; the rows, in the same data folder (`DATA_PATH`, else `data/`), and the rows kept before; `startServer({ port, dev, dataDir })`, which opens the store as the server starts and closes it as it stops; the HTTP route (`/api/status`); the look; `stories.ts`, each story under its key, a few gaining a body on their own line; and the tests of a document (`documents.ts` says where they are held) and of the page in a browser (both pages are the bento's HTML): `site.test.ts`, `message.test.ts`, `kitchen.test.ts` and the moves'.
 
-**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; the store (`store.ts`) serves every document in this process, not on the socket. The test of what the light page alone did (`app.test.ts`) becomes the thin page's, and `CLAUDE.md` and `README.md` become create-dzql's.
+**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; the store (`store.ts`) serves every document in this process, not on the socket. The test of what the light page alone did (`app.test.ts`) becomes the thin page's, and so does the order's (`order.test.ts`: everyone is on one order here), and `CLAUDE.md` and `README.md` become create-dzql's.
 
 ```sh
 rm src/app.tsx src/resources/bento.tsx src/resources/toast.ts src/resources/status/status.ts src/resources/status/status-view.tsx src/resources/message/message-view.tsx src/resources/order/order-view.tsx
@@ -25,6 +25,7 @@ export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
 export type Catalogue = { items: Record<string, Item> };
 export type Order = { lines: Record<string, Line> };
+export type Orders = { orders: Record<string, { id: number }> };
 /** What `kitchen:` holds: every order, and every line, each naming its order. */
 export type Kitchen = { orders: Record<string, { id: number }>; lines: Record<string, Line & { orders_id: number }> };
 
@@ -37,6 +38,7 @@ export const schema = defineSchema({
 export const docs = [
   defineDoc("catalogue:", { root: "items", include: [] }),
   defineDoc("order:", { root: "orders", include: ["lines"], implied: true }),
+  defineDoc("orders:", { root: "orders", include: [] }),
   defineDoc("kitchen:", { root: "orders", include: ["lines"] }),
 ];
 
@@ -174,7 +176,7 @@ export const message: Resource = {
 import type { Resource } from "dzql/rendering/resources/resource";
 
 // The catalogue, read by everyone and written by nobody; the order, which everyone adds a line
-// to, or takes one off (everyone is on order 1, as the light page was); and the kitchen, every
+// to, or takes one off (everyone is on order 1: the light page kept each browser's own); and the kitchen, every
 // open order, read by the cook's cell and written by nobody.
 
 export const catalogue: Resource = {
@@ -575,6 +577,52 @@ test("every story with a body passes", async () => {
 }, 60_000);
 ```
 
+Everyone is on order 1, so the order's test is two windows on the one order, in place of the light page's own orders:
+
+```ts
+// tests/order.test.ts
+import { test, afterAll, setDefaultTimeout } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { startServer } from "../src/routes";
+import { stories } from "../stories";
+import { browser } from "./browser";
+
+setDefaultTimeout(30_000);
+
+const dataDir = mkdtempSync(`${tmpdir()}/order-`);
+const server = await startServer({ port: 0, dev: false, dataDir });
+const { view, open, waitFor, withOtherWindow, close } = browser(() => server.url);
+
+afterAll(async () => {
+  close();
+  await server.stop(true);
+  rmSync(dataDir, { recursive: true, force: true });
+});
+
+const CATALOGUE = `.cell[data-key="catalogue"]`;
+const ORDER = `.cell[data-key="your-order"]`;
+const shown = (cell: string) => `[...document.querySelectorAll('${cell} .rows .what')].map((w) => w.textContent.trim()).join(", ")`;
+const total = (amount: string) => `document.querySelector('${ORDER} .row.total .state')?.textContent === "${amount}"`;
+
+test(`${stories.stories.ordering.name} -- two windows order and remove`, async () => {
+  await open();
+  await waitFor(`${shown(CATALOGUE)} === "Tea, Cake"`); // the catalogue is drawn
+  await withOtherWindow(async (other, waitForOther) => {
+    await waitForOther(total("0.00"));
+
+    await view.click(`${CATALOGUE} .rows > .row:nth-child(1) > .tool`);
+    await view.click(`${CATALOGUE} .rows > .row:nth-child(2) > .tool`);
+    await waitForOther(`${shown(ORDER)} === "Tea, Cake"`);
+    await waitForOther(total("5.50"));
+
+    await other.click(`${ORDER} .rows > .row:nth-child(1) > .tool`);
+    await waitFor(`${shown(ORDER)} === "Cake"`);
+    await waitFor(total("3.00"));
+  });
+});
+```
+
 What this page alone does, in place of what the light one did:
 
 ```ts
@@ -612,7 +660,7 @@ test(`${stories.stories.health.name} -- a page that is not one opens on the box`
 Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md, sqlite.md and postgres.md) and runs its type check and tests (`bun run test:evolve`).
 
 - `bun run stories` says each story; `STORY_BY_HAND=1 bun run stories` does each with the page's own controls, in a browser the size of a phone.
-- **What changed for the people using it**, each by where it is drawn: Saved and Not saved are said beside the box, not in a toast; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
+- **What changed for the people using it**, each by where it is drawn: Saved and Not saved are said beside the box, not in a toast; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page; and everyone shares order 1, where the light page kept each browser's own number, which a page drawn on the server does not read. An order of a person's own here is the session's, or who signed in (dzql-app's `signin.md`).
 - **The session:** nobody signs in, so the cookie is the session and no row is kept by it (`Example.session` left out). Sign-in by link, a session kept as a row (`sessionRows`), is dzql-app's `signin.md`; delta's `auth-link` ([auth.md](auth.md)) is for a page that is delta's client, not this one.
 - **The store is the server's**, as it was on the light page: opened as it starts, on its data folder, and closed as it stops, so a test runs servers on folders of its own, and `bun dev`'s reload closes the last store before it opens the next (its ids carry on).
 - From here the app grows with `dzql-app`, as its `CLAUDE.md` says; the other references here are the light page's.
