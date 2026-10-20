@@ -5,7 +5,8 @@
  * start-up, rows in them) adopts the history; a migration's changes and its data run in one
  * transaction, and fail together; renames keep values and rows, drops take them; a unique constraint
  * is made and dropped; an `up` takes the next id from the collection's serial; and the definitions
- * saying more than the history is reported.
+ * saying more than the history is reported; and a new database whose rows come imported, migrated
+ * already, is made by the changes alone, its `up`s recorded and not run.
  *
  *   migrationCases("sqlite", { open, migrate, columns, query, makeTables });
  */
@@ -116,6 +117,17 @@ export function migrationCases<H>(name: string, b: MigrationBackend<H>) {
       } }]);
       expect(given).toEqual([5, 6]);
       expect(await b.query(h, "SELECT id, name FROM people ORDER BY id")).toEqual([{ id: 4, name: "Ann" }, { id: 5, name: "Bob" }, { id: 6, name: "Cy" }]);
+    });
+
+    test("a new database whose rows come imported (`imported`) is made by the changes alone: each up recorded, none run; then the next up runs", async () => {
+      const h = await b.open();
+      const moved: Migration[] = [...history, { id: "003-short", changes: [addColumn("people", "short", "text?")], up: () => { throw new Error("the other backend's SQL"); } }];
+      expect(await b.migrate(h, moved, { imported: true })).toEqual({ ran: ["001-people", "002-posts", "003-short"], fresh: false, unknown: [] });
+      expect(await b.columns(h, "people")).toEqual(["id", "name", "short"]);
+      await b.query(h, "INSERT INTO people (id, name) VALUES (1, 'Ann')"); // the rows, imported
+      const next: Migration[] = [...moved, { id: "004-nick", changes: [addColumn("people", "nick", "text?")], up: (tx) => b.run(tx, "UPDATE people SET nick = name") }];
+      expect((await b.migrate(h, next, { imported: true })).ran).toEqual(["004-nick"]);
+      expect(await b.query(h, "SELECT nick FROM people")).toEqual([{ nick: "Ann" }]);
     });
 
     test("the definitions saying more than the history is reported, as the next migration's changes", async () => {

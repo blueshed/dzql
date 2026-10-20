@@ -53,10 +53,12 @@ export type { RegisterOptions } from "./register";
 export { createDocListener, defineCustomDoc } from "./listener";
 export { storyStore } from "./story-store";
 export { openStore } from "./app-store";
-export type { StoreOptions } from "./app-store";
+export type { AppStore, History, Registration, StoreOptions } from "./app-store";
 export type { CustomDocDef } from "./listener";
 
 export { docTypeFromDef } from "./registry";
 export type { DocType, Writer } from "./registry";
 
 export { withAppAuth } from "./auth";
+// what the server reads past the documents' paths, as the tables' owner: who is signed in, a custom document's rows
+export { asOwner } from "./sql";

@@ -53,6 +53,10 @@ an add, made a `renameColumn` by hand), run at start-up, with undo fenced across
 - **`migrationStatus(db, list, options)`**: what ran, what is pending, ids recorded that the list
   no longer has. From a shell: `bunx @blueshed/delta migrate <database> --app <name> --status`
   (`cli.md`). On Postgres, `migrate` is dzql's, the same lists (`postgres.md`).
+- **An `up` is its backend's SQL.** A new database whose rows come imported, migrated already
+  (`importTables` after the run, as an app moves to Postgres), says `imported: true`: the changes
+  make the tables, and each `up` is recorded as run, never run. Once the history is recorded there,
+  the next `up` runs. Never edit an `up` that has run to hold two backends.
 
 ## A database made the older way adopts the history
 

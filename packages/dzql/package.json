@@ -80,7 +80,7 @@
     "costs": "bun --env-file=.env.test src/modelling/costs.ts",
     "model:check": "LOG_LEVEL=warn bun --env-file=.env.test src/modelling/page/loader/check.ts",
     "model:load": "LOG_LEVEL=warn bun --env-file=.env.test src/modelling/page/loader/load.ts",
-    "test:fast": "bun check && bun --config=tests/fast.bunfig.toml test tests/compile/ && bun scripts/tests.ts --fast",
+    "test:fast": "bun check && bun --config=tests/fast.bunfig.toml test tests/compile/ tests/delta-pg/app-store && bun scripts/tests.ts --fast",
     "test:slow": "bun run test:pg && bun run test:coverage && bun run stories:all && bun run costs --check",
     "test:coverage:ci": "bun scripts/tests.ts --ci",
     "start": "NODE_ENV=production bun examples/chat/routes.ts",

@@ -16,6 +16,11 @@
  *   the migrations make the tables. A database that holds the tables it leads
  *   to and has recorded nothing (made the older way, from the schema at
  *   start-up) adopts it: each is recorded as run.
+ * - A new database whose rows come from the store before, migrated there
+ *   (`imported`: `importTables` after the run, as an app moves from SQLite to
+ *   Postgres), is made by the history's changes alone: each `up` is recorded as
+ *   run and never run, since it is the other backend's SQL and the rows it moved
+ *   come moved. Once the history is recorded there, the next `up` runs.
  * - A list of `up`s alone (the older way): an app new to the database (nothing
  *   recorded for it, and none of its tables there: its schema's, or without one
  *   any table but delta's own) runs none: the schema it is about to be made
@@ -78,6 +83,12 @@ export type MigrateOptions = {
    * delta's own says the app has lived here, and a migration fences the whole ledger.
    */
   schema?: Schema;
+  /**
+   * The rows come imported, migrated already (`importTables` from the store before, after this
+   * run): where nothing of the app's is recorded, the changes make the tables and each `up` is
+   * recorded as run, never run. Where its history is recorded, it changes nothing.
+   */
+  imported?: boolean;
 };
 
 /** A backend's side of the runner, for one app. */
@@ -192,6 +203,8 @@ export async function runMigrations<Tx>(store: Store<Tx>, migrations: Migration<
   try {
     const history = fromEmpty(migrations);
     const fresh = history ? await adopts(store, migrations) : await isNew(store, options);
+    // a new database its rows come to imported: its ups ran on the store before, in that one's SQL
+    const skipUps = options.imported === true && !((await store.exists()) && (await store.recorded()).length > 0);
     await store.create();
     const drift = options.schema && history ? driftOf(migrations, options.schema) : undefined;
     if (drift?.length) log.warn(`the definitions say more than the migrations: ${drift.join("; ")} -- delta migrations make writes the next one`);
@@ -218,7 +231,7 @@ export async function runMigrations<Tx>(store: Store<Tx>, migrations: Migration<
             state = after;
           }
           const at = state;
-          await m.up?.(tx, { nextId: (collection) => store.nextId(tx, collection, at[collection]?.table ?? collection) });
+          if (!skipUps) await m.up?.(tx, { nextId: (collection) => store.nextId(tx, collection, at[collection]?.table ?? collection) });
         } catch (err) {
           throw new Error(`[delta-migrate] migration ${named(m.id)} failed, and was rolled back: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
         }

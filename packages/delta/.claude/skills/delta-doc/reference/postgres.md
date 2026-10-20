@@ -11,10 +11,17 @@ migrations and each document's `owns`. What changes is the server's storage:
 import { openStore } from "dzql/postgres";
 
 // the same history as on SQLite makes the tables; DATABASE_URL's server, else PGlite in this process
-const store = await openStore({ schema, migrations: { dir: "migrations", app: "board", schema }, ws });
+const store = openStore({ schema, migrations: { dir: "migrations", app: "board", schema, imported: true }, ws });
 store.register(docs);
 await store.open();   // each document compiled, then served on `ws`; `store.close` on shutdown
 ```
+
+What `registerDocs` took, `openStore` takes: `auth` (and `who`) once for the store; each resource's
+`register(docs, { shared, owns, ledger, custom })`, its custom documents beside its own; and a
+history per resource, `migrations: [{ app: "people", ... }, { app: "board", ... }]`. `imported`
+says the rows come from the store before, migrated there, so SQLite's `up`s never run on Postgres
+(`migrations.md`). What the server reads past the documents' paths (who is signed in, a custom
+document's rows) it reads with dzql's `asOwner(store.pool, fn)`.
 
 Working: dzql's [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/store.ts), `openStore` with its migrations,
 each resource registering its documents, then `open` (`store.ts`, `resources/table/table-api.ts`);

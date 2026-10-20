@@ -63,6 +63,20 @@ section up.
 
 ### Fixed
 
+- **The step to Postgres takes every document, and its history moves without its `up`s** (20
+  October, template #15 and #16, root #140). evolve's `references/postgres.md` now keeps every
+  document in one store, `src/store.ts` (`appStore(ws)`, dzql's `openStore`), opened by
+  `startServer` and closed as it stops, the message included: left on its JSON file, each server
+  kept a message of its own (the Shed's run 5, finding 9). The order's history says `imported:
+  true`, so on the new database its changes make the tables and its `up`s, SQLite's SQL, never run
+  (finding 4); `references/migrations.md` says an `up` is its backend's SQL and is never edited to
+  hold two. The page shows what an app with sign-in passes `openStore` (finding 5): `auth`, a
+  history per resource, custom documents beside a resource's own, and `asOwner` for what the server
+  reads past the paths. The move's test brings the message across from its file;
+  `references/thin-client.md` builds on the store. **To move across**: an app that took the step
+  before keeps its message's file; add its rows to the store's `prepare` as the page does, and
+  `imported: true` to each history.
+
 - **The evolve and Shed evaluations expect the JSON file** (20 October): a shared document from the
   start is `registerDocs` from `@blueshed/delta/json` with a schema, as the template's message is;
   delta no longer has the free-form document they named.

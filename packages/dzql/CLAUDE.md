@@ -113,7 +113,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
   `bun run costs --check`. The browser tests need Chrome (the dzql-app skill's *Tests*).
 - **The Postgres step**: `cd packages/dzql && bun run test:pg` (`tests/bunfig.toml`)
 - Tests run against Docker PostgreSQL (see `packages/dzql/compose.yml`)
-- `tests/compile/` runs on PGlite with no Docker (it is in the fast tier); `tests/delta/` mostly does, but its write cases and link store need the Postgres server too, so it runs in `test:pg`
+- `tests/compile/` and `tests/delta-pg/app-store*` (`openStore`) run on PGlite with no Docker (they are in the fast tier); `tests/delta/` mostly does, but its write cases and link store need the Postgres server too, so it runs in `test:pg`
 - The test script handles Docker lifecycle: starts fresh, runs tests, tears down. It removes the
   database as it starts and ends, so **never run it while another run is going** (a person's, a
   session's): each wipes the other's database, and both fail

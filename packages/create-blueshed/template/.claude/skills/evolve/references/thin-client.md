@@ -4,7 +4,7 @@ When the page should be drawn where the documents are: many people at once, slow
 
 **What stays:** the documents' definitions, their paths and the history of migrations; the rows, in the same data folder (`DATA_PATH`, else `data/`), and the rows kept before; `startServer({ port, dev, dataDir })`, which opens the store as the server starts and closes it as it stops; the HTTP route (`/api/status`); the look; `stories.ts`, each story under its key, a few gaining a body on their own line; and the tests of a document (`documents.ts` says where they are held) and of the page in a browser (both pages are the bento's HTML): `site.test.ts`, `message.test.ts`, `order.test.ts`, `kitchen.test.ts` and the moves'.
 
-**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; `orderDocs` becomes the store every document is in (`store.ts`). The test of what the light page alone did (`app.test.ts`) becomes the thin page's, and `CLAUDE.md` and `README.md` become create-dzql's.
+**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; the store (`store.ts`) serves every document in this process, not on the socket. The test of what the light page alone did (`app.test.ts`) becomes the thin page's, and `CLAUDE.md` and `README.md` become create-dzql's.
 
 ```sh
 rm src/app.tsx src/resources/bento.tsx src/resources/toast.ts src/resources/status/status.ts src/resources/status/status-view.tsx src/resources/message/message-view.tsx src/resources/order/order-view.tsx
@@ -78,7 +78,7 @@ export const docs = [defineDoc("message:", { root: "messages", include: [], impl
 export const read = (): Message => readDoc<MessageDoc>("message:1").messages;
 ```
 
-The store is `orderDocs`'s, with every document in it, served in this process, where the page is drawn. A new database takes the rows kept before in the data folder, the message's JSON file too:
+The store is [postgres.md](postgres.md)'s, every document in it, now served in this process, where the page is drawn. A new database takes the rows kept before in the data folder, the message's JSON file too:
 
 ```ts
 // src/store.ts
@@ -111,7 +111,7 @@ function keptBefore(dataDir = ""): [Schema, Snapshot][] {
 
 export const store = openStore({
   schema: [order.schema, message.schema], // each resource's, kept as one
-  migrations: { list: migrations, app: "order", schema: order.schema },
+  migrations: { list: migrations, app: "order", schema: order.schema, imported: true }, // the rows come imported: SQLite's ups never run here
   // each document compiled; a new database takes the rows kept before, then the documents are served
   prepare: async (pool, { dataDir }) => {
     if ((await pool.query("SELECT 1 FROM items")).rowCount) return;
@@ -614,5 +614,5 @@ Working: `tests/evolve.ts` makes a new app from this template, applies this page
 - `bun run stories` says each story; `STORY_BY_HAND=1 bun run stories` does each with the page's own controls, in a browser the size of a phone.
 - **What changed for the people using it**, each by where it is drawn: Saved and Not saved are said beside the box, not in a toast; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
 - **The session:** nobody signs in, so the cookie is the session and no row is kept by it (`Example.session` left out). Sign-in by link, a session kept as a row (`sessionRows`), is dzql-app's `signin.md`; delta's `auth-link` ([auth.md](auth.md)) is for a page that is delta's client, not this one.
-- **The store is the server's**, as `orderDocs`'s was: opened as it starts, on its data folder, and closed as it stops, so a test runs servers on folders of its own, and `bun dev`'s reload closes the last store before it opens the next (its ids carry on).
+- **The store is the server's**, as it was on the light page: opened as it starts, on its data folder, and closed as it stops, so a test runs servers on folders of its own, and `bun dev`'s reload closes the last store before it opens the next (its ids carry on).
 - From here the app grows with `dzql-app`, as its `CLAUDE.md` says; the other references here are the light page's.
