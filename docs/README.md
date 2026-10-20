@@ -1,9 +1,7 @@
 # Docs
 
-What is here goes deeper than a README and is not the manual. Each package's README is for a
-person deciding whether to use it; CLAUDE.md is Claude's entry point; the skills (each package's
-`.claude/skills/`) are the manual. Where any of these disagree, the code is right, then the skill;
-fix the other.
+What is here goes deeper than a README and is not the manual: the root
+[CLAUDE.md](../CLAUDE.md#what-each-document-is-for) says what each kind of document is for.
 
 - [stories.md](stories.md): what the stories are for, and how they drive an app, from paintbrush to dzql.
 - [rendering.md](rendering.md): the thin client, dzql's pages drawn on the server, and what a write
