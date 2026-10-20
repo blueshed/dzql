@@ -105,6 +105,14 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   `calendar.ts`, the drawing the server and the applets share, and `signin.ts`, no document's,
   stay at the root. Its tables stay `temporal: false`, the reason beside them, and
   `upgrade.test.ts` still upgrades a database leave's older version left; its 25 stories pass.
+  Last the model's page (`src/modelling/page/`): `resources/model/` and `resources/session/`;
+  `store.ts`'s `register` keeps a document in the app's model file when it says `inFile` (the model,
+  beside an app), the sessions always in memory or the database as before; `heart.ts`,
+  `closure.ts`, `site.ts`, `cli.ts`, `signin.ts` and `loader/` stay where they were, no document's.
+  `MODEL`, the one model's id, is said beside `Raw` in `heart.ts`, so the loader reading a page
+  opens no store. Its 14 stories pass, with the same 2 warnings. The dzql-app skill no longer
+  calls the examples older: SKILL.md says they are laid out as the cafe is, on SQLite; dzql's
+  CLAUDE.md says the layout in its Project Structure.
 - **A ref keeps its surrogate** (20 October, #79, on Peter's design): a row that names a row a story
   can remove keeps, beside the key, what it shows of it, copied as it is written (`dish_name`,
   `dish_price` beside `dish`); the page shows the named row while it stands, and the copy once it

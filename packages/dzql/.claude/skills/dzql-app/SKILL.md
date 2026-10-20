@@ -1,6 +1,6 @@
 ---
 name: dzql-app
-description: Use before building an app whose pages dzql's server draws (dzql/rendering) -- the src/ of a project made with `bun create dzql`, an example under examples/<name>/, or an app in a repo of its own -- or adding a document, resource, applet, route or CLI verb to one; and before touching the Resource contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference/ has one short file a piece; SKILL.md says which to read for which step.
+description: Use before building an app whose pages dzql's server draws (dzql/rendering) -- the src/ of a project made with `bun create dzql`, an example under examples/<name>/, or an app in a repo of its own -- or adding a document, resource, applet, route or CLI verb to one; and before touching the Resource contract, an app's store.ts, the applet registry or the {doc, ops} wire. reference/ has one short file a piece; SKILL.md says which to read for which step.
 metadata:
   version: 0.53.0
 ---
@@ -63,9 +63,9 @@ least that makes the next story pass; `bun run stories` after each.
    (`serverWrite`, the cafe's `/scan`). → [example](reference/example.md), [signin](reference/signin.md)
 7. **Tests**, `routes.test.ts`: what a story cannot say, then the gate. → [tests](reference/tests.md)
 
-Beyond the cafe, dzql's older examples show the same pieces in their earlier places (`delta.ts`,
-`documents/<thing>.ts`, `resources/<thing>.ts`, beside their `routes.ts`): a document the server works out
-(chat's `here`, [resource](reference/resource.md#after-a-write)); an applet, only for
+Beyond the cafe, dzql's other examples are laid out the same way, on SQLite (`openTables`,
+`dzql/rendering/db`, in their `store.ts`): a document the server works out (chat's `here`, kept
+by its `presence.ts`, [resource](reference/resource.md#after-a-write)); an applet, only for
 state a redraw would destroy (the ticker's board, [applets](reference/applets.md),
 [watching](reference/watching.md)); a CLI (chat's `cli.ts`); uploads (the wedding's); passwords and
 a proxy (leave's `signin.ts`). Also: what crosses the socket, [wire](reference/wire.md); an

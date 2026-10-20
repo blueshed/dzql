@@ -2,8 +2,7 @@ import { connectCli } from "dzql/rendering/cli/commands";
 import { cookieNameForUrl } from "dzql/rendering/scope";
 import { decoded } from "dzql/rendering/parts";
 import { columnOf, readingOf } from "dzql/modelling/reading";
-import { list as and, type Raw } from "../heart";
-import { MODEL } from "../model";
+import { list as and, MODEL, type Raw } from "../heart";
 import type { Load } from "./writes";
 
 // The model as told against the model as built (`bun run model:check <example> --against-page`):

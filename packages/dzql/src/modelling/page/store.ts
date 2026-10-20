@@ -1,4 +1,4 @@
-import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { defineDoc, defineSchema, registerDocs, type DocDef } from "@blueshed/delta/sqlite";
 import * as json from "@blueshed/delta/json";
 import { existsSync } from "node:fs";
 import { createLocal } from "@blueshed/delta/local";
@@ -6,7 +6,9 @@ import { Database } from "bun:sqlite";
 import { db as appDb, openTables } from "dzql/rendering/db";
 import { sessionRows } from "dzql/rendering/sessions";
 
-// modeling's documents, in delta (`@blueshed/delta`). A model is one document, written by the two
+// modeling's store: SQLite (dzql/rendering/db), or beside an app the model's own file; its
+// documents in delta (`@blueshed/delta`), each a resource's (`resources/<name>/<name>-api.ts`
+// registers it, with `register`), over the tables said once, here. A model is one document, written by the two
 // who keep it and on the ledger: its stories -- each with who tells it, whether they do it or are
 // refused, a route it posts to, the entities it touches, and, as hjeli had them, what it writes and
 // the states it presupposes -- and the documents they need -- each
@@ -93,21 +95,17 @@ if (!db.query("SELECT 1 FROM mdl_models").get()) {
 
 export const delta = createLocal();
 
-const model = [defineDoc("model:", { root: "models", include: ["stories", "documents"] })];
 // In a project, the model is a file in the app (`MODEL_FILE`, `dzql model`'s `model.json`): delta's
 // JSON file, which a person can read and the page edits, its undo kept in it. Sessions stay here.
 const MODEL_FILE = process.env.MODEL_FILE;
-if (MODEL_FILE) {
-  if (!existsSync(MODEL_FILE)) json.importTables(MODEL_FILE, schema, { tables: { models: [{ id: 1, name: NAME ?? "Model" }] } });
-  json.registerDocs(delta.server, MODEL_FILE, schema, model, [], { ledger: true });
-} else registerDocs(delta.server, db, schema, model, [], { ledger: true });
+if (MODEL_FILE && !existsSync(MODEL_FILE)) json.importTables(MODEL_FILE, schema, { tables: { models: [{ id: 1, name: NAME ?? "Model" }] } });
 
-// A session, with no ledger: signing in and out is not the model's history. A session is a numbered
-// row, found by its cookie's hash through `visit:` (dzql/rendering/sessions), which `session:` never holds.
-registerDocs(delta.server, db, schema, [
-  defineDoc("session:", { root: "sessions", include: [], implied: true, columns: { sessions: ["person_id", "name"] } }),
-  defineDoc("visit:", { root: "sessions", scope: { cookie: ":cookie" }, include: [] }),
-]);
+/** A resource's documents, on delta over the model's tables, on the ledger unless it says not: `inFile`, in the model's file beside an app (`MODEL_FILE`), else here. */
+export const register = (docs: DocDef[], { ledger = true, inFile = false } = {}) =>
+  inFile && MODEL_FILE ? json.registerDocs(delta.server, MODEL_FILE, schema, docs, [], { ledger }) : registerDocs(delta.server, db, schema, docs, [], { ledger });
+
+// The session a cookie names, found and made by the cookie's hash, which `session:` never holds; off the ledger.
+register([defineDoc("visit:", { root: "sessions", scope: { cookie: ":cookie" }, include: [] })], { ledger: false });
 
 /** The sessions, a row each, named by the cookie a browser carries. */
 export const sessions = sessionRows(delta, "sessions");

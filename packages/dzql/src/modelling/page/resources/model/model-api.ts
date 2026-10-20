@@ -1,15 +1,17 @@
+import { defineDoc } from "@blueshed/delta/sqlite";
 import { read as readDoc } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { refuse } from "dzql/rendering/refusal";
-import type { Field, Held, Raw, Requires, StoryWrite } from "./heart";
+import { register } from "../../store";
+import { MODEL, type Field, type Held, type Raw, type Requires, type StoryWrite } from "../../heart";
 
-// modeling's documents as its page reads them, and the rules a write to the model follows. The
-// model (`model:1`): its stories and the documents they need, as delta keeps them (`Raw`); the
-// heart is worked out from it (./heart.ts). A session (`session:<id>`): who is signed in, if anyone.
+// The model (`model:1`), as its page reads it, and the rules a write to it follows: its stories and
+// the documents they need, as delta keeps them (`Raw`); the heart is worked out from it
+// (../../heart.ts). On the ledger, and beside an app in the app's own file (`inFile`, ../../store.ts).
+register([defineDoc("model:", { root: "models", include: ["stories", "documents"] })], { inFile: true });
 
-/** The one model. */
-export const MODEL = "1";
+export { MODEL };
 
 /** The model document as delta holds it. */
 export const raw = (): Raw => readDoc<Raw>(`model:${MODEL}`);
@@ -166,14 +168,4 @@ export function may(m: Model, op: PatchOp): boolean {
   if (field === undefined) return op.op === "remove";
   if (field === "holds") return entity !== undefined && (op.op === "replace" || op.op === "remove");
   return DOCUMENT_FIELDS.has(field) && op.op === "replace" && entity === undefined;
-}
-
-// ───────────────────────────── the session ─────────────────────────────
-
-export type Person = { id: string; name: string };
-
-/** Who a session is, if anyone. */
-export function session(sessionId: string): { person: Person | null } {
-  const row = readDoc<{ sessions?: { person_id?: string | null; name?: string | null } }>(`session:${sessionId}`)?.sessions ?? {};
-  return { person: row.person_id == null ? null : { id: String(row.person_id), name: row.name ?? "" } };
 }
