@@ -30,16 +30,18 @@ function page(render: () => Node) {
   return { root, dispose: mount(root, render) };
 }
 
-test("a job changed in place updates its own row, which stays the same node", () => {
+test("a job the feed changes updates its own row, which stays the same node", () => {
   apply({ snapshot: [job(1), job(2)] });
   const { root, dispose } = page(() => <JobsPage />);
   const row = root.querySelector('[data-id="2"]')!;
+  const first = jobs.peek()[0];
 
   apply({ job: job(2, { status: "running", progress: 40 }) }); // writes notify at once: no tick
   expect(row.querySelector(".status")!.textContent).toBe("running");
   expect(row.querySelector(".progress")!.textContent).toBe("40%");
   expect(root.querySelector('[data-id="2"]')).toBe(row);
-  expect(jobs.peek()[1]!.status).toBe("running"); // the same array, changed where it is
+  expect(jobs.at(2).peek()!.status).toBe("running");
+  expect(jobs.peek()[0]).toBe(first!); // the other job is the object it was
   dispose();
 });
 

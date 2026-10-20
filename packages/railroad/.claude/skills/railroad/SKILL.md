@@ -24,13 +24,13 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 
 1. No `.get()` in JSX or a render body (component, `when()` branch, `list()` row, route handler, `mount()`'s render): it reads once and subscribes nothing. Bind `{count}` or `{() => …}`; `.peek()` for a deliberate one-shot. → jsx
 2. A function child returns text, not a Node: `when()` for an element, `list()` for many. → jsx
-3. Keyed `list()` rows are `Signal<T>`: `row$.map(…)`, never destructure. Keys unique and stable. → when-list
+3. A keyed `list()` row is its fields, each a signal: `({ name }) => <li>{name}</li>`. Keys unique and stable. → when-list
 4. An array that changes needs `list()`; a plain `.map()` is for a static array. → when-list
 5. `when()` rebuilds only when truthiness flips: read the value through `v$`. A route handler runs once per pattern: read `params$`, or mark it `keyed: true`. → when-list, routes
 6. Effects, `when()` and `list()` are disposed only inside a scope (component, route handler, branch, row, `mount()`). Each effect run owns what its body makes, so what must outlive a run is made outside it. An event handler is not a scope. → scopes
 7. Handlers are lowercase functions: `onclick={() => …}`, never `onClick`, a call, or a Signal. `oninput` per keystroke; `onchange` on commit. → jsx
 8. Async components and async route handlers resolve to a thunk: `return () => <div/>`. `effect(async …)` is an error. → async
-9. Large documents: mutate in place, then `.touch()`; a keyed `list()` over rows changed in place needs `{ equals: () => false }`. → realtime
+9. Rows changed one at a time (a feed) are a `collection(key)`: it replaces the row it changes, so `list()` updates that row alone, and `at(id)` follows one. Never change a row in place. → realtime
 10. Routes match in declaration order, on segments only: no query strings, a trailing slash is a segment. → routes
 11. One copy of railroad per page, or signals silently stop crossing. → [one-copy](reference/one-copy.md)
 
@@ -45,7 +45,7 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 ## Which file for which job
 
 - [setup](reference/setup.md): new project, tsconfig, JSX types, builds, subpath imports
-- [signals](reference/signals.md): `signal`, `computed`, `effect`, `batch`, `touch`, scheduling
+- [signals](reference/signals.md): `signal`, `computed`, `effect`, `batch`, `collection`, scheduling
 - [scopes](reference/scopes.md): what is disposed when; custom roots
 - [jsx](reference/jsx.md): components, props, handlers, SVG
 - [async](reference/async.md): async components and route handlers

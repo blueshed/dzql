@@ -1,20 +1,18 @@
 /**
- * The jobs, the client's handle: one signal over every job, kept by the feed.
+ * The jobs, the client's handle: a collection of every job, keyed by id, kept by the feed.
  *
- * The list can be long, so the feed changes it in place: a known job is changed where it is
- * (`Object.assign`), a new one pushed, and `jobs.touch()` tells whoever reads it. Nothing is
- * cloned. A touch keeps the same references, so whatever reads a job through a projection that
- * returns the job itself says `{ equals: () => false }`: `job(id)` here, and the views' `list()`
- * over these rows (the railroad skill's realtime reference).
+ * The list can be long, and the feed changes one job at a time: `put` replaces that job and
+ * leaves the others as they were, so a keyed `list()` over them updates that row and no other,
+ * and `jobs.at(id)` follows one job, told only when it changes (the railroad skill's realtime
+ * reference).
  */
-import { effect, key, signal, tryInject, type Dispose, type ReadonlySignal } from "@blueshed/railroad";
+import { collection, effect, key, tryInject, type Dispose } from "@blueshed/railroad";
 import type { Command, Feed, Job, JobDetail } from "./jobs-api";
 
 /** Every job, in the order the server made them. Read it; only the feed changes it. */
-export const jobs = signal<Job[]>([]);
-const byId = new Map<number, Job>();
+export const jobs = collection((j: Job) => j.id);
 
-/** How many have failed: a number, so it follows every touch. Lives as long as the page. */
+/** How many have failed. Lives as long as the page. */
 export const failedCount = jobs.map((all) => all.filter((j) => j.status === "failed").length);
 
 /** What the page sends the feed. Exported once: a second `key("feed")` would be another key. */
@@ -23,35 +21,14 @@ export const FEED = key<{ send(cmd: Command): void }>("feed");
 /** Told when a job fails, if the page provides it (the toasts do; a unit test need not). */
 export const FAILED = key<(id: number) => void>("failed");
 
-/** One job, live, or null once it is removed. A fresh projection: make it in a scope. */
-export function job(id: number): ReadonlySignal<Job | null> {
-  // The job is the same object after an in-place change, which Object.is would call unchanged
-  return jobs.map(() => byId.get(id) ?? null, { equals: () => false });
-}
-
-/** Applies what the feed says, in place, and notifies once. */
+/** Applies what the feed says: one change, one notification. */
 export function apply(msg: Feed): void {
-  const all = jobs.peek(); // peek: changing it is not reading it
-  if ("snapshot" in msg) {
-    all.splice(0, all.length, ...msg.snapshot);
-    byId.clear();
-    for (const j of all) byId.set(j.id, j);
-  } else if ("removed" in msg) {
-    const i = all.findIndex((j) => j.id === msg.removed);
-    if (i >= 0) all.splice(i, 1);
-    byId.delete(msg.removed);
-  } else {
-    const known = byId.get(msg.job.id);
-    if (!known) {
-      all.push(msg.job);
-      byId.set(msg.job.id, msg.job);
-    } else {
-      const was = known.status;
-      Object.assign(known, msg.job); // in place: no clone of the list
-      if (was !== "failed" && known.status === "failed") tryInject(FAILED)?.(known.id);
-    }
+  if ("snapshot" in msg) jobs.set(msg.snapshot);
+  else if ("removed" in msg) jobs.remove(msg.removed);
+  else {
+    const was = jobs.put(msg.job); // the job it replaced, if it was known
+    if (was && was.status !== "failed" && msg.job.status === "failed") tryInject(FAILED)?.(msg.job.id);
   }
-  jobs.touch(); // notify, same reference
 }
 
 /** Opens the feed at `path`: what it says goes to apply(), what the page sends goes to it. */

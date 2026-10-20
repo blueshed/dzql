@@ -67,8 +67,8 @@ function ListPage() {
       <button data-testid="clear" onclick={clear}>clear</button>
       <button data-testid="rotate" onclick={rotate}>last to first</button>
       <ul data-testid="rows">
-        {list(rows, (r: Row) => r.id, (r$) => (
-          <li data-testid={`row-${r$.peek().id}`}>{r$.map((r) => r.text)}<input data-testid={`input-${r$.peek().id}`} /></li>
+        {list(rows, (r: Row) => r.id, ({ id, text }) => (
+          <li data-testid={`row-${id.peek()}`}>{text}<input data-testid={`input-${id.peek()}`} /></li>
         ))}
       </ul>
       {when(

@@ -110,9 +110,9 @@ describe("railroad ↔ delta", () => {
     const cards$ = doc.data.map((d) => (d ? Object.values(d.cards) : []));
     const dispose = mount(root, () =>
       when(doc.data, () =>
-        list(cards$, (c) => c.id, (c$) => {
+        list(cards$, (c) => c.id, ({ title }) => {
           const li = document.createElement("li");
-          effect(() => { li.textContent = c$.get().title; });
+          effect(() => { li.textContent = title.get(); });
           return li;
         }),
       () => {

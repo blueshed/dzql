@@ -1,7 +1,7 @@
 # Signals
 
 ```ts
-import { signal, computed, effect, batch, untrack } from "@blueshed/railroad";
+import { signal, computed, effect, batch, untrack, collection } from "@blueshed/railroad";
 
 const count = signal(0);
 const doubled = computed(() => count.get() * 2);   // ReadonlySignal: no .set
@@ -22,8 +22,12 @@ filter.update((f) => ({ ...f, color: "blue" }));  // a new object: one field cha
 
 const todos = signal([{ id: 1, text: "Buy milk" }]);
 todos.mutate((arr) => arr.push({ id: 2, text: "Walk dog" }));  // structuredClone, mutate, notify
-todos.peek()[0]!.text = "Buy oat milk";
-todos.touch();                                     // notify, same reference
+
+const jobs = collection((j: { id: number; status: string }) => j.id);   // rows by key
+jobs.put({ id: 1, status: "queued" });            // add, or replace the row with its key
+jobs.patch(1, { status: "running" });             // { ...row, ...fields }: a new object
+const one = jobs.at(1);                           // ReadonlySignal: told when row 1 changes, no other
+jobs.remove(1);                                   // one.peek() is null
 
 const coords = signal({ x: 1, y: 2 }, { equals: (a, b) => a.x === b.x && a.y === b.y });
 
@@ -34,8 +38,8 @@ dispose();
 The methods and options are typed in `signals.ts` (`Signal`, `ReadonlySignal`, `SignalOptions`); its header is the contract. What a body creates, and when it is disposed: [scopes](scopes.md).
 
 Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a `computed` beside what reads it, `.update` and `.mutate`
-on a small object and `batch` for two writes (`resources/jobs/jobs-view.tsx`); `.peek`, a change
-in place and `.touch` (`resources/jobs/jobs.ts`); an effect's cleanup
+on a small object, `batch` for two writes and `.peek` for a key (`resources/jobs/jobs-view.tsx`);
+a `collection` the feed puts each job in (`resources/jobs/jobs.ts`); an effect's cleanup
 (`resources/runners/runners-view.tsx`).
 
 - `effect(fn)` returns its disposer. Only a returned function is a cleanup; any other return is ignored (tsc still rejects an expression body that returns a value: use a block).
@@ -44,5 +48,6 @@ in place and `.touch` (`resources/jobs/jobs.ts`); an effect's cleanup
 - Propagation is topologically ordered: one write, or one `batch()`, runs each affected computed or effect at most once per settled pass, upstream first, so a diamond never sees half-updated state, even when a computed switches what it reads. A true cycle throws.
 - Other effects see an effect's writes, its first run's included, after its body returns. An effect that writes its own dependency (a clamp, a default) runs again after its current run, never inside it.
 - An effect that writes a signal, then reads a computed of it that it read before, sees the old value and re-runs once the write settles; a computed it reads for the first time in the pass is brought up to date first.
-- `.touch()` re-runs effects and computeds that return primitives. A computed that returns the same reference bails: project to fresh values (`Object.values(...)`, primitives) or give `.map()` `{ equals: () => false }`.
+- A computed whose value is `Object.is` the last one notifies no one: an object signal is changed by a new object (`.update`, `.mutate`), never in place.
+- Rows that change one at a time are a `collection`: each change replaces the row it names, `.get()` is a fresh array, and `at(key)` is told only of its own row. With `list()`: [when-list](when-list.md), [realtime](realtime.md).
 - `.mutate()` uses `structuredClone`: plain data only, no functions, class instances or DOM nodes.

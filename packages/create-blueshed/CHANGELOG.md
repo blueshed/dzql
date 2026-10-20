@@ -80,6 +80,10 @@ section up.
 
 ### Changed
 
+- **railroad's keyed row is its fields** (20 October, railroad's #6): the template's `rowsOf`
+  (`src/resources/bento.tsx`) still hands its `row` the row's signal, now render's third argument
+  (`list(items, key, (_, _i, item$) => row(item$))`), so no caller changes; evolve's `auth.md`
+  takes a person's row apart (`({ id, name }) => tool(name.peek(), …)`).
 - **Each of evolve's references says where it is shown working** (20 October, root #114): a line
   starting `Working:`, naming `tests/evolve.ts`, which applies the page to a new app and runs it.
 - **The evolve skill's Postgres page registers documents with signing in as SQLite does**

@@ -7,7 +7,7 @@
  * is the ledger's: it walks back your last change, and leaves anyone else's.
  */
 import { joinPath, type DeltaOp } from "@blueshed/delta/core";
-import { computed, list, signal, type JSX, type ReadonlySignal } from "@blueshed/railroad";
+import { computed, list, signal, type JSX, type Row } from "@blueshed/railroad";
 import type { Person } from "../people/people-api";
 import { openPeople } from "../people/people";
 import type { Item, Member } from "./lists-api";
@@ -33,7 +33,7 @@ export function ListsView({ me }: { me: Person }): JSX.Element {
         <span id="said">{said}</span>
       </p>
       <div class="lists">
-        {list(lists, (m) => m.lists_id, (m$) => <ListCard id={m$.peek().lists_id} />)}
+        {list(lists, (m) => m.lists_id, ({ lists_id }) => <ListCard id={lists_id.peek()} />)}
       </div>
     </>
   );
@@ -57,12 +57,12 @@ function ListCard({ id }: { id: number }): JSX.Element {
     input.value = "";
   }
 
-  const row = (item$: ReadonlySignal<Item>) => (
-    <li class={item$.map((i) => (i.done ? "item done" : "item"))}>
-      <input type="checkbox" checked={item$.map((i) => i.done)}
-        onchange={() => change([{ op: "replace", path: joinPath("items", item$.peek().id, "done"), value: !item$.peek().done }])} />
-      <span class="title">{item$.map((i) => i.title)}</span>
-      <button class="remove" onclick={() => change([{ op: "remove", path: joinPath("items", item$.peek().id) }])}>×</button>
+  const row = ({ id, done, title }: Row<Item>) => (
+    <li class={done.map((d) => (d ? "item done" : "item"))}>
+      <input type="checkbox" checked={done}
+        onchange={() => change([{ op: "replace", path: joinPath("items", id.peek(), "done"), value: !done.peek() }])} />
+      <span class="title">{title}</span>
+      <button class="remove" onclick={() => change([{ op: "remove", path: joinPath("items", id.peek()) }])}>×</button>
     </li>
   );
 

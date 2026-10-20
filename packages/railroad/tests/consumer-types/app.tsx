@@ -17,8 +17,9 @@ import {
   provide,
   inject,
   createLogger,
+  collection,
 } from "@blueshed/railroad";
-import type { Dispose, JSX } from "@blueshed/railroad";
+import type { Dispose, JSX, Row } from "@blueshed/railroad";
 import type { JSX as RuntimeJSX } from "@blueshed/railroad/jsx-runtime";
 
 const count = signal(0);
@@ -28,8 +29,13 @@ effect(() => void count.get());
 
 const detail = signal<{ id: string } | null>(null);
 
-type Row = { id: number; text: string };
-const rows = signal<Row[]>([{ id: 1, text: "a" }]);
+type Item = { id: number; text: string };
+const rows = signal<Item[]>([{ id: 1, text: "a" }]);
+type Job = { id: number; name: string };
+const jobs = collection((j: Job) => j.id, [{ id: 1, name: "build" }]);
+jobs.patch(1, { name: "built" });
+const was: Job | undefined = jobs.put({ id: 2, name: "test" });
+void was;
 
 const STORE = key<{ name: string }>("store");
 provide(STORE, { name: "x" });
@@ -52,16 +58,19 @@ function App(): JSX.Element {
       <span>{doubled}</span>
       <span>{() => (count.get() > 5 ? "high" : "low")}</span>
       <ul>
-        {/* bare-arrow keyFn — must infer `r` as Row, no annotation */}
-        {list(rows, (r) => r.id, (r$) => (
-          <li>{r$.map((r) => r.text)}</li>
+        {/* bare-arrow keyFn — must infer `r` as Item, no annotation; the row is its fields */}
+        {list(rows, (r) => r.id, ({ id, text }) => (
+          <li data-id={id}>{text}</li>
         ))}
-        {/* 4-arg keyed overload — options.equals must infer a/b as Row */}
-        {list(rows, (r) => r.id, (r$) => (
-          <li>{r$.map((r) => r.text)}</li>
-        ), { equals: (a, b) => a.id === b.id && a.text === b.text })}
+        {/* index$ and the row's own signal come after the fields */}
+        {list(rows, (r) => r.id, (_, i$, row$) => (
+          <li class={i$.map((i) => (i % 2 ? "odd" : "even"))}>{row$.map((r) => r.text)}</li>
+        ))}
+        {/* a collection is a list's source, its key the keyFn; at(key) follows one row */}
+        {list(jobs, jobs.key, (job: Row<Job>) => <li>{job.name}</li>)}
+        {when(jobs.at(1), (j$) => <li>{j$.map((j) => j.name)}</li>)}
       </ul>
-      {/* index-based overload — `item` is raw Row */}
+      {/* index-based overload — `item` is raw Item */}
       {list(rows, (item, i) => (
         <li>
           {i}: {item.text}

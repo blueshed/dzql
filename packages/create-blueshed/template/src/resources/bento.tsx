@@ -192,7 +192,7 @@ export const rows = (items: Node[], empty: string): Node => (items.length ? <div
 export function rowsOf<T>(items: ReadonlySignal<T[]>, key: (item: T) => string | number, row: (item: ReadonlySignal<T>) => Node, empty: string): Node {
   return when(
     () => items.get().length > 0,
-    () => <div class="rows">{list(items, key, row)}</div>,
+    () => <div class="rows">{list(items, key, (_, _i, item$) => row(item$))}</div>,
     () => <p class="note">{empty}</p>,
   );
 }

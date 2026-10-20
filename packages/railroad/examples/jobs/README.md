@@ -1,7 +1,7 @@
 # jobs
 
 A live list of build jobs. Runners report how their jobs are going, and every open page sees it
-as it happens: a WebSocket feed sends each change, and the page changes that one row in place.
+as it happens: a WebSocket feed sends each change, and the page changes that one row and no other.
 Click a job for its own page, with its log once it has ended; pick a runner to see its jobs; a
 job that fails says so in the corner until it is dismissed.
 
@@ -20,7 +20,7 @@ index.html, index.css   the page
 app.tsx                 the feed every resource reads, and the routes
 resources/jobs/
   jobs-api.ts           the server side: the jobs, the feed (a WebSocket topic), what a runner reports
-  jobs.ts               the client's handle: one signal over every job, changed in place by the feed
+  jobs.ts               the client's handle: a collection of every job, changed a job at a time by the feed
   jobs-view.tsx         the list, a job's page, a new job's form
 resources/runners/
   runners-api.ts        the runners, read-only HTTP
@@ -37,7 +37,7 @@ From `packages/railroad`:
 ```sh
 bun examples/jobs/routes.ts                   # http://localhost:3000, simulated runners
 PORT=3199 bun examples/jobs/routes.ts         # if 3000 is busy
-JOBS=5000 bun examples/jobs/routes.ts         # a long list, patched in place
+JOBS=5000 bun examples/jobs/routes.ts         # a long list, a row at a time
 TICK_MS=0 bun examples/jobs/routes.ts         # no simulated runners: report as one would
 curl -X POST localhost:3000/api/jobs/2 -d '{"status":"running","progress":40}'
 ```
@@ -50,15 +50,16 @@ cd examples/jobs && bun test                  # the unit tests
 bun build ./examples/jobs/index.html --production --outdir=dist   # the page, with no warnings
 ```
 
-The heart of it is three lines in `jobs.ts` and one option in `jobs-view.tsx`:
+The heart of it is a collection in `jobs.ts` and a row taken apart in `jobs-view.tsx`:
 
 ```tsx
-// jobs.ts: the feed changes a job where it is, and notifies once
-Object.assign(known, msg.job);
-jobs.touch();
+// jobs.ts: every job, by id; the feed replaces the one it names, and the rest are as they were
+export const jobs = collection((j: Job) => j.id);
+jobs.put(msg.job);
 
-// jobs-view.tsx: each row a signal, re-delivered though it is the same object
-{list(shown, (j) => j.id, (job$) => <JobRow job$={job$} />, { equals: () => false })}
+// jobs-view.tsx: a row is its fields, each a signal, bound where it shows
+{list(shown, jobs.key, (job) => <JobRow job={job} />)}
+const { name, status, progress } = job;
 ```
 
 ## Which rule is where
@@ -66,11 +67,11 @@ jobs.touch();
 | Reference page | Shown in |
 |---|---|
 | setup | `tsconfig.json`, `index.html`, `routes.ts` (the gated `development`), `app.tsx` (`routes()`), the production build |
-| signals | `jobs-view.tsx` (`computed`, `.map`, `batch`, `.update`, `.mutate`), `jobs.ts` (`.touch`, `peek`), `runners-view.tsx` (an effect's cleanup) |
+| signals | `jobs-view.tsx` (`computed`, `.map`, `batch`, `.update`, `.mutate`, `.peek`), `jobs.ts` (`collection`, `.put`), `runners-view.tsx` (an effect's cleanup) |
 | scopes | `toast.tsx` (`scoped`, `trackDispose`), `runners-view.tsx` (made beside the effect), `jobs.ts` (`watchTitle`'s disposer) |
 | jsx | `jobs-view.tsx` (handlers, `oninput`/`onchange`, props after children, `ref`, `readonly`, style, SVG) |
 | async | `jobs-view.tsx` (`JobPage`, `JobLog` and its fallback, `NewJobPage`), `runners-view.tsx` (async work from an effect) |
-| when-list | `jobs-view.tsx`, `runners-view.tsx` |
+| when-list | `jobs-view.tsx` (a row taken apart, `jobs.at(id)`), `runners-view.tsx`, `toast.tsx` |
 | routes | `app.tsx`, `jobs-view.tsx` (the query split off), `runners-view.tsx` (`route()`) |
 | realtime | `jobs.ts`, `jobs-view.tsx` |
 | testing | `examples/jobs/tests/jobs.test.tsx`, and railroad's `tests/webview-examples.test.ts` |

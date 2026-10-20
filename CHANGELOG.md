@@ -6,6 +6,19 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### railroad: a collection, and a keyed row as its fields (20 October, railroad #4, #5, #6)
+
+- **Breaking, in railroad**: a keyed `list()` row is its fields, each a signal
+  (`({ name }) => <li>{name}</li>`), the row's own signal render's third argument; `list()`'s
+  `options` argument is gone. New: `collection(key)`, rows replaced a row at a time (`put`,
+  `patch`, `remove`, `set`), so a keyed `list()` runs the changed row's projections and no
+  other's, and `at(key)` follows one row. The workarounds (`.touch()` with
+  `{ equals: () => false }`, `row$.map((r) => r.x)`) leave the skill, and `examples/jobs` shows the
+  new way; its browser test asserts that a job the feed changes runs no other row's projections.
+- The dependents moved across with the least change: delta's examples, its recipe and a test,
+  dzql's ticker applet, and the create-blueshed template's `rowsOf` and evolve's `auth.md`. delta's
+  client is unchanged (#131 asks whether it should hand rows as a collection).
+
 ### Each reference page says where its rules are shown working (20 October, root #114)
 
 - **A package's examples are its skill's worked answers** (Peter's decision), said once in the

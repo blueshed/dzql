@@ -5,7 +5,7 @@
  *
  *   bun examples/jobs/routes.ts                # http://localhost:3000, simulated runners
  *   PORT=3199 bun examples/jobs/routes.ts
- *   JOBS=5000 bun examples/jobs/routes.ts      # a long list, patched in place
+ *   JOBS=5000 bun examples/jobs/routes.ts      # a long list, a row at a time
  *   TICK_MS=0 bun examples/jobs/routes.ts      # no simulated runners: report with POST /api/jobs/:id
  */
 import { createLogger } from "@blueshed/railroad/logger";

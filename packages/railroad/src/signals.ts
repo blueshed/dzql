@@ -34,6 +34,7 @@
  *   effect(fn)                — run a side-effect when its dependencies change
  *   batch(fn)                 — group writes into a single flush
  *   untrack(fn)               — read without registering a dependency
+ *   collection<T>(key, rows?) — a keyed list of rows, changed a row at a time
  *
  * Signal<T> methods:
  *   .get()                    — read (tracks dependency when inside effect/computed)
@@ -43,10 +44,25 @@
  *   .peek()                   — read without tracking
  *   .map(fn)                  — derive a ReadonlySignal: s.map(v => v.name)
  *   .touch()                  — fire listeners without replacing the ref
- *                               (escape hatch for in-place mutation of large
- *                               documents — used by realtime patch streams)
+ *                               (for a document changed in place, as delta's
+ *                               client does; a list of rows is a collection)
  *
  * ReadonlySignal<T>: { get, peek, map } — what computed() and .map() return.
+ *
+ * Collection<T, K> (a ReadonlySignal<readonly T[]>): rows kept by a key, each
+ * a value replaced whole, never changed in place.
+ *   .set(rows)                — every row: a snapshot
+ *   .put(row)                 — add the row, or replace the one with its key
+ *   .patch(key, fields)       — replace one row with { ...row, ...fields }
+ *   .remove(key)              — take the row with that key out
+ *   .at(key)                  — ReadonlySignal<T | null>, notified only when
+ *                               that key's row changes (null while there is none)
+ *   .key                      — the key function it was made with
+ * Each change notifies once: the rows (.get() is a fresh array after every
+ * change, so anything derived from it sees the change), and at(key) for the
+ * key it touched. A changed row is a new object and the others are as they
+ * were, so a keyed list() over the rows, or over anything filtered or sorted
+ * from them, updates the rows that changed and no other (see jsx.ts).
  *
  * Dependency tracking:
  *   Effects auto-track which signals are read during execution. Stale
@@ -118,7 +134,7 @@ const MADE_BY = Symbol.for("@blueshed/railroad.Signal");
 
 /** @internal -- jsx.ts: throws if `value` is a Signal made by another copy of railroad. */
 export function assertOwnSignal(value: unknown): void {
-  if (typeof value !== "object" || value === null || value instanceof Signal) return;
+  if (typeof value !== "object" || value === null || value instanceof Signal || value instanceof Collection) return;
   const other = (value as { [MADE_BY]?: unknown })[MADE_BY];
   if (typeof other !== "string") return;
   throw new Error(
@@ -239,6 +255,15 @@ const warnings = {
     console.warn(
       "[railroad/list] duplicate keys detected — items sharing a key collapse " +
         "to a single row and others are dropped. keyFn must return a unique key per item.",
+    );
+  },
+  // A keyed row read as the signal it once was: row.map(…) is the row's
+  // field "map", a signal of undefined, not a function.
+  rowAsSignal(name: string): void {
+    console.warn(
+      `[railroad/list] row.${name} on a keyed list() row, which has no field "${name}": a keyed row ` +
+        "is its fields, each a signal ({ name, status }) => …; the row's own signal is render's " +
+        "third argument: (row, index$, row$) => row$.map(…).",
     );
   },
 };
@@ -544,6 +569,9 @@ export class Signal<T> implements ReadonlySignal<T> {
    * Use `.peek()` (not `.get()`) for the in-place mutation step so you
    * don't register an unintended dependency when called from an effect.
    *
+   * A list of rows wants a `collection()` instead: it says which row changed,
+   * so a keyed list() updates that row and no other.
+   *
    * Respects `batch()` — listeners are deferred until the batch exits.
    */
   touch(): void {
@@ -814,4 +842,120 @@ export function batch(fn: () => void): void {
 
 export function signal<T>(initialValue: T, options?: SignalOptions<T>): Signal<T> {
   return new Signal(initialValue, options);
+}
+
+// === collection() ===
+
+/**
+ * A keyed list of rows, changed a row at a time: `put`, `patch`, `remove`, or
+ * `set` for a snapshot. A row is a value: a change replaces it with a new
+ * object and leaves the others as they were, so whatever compares rows by
+ * reference (a keyed list(), a computed) sees the one that changed, and only
+ * it. The rows are kept in one array, changed in place; `.get()` copies it
+ * once per change, when first read, so a reader is handed an array that never
+ * changes under it. `at(key)` follows one row: notified when that key's row
+ * changes, and no other. Its signals are made on first asking and kept, so a
+ * key removed and put again is followed again.
+ *
+ *   const jobs = collection((j: Job) => j.id);
+ *   jobs.set(snapshot);
+ *   jobs.patch(3, { status: "running" });   // row 3 is a new object; the rest are as they were
+ *   list(jobs, jobs.key, ({ status }) => <li>{status}</li>);
+ *   when(jobs.at(3), (j$) => <p>{j$.map((j) => j.status)}</p>, () => <p>gone</p>);
+ */
+export class Collection<T, K extends string | number = string | number> implements ReadonlySignal<readonly T[]> {
+  private readonly rows: T[] = [];
+  private byKey = new Map<K, T>();
+  // What get() hands out: a copy of rows, made on the first read after a change.
+  private view: readonly T[] | null = null;
+  // Notified once per change: what reads the rows tracks it.
+  private readonly changed = new Signal(0);
+  private readonly followers = new Map<K, Signal<T | null>>();
+
+  constructor(readonly key: (row: T) => K, rows: readonly T[] = []) {
+    this.set(rows);
+  }
+
+  get(): readonly T[] {
+    this.changed.get();
+    return (this.view ??= this.rows.slice());
+  }
+
+  peek(): readonly T[] {
+    return (this.view ??= this.rows.slice());
+  }
+
+  map<U>(fn: (rows: readonly T[]) => U, options?: SignalOptions<U>): ReadonlySignal<U> {
+    return computed(() => fn(this.get()), options);
+  }
+
+  /** The row with `key`, live: notified only when that row changes; null while there is none. */
+  at(key: K): ReadonlySignal<T | null> {
+    let s = this.followers.get(key);
+    if (!s) this.followers.set(key, (s = new Signal<T | null>(this.byKey.get(key) ?? null)));
+    return s;
+  }
+
+  /** Every row, in order: a row not among them is removed, a changed one replaced. */
+  set(rows: readonly T[]): void {
+    const next = new Map<K, T>();
+    for (const row of rows) next.set(this.key(row), row);
+    this.change(() => {
+      for (const k of this.byKey.keys()) if (!next.has(k)) this.followers.get(k)?.set(null);
+      for (const [k, row] of next) this.followers.get(k)?.set(row);
+      this.byKey = next;
+      this.rows.length = 0; // not splice(…, ...rows): a long snapshot overflows the arguments
+      for (const row of rows) this.rows.push(row);
+    });
+  }
+
+  /** Adds `row` at the end, or replaces the row with its key where it is. Returns the row it replaced. */
+  put(row: T): T | undefined {
+    const k = this.key(row);
+    const known = this.byKey.has(k);
+    const was = this.byKey.get(k);
+    this.change(() => {
+      if (known) this.rows[this.rows.indexOf(was as T)] = row;
+      else this.rows.push(row);
+      this.byKey.set(k, row);
+      this.followers.get(k)?.set(row);
+    });
+    return was;
+  }
+
+  /** Replaces the row with `key` by `{ ...row, ...fields }` (the key stays); nothing if there is none. Returns the row it replaced. */
+  patch(key: K, fields: Partial<T>): T | undefined {
+    if (!this.byKey.has(key)) return undefined;
+    return this.put({ ...this.byKey.get(key), ...fields } as T);
+  }
+
+  /** Takes out the row with `key`. Returns it, or undefined if there was none. */
+  remove(key: K): T | undefined {
+    if (!this.byKey.has(key)) return undefined;
+    const was = this.byKey.get(key) as T;
+    this.change(() => {
+      this.rows.splice(this.rows.indexOf(was), 1);
+      this.byKey.delete(key);
+      this.followers.get(key)?.set(null);
+    });
+    return was;
+  }
+
+  // One change, one pass: at(key) and the rows agree when anything runs.
+  private change(fn: () => void): void {
+    batch(() => {
+      fn();
+      this.view = null;
+      this.changed.set(this.changed.peek() + 1);
+    });
+  }
+}
+(Collection.prototype as unknown as { [MADE_BY]: string })[MADE_BY] = copyUrl;
+
+/** A keyed list of rows, changed a row at a time (see Collection). */
+export function collection<T, K extends string | number = string | number>(
+  key: (row: T) => K,
+  rows?: readonly T[],
+): Collection<T, K> {
+  return new Collection(key, rows);
 }
