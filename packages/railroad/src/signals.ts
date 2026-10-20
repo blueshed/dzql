@@ -501,7 +501,7 @@ function raise(s: Signal<any>, lv: number, from: Listener): void {
 export interface SignalOptions<T> {
   /**
    * Equality function — controls when set() fires listeners.
-   * Default: Object.is. Borrowed from the TC39 Signals proposal.
+   * Default: Object.is. Taken from the TC39 Signals proposal.
    */
   equals?: (a: T, b: T) => boolean;
 }
@@ -814,7 +814,7 @@ export function computed<T>(
 
 /**
  * Run `fn` with dependency tracking disabled. Reads inside `fn` will not
- * register the calling effect/computed as a subscriber. Borrowed from the
+ * register the calling effect/computed as a subscriber. Taken from the
  * TC39 Signals proposal (`Signal.subtle.untrack`).
  */
 export function untrack<T>(fn: () => T): T {

@@ -90,17 +90,34 @@ export function migrationCases<H>(name: string, b: MigrationBackend<H>) {
 
     test("a unique constraint made refuses a row sharing its values among those it holds; dropped, it refuses none", async () => {
       const h = await b.open();
-      const loans: Migration[] = [
-        { id: "001-loans", changes: [createTable("loans", { columns: { tool: "integer", returned: "text?" }, temporal: false })] },
-        { id: "002-one-open", changes: [addUnique("loans", "tool", { whereNull: ["returned"] })] },
+      const holds: Migration[] = [
+        { id: "001-holds", changes: [createTable("holds", { columns: { book: "integer", ended: "text?" }, temporal: false })] },
+        { id: "002-one-open", changes: [addUnique("holds", "book", { whereNull: ["ended"] })] },
       ];
-      await b.migrate(h, loans);
-      await b.query(h, "INSERT INTO loans (id, tool, returned) VALUES (1, 7, 'yesterday')");
-      await b.query(h, "INSERT INTO loans (id, tool) VALUES (2, 7)");
-      await expect(b.query(h, "INSERT INTO loans (id, tool) VALUES (3, 7)")).rejects.toThrow();
-      await b.migrate(h, [...loans, { id: "003-any", changes: [dropUnique("loans", "tool")] }]);
-      await b.query(h, "INSERT INTO loans (id, tool) VALUES (3, 7)");
-      expect(await b.query(h, "SELECT id FROM loans WHERE returned IS NULL ORDER BY id")).toEqual([{ id: 2 }, { id: 3 }]);
+      await b.migrate(h, holds);
+      await b.query(h, "INSERT INTO holds (id, book, ended) VALUES (1, 7, 'yesterday')");
+      await b.query(h, "INSERT INTO holds (id, book) VALUES (2, 7)");
+      await expect(b.query(h, "INSERT INTO holds (id, book) VALUES (3, 7)")).rejects.toThrow();
+      await b.migrate(h, [...holds, { id: "003-any", changes: [dropUnique("holds", "book")] }]);
+      await b.query(h, "INSERT INTO holds (id, book) VALUES (3, 7)");
+      expect(await b.query(h, "SELECT id FROM holds WHERE ended IS NULL ORDER BY id")).toEqual([{ id: 2 }, { id: 3 }]);
+    });
+
+    test('a time only the server sets (default: "now"), added: each row already there takes the migration\'s time, never the text "now"', async () => {
+      const h = await b.open();
+      await b.migrate(h, history);
+      await b.query(h, "INSERT INTO people (id, name) VALUES (1, 'Ann')");
+      const stamped: Migration[] = [...history,
+        { id: "003-joined", changes: [addColumn("people", "joined", { type: "timestamptz", default: "now" })] },
+        { id: "004-visits", changes: [createTable("visits", { columns: { at: { type: "timestamptz", default: "now" } }, temporal: false })] },
+      ];
+      await b.migrate(h, stamped);
+      const kept = (column: string, table: string) =>
+        b.query(h, `SELECT CASE WHEN ${column} IS NULL THEN 'none' WHEN CAST(${column} AS TEXT) LIKE '2%' THEN 'a time' ELSE 'other' END AS kept FROM ${table}`);
+      expect(await kept("joined", "people")).toEqual([{ kept: "a time" }]);
+      // a table made with one: a row put in by hand takes the time it is written too
+      await b.query(h, "INSERT INTO visits (id) VALUES (1)");
+      expect(await kept("at", "visits")).toEqual([{ kept: "a time" }]);
     });
 
     test("an up's nextId takes the collection's next serial, past any id it holds", async () => {

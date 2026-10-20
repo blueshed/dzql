@@ -1,5 +1,5 @@
 /** A row as SQLite keeps it: written, closed, read back, and each value as its column stores it. */
-import { defaultForType, isoTime, q, utcTime, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { defaultForType, isoTime, isServerTime, q, utcTime, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { rowId } from "../scope";
 
 /** The view a collection's current rows are read from. */
@@ -124,8 +124,13 @@ export function named(err: any): any {
   return err;
 }
 
-/** What a column a row's value leaves out holds: its default, or null, as an add or a replace of the row gives it. */
-export function leftOut(colDef: ColumnDef): unknown {
+/**
+ * What a column a row's value leaves out holds: its default, or null, as an add or a replace of
+ * the row gives it. A time only the server sets (`default: "now"`) is `at`, the write's time, in
+ * UTC; with no write (a row not made yet), none.
+ */
+export function leftOut(colDef: ColumnDef, at?: string): unknown {
+  if (isServerTime(colDef)) return at === undefined ? null : utcTime(at);
   return colDef.default ?? (colDef.nullable ? null : defaultForType(colDef.type));
 }
 
@@ -153,7 +158,7 @@ export function insertCollectionRow(
     }
   }
 
-  for (const [col, colDef] of Object.entries(table.columns)) if (fullRow[col] === undefined) fullRow[col] = leftOut(colDef);
+  for (const [col, colDef] of Object.entries(table.columns)) if (fullRow[col] === undefined) fullRow[col] = leftOut(colDef, ts);
 
   // A version this write made and took back (added, then removed) never was
   // outside it: an add of the same id again takes its place.

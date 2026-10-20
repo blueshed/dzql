@@ -281,6 +281,34 @@ RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
    WHERE NOT COALESCE(p_value ? col_key, FALSE) AND NOT COALESCE((col_def->>'nullable')::boolean, false) AND NOT col_def ? 'default';
 $$;
 
+-- _delta_server_time: is the column a time only the server sets (`default:
+-- "now"`, a timestamptz; delta's isServerTime)? Never the text: a row a write
+-- makes takes the write's time (_delta_default), and a replace of the row
+-- whole keeps the row's own (_delta_whole).
+CREATE OR REPLACE FUNCTION _delta_server_time(p_col_def JSONB)
+RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
+  SELECT COALESCE(p_col_def->>'default' = 'now' AND jsonb_typeof(p_col_def->'default') = 'string', FALSE);
+$$;
+
+-- _delta_default: what a column a row's value leaves out takes as a write
+-- makes the row: its declared default -- a time only the server sets, the
+-- write's time (`p_ts`), to the millisecond as delta keeps a time, in UTC as
+-- the session gives a timestamptz back (delta's utcTime: SQLite's leftOut).
+CREATE OR REPLACE FUNCTION _delta_default(p_col_def JSONB, p_ts TIMESTAMPTZ)
+RETURNS JSONB LANGUAGE sql STABLE AS $$
+  SELECT CASE WHEN _delta_server_time(p_col_def) THEN to_jsonb(date_trunc('milliseconds', p_ts)) ELSE p_col_def->'default' END;
+$$;
+
+-- _delta_server_times: each time only the server sets of `p_columns`, as the
+-- write at `p_ts` gives it: what an implied document's root row takes as its
+-- first write makes it (_delta_make_implied), having shown none.
+CREATE OR REPLACE FUNCTION _delta_server_times(p_columns JSONB, p_ts TIMESTAMPTZ)
+RETURNS JSONB LANGUAGE sql STABLE AS $$
+  SELECT COALESCE(jsonb_object_agg(col_key, _delta_default(col_def, p_ts)), '{}'::jsonb)
+    FROM jsonb_each(p_columns) AS x(col_key, col_def)
+   WHERE _delta_server_time(col_def);
+$$;
+
 -- Pick the source relation for a collection.
 --   temporal + no timestamp → current_<table> view
 --   temporal + timestamp    → base <table> (the caller filters by its time)

@@ -12,6 +12,7 @@
  *   writeScopeCases(standUp);
  *   uniqueCases(standUp);
  *   acceptCases(standUp);
+ *   serverTimeCases(standUp);
  *
  * where `standUp({ schema, docs, seed })` makes a fresh store with that
  * schema, those documents registered and those rows imported, and answers a
@@ -336,6 +337,85 @@ export function acceptCases(backend: CaseBackend): void {
   });
 }
 
+// ---------------------------------------------------------------------------
+// A log and its entries: a time only the server sets
+// ---------------------------------------------------------------------------
+
+/** Does the op give an entry's time: its field, or a row's value that names it? */
+const givesTime = (op: { path: string; value?: unknown }) =>
+  op.path.endsWith("/at") || (typeof op.value === "object" && op.value !== null && "at" in op.value);
+
+/**
+ * A log's entries, each written `at` the server's time (`default: "now"`), and the log's rule
+ * refusing a time a client sends: the entries keep versions, so a replace is a new version.
+ */
+export const stampedApp: CaseApp = {
+  schema: defineSchema({
+    case_logs: { columns: { title: "text" }, temporal: false },
+    case_entries: {
+      columns: { text: "text", at: { type: "timestamptz", default: "now" } },
+      parent: { collection: "case_logs", fk: "case_logs_id" },
+    },
+  }),
+  docs: [defineDoc("case-log:", { root: "case_logs", include: ["case_entries"], accept: (op) => !givesTime(op) || "The server sets the time" })],
+  seed: {
+    tables: {
+      case_logs: [{ id: 1, title: "day" }],
+      case_entries: [{ id: 1, case_logs_id: 1, text: "kept", at: "2026-01-01T09:00:00Z", valid_from: "2026-01-01T00:00:00.000Z", valid_to: null }],
+    },
+  },
+};
+
+/**
+ * A time only the server sets (`default: "now"`), the same on every backend: a row a write makes
+ * that leaves it out takes the server's time as it is written, in UTC to the millisecond, one time
+ * for every row of the write; a replace of the row whole that leaves it out keeps the row's own.
+ */
+export function serverTimeCases(backend: CaseBackend): void {
+  describe('a time only the server sets (default: "now")', () => {
+    let up: Awaited<ReturnType<CaseBackend>>;
+    beforeEach(async () => { up = await backend(stampedApp); });
+    afterEach(async () => { await up.end(); });
+
+    const write = async (ops: unknown[]) => {
+      const c = mockClient();
+      await sendAndAwait(up.ws, c, { action: "open", doc: "case-log:1" });
+      return sendAndAwait(up.ws, c, { action: "delta", doc: "case-log:1", ops });
+    };
+    const entries = async () => (await fresh(up.ws, "case-log:1")).case_entries;
+    const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?\+00:00$/;
+
+    test("an add that leaves it out takes the server's time as the row is written, in UTC, one time for the write", async () => {
+      const before = Date.now();
+      const r = await write([
+        { op: "add", path: "/case_entries/-", value: { text: "first" } },
+        { op: "add", path: "/case_entries/-", value: { text: "second" } },
+      ]);
+      const after = Date.now();
+      expect(r.error).toBeUndefined();
+      const rows = Object.values(await entries()) as any[];
+      const at = rows[1].at;
+      expect(rows.map((e) => [e.text, e.at])).toEqual([["kept", "2026-01-01T09:00:00+00:00"], ["first", at], ["second", at]]);
+      expect(at).toMatch(UTC);
+      // the clock the database keeps (a Postgres server's) may stand a little off this process's
+      expect(Date.parse(at)).toBeGreaterThanOrEqual(before - 5000);
+      expect(Date.parse(at)).toBeLessThanOrEqual(after + 5000);
+    });
+
+    test("a time the client sends is the document's rule to refuse", async () => {
+      expect((await write([{ op: "add", path: "/case_entries/-", value: { text: "late", at: "2020-01-01T00:00:00Z" } }])).error).toEqual({ code: 400, message: "The server sets the time" });
+      expect((await write([{ op: "replace", path: "/case_entries/1/at", value: "2020-01-01T00:00:00Z" }])).error).toEqual({ code: 400, message: "The server sets the time" });
+      expect((await entries())["1"].at).toBe("2026-01-01T09:00:00+00:00");
+    });
+
+    test("a replace of the row whole that leaves it out keeps the row's own time", async () => {
+      const r = await write([{ op: "replace", path: "/case_entries/1", value: { text: "changed" } }]);
+      expect(r.error).toBeUndefined();
+      expect((await entries())["1"]).toEqual({ id: 1, case_logs_id: 1, text: "changed", at: "2026-01-01T09:00:00+00:00" });
+    });
+  });
+}
+
 /** `add /<coll>/-` makes a row the server names: told and stored under its id, the path's id winning over the value's. */
 export function createRowCases(backend: CaseBackend): void {
   describe("add /coll/- makes a row the server names", () => {
@@ -384,42 +464,42 @@ export function createRowCases(backend: CaseBackend): void {
 }
 
 // ---------------------------------------------------------------------------
-// A shed: unique constraints
+// A library: unique constraints
 // ---------------------------------------------------------------------------
 
 /**
- * A shed's tools, each named once, and its members' loans, each tool on one
- * open loan at a time (`unique`, `whereNull`): the loans keep versions, so a
+ * A library's books, each titled once, and its readers' holds, each book on one
+ * open hold at a time (`unique`, `whereNull`): the holds keep versions, so a
  * closed version (replaced, removed) holds nothing.
  */
-export const shedApp: CaseApp = {
+export const libraryApp: CaseApp = {
   schema: defineSchema({
-    case_tools: { columns: { name: "text" }, temporal: false, unique: ["name"] },
-    case_members: { columns: { name: "text" }, temporal: false },
-    case_loans: {
-      columns: { tool: "integer", returned: "timestamptz?" },
-      parent: { collection: "case_members", fk: "case_members_id" },
-      unique: [{ columns: ["tool"], whereNull: ["returned"] }],
+    case_books: { columns: { name: "text" }, temporal: false, unique: ["name"] },
+    case_readers: { columns: { name: "text" }, temporal: false },
+    case_holds: {
+      columns: { book: "integer", ended: "timestamptz?" },
+      parent: { collection: "case_readers", fk: "case_readers_id" },
+      unique: [{ columns: ["book"], whereNull: ["ended"] }],
     },
   }),
   docs: [
-    defineDoc("case-shed:", { root: "case_tools", include: [] }),
-    defineDoc("case-member:", { root: "case_members", include: ["case_loans"] }),
+    defineDoc("case-library:", { root: "case_books", include: [] }),
+    defineDoc("case-reader:", { root: "case_readers", include: ["case_holds"] }),
   ],
   seed: {
     tables: {
-      case_tools: [{ id: 1, name: "spade" }, { id: 2, name: "rake" }],
-      case_members: [{ id: 1, name: "ann" }, { id: 2, name: "bob" }],
-      case_loans: [{ id: 1, case_members_id: 1, tool: 1, returned: null, valid_from: "2026-01-01T00:00:00.000Z", valid_to: null }],
+      case_books: [{ id: 1, name: "emma" }, { id: 2, name: "dune" }],
+      case_readers: [{ id: 1, name: "ann" }, { id: 2, name: "bob" }],
+      case_holds: [{ id: 1, case_readers_id: 1, book: 1, ended: null, valid_from: "2026-01-01T00:00:00.000Z", valid_to: null }],
     },
   },
 };
 
-/** A unique constraint refuses a row that would share its values, 409, and nothing is written; rows outside it (a loan returned, a version closed) do not count. */
+/** A unique constraint refuses a row that would share its values, 409, and nothing is written; rows outside it (a hold ended, a version closed) do not count. */
 export function uniqueCases(backend: CaseBackend): void {
   describe("a unique constraint", () => {
     let up: Awaited<ReturnType<CaseBackend>>;
-    beforeEach(async () => { up = await backend(shedApp); });
+    beforeEach(async () => { up = await backend(libraryApp); });
     afterEach(async () => { await up.end(); });
 
     const write = async (doc: string, ops: unknown[]) => {
@@ -427,37 +507,37 @@ export function uniqueCases(backend: CaseBackend): void {
       await sendAndAwait(up.ws, c, { action: "open", doc });
       return sendAndAwait(up.ws, c, { action: "delta", doc, ops });
     };
-    const loans = async (member: number) => Object.values((await fresh(up.ws, `case-member:${member}`)).case_loans ?? {}).map((l: any) => ({ tool: l.tool, out: l.returned === null }));
+    const holds = async (reader: number) => Object.values((await fresh(up.ws, `case-reader:${reader}`)).case_holds ?? {}).map((h: any) => ({ book: h.book, open: h.ended === null }));
 
-    test("a second tool of the same name is refused, 409, and a rename onto one too", async () => {
-      const twin = (await write("case-shed:", [{ op: "add", path: "/case_tools/-", value: { name: "spade" } }])).error;
+    test("a second book of the same name is refused, 409, and a rename onto one too", async () => {
+      const twin = (await write("case-library:", [{ op: "add", path: "/case_books/-", value: { name: "emma" } }])).error;
       expect(twin?.code).toBe(409);
       expect(twin?.message).toStartWith("Already there: another row has the same"); // in delta's words on every backend, never the database's
-      expect((await write("case-shed:", [{ op: "replace", path: "/case_tools/2/name", value: "spade" }])).error?.code).toBe(409);
-      const tools = Object.values((await fresh(up.ws, "case-shed:")).case_tools).map((t: any) => t.name).sort();
-      expect(tools).toEqual(["rake", "spade"]);
+      expect((await write("case-library:", [{ op: "replace", path: "/case_books/2/name", value: "emma" }])).error?.code).toBe(409);
+      const books = Object.values((await fresh(up.ws, "case-library:")).case_books).map((t: any) => t.name).sort();
+      expect(books).toEqual(["dune", "emma"]);
     });
 
-    test("a tool out on one open loan is refused a second, 409, and the batch it was in writes nothing", async () => {
-      const r = await write("case-member:2", [
-        { op: "add", path: "/case_loans/-", value: { tool: 2 } },
-        { op: "add", path: "/case_loans/-", value: { tool: 1 } },
+    test("a book on one open hold is refused a second, 409, and the batch it was in writes nothing", async () => {
+      const r = await write("case-reader:2", [
+        { op: "add", path: "/case_holds/-", value: { book: 2 } },
+        { op: "add", path: "/case_holds/-", value: { book: 1 } },
       ]);
       expect(r.error?.code).toBe(409);
-      expect(await loans(2)).toEqual([]);
+      expect(await holds(2)).toEqual([]);
     });
 
-    test("once its loan is returned, the tool may go out again; a replace of the open loan keeps its own place", async () => {
-      expect((await write("case-member:1", [{ op: "replace", path: "/case_loans/1", value: { tool: 1, returned: null } }])).error).toBeUndefined();
-      expect((await write("case-member:1", [{ op: "replace", path: "/case_loans/1/returned", value: "2026-02-01T00:00:00Z" }])).error).toBeUndefined();
-      expect((await write("case-member:2", [{ op: "add", path: "/case_loans/-", value: { tool: 1 } }])).error).toBeUndefined();
-      expect(await loans(2)).toEqual([{ tool: 1, out: true }]);
+    test("once its hold has ended, the book may be held again; a replace of the open hold keeps its own place", async () => {
+      expect((await write("case-reader:1", [{ op: "replace", path: "/case_holds/1", value: { book: 1, ended: null } }])).error).toBeUndefined();
+      expect((await write("case-reader:1", [{ op: "replace", path: "/case_holds/1/ended", value: "2026-02-01T00:00:00Z" }])).error).toBeUndefined();
+      expect((await write("case-reader:2", [{ op: "add", path: "/case_holds/-", value: { book: 1 } }])).error).toBeUndefined();
+      expect(await holds(2)).toEqual([{ book: 1, open: true }]);
     });
 
-    test("a loan removed holds nothing: the tool may go out again", async () => {
-      expect((await write("case-member:1", [{ op: "remove", path: "/case_loans/1" }])).error).toBeUndefined();
-      expect((await write("case-member:2", [{ op: "add", path: "/case_loans/-", value: { tool: 1 } }])).error).toBeUndefined();
-      expect(await loans(2)).toEqual([{ tool: 1, out: true }]);
+    test("a hold removed holds nothing: the book may be held again", async () => {
+      expect((await write("case-reader:1", [{ op: "remove", path: "/case_holds/1" }])).error).toBeUndefined();
+      expect((await write("case-reader:2", [{ op: "add", path: "/case_holds/-", value: { book: 1 } }])).error).toBeUndefined();
+      expect(await holds(2)).toEqual([{ book: 1, open: true }]);
     });
   });
 }

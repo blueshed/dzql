@@ -16,7 +16,7 @@ import { type DeltaOp, splitPath, joinPath, changedFields } from "../../core";
 import { createLogger } from "../logger";
 import { rowAt, type Ledger } from "../ledger";
 import { meets, resolveScope, rowId, sameId, type Scope } from "../scope";
-import { holdsField, q, refusedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { holdsField, isServerTime, q, refusedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { keeping, scopeValue } from "./keep";
 import { impliedDoc, readDoc } from "./read";
 import { carryUndeclared, closeRow, columnsOf, undeclaredColumns, undeclaredOf, current, decodeRow, insertCollectionRow, insertRow, leftOut, named, now, refuse, sqliteTime, updateRow } from "./rows";
@@ -124,6 +124,8 @@ export function createWriter<I>(r: Registration<I>) {
     if (handedOut(rootTable, root.id)) taken(def.root, root.id);   // made under the add rule (#71)
     const ts = now();
     if (rootTable.temporal) { root.valid_from = ts; root.valid_to = null; }
+    // a time only the server sets, which it showed as none, is the time it is made
+    for (const [col, colDef] of Object.entries(rootTable.columns)) if (isServerTime(colDef) && root[col] == null) root[col] = leftOut(colDef, ts);
     insertRow(db, rootTable, root, ts);
     passId(rootTable, root.id);
     const row = readRow(rootTable, root.id);
@@ -450,7 +452,8 @@ export function createWriter<I>(r: Registration<I>) {
      * of a map -- as the op says, into the run of that row. The path names the
      * row, so `id` and the temporal columns in a value are not taken from it.
      * A replace of the row itself (`whole`) is the row, as RFC 6902 says: a
-     * column its value leaves out holds what an add would give it;
+     * column its value leaves out holds what an add would give it -- but a time
+     * only the server sets, which is when the row was made, and keeps its own;
      * its parent key, where it hangs, stays unless the value names another.
      */
     const replaceRow = (table: ResolvedTable, id: string | number, fields: Record<string, unknown>, root: boolean, whole = false) => {
@@ -476,7 +479,7 @@ export function createWriter<I>(r: Registration<I>) {
         noParent(parent.collection, to);
       }
       // (of the columns this document holds: it leaves the rest as they are)
-      if (whole) for (const [col, colDef] of Object.entries(table.columns)) if (holdsField(def, schema, collKey, col)) run.row[col] = leftOut(colDef);
+      if (whole) for (const [col, colDef] of Object.entries(table.columns)) if (holdsField(def, schema, collKey, col) && !isServerTime(colDef)) run.row[col] = leftOut(colDef);
       for (const [field, value] of Object.entries(fields)) {
         if (field === "id" || field === "valid_from" || field === "valid_to") continue;
         run.row[field] = value;

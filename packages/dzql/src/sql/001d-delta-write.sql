@@ -277,7 +277,8 @@ $$ LANGUAGE plpgsql;
 -- (`p_columns`) holds what an add gives one its value leaves out -- its
 -- default, or null -- the row as blank as that, for the row as it is to be
 -- written over and the value merged over that. Its id and parent key, where
--- it is, stay. A required column the value leaves out (not nullable, no
+-- it is, stay, and a time only the server sets (_delta_server_time), which is
+-- when the row was made, keeps its own. A required column the value leaves out (not nullable, no
 -- default) is the writer's mistake, asked with the value's fields, before
 -- whether the row is there (todo #3; replaceRow in sqlite.ts): _delta_missing.
 -- ---------------------------------------------------------------------------
@@ -285,7 +286,8 @@ DROP FUNCTION IF EXISTS _delta_whole(jsonb, jsonb);   -- its earlier forms refus
 DROP FUNCTION IF EXISTS _delta_whole(jsonb, jsonb, text);
 CREATE OR REPLACE FUNCTION _delta_whole(p_columns JSONB)
 RETURNS JSONB LANGUAGE sql IMMUTABLE AS $$
-  SELECT COALESCE((SELECT jsonb_object_agg(col_key, COALESCE(col_def->'default', 'null'::jsonb)) FROM jsonb_each(p_columns) AS x(col_key, col_def)), '{}'::jsonb);
+  SELECT COALESCE((SELECT jsonb_object_agg(col_key, COALESCE(col_def->'default', 'null'::jsonb)) FROM jsonb_each(p_columns) AS x(col_key, col_def)
+                    WHERE NOT _delta_server_time(col_def)), '{}'::jsonb);
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -663,8 +665,8 @@ BEGIN
       END IF;
 
       -- (A required column the value leaves out was refused with its fields, above: _delta_missing.)
-      -- Declared column defaults, for what the value leaves out
-      SELECT v_new_row || COALESCE(jsonb_object_agg(col_key, col_def->'default'), '{}'::jsonb)
+      -- Declared column defaults, for what the value leaves out: a time only the server sets, the write's (_delta_default)
+      SELECT v_new_row || COALESCE(jsonb_object_agg(col_key, _delta_default(col_def, v_ts)), '{}'::jsonb)
         INTO v_new_row
         FROM jsonb_each(_delta_cols(v_coll_key, v_coll.columns_def)) AS x(col_key, col_def)
        WHERE NOT v_new_row ? col_key AND col_def ? 'default';

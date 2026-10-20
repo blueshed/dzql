@@ -31,7 +31,8 @@ rows under it, and a column with a default (`done`), in `resources/lists/lists-a
   nullable, or `{ type, default, nullable }`.
 - **A time is a `timestamptz` column, never `text`.** A write gives ISO 8601 with a zone
   (`new Date().toISOString()`); what is no time is 400, and every backend gives it back in UTC
-  (`2026-10-20T09:00:00+00:00`). The zone's rules: `scope.md`.
+  (`2026-10-20T09:00:00+00:00`). The zone's rules: `scope.md`. A time only the server sets
+  (when a row was written) is `default: "now"`: below.
 - A column neither nullable nor defaulted is **required**: an add without it is 400 `Required
   field missing`. Give it a default or make it nullable.
 - `parent: "lists"` makes the key column `lists_id`; `cascadeOn: ["user_id"]` removes a row when
@@ -89,4 +90,32 @@ defineDoc("menu:", {
 delta's words), and nothing changes. An undo or a redo is not asked: it puts back what was
 taken. It holds for every writer, a page's socket, `createLocal()` and the CLI alike, so a rule
 never lives in a socket handler of the app's. The cases are `acceptCases` (`src/cases/writes.ts`).
+
+## A time only the server sets: `default: "now"`
+
+When something happened (a message said, an order placed) is the server's to say, never the
+page's clock. Give the `timestamptz` column `default: "now"`, leave it out of every write, and let
+the rule refuse one a client sends:
+
+```ts
+const schema = defineSchema({
+  entries: { columns: { text: "text", at: { type: "timestamptz", default: "now" } } },
+});
+const docs = [defineDoc("log:", {
+  root: "entries",
+  include: [],
+  accept: (op) => !(op.path.endsWith("/at") || (typeof op.value === "object" && op.value !== null && "at" in op.value)) || "The server sets the time",
+})];
+```
+
+- A row a write makes takes the server's time as it is written, every row of the write the same
+  time, back in UTC to the millisecond; on SQLite, the JSON file and Postgres alike.
+- A replace of the row whole that leaves it out keeps the row's own: it is when the row was made.
+- An implied document's root shows none (`null`) until its first write makes the row.
+- A migration that adds such a column gives each row already there the migration's time.
+- `"now"` on any other type is refused by `defineSchema`. A time set later (when it ended) is a
+  row of its own, added then, with its own `default: "now"`.
+
+The cases are `serverTimeCases` (`src/cases/writes.ts`); the recipe's messages are timed so
+(`recipe.md`).
 

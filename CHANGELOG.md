@@ -6,6 +6,15 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### A time only the server sets (20 October, root #138)
+
+- A `timestamptz` column may have `default: "now"`: where a write leaves it out, the row takes the
+  server's time as it is written, on SQLite, the JSON file and dzql's Postgres alike (delta's
+  `serverTimeCases`); a replace of the row whole keeps the row's own, and a migration that adds one
+  gives the rows already there its own time. With `accept` refusing a time a client sends, when
+  something happened is the server's to say. delta's `./testing` names no Shed nouns now
+  (`libraryApp` for `shedApp`), nor does any package's `src/`.
+
 ### A document's own rule, and who may write it (20 October, roots #138, #139)
 
 - delta's `defineDoc` takes `accept`, asked of each op before any is applied, with who is writing,

@@ -3,7 +3,7 @@
  * the schema grows (`migrateSchema`) -- columns, their types and defaults, the
  * temporal scaffolding, the sequences ids are minted from.
  */
-import { defaultForType, q, uniqueIndexSql, type ColumnDef, type Schema } from "../../schema";
+import { defaultForType, isServerTime, q, uniqueIndexSql, utcTime, type ColumnDef, type Schema } from "../../schema";
 
 /** Generate CREATE TABLE statements from the schema and execute them. */
 export function createTables(db: any, schema: Schema) {
@@ -32,7 +32,7 @@ export function createTable(db: any, table: Schema["tables"][string]) {
   for (const [col, def] of Object.entries(table.columns)) {
     const sqlType = columnSqlType(def);
     const notNull = def.nullable ? "" : " NOT NULL";
-    const defaultVal = def.default !== undefined ? ` DEFAULT ${sqlDefault(def.default)}` : "";
+    const defaultVal = isServerTime(def) ? ` DEFAULT ${SERVER_TIME}` : def.default !== undefined ? ` DEFAULT ${sqlDefault(def.default)}` : "";
     cols.push(`${q(col)} ${sqlType}${notNull}${defaultVal}`);
   }
 
@@ -73,6 +73,13 @@ function columnSqlType(def: ColumnDef): string {
     case "real": return "REAL";
   }
 }
+
+/**
+ * A time only the server sets (`default: "now"`), as the table's own default: the time a row is
+ * written, in UTC to the millisecond as delta keeps a time, for a row put in by hand. delta's
+ * writes give it themselves (`leftOut`), and the text "now" is never stored.
+ */
+const SERVER_TIME = "(strftime('%Y-%m-%dT%H:%M:%f+00:00', 'now'))";
 
 function sqlDefault(value: unknown): string {
   if (typeof value === "string") return `'${value.replace(/'/g, "''")}'`;
@@ -124,6 +131,16 @@ export function migrateSchema(db: any, schema: Schema): string[] {
     for (const [col, def] of Object.entries(table.columns)) {
       if (existingCols.has(col)) continue;
       const sqlType = columnSqlType(def);
+      if (isServerTime(def)) {
+        // SQLite adds no column whose default is not a constant: added bare, every row already
+        // there (each version of it) takes the migration's time, by its own UPDATE
+        const add = `ALTER TABLE ${name} ADD COLUMN ${q(col)} ${sqlType}`;
+        const fill = `UPDATE ${name} SET ${q(col)} = ${sqlDefault(utcTime(new Date()))}`;
+        db.run(add);
+        db.run(fill);
+        applied.push(add, fill);
+        continue;
+      }
       const defaultVal = def.default !== undefined
         ? ` DEFAULT ${sqlDefault(def.default)}`
         : (def.nullable ? "" : ` DEFAULT ${sqlDefault(defaultForType(def.type))}`);

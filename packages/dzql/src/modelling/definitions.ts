@@ -198,8 +198,8 @@ function planOf(m: Reading): Planned[] {
       const op = d && opOf(d, w);
       if (!op) continue;
       // a story's writes are the kinds of change it makes, not a count: two adds of one entity are
-      // one new row, starting with each value said (`add tools.out=false add tools.broken=false`,
-      // the Shed's feedback)
+      // one new row, starting with each value said (`add books.out=false add books.damaged=false`,
+      // an evaluation's feedback)
       const same = op.op === "add" && writes.find((x) => x.doc === m.nameOf(d) && x.ops[0]!.op === "add" && x.ops[0]!.path === op.path);
       if (same) Object.assign(same.ops[0]!.value as Record<string, unknown>, op.value);
       else writes.push({ as: s.actor, doc: m.nameOf(d), ops: [op] });

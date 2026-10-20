@@ -54,14 +54,14 @@ export const createTable = (key: string, def: TableDef): Change => ({ change: "c
 export const dropTable = (key: string): Change => ({ change: "dropTable", key });
 /** Rename a collection, and its table (where its table was named as its key). */
 export const renameTable = (key: string, to: string): Change => ({ change: "renameTable", key, to });
-/** Add a column: every row takes its default, or null. */
+/** Add a column: every row takes its default, or null; a time only the server sets (`default: "now"`), the migration's time. */
 export const addColumn = (key: string, name: string, def: ColumnDef | ColumnShorthand): Change => ({ change: "addColumn", key, column: name, def: column(def) });
 /** Drop a column, and its values. */
 export const dropColumn = (key: string, name: string): Change => ({ change: "dropColumn", key, column: name });
 /** Rename a column, keeping its values. */
 export const renameColumn = (key: string, name: string, to: string): Change => ({ change: "renameColumn", key, column: name, to });
 
-/** Hold values unique: `addUnique("lent", "tool", { whereNull: ["returned"] })`. Refused where rows already share them. */
+/** Hold values unique: `addUnique("holds", "book", { whereNull: ["ended"] })`. Refused where rows already share them. */
 export const addUnique = (key: string, columns: string | string[], opts: { whereNull?: string[] } = {}): Change => ({ change: "addUnique", key, unique: uniqueOf({ columns: typeof columns === "string" ? [columns] : columns, ...opts }) });
 /** Stop holding values unique: the constraint on those columns. */
 export const dropUnique = (key: string, columns: string | string[]): Change => ({ change: "dropUnique", key, columns: typeof columns === "string" ? [columns] : [...columns] });
