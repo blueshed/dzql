@@ -26,7 +26,7 @@ resources/runners/
   runners-api.ts        the runners, read-only HTTP
   runners.ts            the client's handle: look one up
   runners-view.tsx      a layout that stays mounted while route() picks the runner
-resources/toast.tsx     a custom root for each toast: scoped(build)
+resources/toast.tsx     a root of its own for each toast: mount(host, …, { before })
 tests/jobs.test.tsx     the client's unit tests, on happy-dom (bunfig.toml preloads it)
 ```
 
@@ -68,7 +68,7 @@ const { name, status, progress } = job;
 |---|---|
 | setup | `tsconfig.json`, `index.html`, `routes.ts` (the gated `development`), `app.tsx` (`routes()`), the production build |
 | signals | `jobs-view.tsx` (`computed`, `.map`, `batch`, `.update`, `.mutate`, `.peek`), `jobs.ts` (`collection`, `.put`), `runners-view.tsx` (an effect's cleanup) |
-| scopes | `toast.tsx` (`scoped`, `trackDispose`), `runners-view.tsx` (made beside the effect), `jobs.ts` (`watchTitle`'s disposer) |
+| scopes | `toast.tsx` (`mount` with `before`, `trackDispose`), `runners-view.tsx` (made beside the effect), `jobs.ts` (`watchTitle`'s disposer) |
 | jsx | `jobs-view.tsx` (handlers, `oninput`/`onchange`, props after children, `ref`, `readonly`, style, SVG) |
 | async | `jobs-view.tsx` (`JobPage`, `JobLog` and its fallback, `NewJobPage`), `runners-view.tsx` (async work from an effect) |
 | when-list | `jobs-view.tsx` (a row taken apart, `jobs.at(id)`), `runners-view.tsx`, `toast.tsx` |

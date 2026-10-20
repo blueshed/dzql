@@ -46,7 +46,9 @@
  *   with createElementNS pass through untouched.
  *
  * Reactive helpers:
- *   mount(target, render)         — root dispose scope; returns the disposer
+ *   mount(target, render, opts?)  — root dispose scope; returns the disposer,
+ *                                   which removes its nodes; opts.before places
+ *                                   them before a child of target
  *   when(signal, truthy, falsy?)  — conditional rendering; rebuilds the branch
  *                                   only when the condition's truthiness flips.
  *                                   truthy receives v$, a ReadonlySignal of the
@@ -521,6 +523,12 @@ function appendChildren(parent: Node, children: any[]): void {
 
 // === mount() — root dispose scope for an app mounted outside routes() ===
 
+/** Where mount() places what it renders: before `before`, a child of the
+ *  target (null or absent: at the end). */
+export interface MountOptions {
+  before?: Node | null;
+}
+
 /**
  * Mount UI into `target` under a fresh dispose scope. Effects, computeds,
  * when() and list() created by `render` tear down when the returned disposer
@@ -529,14 +537,19 @@ function appendChildren(parent: Node, children: any[]): void {
  * roots so the scope rules in signals.ts hold all the way down.
  *
  *   const dispose = mount(document.getElementById("root")!, () => <App />);
+ *
+ * The nodes go at the end of `target`, or before `options.before` (one of its
+ * children): a root placed by hand, a toast first in its host, say, is a mount,
+ * and its disposer takes its nodes out wherever they went.
+ *   const dismiss = mount(host, () => <Toast />, { before: host.firstChild });
  */
-export function mount(target: Element, render: () => Node): Dispose {
+export function mount(target: Element, render: () => Node, options?: MountOptions): Dispose {
   const { value: adopted, dispose: scopeDispose } = scoped(() =>
     adoptIntoSvg(untrackRender("mount()'s render", render, render), target));
   const nodes = adopted instanceof DocumentFragment
     ? [...adopted.childNodes]
     : [adopted];
-  target.appendChild(adopted);
+  target.insertBefore(adopted, options?.before ?? null);
   let disposed = false;
   const dispose = () => {
     if (disposed) return;

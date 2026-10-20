@@ -34,6 +34,14 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Added
 
+- **`mount(target, render, { before })` places a root where it is asked** (20 October, Peter's
+  word; #10): before a child of `target` (`null` or no options: at the end, as before), and its
+  disposer takes the nodes out wherever they went. A root placed by hand was `scoped(build)`,
+  placed, and its nodes removed after `dispose()` by hand (a forgotten removal left them, and a
+  fragment's nodes had to be listed before it was placed): `const t = scoped(build);
+  host.prepend(t.value)` and `t.dispose(); t.value.remove()` are `const dismiss = mount(host, build,
+  { before: host.firstChild })` and `dismiss()`. `scoped()` stays, for a root that is not nodes.
+  `MountOptions` is exported as a type. `examples/jobs`' toasts are mounted first in their host.
 - **`collection(key, rows?)`: a keyed list of rows, changed a row at a time** (20 October, Peter's
   word; #4, #5). `set(rows)` for a snapshot, `put(row)` to add or replace by key, `patch(key,
   fields)` for `{ ...row, ...fields }`, `remove(key)`; `put`, `patch` and `remove` return the row as

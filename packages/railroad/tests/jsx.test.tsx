@@ -2351,6 +2351,31 @@ describe("mount() and the scope-less warning", () => {
     expect(document.querySelector("#app")).toBeNull(); // nodes removed
   });
 
+  // mount() only appended, so a root placed first in its host (a toast) was scoped(build), placed
+  // by hand, and its nodes removed by hand after dispose(): a forgotten removal left them (#10).
+  test("mount(target, render, { before }) places the nodes there, and its disposer takes them out", () => {
+    const host = document.createElement("div");
+    host.innerHTML = "<p>older</p>";
+    const n = signal(0);
+    let runs = 0;
+    const dispose = mount(host, () => {
+      effect(() => { n.get(); runs++; });
+      return <><b>new</b><i>{n}</i></>;
+    }, { before: host.firstChild });
+    expect(host.innerHTML).toBe("<b>new</b><i>0</i><p>older</p>");
+    n.set(1);
+    expect(host.innerHTML).toBe("<b>new</b><i>1</i><p>older</p>");
+    dispose();
+    n.set(2);
+    expect(runs).toBe(2);
+    expect(host.innerHTML).toBe("<p>older</p>");
+    // before: null is the end, as with no options
+    const again = mount(host, () => <b>last</b>, { before: null });
+    expect(host.innerHTML).toBe("<p>older</p><b>last</b>");
+    again();
+    expect(host.innerHTML).toBe("<p>older</p>");
+  });
+
   test("when()/list() inside mount() do not warn and are disposed with it", async () => {
     const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
     const flag = signal(true);
