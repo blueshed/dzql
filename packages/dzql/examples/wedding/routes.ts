@@ -35,7 +35,7 @@ export const app: Example = {
 
 /** The server: on `PORT` (3000); `bun examples/wedding/routes.ts` runs it. */
 export async function startServer({ port = Number(process.env.PORT ?? 3000) } = {}) {
-  return serve(appOf(app), { port });
+  return serve(await appOf(app), { port });
 }
 
 if (import.meta.main) await run(startServer);

@@ -517,6 +517,7 @@ export async function createDocListener<I = unknown>(
   // `owned: false` for close alone: letting go of a document never needs the owner's say.
   function withDoc(label: string, fn: (dc: DocCtx) => Promise<void> | void, { owned = true } = {}) {
     return async (msg: any, client: any, respond: (r: any) => void) => {
+      if (destroyed) return; // a listener ended answers nothing: its socket may have the next one's
       const g = gate(client);
       if ("error" in g) return respond(g);
       const { identity } = g;
@@ -550,7 +551,7 @@ export async function createDocListener<I = unknown>(
   if (custom.size > 0) {
     ws.on("open", async (msg: any, client: any, respond: (r: any) => void) => {
       const docName = msg.doc as string;
-      if (!docName) return;
+      if (!docName || destroyed) return;
       const match = custom.find(docName);
       if (!match) return;                                     // fall through to standard
 
@@ -578,14 +579,14 @@ export async function createDocListener<I = unknown>(
 
     ws.on("delta", (msg: any, _client: any, respond: (r: any) => void) => {
       const docName = msg.doc as string;
-      if (!docName) return;
+      if (!docName || destroyed) return;
       if (!custom.find(docName)) return;                       // fall through to standard
       respond({ error: { code: 403, message: "Custom docs are read-only; write through the source doc." } });
     });
 
     ws.on("close", (msg: any, client: any, respond: (r: any) => void) => {
       const docName = msg.doc as string;
-      if (!docName) return;
+      if (!docName || destroyed) return;
       if (!custom.find(docName)) return;                       // fall through to standard
       trackUnsubscribe(client, docName);
       custom.leave(client, docName);
@@ -648,6 +649,7 @@ export async function createDocListener<I = unknown>(
      * then records nothing.
      */
     const walk = (way: "undo" | "redo") => async (msg: any, client: any, respond: (r: any) => void) => {
+      if (destroyed) return;
       const change = msg.change ?? null;
       if (change !== null && !isEntryId(change)) return respond({ error: { code: 400, message: "change must be an entry's id: a whole number from 1" } });
       const g = gate(client);

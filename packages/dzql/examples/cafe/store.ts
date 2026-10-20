@@ -10,8 +10,8 @@ import { guards } from "./model/guards";
 // it -- who the staff are, and what a visit holds beyond the table a customer scanned (who signed
 // in, the cookie's hash; where they are is each tab's own) -- made by the compiled SQL, which adds a missing table or
 // column (dzql's `openStore`). Each resource registers its documents (`register`, in
-// `resources/<name>/<name>-api.ts`); `open()` compiles them all and opens one listener over them,
-// the cafe seeded and the model's guards in front.
+// `resources/<name>/<name>-api.ts`); the server opens the store as it starts (the app's `store`,
+// ./routes.ts) and closes it as it stops: the documents compiled, the cafe seeded, one listener.
 
 export const schema = defineSchema({
   ...tables,
@@ -19,21 +19,14 @@ export const schema = defineSchema({
   staff: { table: "cafe_staff", columns: { name: "text", role: "text" }, temporal: false },
 });
 
-export const { pool, delta, register, open: openDocuments, stories } = await openStore({ schema, migrations: { dir: `${import.meta.dir}/model/migrations`, app: "cafe-model", schema: modelSchema } });
-
 /** The staff, as the cafe starts: each comes in by a link (../links.ts). */
 export let staff: { id: number; name: string; role: string }[] = [];
 
-/** Who a session is to the model's stories: the staff member's role, or a customer once they have scanned a table. */
-export async function actorOf(sessionId: string): Promise<string | undefined> {
-  const v = (await pool.query<{ role: string | null; table: string | null }>(`SELECT role, "table" FROM visits WHERE id = $1`, [sessionId])).rows[0];
-  return v?.role ?? (v?.table ? "customer" : undefined);
-}
-
-/** Every resource's documents compiled and opened, the cafe seeded and the guards in front: once, after the resources have registered. */
-export const open = () =>
-  openDocuments(async () => {
-    // the cafe as it starts: four free tables, three things on the menu, a manager and a cook
+export const store = openStore({
+  schema,
+  migrations: { dir: `${import.meta.dir}/model/migrations`, app: "cafe-model", schema: modelSchema },
+  // each time it opens: the cafe as it starts, when it is new -- four free tables, three things on the menu, a manager and a cook
+  prepare: async (pool) => {
     if ((await pool.query(`SELECT 1 FROM "tables" LIMIT 1`)).rows.length === 0)
       await importTables(pool, schema, {
         tables: {
@@ -43,7 +36,18 @@ export const open = () =>
         },
       });
     staff = (await pool.query("SELECT id::int, name, role FROM cafe_staff ORDER BY id")).rows;
-    // The model's guards stand in front of the store: a write no story says is refused there, in the
-    // story's words. They are given the session (the app has no `who`), and look up who it is.
-    guardWrites(delta.server, guards, { actorOf: (identity) => actorOf(String(identity)), rowOf: rowsInPostgres(pool, schema) });
-  });
+  },
+});
+
+export const { pool, delta, register } = store;
+
+/** Who a session is to the model's stories: the staff member's role, or a customer once they have scanned a table. */
+export async function actorOf(sessionId: string): Promise<string | undefined> {
+  const v = (await pool.query<{ role: string | null; table: string | null }>(`SELECT role, "table" FROM visits WHERE id = $1`, [sessionId])).rows[0];
+  return v?.role ?? (v?.table ? "customer" : undefined);
+}
+
+// The model's guards stand in front of the store, put on `delta` before any listener: a write no
+// story says is refused there, in the story's words. They are given the session (the app has no
+// `who`), and look up who it is.
+guardWrites(delta.server, guards, { actorOf: (identity) => actorOf(String(identity)), rowOf: rowsInPostgres(pool, schema) });

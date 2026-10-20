@@ -50,12 +50,18 @@ function keptBefore(dataDir: string): Snapshot {
 export async function orderDocs(ws: WsServer, dataDir: string) {
   // the same history as on SQLite makes the tables (a migration's changes are the same on every
   // backend), then delta's own tables and functions; one process owns a PGlite folder
-  const store = await openStore({ schema, database: process.env.DATABASE_URL || `${dataDir}/pg`, migrations: { list: migrations, app: "order", schema }, ws });
-  store.register(docs);
-  // each document compiled; a new database takes the rows kept before, then the documents are served
-  await store.open(async () => {
-    if (!(await store.pool.query("SELECT 1 FROM items")).rowCount) await importTables(store.pool, schema, keptBefore(dataDir));
+  const store = openStore({
+    schema,
+    database: process.env.DATABASE_URL || `${dataDir}/pg`,
+    migrations: { list: migrations, app: "order", schema },
+    ws,
+    // each document compiled; a new database takes the rows kept before, then the documents are served
+    prepare: async (pool) => {
+      if (!(await pool.query("SELECT 1 FROM items")).rowCount) await importTables(pool, schema, keptBefore(dataDir));
+    },
   });
+  store.register(docs);
+  await store.open();
   return store.close; // the listener, then the pool: closed cleanly, the next start opens the folder as it was left
 }
 ```

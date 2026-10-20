@@ -7,10 +7,10 @@ import { app as example } from "../routes";
 // controls, used through a model context as the WebMCP draft has it, while the person uses the page.
 // A person and an assistant in one browser are one session, so one cursor: each undoes its own.
 
-let server: ReturnType<typeof createServer>;
+let server: Awaited<ReturnType<typeof createServer>>;
 
-beforeAll(() => {
-  server = createServer(example, 0);
+beforeAll(async () => {
+  server = await createServer(example, 0);
 });
 
 afterAll(() => {

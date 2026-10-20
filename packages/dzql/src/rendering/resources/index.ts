@@ -11,9 +11,15 @@ import { createToldResource, toldAt } from "../refusal";
 import { sees, wireName, wireOps } from "./audience";
 import { createDocuments, settled, type Documents } from "../documents";
 
-// One copy of an example's documents per example: the server and the story harness assemble the
-// same example and must see the same copy.
+// One copy of an example's documents per example while it is served: the server and the story
+// harness assemble the same example and must see the same copy.
 const copies = new WeakMap<Example, Documents>();
+
+/** The example is no longer served: its copy is let go, and the next server of it holds its documents afresh (from the store it opens). */
+export function forget(example: Example): void {
+  copies.get(example)?.forget();
+  copies.delete(example);
+}
 
 /** A ledger entry as `inspect` tells it. A session id is a person's only credential, so it never
  * goes on the wire: `mine` says whether the asker wrote the entry, which is all a reader may ask. */

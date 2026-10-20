@@ -41,7 +41,7 @@ export function createDocuments(local: Local) {
   let telling: Promise<void> = Promise.resolve();
 
   // the one stream of changes: every publish on a document's channel
-  local.onPublish((doc, data) => {
+  const unheard = local.onPublish((doc, data) => {
     if (!data || data.doc !== doc || !Array.isArray(data.ops)) return;
     const h = held.get(doc);
     if (h) {
@@ -127,6 +127,9 @@ export function createDocuments(local: Local) {
   }
 
   return {
+    /** No longer kept current: its app is no longer served, and the next server of it holds its own. */
+    forget: unheard,
+
     /** The document as held, noting that the page being drawn read it; throws `Pending` when not held yet. */
     read<T = any>(doc: string): T {
       return heldAs(doc).value as T;

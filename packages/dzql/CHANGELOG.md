@@ -25,6 +25,26 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **A server opens the app's store as it starts and closes it as it stops** (20 October, root
+  #119). `openStore` (`dzql/postgres`) says the store and opens nothing: the database is opened,
+  migrated and its documents compiled and served at `open()`, closed at `close()`, and opened again
+  after. `appOf` and `createServer` (`dzql/rendering/server`) are async: `await appOf(app)` opens
+  `Example.store` when it opens (Postgres's) and the app's `close` closes it once the server has
+  stopped; `createServer`'s `stop` waits for that. Two servers of one app at once hold one store,
+  closed by the second close. So a test runs servers one after another in one process, and under
+  `bun --hot` the last store is closed before the app, run again, opens the next: the ids carry on
+  (1, 2), where a folder opened twice was recovered as after a crash (1, 34;
+  `tests/rendering/store.test.ts`). A listener ended answers nothing, so a store's next listener
+  serves on the same `delta`; a kernel's copy of the documents is let go with its last server. To
+  move across: `serve(appOf(app))` becomes `serve(await appOf(app))`, `createServer(...)` becomes
+  `await createServer(...)` (a test's `beforeAll` async, its server typed
+  `Awaited<ReturnType<typeof createServer>>`), and `run(() => serve(...))` becomes `run(async () =>
+  ...)`; in `store.ts`, `export const store = openStore({ ..., prepare })` (no `await`), where
+  `prepare(pool)` is what `open(prepare)` was (the seed), and `export const { pool, delta, register }
+  = store`; the app gives `store` (not `stories`) as its `Example.store`; the top-level `await
+  open()` goes; a guard goes on `delta` as the module loads, before any listener. `store.pool` is
+  the open store's pool, and rejects while it is closed.
+
 - **The stories are keyed, one form in both starters** (`dzql/modelling/stories`, 20 October,
   root #118). `Stories.stories` is a record, each story under a key of its own, in the order told:
   one with a body the harness tells, one with none yet (`story(name)`) a test of the app tells,

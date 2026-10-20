@@ -227,10 +227,10 @@ const cliTestExample: Example = {
 };
 
 describe("cli against a real server", () => {
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
 
-  beforeAll(() => {
-    server = createServer(cliTestExample, 0);
+  beforeAll(async () => {
+    server = await createServer(cliTestExample, 0);
   });
 
   afterAll(() => {
@@ -242,7 +242,7 @@ describe("cli against a real server", () => {
   }
 
   test("connectCli rejects when there's nothing listening", async () => {
-    const throwaway = createServer(cliTestExample, 0);
+    const throwaway = await createServer(cliTestExample, 0);
     const deadUrl = new URL("/ws", throwaway.url).toString().replace("http", "ws");
     throwaway.stop(true);
 

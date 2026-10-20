@@ -105,7 +105,7 @@ describe("the stories by hand", () => {
   }, 60000);
 
   test("a tab that does not close is said, not waited on in silence: the server still holding its socket", async () => {
-    const server = createServer(chat, 0);
+    const server = await createServer(chat, 0);
     const cookie = crypto.randomUUID();
     const sessionId = await chat.session!(cookie); // the session the cookie names: a numbered row
     const url = new URL("/ws", server.url);

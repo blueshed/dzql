@@ -1,4 +1,4 @@
-import { assemble } from "./resources";
+import { assemble, forget } from "./resources";
 import { allOpenSockets, audienceFor, closeConnection, openConnection, readersOf, resolveName, sees, setActiveResources, wireName, wireOps } from "./resources/audience";
 import { fragmentsMessage, renderMessage } from "./resources/render";
 import type { ConnectionData } from "./connection";
@@ -218,14 +218,17 @@ function isWrite(message: unknown): message is Write {
 const scopes = new WeakMap<Example, { app: Scope; apps: number }>();
 
 /** An app as a server takes it: its routes and its socket's handlers (delta's `App`), with its scope, and `idle` for its tests. */
-export type DzqlApp = App & { websocket: Bun.WebSocketHandler<ConnectionData>; scope: Scope; idle(): Promise<void>; close: (() => void)[] };
+export type DzqlApp = App & { websocket: Bun.WebSocketHandler<ConnectionData>; scope: Scope; idle(): Promise<void>; close: (() => void | Promise<void>)[] };
 
 /**
  * An example as routes and resources, never a server of its own: its page at `Example.at` (the
  * root, unless it says a path), every screen under it, its routes, and its socket at `<at>/ws`, all
- * in a scope of its own. `compose` puts several on one server; delta's `serve` serves them.
+ * in a scope of its own. `compose` puts several on one server; delta's `serve` serves them. Its
+ * store is opened first (`Example.store`, one that opens: Postgres's), and closed once the server
+ * stops, after what the app drew: a store is open only while a server holds it.
  */
-export function appOf(example: Example): DzqlApp {
+export async function appOf(example: Example): Promise<DzqlApp> {
+  await example.store?.open?.();
   // one example served twice (a test's two servers) is one app: one scope, its sockets all told
   const held = scopes.get(example) ?? scopes.set(example, { app: served(example.at ?? ""), apps: 0 }).get(example)!;
   held.apps++;
@@ -505,6 +508,9 @@ export function appOf(example: Example): DzqlApp {
         setActiveDocuments(undefined);
       });
       unserved(app);
+      forget(example); // the next server of it holds its documents afresh, from the store it opens
+    }, async () => {
+      await example.store?.close?.();
     }],
   };
 }
@@ -542,16 +548,18 @@ export function compose(...apps: (App | false | undefined)[]): App & { close: ((
   };
 }
 
-/** One example served on its own: `serve(appOf(example))`, its server told how to wait for it and stop it. */
-export function createServer(example: Example, port: number | string = process.env.PORT ?? 3000) {
-  const app = appOf(example);
+/** One example served on its own: `serve(await appOf(example))`, its server told how to wait for it and stop it (then what the app opened is closed). */
+export async function createServer(example: Example, port: number | string = process.env.PORT ?? 3000) {
+  const app = await appOf(example);
   const { server } = serve<string>(app as never, { port: Number(port) });
   const stop = server.stop.bind(server);
   let stopped = false;
-  server.stop = ((...args: Parameters<typeof server.stop>) => {
-    if (!stopped) for (const close of app.close) close();
+  server.stop = (async (...args: Parameters<typeof server.stop>) => {
+    const [drawn, ...opened] = stopped ? [] : app.close;
     stopped = true;
-    return stop(...args);
+    await drawn?.(); // its pages first, their sockets closed, so a stop that waits for them ends
+    await stop(...args);
+    for (const close of opened) await close(); // then its store
   }) as typeof server.stop;
   return Object.assign(server as Bun.Server<ConnectionData>, { idle: app.idle });
 }

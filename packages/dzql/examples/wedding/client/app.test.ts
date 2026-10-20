@@ -5,11 +5,11 @@ import { asCouple, asHousehold, board, household } from "../setup";
 import { app as example } from "../routes";
 import { crowd } from "../applets/photo";
 
-let server: ReturnType<typeof createServer>;
+let server: Awaited<ReturnType<typeof createServer>>;
 let code: string;
 
 beforeAll(async () => {
-  server = createServer(example, 0);
+  server = await createServer(example, 0);
   const email = `browser-${Date.now()}@example.com`;
   await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Ada Test, Femi Test" } }]);
   code = (await board()).households.find((x) => x.email === email)!.code;

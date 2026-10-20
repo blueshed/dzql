@@ -15,6 +15,12 @@ section up.
 
 ### Breaking
 
+- **The Postgres step's seed is `openStore`'s `prepare`** (20 October, root #119; needs dzql's next
+  release). evolve's `postgres.md`: `openStore({ ..., ws, prepare: async (pool) => { ... } })`, then
+  `store.register(docs)` and `await store.open()`, where it was `await store.open(async () => ...)`:
+  dzql's store opens as a server starts and closes as it stops, the shape the thin-client step
+  keeps. An app on the step moves the same way.
+
 - **The stories are dzql's `Stories` from the start, keyed** (20 October, root #118; needs dzql's
   next release). `stories.ts` exports `{ cast: {}, stories: { follows: story("..."), ... } }
   satisfies Stories`, the file dzql's harness reads, so when the app takes the step to the thin

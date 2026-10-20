@@ -87,9 +87,12 @@ export type Example = {
    * Where the stories find the app's store, when it is not dzql's SQLite (`dzql/rendering/db`), in
    * which each story runs in a transaction rolled back after it. A store of its own begins and ends
    * each story on it, put back as it stood before the stories, and its ledger is read to check undo
-   * and redo. On Postgres (PGlite included), `storyStore(pool, schema)` from `dzql/postgres`.
+   * and redo. On Postgres (PGlite included), the store `openStore` gives (`dzql/postgres`), which
+   * also opens (`open`) and closes (`close`): `appOf` opens it as a server starts and closes it as
+   * the server stops, so a store is open only while a server holds it, and the next start (a
+   * test's next server, `bun --hot` running the app again) opens it afresh.
    */
-  store?: StoryStore;
+  store?: StoryStore & { open?(): Promise<void>; close?(): Promise<void> };
 };
 
 /** A store as the stories see it: each story begun and ended on it, and its ledger read. */

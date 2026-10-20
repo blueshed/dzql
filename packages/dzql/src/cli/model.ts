@@ -161,7 +161,7 @@ export async function modelRoute({ file = process.env.MODEL_FILE ?? "model.json"
   process.env.MODEL_FILE = file;
   process.env.MODEL_NAME ??= projectName();
   const { appOf } = await import("../rendering/server");
-  const app = appOf((await import("../modelling/page/routes")).app);
+  const app = await appOf((await import("../modelling/page/routes")).app);
   await sayLinks(String(port));
   watchModel(file, out);
   return app;

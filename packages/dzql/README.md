@@ -47,7 +47,7 @@ export const app: Example = {
 };
 
 // delta's one server: the page at "/", its socket at "/ws", /health; `bun routes.ts`
-if (import.meta.main) await run(() => serve(appOf(app)));
+if (import.meta.main) await run(async () => serve(await appOf(app)));
 ```
 
 with the page it is drawn into, `index.html`:
@@ -106,10 +106,13 @@ import { docs, schema } from "./types";
 // on the database hears every change. PGlite runs Postgres in this process (in PGLITE_DIR, else in
 // memory); DATABASE_URL names a Postgres server in its place.
 const ws = createWs();
-const store = await openStore({ schema, ws });
+const store = openStore({ schema, ws });
 store.register(docs);
-await store.open();
-await run(() => serve({ ws, routes: {}, close: [store.close] }));
+// opened as the server starts, closed as it stops: under `bun --hot` the last one is closed first
+await run(async () => {
+  await store.open();
+  return serve({ ws, routes: {}, close: [store.close] });
+});
 ```
 
 ```sh

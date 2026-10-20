@@ -34,7 +34,8 @@ teller and seen by everyone it tells, and each `cannot` refused in its own words
 **3. The store: [store.ts](store.ts).** Postgres, through dzql's `openStore`: PGlite in the process
 (in memory unless `PGLITE_DIR` names a folder), or a server at `DATABASE_URL`. The model's migrations
 first, then the app's own tables beside them (who the staff are; what a visit holds beyond the
-model's `table`); at `open()` the cafe is seeded and the guards go on `delta`, before the listener.
+model's `table`); the guards go on `delta` as it loads, before any listener, and the store is the
+app's `store`, which the server opens as it starts (the cafe seeded, by `prepare`) and closes as it stops.
 A resource's `permit` then says only what its page sends; who may send it is the guards'. The
 stories run on the same store (`Example.store`), put back after each.
 

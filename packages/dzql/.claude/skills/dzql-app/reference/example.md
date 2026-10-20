@@ -1,7 +1,7 @@
 # The app (`Example`), and the CLI
 
 An app is one `Example`: its documents, its resources and its page, the `app` its `routes.ts`
-exports and serves (`serve(compose(appOf(app), ...))`), in a project and in every example alike.
+exports and serves (`serve(compose(await appOf(app), ...))`, which opens the app's store and closes it with the server), in a project and in every example alike.
 Signing people in is [signin.md](signin.md).
 
 ```ts

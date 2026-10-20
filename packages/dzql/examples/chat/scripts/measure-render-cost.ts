@@ -25,7 +25,7 @@ await example.delta!.call("delta", {
 });
 await example.delta!.call("close", { doc: `room:${room}` });
 
-const server = createServer(example, 0);
+const server = await createServer(example, 0);
 const wire = await tap(server.port!); // what crosses it, as sent: every socket goes through it
 const sessions = new WeakMap<WebSocket, string>();
 

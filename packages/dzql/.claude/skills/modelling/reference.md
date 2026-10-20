@@ -122,7 +122,7 @@ README walks it; here is what each part of it says about the model.
    model's schema (`migrations: { dir, app: "<name>-model", schema }`; the app's schema there would
    make delta warn that the definitions say more than the migrations), then the app's own tables
    beside the model's (`defineSchema({ ...tables, ... })`: who the staff are, what a session keeps),
-   which the compiled SQL adds. Then, in `open()`, before the listener, the guards:
+   which the compiled SQL adds. Then, as the app loads, before any listener, the guards:
    `guardWrites(delta.server, guards, { actorOf, rowOf: rowsInPostgres(pool, schema) })`
    (`rowsIn(db, schema)` on SQLite). `actorOf` is given
    the identity the app's `who` returns (the session's id without one): look the teller up there,

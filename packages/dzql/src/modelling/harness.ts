@@ -215,7 +215,7 @@ type Run = {
   example: Example;
   stories: Stories;
   observe?: (trace: Trace) => void;
-  server: ReturnType<typeof createServer>;
+  server: Awaited<ReturnType<typeof createServer>>;
   /** The cast's sockets go through it, so what each page is handed is counted as it crossed the wire. */
   tapped: Awaited<ReturnType<typeof tap>>;
   draw: Assembled["draw"];
@@ -1225,7 +1225,7 @@ export async function run(
     everywhere?: (member: string, place: string, controls: Control[]) => void;
   } = {},
 ): Promise<Report> {
-  const server = createServer(example, 0);
+  const server = await createServer(example, 0);
   const tapped = await tap(server.port!, example.at);
   const { draw, page, documents, byDocType } = assemble(example);
   const r: Run = {
@@ -1288,7 +1288,7 @@ export async function run(
     }
   } finally {
     hearFailures();
-    server.stop(true);
+    await server.stop(true);
     tapped.close();
   }
   const failed = outcomes.filter((o) => o.failures.length > 0).length;

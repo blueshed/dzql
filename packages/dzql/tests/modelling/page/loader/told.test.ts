@@ -111,12 +111,12 @@ describe("the model as told, against the model as built", () => {
 
 describe("Peter tells leave's stories on the model page and Claude builds leave; model:check leave --against-page names each gap", () => {
   let load: Load;
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
   let session: string;
   let url: string;
   beforeAll(async () => {
     load = writesOf((await extract("leave")).heart);
-    server = createServer(example, 0);
+    server = await createServer(example, 0);
     url = `${server.url.href.replace(/^http/, "ws")}model`; // the model is a route of its own, at /model
     session = sessionIn((await fetch(links.say(server.url.origin)[1]!.slice("Claude: ".length), { redirect: "manual" })).headers.get("set-cookie"))!; // Claude's link
     db.exec("BEGIN"); // the seeded model comes back after

@@ -4,7 +4,7 @@ import type { Example } from "dzql/rendering/example";
 import { serverWrite } from "dzql/rendering/documents";
 import { appOf, compose, cookieOf, seeOther } from "dzql/rendering/server";
 import homepage from "./index.html";
-import { delta, open, pool, stories } from "./store";
+import { delta, pool, store } from "./store";
 import { links } from "./links";
 import { render } from "./page";
 import { floor } from "./resources/floor/floor";
@@ -20,9 +20,6 @@ import { read as visitOf, sessions } from "./resources/visit/visit-api";
 // (the definitions, the guards, the migrations, the proof); the app is its routes and its
 // resources, each document a folder of ./resources/, its stories ./stories.ts, each naming the
 // model story it tells. ./README.md walks the path.
-
-// every resource has registered its documents (the imports above): compile them, and open the listener
-await open();
 
 /** The code on a table: `/scan?table=1`, or the door's button. The visitor is at that table now (the model's story 3), and their tab, sent home, opens on it. */
 async function scan(req: Request): Promise<Response> {
@@ -50,13 +47,13 @@ export const app: Example = {
   address: { doc: "visit", path: "/page" }, // a tab's URL is where it stands: the visit says where it may (./resources/visit/visit.ts), the kernel moves the tab
   routes: { "/in/:token": links.route as never, "/scan": scan },
   session: sessions.of,
-  store: stories, // the stories begin and end each story on the store, Postgres (./store.ts)
+  store, // opened as a server starts and closed as it stops; the stories begin and end each story on it (Postgres, ./store.ts)
 };
 
 /** The server: on `PORT` (3000), and with `--model` (`bun dev`) the model's page beside the app. */
 export async function startServer({ port = Number(process.env.PORT ?? 3000), model = process.argv.includes("--model") } = {}) {
   const modelling = model && (await (await import("dzql/model")).modelRoute({ port: String(port), file: `${import.meta.dir}/model.json`, out: `${import.meta.dir}/model` }));
-  const server = serve(compose(appOf(app), modelling), { port });
+  const server = serve(compose(await appOf(app), modelling), { port });
   console.log(["The staff, signed in by a link:", ...links.say(server.url.origin).map((l) => `  ${l}`)].join("\n"));
   return server;
 }
