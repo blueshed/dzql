@@ -116,7 +116,7 @@ section up.
 - **The thin-client step is the move, not a port** (20 October, roots #118-#121, #127, #129):
   `references/thin-client.md` is 571 lines where it was 943. What stays as it was: the documents'
   definitions and paths, the data folder and the rows kept before, `startServer({ port, dev,
-  dataDir })`, `stories.ts` (three stories gain a body on their own line, three change their
+  dataDir })`, `stories.ts` (two stories gain a body on their own line, three change their
   words), and the tests `site`, `message`, `order`, `kitchen`, `order-move`, `order-pg` and
   `order-pg-move`. What is rewritten is what draws the page, the store every document is in, and
   the light page's own tests; `documents.ts` changes one line and `stories.test.ts` gains the
