@@ -9,7 +9,8 @@
   "files": [
     "cli.ts",
     "template",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "prepack": "bun pack.ts ../paintbrush",

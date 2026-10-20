@@ -59,7 +59,8 @@
     "examples/cafe",
     "!examples/cafe/**/*.test.*",
     ".claude/skills",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "test": "bun run test:fast",

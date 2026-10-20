@@ -2,6 +2,7 @@
   "name": "create-dzql",
   "version": "0.14.0",
   "description": "Create an app on dzql: eta's starter, its stories first, served by delta's one server",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/blueshed/dzql.git",
@@ -16,7 +17,8 @@
     "cli.ts",
     "template",
     "starter",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "prepack": "rm -rf starter && cp -R ../dzql/examples/starter starter",

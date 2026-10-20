@@ -6,6 +6,12 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### Every published package carries its licence (20 October)
+
+- dzql, create-dzql and create-blueshed now ship `LICENSE` (MIT, as railroad and delta do), and
+  create-dzql says `"license": "MIT"`; `scripts/ranges.ts`, in the gate, fails a published package
+  without the field or the file in its tarball.
+
 ### A skill is tested as code is (20 October)
 
 - **Every shipped skill has its evaluations**: `evals/<skill>.json` beside it, a few scenarios each

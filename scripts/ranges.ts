@@ -5,6 +5,8 @@
  * sibling from npm, an older release, and tests run against that (create-dzql's `dzql ^0.13.0`
  * did, after dzql 0.14.0). `bun run affected` runs it, beside the docs check.
  *
+ * Every published package carries its licence (the field, and LICENSE in its files).
+ *
  * And the Bun every package is made on, said once: the root's `packageManager` (which CI reads,
  * `.github/actions/setup`). A package's types (`@types/bun`, `^` it) and
  * a new app's own `packageManager` follow it. A package's floor (`engines.bun`) is its own, lower
@@ -44,6 +46,16 @@ else
     for (const m of existsSync(join(root, readme)) ? readFileSync(join(root, readme), "utf8").matchAll(/Bun (\d+\.\d+\.\d+) or later/g) : [])
       if (m[1] !== floor) wrong.push(`${readme}: says Bun ${m[1]} or later, its package.json's floor is ${json.engines?.bun ?? "none"}`);
   }
+// every package npm publishes carries its licence: the field, and the text in the tarball (MIT asks
+// that the notice go with the code)
+for (const f of files) {
+  const json = read(f);
+  if (json.private) continue;
+  const dir = f.replace(/package\.json$/, "");
+  if (!json.license) wrong.push(`${f}: no license`);
+  if (!existsSync(join(root, dir, "LICENSE"))) wrong.push(`${dir}LICENSE: not there, and ${json.name} is published`);
+  else if (!(json.files ?? []).includes("LICENSE")) wrong.push(`${f}: files leaves out LICENSE`);
+}
 if (wrong.length) {
   console.error(wrong.join("\n"));
   process.exit(1);
