@@ -7,8 +7,8 @@ address that says where a person is. How a page is sent is [page.md](page.md).
 // examples/leave/page.ts (trimmed)
 const { tool, collectionPage, drawer, confirmModal, addTool, go, site, readingSwitch } = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
 
-export function render(sessionId: string): string {
-  const { person: me, page, draft } = sessionOf(sessionId);
+export function render(sessionId: string, page: string): string { // page: where this tab stands
+  const { person: me, draft } = sessionOf(sessionId);
   const { path, what, which } = parseAddress(page);                // "2026-10?request=1"
   …
   const sheet = what === "request" && r ? requestSheet(t, me, r, path, sessionId) : what === "draft" ? draftSheet(t, me, draft, path, sessionId) : "";
@@ -64,17 +64,32 @@ binds the app's icons, its session's docType and the last tool, once. These are 
 
 ## Where you are: the address
 
-Where a person is, is one string on their session, `path?what=which`: the page and the one thing
-open over it (`guests?guest=2`, `gifts?new`, leave's `2026-10?request=1`).
+Where a person is, is one string, `path?what=which`: the page and the one thing open over it
+(`guests?guest=2`, `gifts?new`, leave's `2026-10?request=1`). It is the **tab's**, not the
+session's: the session keeps who you are and what is yours, and two tabs of one session stand on
+two screens, each drawn where it is (`render(sessionId, address)`).
 
 - `address(path, what?, which?)` builds one; `parseAddress(page)` reads one.
 - Opening a drawer or a modal is going to the same page with it named; closing it is going to the
   page alone. Going anywhere puts away what was open.
-- The address is the screen's URL, and the server routes it: name the write that sets it as the
-  app's `address` ([example.md](example.md)), and a tab opened at a URL is put there before its
-  page is drawn. Put the address in `data-page`, and that write in `data-page-write` (`site()`
-  does): the client puts each new address in the URL, and sends the one back and forward reach.
-- The stories put people there with `Stories.goTo(address)`. A story's `from`, and each place its
-  `seen` names, must be one a control leads to: a button whose `data-value` is the address, or a tap
-  an applet names. The URL, `data-page-write` and the back button are not controls: a place reached
-  by a link (an email) goes in the cast's own writes.
+- The address is the tab's URL. Going there is a write on the session (`go(address)`: `replace
+  /page`), named as the app's `address` ([example.md](example.md)): the session's resource says
+  where this session may stand (`permit`, `shape`, given the tab's address by `addressOf(ws)`), and
+  the kernel takes the op off the write and moves the tab that sent it -- never the session, so no
+  `page` field is kept. A tab opened at a URL is put there the same way before its first page is
+  drawn: a link, a bookmark or a reload opens on its screen. Put the address in `data-page`, and
+  that write in `data-page-write` (`site()` does): the client puts each new address in the tab's
+  URL, and sends the one back and forward reach.
+- What follows a write may move the writer's tab: `moveTab(ws, address)` (`dzql/rendering/tabs`)
+  from `afterWrite` or `afterWalk` -- the modal a write answered put away, the drawer of a request
+  it made opened. `addressOf(ws)` says where the tab stands.
+- Per tab or per session: what a page reads follows the tab's address (a month, a drawer's row),
+  and a page sees what it read, tab by tab. Which document of a type a person is on (`resolveDoc`)
+  is the session's -- their own session, their team, chat's room (being in a room is the person's:
+  others see them arrive) -- never the address. Who you are and what is yours (a draft, a
+  watchlist, how you read a list, what you were last told) are the session's, so every tab of it
+  shows them, and a write in one reaches the others wherever they stand.
+- The stories put a person's tab there with `Stories.goTo(address)`. A story's `from`, and each
+  place its `seen` names, must be one a control leads to: a button whose `data-value` is the
+  address, or a tap an applet names. The URL, `data-page-write` and the back button are not
+  controls: a link (an email) opening a tab is an `opensTab` story ([stories.md](stories.md)).

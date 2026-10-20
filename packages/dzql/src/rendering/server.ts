@@ -14,6 +14,7 @@ import { handleOf, newHandle } from "./resources/ledger";
 import { refuseOrigin } from "@blueshed/delta/server";
 import { serve, type App } from "@blueshed/delta/serve";
 import { cookieIn, scope, served, unserved, within, type Scope } from "./scope";
+import { addressOf } from "./tabs";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
@@ -60,7 +61,8 @@ const track = (p: Promise<unknown>): void => {
 };
 
 /**
- * Draws a connection's page -- until every document it reads is held -- and sends what changed:
+ * Draws a connection's page -- its session's, where its tab stands (./tabs.ts), until every
+ * document it reads is held -- and sends what changed:
  * the parts that differ, nothing if none do, or the page whole when its outline changed (a
  * different page) or `whole` says so (a first drawing).
  * A drawing that fails is logged, and the connection's next drawing goes ahead.
@@ -70,7 +72,7 @@ function redraw(ws: Socket, whole = false): Promise<void> {
   const next = (drawingFor.get(ws) ?? Promise.resolve()).then(async () => {
     if (!app.page) return; // the app is no longer served
     const page = app.page;
-    const drawn = await settled(app.documents, () => drawing(ws, () => page(ws.data.sessionId)));
+    const drawn = await settled(app.documents, () => drawing(ws, () => page(ws.data.sessionId, addressOf(ws))));
     const prev = sent.get(ws);
     sent.set(ws, drawn);
     const ops = prev && !whole ? diff(prev, drawn) : undefined;
@@ -236,6 +238,7 @@ export function appOf(example: Example): DzqlApp {
     setActiveDocuments(documents);
   });
   app.page = assembled.page;
+  app.moved = (ws) => void (sent.has(ws) && redraw(ws)); // a tab not yet drawn is drawn where it stands when it is
   tellChanges(documents, app);
 
   const who = (ws: Socket): unknown => (example.who ? example.who(ws.data.sessionId) : ws.data.sessionId);
@@ -263,14 +266,22 @@ export function appOf(example: Example): DzqlApp {
     }
   }
 
-  /** A permitted write from the wire: shaped, written through delta as the person. */
+  /**
+   * A permitted write from the wire: shaped, written through delta as the person. What it says of
+   * where the tab goes (`Example.address`) is the tab's: taken off the write, it moves the tab that
+   * sent it, and the rest is written.
+   */
   async function writeDelta(ws: Socket, owner: (typeof resources)[number], docId: string, ops: PatchOp[], id?: WriteId): Promise<boolean> {
     const undoable = owner.undoable !== false;
     const shaped = owner.shape ? await settled(documents, () => owner.shape!(ws, docId, ops)) : ops;
     if (shaped.length === 0) return false;
+    const going = owner.docType === example.address?.doc ? shaped.filter((op) => op.path === example.address!.path) : [];
+    if (going.length > 0) ws.data.address = String(going.at(-1)!.value ?? "");
+    const rest = shaped.filter((op) => !going.includes(op));
+    if (rest.length === 0) return movedOnly(ws, owner, docId, id);
     const at = owner.under ?? "";
     const doc = `${owner.docType}:${docId}`;
-    const writing = documents.write(doc, shaped.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable });
+    const writing = documents.write(doc, rest.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable });
     // a write never undone: its echo names no change
     const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : { version: w.version, entry: undoable ? w.entry : undefined }));
     // a store's own refusal (403: the model's guards, a document's permission; 401: nobody the guards
@@ -285,6 +296,19 @@ export function appOf(example: Example): DzqlApp {
       failed(`writing ${named}`, new Error(why));
     }
     await landed(ws, () => owner.afterWrite?.(ws, docId, ops, wireOps(owner, docId, written.ops as PatchOp[])), `following a write to ${named}`);
+    if (going.length > 0) app.moved!(ws); // its page read the document, or not: it is drawn where it went
+    return true;
+  }
+
+  /**
+   * A write that moved its tab and wrote nothing: it landed, so its writer is answered by an echo of
+   * nothing (by its id, if it has one) and what they were told before goes; no document changed, so
+   * no `afterWrite` follows, and the tab is drawn where it now stands -- once it has been drawn at all.
+   */
+  async function movedOnly(ws: Socket, owner: (typeof resources)[number], docId: string, id?: WriteId): Promise<true> {
+    if (id !== undefined) send(ws, patchMessage(wireName(owner.docType, docId, ws), documents.version(`${owner.docType}:${docId}`) ?? 0, [], id));
+    await tell(ws.data.sessionId);
+    app.moved!(ws);
     return true;
   }
 
@@ -347,9 +371,10 @@ export function appOf(example: Example): DzqlApp {
   }
 
   /**
-   * The route: a tab opened at an address puts its session there before its page is drawn, through
-   * the example's own write of it (`Example.address`), permitted and shaped as any. Refused, the
-   * session stays where it is, and the page drawn says where that is (the client puts it in the URL).
+   * The route: a tab opened at an address is put there before its page is drawn, through the
+   * example's own write of it (`Example.address`), permitted and shaped as any, which moves this tab
+   * alone. Refused, the tab stays at the page alone, and the page drawn says so (the client puts it
+   * in the URL).
    */
   async function route(ws: Socket): Promise<void> {
     if (ws.data.at === undefined || !example.address) return;
@@ -401,8 +426,9 @@ export function appOf(example: Example): DzqlApp {
   const own: Record<string, unknown> = {
     ...example.routes,
     "/": example.index,
-    // A screen's address is its URL (`Example.address`): any path that is no route above is a
-    // screen, served the same shell, whose socket names the address (`/ws?at=`), routed on open.
+    // A tab's address is its URL (`Example.address`): any path that is no route above is a
+    // screen, served the same shell, whose socket names the address (`/ws?at=`), and the tab is
+    // routed there as it opens: its first page is drawn there, for it alone.
     "/*": example.index,
     "/api/health": () => Response.json({ ok: true }),
     "/ws": async (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {

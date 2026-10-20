@@ -85,7 +85,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
   });
 
-  test("the page follows into the URL; the browser's back button sends the session there; a link opens on its screen, routed by the server", async () => {
+  test("the page follows into the URL; the browser's back button sends the tab there; a link opens on its screen, routed by the server", async () => {
     await using view = webview();
     await enter(view, code);
     expect(await view.evaluate<string>(`location.pathname`)).toBe("/");
@@ -104,7 +104,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('#gifts-drawer') === null`, (v) => v === true);
     expect(await view.evaluate<string>(`location.pathname + location.search`)).toBe("/list");
 
-    // the browser's own back button: a popstate, not a click in the page -- the session follows
+    // the browser's own back button: a popstate, not a click in the page -- the tab follows
     // the URL back, rather than the URL being the only thing that moved (the photo is back, the
     // rows gone, which the URL alone could not have done)
     await view.evaluate(`history.back()`);
@@ -112,8 +112,8 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('#family-photo') !== null && document.querySelector('.cell.open .rows') === null`, (v) => v === true);
 
     // reopening a link to a page while already signed in (the session cookie survives, same as a
-    // reload): the URL is what was asked for, and the server routes it, putting the session there
-    // before the page is drawn, rather than drawing the session's still-current page
+    // reload): the URL is what was asked for, and the server routes it, putting the tab there
+    // before the page is drawn
     await view.navigate(urlFor(view, server.url, "everyone"));
     await waitFor(view, `location.pathname`, (v) => v === "/everyone");
     await waitFor(view, `document.querySelector('#everyone-photo') !== null`, (v) => v === true);

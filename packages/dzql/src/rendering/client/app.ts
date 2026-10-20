@@ -199,14 +199,15 @@ const hooks: MorphHooks = {
   pressed: (el) => el === boxPressed,
 };
 
-// Where a tab is: its URL is the screen's address (`Example.address`). The server routes it -- the
-// socket names it (`connect`, below), and the session is put there before the page is drawn -- so
-// a link, a bookmark or a reload opens on its screen. An example marks some element within #app
-// with `data-page` (where the session is) and `data-page-write` (the write that moves it); the
-// kernel knows nothing about what a "page" means, only that this pair is mirrored into the URL, so
-// the back button works: a new address is pushed, and going back writes the one gone back to.
-// The first page drawn replaces the URL, which says where the route landed (a refused route
-// leaves the session where it was, and the URL says so).
+// Where a tab is: its URL is its address, the tab's own (`Example.address`, src/rendering/tabs.ts).
+// The server routes it -- the socket names it (`connect`, below), and this tab is put there before
+// its first page is drawn -- so a link, a bookmark or a reload opens on its screen, and another tab
+// of the session stays where it is. An example marks some element within #app with `data-page`
+// (where the tab is) and `data-page-write` (the write that moves it); the kernel knows nothing
+// about what a "page" means, only that this pair is mirrored into the URL, so the back button
+// works: a new address is pushed, and going back writes the one gone back to, which moves this tab
+// alone. The first page drawn replaces the URL, which says where the route landed (a refused route
+// leaves the tab at the page alone, and the URL says so).
 let knownPage: string | undefined;
 let pageWrite: string | undefined;
 

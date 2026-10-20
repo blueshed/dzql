@@ -33,9 +33,8 @@ async function enter(code: string, page?: string): Promise<WebSocket> {
   await nextMessage(ws); // patch
   await nextMessage(ws); // the page
   if (page !== undefined) {
-    send(ws, "session", [{ op: "replace", path: "/page", value: page }]);
-    await nextMessage(ws);
-    await nextMessage(ws);
+    send(ws, "session", [{ op: "replace", path: "/page", value: page }]); // this tab goes there: its page drawn there
+    await heard(ws);
   }
   return ws;
 }
@@ -50,8 +49,7 @@ const guest = (await household(mine!.code)).guests[1]!.id;
 
 const sender = await enter(mine!.code);
 send(sender, "session", [{ op: "replace", path: "/page", value: `?guest=${guest}` }]); // the drawer open, as it would be
-await nextMessage(sender);
-await nextMessage(sender);
+await heard(sender);
 const audience: [string, WebSocket][] = [
   ["the same household's second tab, on its photo", await enter(mine!.code)],
   ["the couple, on their photo of families", await enter("NICK")],

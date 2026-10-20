@@ -8,7 +8,7 @@ both, for someone deciding whether it suits, or wanting to know why it is built 
 
 ## One renderer, on the server
 
-An app has one `render(sessionId)`: it decides which screen a person is on and draws their whole
+An app has one `render(sessionId, address)`: from where a tab stands, it decides which screen a person is on and draws their whole
 page as HTML, reading the documents it shows with `read(name)`
 (`packages/dzql/src/rendering/documents.ts`). Reading is how a page subscribes: whatever a page
 read, it is told of. `read` is synchronous; a document not yet held throws `Pending`, and the
@@ -35,13 +35,16 @@ typing; it never replaces `innerHTML`.
 So a message said in a room of a hundred goes to each other member as its one `<li>`, not the
 conversation again, and nobody whose page did not read the room is sent anything.
 
-## The session, and where a person is
+## The session, and where a tab is
 
-Each visitor has a document of their own, the **session**: who they are and where they are. It is a
+Each visitor has a document of their own, the **session**: who they are and what is theirs. It is a
 resource like any other (`perSession`), found by the cookie, and named on the wire by its type
-alone, since its id is a credential. Where a person stands -- the cell they opened, the drawer over
-it -- is one **address** in the session, which the URL follows, so a reload, a link or a second tab
-opens on the same screen, drawn by the server.
+alone, since its id is a credential. Where a tab stands -- the cell they opened, the drawer over it
+-- is one **address**, the tab's own and its URL, never the session's: a reload, a link or a
+bookmark opens on that screen, drawn by the server, and two tabs of one session stand on two
+screens, each told every change to what it reads wherever it is. Going somewhere is still a write on
+the session, which says where it may stand; the server moves the tab that sent it
+(`dzql/rendering/tabs`).
 
 ## Undo, refusals and the ledger
 

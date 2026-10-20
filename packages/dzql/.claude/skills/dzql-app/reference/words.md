@@ -9,9 +9,9 @@ export const app: Example = {
   index: homepage,                             // index.html: the page's shell
   delta,                                       // its documents (store.ts; each resource's -api.ts registers one)
   resources: [visit, floor, menu, table, door], // one per document type, the session first
-  render,                                      // the page: render(sessionId), the whole page as HTML
+  render,                                      // the page: render(sessionId, address), the whole page as HTML
   active: (sessionId) => visitOf(sessionId).role !== null,
-  address: { doc: "visit", path: "/page" },    // where the session stands, which the URL follows
+  address: { doc: "visit", path: "/page" },    // the write that moves a tab: its URL is where it stands
   routes: { "/in/:token": links.route as never, "/scan": scan },
   session: sessions.of,                        // a cookie's session
 };
@@ -21,11 +21,12 @@ export const app: Example = {
 
 - A **resource** looks after one type of document: which one a page is on, who may write to it,
   what a write becomes. It has no place on the page. → [resource.md](resource.md)
-- The **page** is the app's one `render(sessionId)`: which screen, reading whichever documents it
-  must. Much HTML goes in files of its own (the wedding's `views/`). → [page.md](page.md)
-- The **session** is each visitor's own document -- who you are, where you are -- and a resource
-  like any other; list it first. Keep in it only what the stories need: a page and its open drawer
-  are one address, not six fields. → [bento.md](bento.md)
+- The **page** is the app's one `render(sessionId, address)`: which screen, reading whichever
+  documents it must. Much HTML goes in files of its own (the wedding's `views/`). → [page.md](page.md)
+- The **session** is each visitor's own document -- who you are and what is yours -- and a resource
+  like any other; list it first. Keep in it only what the stories need. → [bento.md](bento.md)
+- A **tab** is one page open: where it stands is its **address**, its own and its URL, never the
+  session's -- a page and its open drawer are one address, not six fields. → [bento.md](bento.md#where-you-are-the-address)
 - An **applet** is only for a piece of the page whose browser state a redraw would destroy (a drag
   halfway through, a sparkline's history). It is not "the view for X": plain `data-write` HTML is the
   default. → [applets.md](applets.md)

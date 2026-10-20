@@ -13,7 +13,7 @@ export const app: Example = {
   active: (sessionId) => sessionOf(sessionId).person !== null, // a signed-out tab writes nothing, Undo included
   who: (sessionId) => sessionOf(sessionId).person?.id ?? sessionId, // the ledger's who is the person
   index,
-  address: { doc: "session", path: "/page" }, // a screen's URL is where the session goes
+  address: { doc: "session", path: "/page" }, // the write that moves a tab: its URL is where it stands
   identify, // a trusted proxy's header, or the CLI's token
   routes: { "/login": signIn },
   delta,
@@ -29,9 +29,11 @@ The fields are `Example` in `src/rendering/example.ts`.
 - `who` is who a session is to delta (the ledger's who, row-level security); default the session.
 - `routes` are extra HTTP routes; a kernel route of the same path wins. `index` is served at `/` and
   at any path the kernel does not own: that path is a screen.
-- `address` routes a screen: a tab opened at `/2026-10?request=1` puts its session there, through
-  that write (permitted and shaped as any), before its first page is drawn. So a link, a bookmark or
-  a reload opens on its screen, drawn by the server. Without it, the URL is only `/`.
+- `address` is the write that moves a tab ([bento.md](bento.md#where-you-are-the-address)): its
+  op, once the session's resource has permitted and shaped it, moves the tab that sent it and is
+  never written. A tab opened at `/2026-10?request=1` is put there through it before its first page
+  is drawn, so a link, a bookmark or a reload opens on its screen, drawn by the server, and another
+  tab of the session stays where it is. Without it, the URL is only `/`.
 - `session` finds a cookie's session: `sessionRows(delta, "sessions").of` (`dzql/rendering/sessions`)
   keeps each as a numbered row holding the cookie's hash, made on a visit's first socket and found
   through a `visit:` document scoped by that hash. Without it, the cookie is the session.

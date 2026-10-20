@@ -26,10 +26,10 @@ export type Assembled = {
   resources: Resource[];
   /** Every entry above, indexed by the docType it owns -- what server.ts's dispatcher resolves a `{doc, ops}` write against. */
   byDocType: Map<string, Resource>;
-  /** The page for a session: the example's, and what its last undo or redo did, or why it was refused. */
-  page(sessionId: string): string;
+  /** The page for a session, where one of its tabs stands: the example's, and what its last undo or redo did, or why it was refused. */
+  page(sessionId: string, address: string): string;
   /** The page, drawn until every document it reads is held. */
-  draw(sessionId: string): Promise<string>;
+  draw(sessionId: string, address: string): Promise<string>;
   inspectFor(ws: ServerWebSocket<ConnectionData>, limit?: number): Promise<Inspection>;
   /** The example's documents: delta's, as the pages read them. */
   documents: Documents;
@@ -57,11 +57,11 @@ export function assemble(example: Example): Assembled {
   // Undo and redo are the kernel's own tools (the ledger, bento's page tools), so the kernel draws
   // what one did (`afterWalk` says), or why it was refused, over whatever page the example draws:
   // a part of its own, so what it says goes alone, not the page again.
-  const page = (sessionId: string): string => {
+  const page = (sessionId: string, address: string): string => {
     const line = toldAt(sessionId, "ledger", "/latest");
-    return example.render(sessionId) + (line && part("undo-said", `<div class="undo-said">${line}</div>`));
+    return example.render(sessionId, address) + (line && part("undo-said", `<div class="undo-said">${line}</div>`));
   };
-  const draw = (sessionId: string): Promise<string> => settled(documents, () => page(sessionId));
+  const draw = (sessionId: string, address: string): Promise<string> => settled(documents, () => page(sessionId, address));
 
   // Every document this connection sees -- the one of each type it is on, then whatever else its
   // page read -- with its latest `limit` ledger entries (default 1), so "what happened" is answered

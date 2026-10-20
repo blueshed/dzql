@@ -4,9 +4,9 @@ import { db, openTables } from "dzql/rendering/db";
 import { sessionRows } from "dzql/rendering/sessions";
 
 // leave's documents, in delta (`@blueshed/delta`). A team -- its people and their requests for days
-// off -- is one document, written by people and on the ledger. A session is who you are, where you
-// are, and your draft -- the days you have dragged across and not yet asked for: yours alone until
-// you ask, so nobody is told of it. It is signed in by the sign-in page (./signin.ts), never over the wire, and never on the
+// off -- is one document, written by people and on the ledger. A session is who you are and your
+// draft -- the days you have dragged across and not yet asked for: yours alone until you ask, so
+// nobody is told of it. Where you are is each tab's own (its URL), never the session's. It is signed in by the sign-in page (./signin.ts), never over the wire, and never on the
 // ledger. How someone signs in -- an email and a password's hash, or a token's hash -- is a table
 // of its own that no document includes, so no hash can ever cross the wire. The tables are leave's own (`leave_`),
 // and every row is numbered: who a row is about is a person's number.
@@ -16,7 +16,7 @@ export const schema = defineSchema({
   people: { table: "leave_people", parent: "teams", columns: { name: "text", role: "text" }, temporal: false }, // an app from before tables kept their history: its migrations made them so (upgrade.test.ts holds such a database); keeping it is a migration of its own
   requests: { table: "leave_requests", parent: "teams", columns: { person_id: "integer", starts: "text", ends: "text", status: "text", answered_by: "integer?" }, temporal: false }, // an app from before tables kept their history: its migrations made them so (upgrade.test.ts holds such a database); keeping it is a migration of its own
   // `cookie`: the hash of the cookie that names the session (dzql/rendering/sessions), never in its document
-  sessions: { table: "leave_sessions", columns: { person_id: "integer?", page: "text?", draft: "json?", cookie: "text?" }, temporal: false }, // a visit is no history
+  sessions: { table: "leave_sessions", columns: { person_id: "integer?", draft: "json?", cookie: "text?" }, temporal: false }, // a visit is no history
   logins: { table: "leave_logins", columns: { person_id: "integer", email: "text", hash: "text" }, temporal: false }, // a credential's old versions are only a risk
   tokens: { table: "leave_tokens", columns: { person_id: "integer", hash: "text" }, temporal: false }, // a token kept as its SHA-256: the CLI's
 });
@@ -53,7 +53,7 @@ registerDocs(delta.server, db, schema, [defineDoc("team:", { root: "teams", incl
 // A session, with no ledger: signing in, moving about and drafting are not the team's history. And
 // the session a cookie names, found and made by the cookie's hash.
 registerDocs(delta.server, db, schema, [
-  defineDoc("session:", { root: "sessions", include: [], implied: true, columns: { sessions: ["person_id", "page", "draft"] } }),
+  defineDoc("session:", { root: "sessions", include: [], implied: true, columns: { sessions: ["person_id", "draft"] } }),
   defineDoc("visit:", { root: "sessions", scope: { cookie: ":cookie" }, include: [] }),
 ]);
 export const sessions = sessionRows(delta, "sessions");

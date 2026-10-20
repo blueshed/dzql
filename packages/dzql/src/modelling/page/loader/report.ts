@@ -27,7 +27,7 @@ export const READS: Partial<Record<Gap["predicate"], string>> = {
 export type Finding = { check: string; where: string; detail: string };
 
 export type Report = {
-  counts: { stories: number; does: number; cannot: number; closesTab: number; actors: number; entities: number; fields: number };
+  counts: { stories: number; does: number; cannot: number; closesTab: number; opensTab: number; actors: number; entities: number; fields: number };
   gaps: Gap[];
   /** Checks only stories can ask. */
   story: {
@@ -85,7 +85,7 @@ export function judge(stories: Stories): { reading: Reading; report: Report } {
     .map(([field, v]) => ({ field, values: [...v].sort(), moves: moves.get(field)! }))
     .sort((a, b) => a.field.localeCompare(b.field));
 
-  const count = (kind: "does" | "cannot" | "closesTab") => stories.stories.filter((s) => s[kind] !== undefined).length;
+  const count = (kind: "does" | "cannot" | "closesTab" | "opensTab") => stories.stories.filter((s) => s[kind] !== undefined).length;
   return {
     reading,
     report: {
@@ -94,6 +94,7 @@ export function judge(stories: Stories): { reading: Reading; report: Report } {
         does: count("does"),
         cannot: count("cannot"),
         closesTab: count("closesTab"),
+        opensTab: count("opensTab"),
         actors: model.actors.length,
         entities: model.entities.length,
         fields: model.entities.reduce((n, e) => n + e.fields.length, 0),
@@ -111,7 +112,7 @@ export function format(name: string, report: Report): string {
   const out = (s = "") => lines.push(s);
   out(`# ${name}: closure over stories`);
   out();
-  out(`${c.stories} stories (${c.does} does, ${c.cannot} cannot${c.closesTab ? `, ${c.closesTab} closes a tab` : ""}) · ${c.actors} actors · ${c.entities} entities · ${c.fields} fields`);
+  out(`${c.stories} stories (${c.does} does, ${c.cannot} cannot${c.closesTab ? `, ${c.closesTab} closes a tab` : ""}${c.opensTab ? `, ${c.opensTab} opens a tab` : ""}) · ${c.actors} actors · ${c.entities} entities · ${c.fields} fields`);
   out();
   out(`## hjeli's predicates`);
   out();

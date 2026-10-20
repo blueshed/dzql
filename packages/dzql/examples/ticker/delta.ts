@@ -7,9 +7,9 @@ import { DEFAULT_TZ } from "./documents/clock";
 // The ticker's documents, in delta (`@blueshed/delta`). The market is never undone: ticked
 // by the feed, or typed by anyone, recorded and never undone. A quote is one symbol of it, as its
 // own document, so a board is told only the symbols it watches. A watchlist and a clock are a
-// session's own, written by the person, and undoable. The desk -- where the session is on the
-// page -- is the session's too, but nothing on it is anyone's doing: it is kept, and never on
-// the ledger. All three are one row, the session's, each document holding its own columns of it.
+// session's own, written by the person, and undoable. The desk -- how the session reads the
+// board and the market -- is the session's too, but nothing on it is anyone's doing: it is kept,
+// and never on the ledger. Where a tab is on the page is the tab's own, kept in no table. All three are one row, the session's, each document holding its own columns of it.
 // The tables are the ticker's own (`ticker_`), beside anything else in the database; every row is
 // numbered, and a quote says its symbol.
 
@@ -19,7 +19,6 @@ export const schema = defineSchema({
   desks: {
     table: "ticker_desks",
     columns: {
-      page: "text?",
       reading: "json?",
       filter: "json?",
       hide: "json?",
@@ -81,7 +80,7 @@ registerDocs(
 // The desk, with no ledger: a visit is kept, and Undo never lands there. And the session a cookie
 // names, found and made by the cookie's hash.
 registerDocs(delta.server, db, schema, [
-  defineDoc("desk:", { root: "desks", include: [], columns: { desks: ["page", "reading", "filter", "hide"] } }),
+  defineDoc("desk:", { root: "desks", include: [], columns: { desks: ["reading", "filter", "hide"] } }),
   defineDoc("visit:", { root: "desks", scope: { cookie: ":cookie" }, include: [] }),
 ]);
 export const sessions = sessionRows(delta, "desks");

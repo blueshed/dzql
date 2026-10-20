@@ -38,6 +38,8 @@ The hooks, in the order they run: see `Resource` in `src/rendering/resources/res
   never the couple's board. An id may be criteria (`month:2026-09`); `permit` is given it.
 - `perSession`: one per session (the session, a desk), seen by its own session alone, named on the
   wire by its type alone.
+- `resolveDoc` is per session, never per tab: the one this person is on. What differs from tab to
+  tab is the address, and so what each page reads ([bento.md](bento.md#where-you-are-the-address)).
 
 ## A write: seen, `permit`, `shape`, then delta
 
@@ -59,8 +61,9 @@ never from the wire; `"source"` or `"static"`, read only.
   (`examples/chat/presence.ts`): two at once diff the same copy, and delta refuses the second.
 - `afterWrite(ws, docId, ops, landed)`: after this person's fresh write: what follows for the
   writer alone. `ops` are as sent (`add /requests/-`); `landed`, as delta applied them, the echo's:
-  a new row by its id (`add /requests/<id>`), so leave's drawer goes on to the request its draft
-  became. It has landed: a throw is reported, never a refusal.
+  a new row by its id (`add /requests/<id>`), so leave's writer's tab goes on to the request its
+  draft became (`moveTab(ws, address)`). It has landed: a throw is reported, never a refusal. A
+  write that only moved its tab wrote nothing, and no `afterWrite` follows it.
 - `afterWalk(ws, docId, { way, ops, inverse })`: after this person's undo or redo; `inverse` holds
   what it took back, rows whole. A walk that changed nothing comes with `ops: []`: say nothing.
 

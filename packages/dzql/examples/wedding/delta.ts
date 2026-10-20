@@ -66,7 +66,7 @@ export const schema = defineSchema({
   venues: { table: "wedding_venues", parent: "weddings", columns: { name: "text", notes: "text?", picture_key: "text?" } },
   visits: {
     table: "wedding_visits",
-    columns: { code: "text?", page: "text?", reading: "json?", filter: "json?", hide: "json?", note: "text?", cookie: "text?" },
+    columns: { code: "text?", reading: "json?", filter: "json?", hide: "json?", note: "text?", cookie: "text?" },
     temporal: false, // a visit is no history
   },
 });
@@ -112,10 +112,11 @@ registerDocs(
   { ledger: true },
 );
 
-// A visit, with no ledger: which page a tab is on is not the wedding's history. A visit is a numbered
+// A visit, with no ledger: how a list is read is not the wedding's history, and which page a tab is
+// on is the tab's own, kept nowhere but on it. A visit is a numbered
 // row, found by its cookie's hash through `visit:` (dzql/rendering/sessions), which `session:` never holds.
 registerDocs(delta.server, db, schema, [
-  defineDoc("session:", { root: "visits", include: [], implied: true, columns: { visits: ["code", "page", "reading", "filter", "hide", "note"] } }),
+  defineDoc("session:", { root: "visits", include: [], implied: true, columns: { visits: ["code", "reading", "filter", "hide", "note"] } }),
   defineDoc("visit:", { root: "visits", scope: { cookie: ":cookie" }, include: [] }),
 ]);
 

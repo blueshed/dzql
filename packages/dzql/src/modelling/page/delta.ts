@@ -80,7 +80,7 @@ if (!db.query("SELECT 1 FROM mdl_models").get()) {
     people: { parent: "teams", fields: [field("name"), field("role")] },
     requests: { parent: "teams", fields: [field("person_id"), field("starts", "date"), field("ends", "date"), field("status"), field("answered_by")] },
   };
-  const session = { sessions: { parent: null, fields: [field("person_id"), field("page"), field("draft", "json")] } };
+  const session = { sessions: { parent: null, fields: [field("person_id"), field("draft", "json")] } };
   if (!NAME) db.run("INSERT INTO mdl_documents (id, models_id, name, root, own, holds, held_by, stories) VALUES (1, 1, 'team', 'teams', 0, ?, ?, ?), (2, 1, 'session', 'sessions', 1, ?, ?, ?)", [
     JSON.stringify(team),
     JSON.stringify(["ann", "bo", "mo"]),

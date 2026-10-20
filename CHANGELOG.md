@@ -14,6 +14,13 @@ what is open across them. Newest first.
   nothing used go with it: `normalizeForBroadcast` and the named snapshots (`createSnapshot`,
   `resolveSnapshot`). delta's CHANGELOG says how to move across.
 
+### dzql: each tab its own screen, a page a real URL (20 October)
+
+- **Where you are is the tab's** (dzql #53, #57): `render(sessionId, address)`, the address the
+  tab's own and its URL, moved by the session's address write without the session moving; a story
+  may open a tab at a URL (`opensTab`). dzql's CHANGELOG says how an app moves across; create-dzql's
+  starter has moved with it.
+
 ### The Bun, the hook and the root's statements, said once (20 October)
 
 - **/publish moves the sibling ranges `scripts/ranges.ts` names** (#78), rather than a list kept by

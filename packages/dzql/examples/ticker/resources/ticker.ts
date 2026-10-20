@@ -66,9 +66,9 @@ export const quote: Resource = {
   resolveDoc: () => undefined,
 };
 
-/** The desk: the whole page, from every document a session has, and why its last watch was refused, if it was. */
-export const render = (sessionId: string): string =>
-  page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId), said: toldAt(sessionId, "watchlist", "/symbols/-") });
+/** The desk: the whole page, from every document a session has, where its tab stands (`address`), and why its last watch was refused, if it was. */
+export const render = (sessionId: string, address: string): string =>
+  page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: { ...deskDoc.read(sessionId), page: address }, said: toldAt(sessionId, "watchlist", "/symbols/-") });
 
 export const ticker: Resource = {
   docType: "ticker",

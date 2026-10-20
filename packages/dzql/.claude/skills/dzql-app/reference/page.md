@@ -1,7 +1,9 @@
 # The page, and the parts it is sent in
 
-`render(sessionId)` draws one person's whole page as HTML; after a write each page that read the
-document is drawn again and sent only the parts that changed. How it looks is [bento.md](bento.md).
+`render(sessionId, address)` draws one person's whole page as HTML, where one of their tabs stands
+(its address: [bento.md](bento.md#where-you-are-the-address)); after a write each page that read the
+document is drawn again, each tab where it stands, and sent only the parts that changed. How it
+looks is [bento.md](bento.md).
 
 ```ts
 // examples/chat/resources/room.ts (trimmed)
@@ -20,8 +22,10 @@ return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' :
 A message said goes as its one `<li>`, put in after the last; were the messages not parts, every
 message would send the whole conversation again. `part(key, html)` is `src/rendering/parts.ts`.
 
-- `render` is the only renderer: it decides which screen, and reads whichever documents it must. It
-  must `read()` what it shows, or its page is not told of a change ([resource.md](resource.md#who-sees-what)).
+- `render` is the only renderer: it decides which screen, from the tab's address, and reads
+  whichever documents it must. It must `read()` what it shows, or its page is not told of a change
+  ([resource.md](resource.md#who-sees-what)). Never keep the address in a document: two tabs of one
+  session stand apart.
   Never a `db.query` in `render`: a page that reads the database directly is drawn once and goes
   stale. What a signed-out visitor sees is a document too (an app-only `floor:` holding just the
   tables), read like any other.

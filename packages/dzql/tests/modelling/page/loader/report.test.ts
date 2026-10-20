@@ -142,7 +142,7 @@ describe("judge and format", () => {
   const { reading, report } = judge(market);
 
   test("counts", () => {
-    expect(report.counts).toEqual({ stories: 13, does: 11, cannot: 1, closesTab: 1, actors: 4, entities: 5, fields: 15 });
+    expect(report.counts).toEqual({ stories: 13, does: 11, cannot: 1, closesTab: 1, opensTab: 0, actors: 4, entities: 5, fields: 15 });
   });
   test("hjeli's predicates run unchanged: a row changed that no story adds is a gap", () => {
     expect(report.gaps.map((g) => `${g.predicate}:${g.kind}:${g.refs?.entity ?? g.refs?.actor}`)).toContain("precondition-closure:unestablished-row:Sign");

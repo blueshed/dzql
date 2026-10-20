@@ -90,11 +90,12 @@ export async function measure(script: string): Promise<Measured> {
  * A way in to the server on `port` for a measure, or the stories' cast (src/modelling/harness.ts), which sees
  * what crosses the wire: a socket opened to `url` is passed on to the server as it is, and the size
  * of each text frame the server sends back -- its payload, compressed when it was -- is kept under
- * the cookie its upgrade sends. `heard(cookie, raws)` sizes the last messages a
- * session heard before one more (the answer that ended them, as a measure's `heard` asks, and the
+ * the name its upgrade gives it (`X-Tap`: two tabs of one session are two sockets), or else its
+ * cookie. `heard(name, raws)` sizes the last messages a
+ * socket heard before one more (the answer that ended them, as a measure's `heard` asks, and the
  * stories' `settle`): each one's type, size, and size as sent.
  */
-export async function tap(port: number, at = ""): Promise<{ url: string; heard: (cookie: string, raws: string[]) => Heard[]; close: () => void }> {
+export async function tap(port: number, at = ""): Promise<{ url: string; heard: (name: string, raws: string[]) => Heard[]; close: () => void }> {
   const frames = new Map<string, number[]>();
   const server = createServer((client) => {
     const sent: number[] = [];
@@ -104,7 +105,7 @@ export async function tap(port: number, at = ""): Promise<{ url: string; heard: 
     client.on("data", function upgrade(chunk: Buffer) {
       request += chunk.toString("latin1");
       if (!request.includes("\r\n\r\n")) return;
-      frames.set(sessionIn(request) ?? "", sent);
+      frames.set(/^x-tap: *(\S+)/im.exec(request)?.[1] ?? sessionIn(request) ?? "", sent);
       client.off("data", upgrade);
     });
     // what the server sends: its answer to the upgrade, then frames, never masked, however the reads fall
@@ -129,9 +130,9 @@ export async function tap(port: number, at = ""): Promise<{ url: string; heard: 
     });
   });
   await new Promise<void>((listening) => server.listen(0, "127.0.0.1", listening));
-  const heard = (cookie: string, raws: string[]): Heard[] => {
-    const sent = (frames.get(cookie) ?? []).slice(0, -1).slice(-raws.length);
-    if (sent.length < raws.length) throw new Error(`the wire carried ${sent.length} messages to ${cookie} before its last, not ${raws.length}`);
+  const heard = (name: string, raws: string[]): Heard[] => {
+    const sent = (frames.get(name) ?? []).slice(0, -1).slice(-raws.length);
+    if (sent.length < raws.length) throw new Error(`the wire carried ${sent.length} messages to ${name} before its last, not ${raws.length}`);
     return raws.map((raw, i) => ({ type: JSON.parse(raw).type, bytes: Buffer.byteLength(raw, "utf8"), sent: sent[i]! }));
   };
   return { url: `ws://127.0.0.1:${(server.address() as AddressInfo).port}${at}/ws`, heard, close: () => server.close() };

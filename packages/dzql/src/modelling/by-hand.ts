@@ -158,11 +158,14 @@ const PAGE = `(() => {
   }
 
   // what the page sends, kept to be read back, and how much of it was sent when a press last went
-  // down; and a question the server answers after all it sent
+  // down; what answered each write, by its id; and a question the server answers after all it sent
   const socket = window.eta.socket();
   const send = socket.send.bind(socket);
   window.__sent = [];
   socket.send = (data) => { const m = JSON.parse(data); if (m.type !== "inspect") window.__sent.push(m); send(data); };
+  const answers = new Map();
+  socket.addEventListener("message", (e) => { const m = JSON.parse(e.data); if (m.type === "patch" || m.type === "refused") answers.set(m.id, m.type); });
+  const echoed = () => answers.get(window.__sent.at(-1)?.id) === "patch";
   window.__down = -1;
   addEventListener("pointerdown", () => { window.__down = window.__sent.length; }, true);
   const asked = () => new Promise((resolve) => {
@@ -194,14 +197,14 @@ const PAGE = `(() => {
     const unchosen = p.fields && p.fields.find((f) => f.none);
     return unchosen ? { failure: "it offers no choice of " + JSON.stringify(unchosen.text), none: true } : p;
   };
-  window.__hand = { plan: planned, posting, why: (selector) => { const el = document.querySelector(selector); return el ? why(el) : "not on the page"; }, drag, asked, stands, choose, clear, leave };
+  window.__hand = { plan: planned, posting, why: (selector) => { const el = document.querySelector(selector); return el ? why(el) : "not on the page"; }, drag, asked, stands, choose, clear, leave, echoed };
   return true;
 })()`;
 
 /**
  * A browser of its own, as the author's tab: the stories put in its hand one at a time. It is
- * the same session as the harness's own socket for the author (a second tab), so what it sends is
- * theirs.
+ * the same session as the harness's own socket for the author (a second tab, with a screen of its
+ * own), so what it sends is theirs.
  */
 export class Hand {
   view: Bun.WebView;
@@ -323,6 +326,22 @@ export class Hand {
     const made = sent.slice(at, done);
     this.sent = done;
     return made.length > 0 ? { sent: made } : { failure: `the page sent nothing when it was ${how}` };
+  }
+
+  /**
+   * Sends a write from the page as an applet's own control declares it (src/modelling/harness/applets.ts),
+   * its code not driven: from this tab, as the applet would, once the server has answered it. What
+   * the page sent by itself before it is a stray.
+   */
+  async declare({ doc, ops }: Write): Promise<void> {
+    this.strays.push(...(await this.since()));
+    await this.view.evaluate(`window.eta.send(${JSON.stringify(doc)}, ${JSON.stringify(ops)})`);
+    await this.since(); // the write declared, not a stray
+  }
+
+  /** Whether the last write the page sent was echoed: it landed, whoever else was told. */
+  echoed(): Promise<boolean> {
+    return this.view.evaluate<boolean>(`window.__hand.echoed()`);
   }
 
   /** Waits the while a page should then be still, and keeps what it sent meanwhile as strays: nothing, from a page that writes once. */

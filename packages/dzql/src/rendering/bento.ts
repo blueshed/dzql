@@ -26,7 +26,7 @@ export interface BentoOptions<I extends string> {
    * brings only the marks the surfaces it uses draw (chat: the chevron, undo, redo), and its own
    * render tests are what say so if one is missing. */
   icon(name: I | BentoIcon, size?: number): string;
-  /** The docType the page's state is written to, the session: chat's and the wedding's `session`, the ticker's `desk`. */
+  /** The docType the page's state is written to, the session: chat's and the wedding's `session`, the ticker's `desk`. Where a tab goes is written there too, and moves the tab (`Example.address`). */
   session: string;
   /** Leaving, the last of the page's tools, set apart by a rule: removes `path` from the session. Without one (the ticker: nobody signed in) there is only undo and redo. */
   leave?: { text: string; icon: NoInfer<I> | BentoIcon; path: string };
@@ -556,14 +556,15 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
 
   // ───────────────────────────── where you are ─────────────────────────────
 
-  /** The write that goes to a page: its address, on the session. */
+  /** The write that goes to a page: its address, written on the session, which moves the tab that sends it (`Example.address`). */
   const go = (page: string): string => write(trayDoc, "replace", "/page", page);
 
   /**
    * The whole page, a part (`site`): a drawer or a modal opening changes its tag (the address) and
-   * a layer inside it, and nothing else is sent. With an address, it carries it (`data-page`), which
-   * the client mirrors into the URL, and the write the browser's back and forward send
-   * (`data-page-write`); without one (signed out), there is nothing to follow.
+   * a layer inside it, and nothing else is sent. With an address -- the tab's, as `render` was
+   * given it -- it carries it (`data-page`), which the client mirrors into the tab's URL, and the
+   * write the browser's back and forward send (`data-page-write`); without one (signed out), there
+   * is nothing to follow.
    */
   function site(page: string | undefined, html: string, className = ""): string {
     const follows = page === undefined ? "" : ` data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: trayDoc, op: "replace", path: "/page" })}'`;
@@ -576,10 +577,10 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
 // ───────────────────────────── where you are ─────────────────────────────
 
 /**
- * A page's address: where you are, and the one thing open over it -- a drawer or a modal. One
- * string, `path?what=which` ("guests?guest=2", "gifts?new", "board?confirm=ALPH"), so it is one
- * field on the session, one write to open or close, and it can go in the URL: the back button
- * closes a drawer, and a link opens one.
+ * A page's address: where a tab is, and the one thing open over it -- a drawer or a modal. One
+ * string, `path?what=which` ("guests?guest=2", "gifts?new", "board?confirm=ALPH"), so it is the
+ * tab's own (src/rendering/tabs.ts), one write to open or close, and it is the tab's URL: the back
+ * button closes a drawer, a link opens one, and two tabs stand apart.
  */
 export type Address = { path: string; what?: string; which?: string };
 

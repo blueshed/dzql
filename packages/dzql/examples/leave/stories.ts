@@ -8,7 +8,8 @@ import { mondayOf } from "./calendar";
 // so the cast signs in through the example's own sign-in page (`signIn`), and the stories start
 // from there. The page is one calendar: a person drags across days for a draft, sees what it
 // would mean -- how many working days, who else is off -- and asks for it; their own waiting
-// requests they drag to move. A place is a month (`2026-10`) or the list, and what is open over it.
+// requests they drag to move. A place is a month (`2026-10`) or the list, and what is open over it:
+// a tab's own, its URL, so a link opens on it and a second tab may stand somewhere else.
 //
 // Bo has asked for a week in October (request 1) and Ann for a day in November (request 2), both
 // waiting for Mo; Mo has approved Ann's days before Christmas (request 3), and taken a week in
@@ -63,6 +64,8 @@ export const stories: Stories = {
     story("Ann cannot become Mo over the wire", { as: "ann", cannot: session({ op: "replace", path: "/person_id", value: "3" }) }),
 
     // ── coming and going ──
+    story("Ann opens November in a second tab, and her first stays on October", { as: "ann", from: "2026-10", opensTab: "2026-11", seen: [] }), // each tab its own screen
+    story("Mo follows a link to Bo's request, and his new tab opens on its drawer; the tab he had open stays where it was", { as: "mo", opensTab: "2026-10?request=1", seen: [] }), // a URL is a page
     story("Bo signs in on another phone, and sees the team's calendar", { as: "visitor", does: post("/login", { email: "bo@leave.example", password: "bo-password" }), seen: ["visitor"] }),
     story("Someone types Bo's email with the wrong password, and is told the two do not match", { as: "visitor", cannot: post("/login", { email: "bo@leave.example", password: "not-it" }), told: "That email and password do not match." }),
     story("Ann signs out, and her page asks her to sign in", { as: "ann", from: "", does: session({ op: "remove", path: "/person_id" }), seen: ["ann"] }), // from the calendar: on a phone her draft's drawer covers the page's tools

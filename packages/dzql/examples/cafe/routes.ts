@@ -24,7 +24,7 @@ import { read as visitOf, sessions } from "./resources/visit/visit-api";
 // every resource has registered its documents (the imports above): compile them, and open the listener
 await open();
 
-/** The code on a table: `/scan?table=1`, or the door's button. The visitor is at that table now (the model's story 3). */
+/** The code on a table: `/scan?table=1`, or the door's button. The visitor is at that table now (the model's story 3), and their tab, sent home, opens on it. */
 async function scan(req: Request): Promise<Response> {
   let table = new URL(req.url).searchParams.get("table");
   if (req.method === "POST") {
@@ -35,7 +35,7 @@ async function scan(req: Request): Promise<Response> {
   if (!table || !/^\d+$/.test(table) || (await pool.query(`SELECT 1 FROM "tables" WHERE id = $1`, [table])).rows.length === 0) return new Response("There is no such table here.", { status: 404 });
   const visit = cookieOf(req);
   if (!visit) return seeOther("/", (await sessions.start({ table })).cookie);
-  await serverWrite(`visit:${await sessions.of(visit)}`, [{ op: "replace", path: "/visits/table", value: table }, { op: "replace", path: "/visits/page", value: "" }]);
+  await serverWrite(`visit:${await sessions.of(visit)}`, [{ op: "replace", path: "/visits/table", value: table }]);
   return seeOther("/");
 }
 
@@ -47,7 +47,7 @@ export const app: Example = {
   resources: [visit, floor, menu, table, door],
   render,
   active: (sessionId) => visitOf(sessionId).role !== null, // staff signed in, or a customer at a table
-  address: { doc: "visit", path: "/page" }, // a screen's URL is where the visit goes
+  address: { doc: "visit", path: "/page" }, // a tab's URL is where it stands: the visit says where it may (./resources/visit/visit.ts), the kernel moves the tab
   routes: { "/in/:token": links.route as never, "/scan": scan },
   session: sessions.of,
   store: stories, // the stories begin and end each story on the store, Postgres (./store.ts)

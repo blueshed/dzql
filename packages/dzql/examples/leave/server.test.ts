@@ -154,8 +154,10 @@ describe("who you are, before the socket opens", () => {
     const ann = (await signIn("ann@leave.example", "ann-password")).cookie!;
     const first = await open(ann);
     await go(first, "list");
+    const kept = sessionsOf(1).length;
     const again = await open(ann, proxy("ann@leave.example"));
-    expect(again.page).toContain('data-page="list"'); // the same session: where she stood
+    expect(sessionsOf(1).length).toBe(kept); // the same session: no fresh one
+    expect(again.page).toContain('data-page=""'); // a tab of its own, at the page alone: where her other tab went is that tab's
     const bo = (await signIn("bo@leave.example", "bo-password")).cookie!;
     const before = sessionsOf(1).length;
     const named = await open(bo, proxy("ann@leave.example"));

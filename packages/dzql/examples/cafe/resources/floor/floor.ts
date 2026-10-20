@@ -11,5 +11,5 @@ export const floor: Resource = {
   resolveDoc: (ws) => (isStaff(ws.data.sessionId) ? "" : undefined),
   permit: (ws, op) => isStaff(ws.data.sessionId) && may(op),
   shape: (_ws, _id, ops) => shape(ops, read()),
-  afterWrite: (ws) => backToPage(ws.data.sessionId),
+  afterWrite: (ws) => backToPage(ws),
 };

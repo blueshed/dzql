@@ -9,5 +9,5 @@ export const menu: Resource = {
   resolveDoc: (ws) => (["cook", "customer"].includes(visitOf(ws.data.sessionId).role ?? "") ? "" : undefined),
   permit: (_ws, op) => may(op),
   shape: (_ws, _id, ops) => shape(ops),
-  afterWrite: (ws) => backToPage(ws.data.sessionId),
+  afterWrite: (ws) => backToPage(ws),
 };

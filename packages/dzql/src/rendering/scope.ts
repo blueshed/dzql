@@ -15,8 +15,10 @@ export type Scope = {
   documents?: Documents;
   cookieIsSession: boolean;
   openSockets: Set<ServerWebSocket<ConnectionData>>;
-  /** The app's page for a session (its resources' `page`), drawn for each of its sockets. */
-  page?: (sessionId: string) => string;
+  /** The app's page for a session where a tab stands (its resources' `page`), drawn for each of its sockets. */
+  page?: (sessionId: string, address: string) => string;
+  /** A tab moved from outside a write's own handling (./tabs.ts `moveTab`): drawn again where it is now. */
+  moved?: (ws: ServerWebSocket<ConnectionData>) => void;
   /** The cookie its sessions go by, and the path it is sent on: its own name under its own path, so two apps on one server never take each other's. */
   cookie: { name: string; path: string };
   /** Writes awaiting their echo, and each session's handles for the changes it made (./server.ts): the app's own. */

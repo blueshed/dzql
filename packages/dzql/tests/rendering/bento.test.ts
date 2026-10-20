@@ -610,7 +610,7 @@ describe("the surfaces in a browser", () => {
     const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market") })];
     await using view = await show(framed(b.boxPage([{ label: "The desk" }], [], cells)));
     await view.evaluate(`document.querySelector('.cell[data-key="board"] button').focus()`);
-    // the back button: the session goes to the market, and the page comes without a press
+    // the back button: the tab goes to the market, and the page comes without a press
     await draw(view, framed(b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", body: "" })));
     await waitFor(view, `document.querySelector('.cell.open') !== null`, (v) => v === true);
     expect(await at(view, "The desk")).toBe("The desk");

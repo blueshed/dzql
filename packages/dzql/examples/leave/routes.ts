@@ -12,7 +12,7 @@ import { delta, sessions } from "./delta";
 // the sign-in page posts to /login (./signin.ts), and from then on a session is a person.
 export const app: Example = {
   name: "leave",
-  // The session first: who you are, and where.
+  // The session first: who you are, and your draft.
   resources: [session, team],
   render,
   // Signed in or not: a signed-out tab writes nothing, Undo included.
@@ -20,7 +20,7 @@ export const app: Example = {
   // The ledger's who is the person, not the visit.
   who: (sessionId) => sessionOf(sessionId).person?.id ?? sessionId,
   index,
-  address: { doc: "session", path: "/page" }, // a screen's URL is where the session goes (the server routes it)
+  address: { doc: "session", path: "/page" }, // a tab's URL is where it stands: the session says where it may, the kernel moves the tab
   identify, // a trusted proxy's header, or the CLI's token (./signin.ts)
   routes: { "/login": signIn },
   delta, // the documents are delta's (./delta.ts)

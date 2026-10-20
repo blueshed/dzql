@@ -96,7 +96,7 @@ export async function extract(at: string) {
       n: i + 1,
       name: s.name,
       as: s.as,
-      kind: s.does ? "does" : s.cannot ? "cannot" : "closesTab",
+      kind: s.does ? "does" : s.cannot ? "cannot" : s.closesTab ? "closesTab" : "opensTab",
       doc: w?.doc ?? null,
       session: w?.doc === session,
       ops: (w?.ops ?? []).map((op) => ({ op: op.op, path: op.path, ...place(w!.doc, op.path), permitted: permitted(w!.doc, op.op, op.path) })),

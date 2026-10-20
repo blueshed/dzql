@@ -16,8 +16,8 @@ export const app: Example = {
   name: "wedding",
   resources: [session, household, board, wedding, welcomeDoc, everyone],
   // The welcome until a code says who you are, then whichever of the two it makes you.
-  render(sessionId) {
-    const visit = sessionDoc.read(sessionId);
+  render(sessionId, address) {
+    const visit = sessionDoc.read(sessionId, address); // the visit, where this tab stands
     const page = visit.kind === "household" ? renderHousehold(visit, sessionId) : visit.kind === "couple" ? renderBoard(visit) : undefined;
     return page ?? welcome(weddingDoc.welcome(), visit.note, toldAt(sessionId, "session", "/code"));
   },
@@ -25,7 +25,7 @@ export const app: Example = {
   // exists) shouldn't be able to write, undo included, as if it were still in.
   active: (sessionId) => sessionDoc.read(sessionId).code !== null,
   index,
-  address: { doc: "session", path: "/page" }, // a screen's URL is where the session goes (the server routes it)
+  address: { doc: "session", path: "/page" }, // a tab's URL is where it stands: the visit says where it may, the kernel moves the tab
   routes,
   delta, // the documents are delta's (./delta.ts)
   session: sessions.of, // a visit is a numbered row, named by its cookie

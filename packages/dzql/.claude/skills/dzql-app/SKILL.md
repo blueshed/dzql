@@ -48,8 +48,10 @@ least that makes the next story pass; `bun run stories` after each.
    (`{ ledger: true }`). → [resource](reference/resource.md); refusing, saying why,
    [refusal](reference/refusal.md); a document that would grow forever, [scope](reference/scope.md)
 4. **The session**, `resources/visit/`: each visitor's own document, a `perSession` resource listed
-   first, found by its cookie (`sessionRows`). It keeps only what the stories need: where you are
-   is one **address** (`page`), which the URL follows. → [bento](reference/bento.md#where-you-are-the-address)
+   first, found by its cookie (`sessionRows`). It keeps only what the stories need: who you are and
+   what is yours. Where you are is one **address**, each tab's own and its URL: written on the
+   session (`/page`), which says where a tab may stand, and the kernel moves the tab that sent it.
+   → [bento](reference/bento.md#where-you-are-the-address)
 5. **The page**, `page.ts` and each `<name>-view.ts`: a **box** of **cells** (`boxPage`), a list
    `rows()` of `row()`s, a deed a `tool()`, a drawer or a modal over it, a refusal drawn where it
    happened (`toldAt`). `surfaces.ts` makes the bento once (`bento({ icon, session, leave })`);

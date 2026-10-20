@@ -29,14 +29,14 @@ const among = (stories: Stories, ...names: string[]): Stories => ({ ...stories, 
 const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hello" }] };
 const hello: Story = { name: "Ada says hello", as: "ada", does: say, seen: ["ada", "bob"], untold: ["cy", "dee", "eve"] };
 /** Chat, its page drawn otherwise: what `change` makes of the message form. */
-const chatWith = (change: (html: string) => string): Example => ({ ...chat, render: (sessionId) => change(chat.render(sessionId)) });
+const chatWith = (change: (html: string) => string): Example => ({ ...chat, render: (sessionId, address) => change(chat.render(sessionId, address)) });
 const MESSAGE_FORM = /<form class="say"[^>]*data-write='\{"doc":"room"[^]*?<\/form>/;
 /** Each story's failures, told among chat's cast, and with `byHand` done by hand too. */
 const told = async (example: Example, stories: Story[], byHand = false) => (await run(example, { ...chatStories, stories }, undefined, { byHand })).outcomes.map((o) => o.failures);
 /** leave, its calendar made wrong as `wrong` says (src/by-hand.test.entry.ts); "" is leave's own. */
 const leaveWith = async (wrong: string): Promise<Example> => {
   const { example: leave } = await load("leave");
-  return { ...leave, index: wrongPage, render: (sessionId) => leave.render(sessionId).replace('data-applet="calendar"', `data-applet="calendar" data-wrong="${wrong}"`) };
+  return { ...leave, index: wrongPage, render: (sessionId, address) => leave.render(sessionId, address).replace('data-applet="calendar"', `data-applet="calendar" data-wrong="${wrong}"`) };
 };
 
 describe("the stories by hand", () => {
@@ -80,7 +80,7 @@ describe("the stories by hand", () => {
     expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], []]);
     expect(report.byHand).toMatchObject({ stories: 3 });
 
-    const wrong = (change: (html: string) => string): Example => ({ ...leave, render: (sessionId) => change(leave.render(sessionId)) });
+    const wrong = (change: (html: string) => string): Example => ({ ...leave, render: (sessionId, address) => change(leave.render(sessionId, address)) });
     const unseen = wrong((html) => html.replace('<form class="sign-in"', '<form style="display: none" class="sign-in"'));
     const done = await run(unseen, { ...among(told, "visitor"), stories: posts }, undefined, { byHand: true });
     expect(done.outcomes.map((o) => o.failures)).toEqual([["by hand, visitor could not post to /login: a field of its form is not to be seen"], ["by hand, visitor could not post to /login: a field of its form is not to be seen"]]);
@@ -142,7 +142,7 @@ describe("the stories by hand", () => {
     const { example: ticker, stories: told } = await load("ticker");
     const watches = named(told, "Ann watches Charlie Metals, and only her board grows");
     const plus = write("desk", "replace", "/page", "board?new");
-    const flat: Example = { ...ticker, render: (sessionId) => ticker.render(sessionId).replaceAll(plus, ` style="display: block; width: 0; height: 0; padding: 0; border: 0; overflow: hidden"${plus}`) };
+    const flat: Example = { ...ticker, render: (sessionId, address) => ticker.render(sessionId, address).replaceAll(plus, ` style="display: block; width: 0; height: 0; padding: 0; border: 0; overflow: hidden"${plus}`) };
     expect((await run(flat, { ...told, stories: watches })).outcomes[0]!.failures).toEqual([]);
     expect((await run(flat, { ...told, stories: watches }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual(['by hand, ann could not get to "board?new": the way to "board?new" from "board": the control for it is of no size']);
   }, 60000);
@@ -210,7 +210,7 @@ describe("the stories by hand", () => {
 
   test("a refusal whose write a control on the page sends is tried by hand: leave's days hidden by a stylesheet fail the story that types one", async () => {
     const { example: leave, stories: told } = await load("leave");
-    const hidden: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replaceAll('<form class="days"', '<form class="days" style="display: none"') };
+    const hidden: Example = { ...leave, render: (sessionId, address) => leave.render(sessionId, address).replaceAll('<form class="days"', '<form class="days" style="display: none"') };
     // Bo's weekend is asked for by the Ask button, which is to be seen: pressed, and refused, it passes
     const refusals = named(told, "Ann sets her draft's last day before its first, and is told so", "Bo asks for a draft that is only a weekend, and is told it has no working days");
     const report = await run(hidden, { ...among(told, "ann", "bo"), stories: refusals }, undefined, { byHand: true });

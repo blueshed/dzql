@@ -7,16 +7,17 @@ import { integer } from "./values";
 import { refuse } from "dzql/rendering/refusal";
 
 // A visit, kept in delta (`session:<id>`, ../delta.ts): what one session is doing on the site.
-// `code` is who they are; the page and how its collections are read is where they are; `note` is
-// what the welcome says back to a resend. Nothing here goes on the ledger: which page a tab is on, or
-// which drawer it has open, is not the wedding's history, and a household pressing Undo means
-// "take back my last answer", never "go back a page".
+// `code` is who they are; how its collections are read is theirs; `note` is what the welcome says
+// back to a resend. Where they are -- the page, and the drawer open over it -- is each tab's own
+// (dzql/rendering/tabs), given beside the visit to draw and to shape a write by. Nothing here goes on
+// the ledger: which page a tab is on, or which drawer it has open, is not the wedding's history, and
+// a household pressing Undo means "take back my last answer", never "go back a page".
 
 export type Kind = "household" | "couple";
 
 export type Ui = {
   /**
-   * Where the visit is: one address (src/rendering/bento.ts). The page -- "" is the household's photo or
+   * Where the tab is: one address (src/rendering/bento.ts), the tab's own. The page -- "" is the household's photo or
    * the couple's, of every family; "list", "everyone" -- and after a `?` the one thing open over
    * it: a guest's drawer (`?guest=2`), a family's (`?family=2`), one opened by its name alone
    * (`?gifts`, `?day`, `?stay` for a household; `?courses`, `?gifts`, `?events`, `?places` for
@@ -65,13 +66,15 @@ export function whose(code: string): { kind: Kind; id: string } | null {
   return couple ? { kind: "couple", id: couple.id } : null;
 }
 
-function visitOf(id: string): Visit {
+/** The visit as kept, and where the tab stands (`page`), which no visit keeps. */
+function visitOf(id: string, page: string | null = null): Visit {
   const row = readDoc<{ visits?: Partial<Visit> }>(`session:${id}`)?.visits ?? {};
-  return { code: row.code ?? null, page: row.page ?? null, reading: row.reading ?? null, filter: row.filter ?? null, hide: row.hide ?? null, note: row.note ?? null };
+  return { code: row.code ?? null, page, reading: row.reading ?? null, filter: row.filter ?? null, hide: row.hide ?? null, note: row.note ?? null };
 }
 
-export function read(id: string): SessionDocument {
-  const v = visitOf(id);
+/** A visit, and, given one, where its tab stands (`page`): what a page is drawn from. */
+export function read(id: string, page?: string): SessionDocument {
+  const v = visitOf(id, page);
   const ui: Ui = {};
   if (v.page !== null) ui.page = v.page;
   if (v.reading) ui.reading = v.reading;
@@ -104,7 +107,7 @@ function after(before: Visit, ops: PatchOp[]): Visit {
     } else if (field === "page") {
       // The address is the page and whatever is open over it, so going anywhere puts away the
       // drawer or the modal that was open. How each collection is read, and what find says, are
-      // the collection's own and stay.
+      // the collection's own and stay. It is the tab's: the kernel moves the tab that sent it.
       next.page = removing ? "" : String(op.value ?? "");
     } else {
       const ui: Collections = { reading: next.reading ?? undefined, filter: next.filter ?? undefined, hide: next.hide ?? undefined };
@@ -115,9 +118,9 @@ function after(before: Visit, ops: PatchOp[]): Visit {
   return next;
 }
 
-/** What a write to a visit becomes: each field it moves, replaced whole (at `/visits`). */
-export function shape(id: string, ops: PatchOp[]): PatchOp[] {
-  const before = visitOf(id);
+/** What a write to a visit becomes, from the tab that sent it, where it stands (`page`): each field it moves, replaced whole (at `/visits`). */
+export function shape(id: string, page: string, ops: PatchOp[]): PatchOp[] {
+  const before = visitOf(id, page);
   const next = after(before, ops);
   return (Object.keys(next) as (keyof Visit)[])
     .filter((field) => JSON.stringify(next[field]) !== JSON.stringify(before[field]))
@@ -126,14 +129,13 @@ export function shape(id: string, ops: PatchOp[]): PatchOp[] {
 
 /** A modal asks one question; the write that answers it puts it away: an add answers the
  * ask, a removal answers the asking-first. A removal goes back to the drawer it was asked from --
- * the family a guest was taken off, the list a row left -- and an add to the page. The ops that do
- * it, for the visit, or none. */
-export function answered(session: SessionDocument, ops: { op: string; path: string }[]): PatchOp[] {
-  const at = over(session.ui);
-  if (at.new !== undefined && ops.some((op) => op.op === "add" && op.path.endsWith("/-"))) return [{ op: "replace", path: "/visits/page", value: at.path }];
-  if (at.confirm === undefined || !ops.some((op) => op.op === "remove")) return [];
+ * the family a guest was taken off, the list a row left -- and an add to the page. Where the tab
+ * that wrote goes, from where it stands (`page`), or nowhere. */
+export function answered(page: string, ops: { op: string; path: string }[]): string | undefined {
+  const at = over({ page });
+  if (at.new !== undefined && ops.some((op) => op.op === "add" && op.path.endsWith("/-"))) return at.path;
+  if (at.confirm === undefined || !ops.some((op) => op.op === "remove")) return undefined;
   // a row of a page drawn from its shape (src/rendering/derive.ts) is confirmed by its id alone, and goes back to that page
   const [list, family] = at.confirm.split("/");
-  const back = family === undefined ? at.path : list === "households" ? address(at.path, "family", family) : address(at.path, list);
-  return [{ op: "replace", path: "/visits/page", value: back }];
+  return family === undefined ? at.path : list === "households" ? address(at.path, "family", family) : address(at.path, list);
 }

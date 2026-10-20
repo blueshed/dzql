@@ -613,7 +613,7 @@ describe("chat", () => {
     for (const [name, text] of [["Bob", "one"], ["Bob", "two"], ["Bob", "three"], ["Ada", "mine"], ["Ada", "mine too"]]) {
       await inDelta.call("delta", { doc: `room:${room}`, ops: [{ op: "add", path: "/messages/-", value: { name, text, sent_at: Date.now() } }] });
     }
-    const page = await assemble(example).draw(ada);
+    const page = await assemble(example).draw(ada, "");
     const messages = page.slice(page.indexOf('id="messages"'));
     expect(messages.match(/<span class="name">Bob<\/span>/g)).toHaveLength(1); // three in a row, named once
     expect(messages.match(/<span class="face" aria-hidden="true">B<\/span>/g)).toHaveLength(1); // and his face once, at the start of the run

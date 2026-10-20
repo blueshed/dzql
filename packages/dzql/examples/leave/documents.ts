@@ -9,8 +9,8 @@ export type { Person, Request, Role, Span, Status, Team } from "./calendar";
 
 // leave's two documents as its pages read them, and the rules a write to each follows. The team
 // (`team:1`): its people and every request. A session (`session:<id>`): who is signed in, if anyone,
-// where they are -- one address, `path?what=which` (src/rendering/bento.ts) -- and their draft: the days
-// they have dragged across and not yet asked for, theirs alone until they ask.
+// and their draft: the days they have dragged across and not yet asked for, theirs alone until they
+// ask. Where they are -- one address, `path?what=which` (src/rendering/bento.ts) -- is each tab's own.
 
 /** The one team. */
 export const TEAM = "1";
@@ -23,13 +23,13 @@ export function team(): Team {
   return { name: doc.teams.name, people, requests: requests.sort((a, b) => a.starts.localeCompare(b.starts) || Number(a.id) - Number(b.id)) };
 }
 
-export type Session = { person: Person | null; page: string; draft: Span | null };
+export type Session = { person: Person | null; draft: Span | null };
 
-/** Who a session is, if anyone, where, and their draft. A person no longer on the team is nobody. */
+/** Who a session is, if anyone, and their draft. A person no longer on the team is nobody. */
 export function session(sessionId: string): Session {
-  const row = readDoc<{ sessions?: { person_id?: number | string | null; page?: string | null; draft?: Span | null } }>(`session:${sessionId}`)?.sessions ?? {};
+  const row = readDoc<{ sessions?: { person_id?: number | string | null; draft?: Span | null } }>(`session:${sessionId}`)?.sessions ?? {};
   const person = row.person_id == null ? null : (team().people.find((p) => p.id === String(row.person_id)) ?? null);
-  return person ? { person, page: row.page ?? "", draft: row.draft ?? null } : { person: null, page: "", draft: null };
+  return person ? { person, draft: row.draft ?? null } : { person: null, draft: null };
 }
 
 // ───────────────────────────── where you are ─────────────────────────────
@@ -40,7 +40,7 @@ const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 /** An id as delta names a row: letters, digits and dashes. */
 const ID = /^[\w-]+$/;
 
-/** An address this session may stand at, or undefined: the calendar (from this month, or a month it names) or the list, and over it one request's drawer, the asking-first, or the draft. */
+/** An address a tab of this session may stand at, or undefined: the calendar (from this month, or a month it names) or the list, and over it one request's drawer, the asking-first, or the draft. */
 export function placed(value: unknown): string | undefined {
   const { path, what, which = "" } = parseAddress(String(value ?? ""));
   if (path !== "" && path !== "list" && !MONTH.test(path)) return undefined;
@@ -55,11 +55,13 @@ export function placed(value: unknown): string | undefined {
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * A session's write as it takes it: moving about; signing out, which forgets where you were; or your
- * draft, set whole (a drag) or a day at a time (the drawer's fields), refused when it ends before it
- * begins, and dropped when you cancel it. Setting it opens its drawer; dropping it closes it.
+ * A session's write as it takes it, from the tab that sent it, where it stands (`page`): moving
+ * about; signing out, which forgets where you were; or your draft, set whole (a drag) or a day at a
+ * time (the drawer's fields), refused when it ends before it begins, and dropped when you cancel it.
+ * Setting it opens its drawer; dropping it closes it. Where the tab goes (`/page`) is the tab's: the
+ * kernel moves it, and writes the rest.
  */
-export function shapeSession(before: Session, ops: PatchOp[]): PatchOp[] {
+export function shapeSession(before: Session & { page: string }, ops: PatchOp[]): PatchOp[] {
   let { page, draft } = before;
   for (const op of ops) {
     const [field, day] = splitPath(op.path);
