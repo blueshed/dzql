@@ -4,7 +4,7 @@ When the page should be drawn where the documents are: many people at once, slow
 
 **What stays:** the documents' definitions, their paths and the history of migrations; the rows, in the same data folder (`DATA_PATH`, else `data/`), and the rows kept before; `startServer({ port, dev, dataDir })`, which opens the store as the server starts and closes it as it stops; the HTTP route (`/api/status`); the look; `stories.ts`, each story under its key, a few gaining a body on their own line; and the tests of a document (`documents.ts` says where they are held) and of the page in a browser (both pages are the bento's HTML): `site.test.ts`, `message.test.ts`, `order.test.ts`, `kitchen.test.ts` and the moves'.
 
-**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; `orderDocs` becomes the store every document is in (`store.ts`). And the test of what the light page alone did (`app.test.ts`), which becomes the thin page's.
+**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; `orderDocs` becomes the store every document is in (`store.ts`). The test of what the light page alone did (`app.test.ts`) becomes the thin page's, and `CLAUDE.md` and `README.md` become create-dzql's.
 
 ```sh
 rm src/app.tsx src/resources/bento.tsx src/resources/toast.ts src/resources/status/status.ts src/resources/status/status-view.tsx src/resources/message/message-view.tsx src/resources/order/order-view.tsx
@@ -110,7 +110,7 @@ function keptBefore(dataDir = ""): [Schema, Snapshot][] {
 }
 
 export const store = openStore({
-  schema: { tables: { ...order.schema.tables, ...message.schema.tables } },
+  schema: [order.schema, message.schema], // each resource's, kept as one
   migrations: { list: migrations, app: "order", schema: order.schema },
   // each document compiled; a new database takes the rows kept before, then the documents are served
   prepare: async (pool, { dataDir }) => {
@@ -388,13 +388,17 @@ export async function startServer({
   port = undefined as number | undefined,
   dev = undefined as boolean | undefined,
   dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data`,
+  model = process.argv.includes("--model"),
 } = {}) {
   const status = statusApi();
+  // in development (`bun dev`), the model's page beside the app at /model; production never registers it
+  const modelling = model && (await (await import("dzql/model")).modelRoute());
   return serve(
     compose(
       await appOf(app, { dataDir }), // "/", every other path a screen, the socket "/ws", and the documents on it
       // What isn't communication is an HTTP route (see src/resources/)
       { routes: { "/api/status": { GET: status.get } } },
+      modelling,
     ),
     { port, dev },
   );
@@ -404,7 +408,12 @@ export async function startServer({
 if (import.meta.main) await run(startServer);
 ```
 
-`bun run stories` tells the stories, and `bun install` brings the `dzql-app` skill, which the app grows with from here:
+`bun dev` serves the model's page beside the app, `bun run stories` tells the stories, and `bun install` brings the `dzql-app` skill, which the app grows with from here:
+
+```json
+// package.json: in place of "dev": "bun --hot src/routes.ts",
+"dev": "bun --hot src/routes.ts --model",
+```
 
 ```json
 // package.json: after "model": "dzql model",
@@ -415,6 +424,82 @@ if (import.meta.main) await run(startServer);
 // package.json: in place of "prepare": "delta install-skills --skip bun-route,dzql-app"
 "prepare": "delta install-skills --skip bun-route"
 ```
+
+The app is now one `bun create dzql` makes, and says so: its `CLAUDE.md` and `README.md` are create-dzql's, under its own name:
+
+````md
+// CLAUDE.md: under its heading
+An app on dzql: stories first, then the documents a person needs in front of them to act, then
+the page the server draws from them. The skills say how, and `bun install` puts them in
+`.claude/skills` (`delta install-skills`):
+
+- **modelling**: while someone tells you the stories, there to answer: the model's page
+  (`bun dev` serves it at `localhost:3000/model` beside the app, and prints a sign-in link for
+  each keeper; `bun run model login <link>`, then `bun run model <verb>`).
+- **dzql-app**: building or changing the app in `src/`: stories, documents, resources, the page.
+  `node_modules/dzql/examples/cafe/` is an app built from its model, laid out as this one is: its
+  README walks the path from the model to the app.
+- **delta-doc**: the documents themselves: schema, storage, the ledger. **railroad**: an applet drawn with it.
+
+## The shape
+
+An app is routes and resources on both sides of the socket, joined by documents; entities (the
+collections of delta's `defineSchema`) are behind them, on the server. Here the server draws every
+page, so the routes and resources are the server's:
+
+- `src/routes.ts` is the server: the app (its page, its socket, its resources) composed with any
+  HTTP route and, in development, the model's page at `/model`, on delta's one server (`serve`,
+  `run`). `bun dev` and `bun start` run it; never a `Bun.serve` of the app's own.
+- `src/store.ts` is where the documents are kept: Postgres, through dzql's `openStore` -- PGlite in
+  the process, in the data folder's `pg/` (`DATA_PATH`, a Railway volume, else `data/`; for a
+  test, a scratch folder of its own, or memory: `DATA_PATH=:memory:` in `.env.test`), or a server
+  at `DATABASE_URL`. The server opens it as it starts and closes it as it stops (`appOf(app, {
+  dataDir })`). Its schema (one, or each resource's: `openStore({ schema: [...] })`) takes the
+  model's `tables` once `dzql model` has made `model/`, and the app's own beside them.
+- `src/resources/<name>/` is one document: `<name>-api.ts` its document, registered with the store
+  (`register`); `<name>.ts` its resource (who may write it, what a write becomes), listed in the app's
+  `resources`; `<name>-view.ts` its part of the page, drawn by `src/page.ts`.
+- An applet is the only client resource.
+- People sign in by a link each, printed as the server starts (`signInLinks`, from
+  `dzql/rendering/links`), and sign out by the bento's `leave`: no email and no password unless a
+  story asks for them.
+
+## Working here
+
+- Start every feature with its story in `stories.ts`, watch `bun run stories` fail, build the
+  least that makes it pass. A story with no body yet (`story(name)`) is unproven until it has one.
+- The gate before a commit: `bun check`, `bun test`, `bun run stories`.
+- Never edit dzql or delta in `node_modules`; move to a later one by bumping it in `package.json`.
+````
+
+````md
+// README.md: under its heading
+An app in the shape `bun create dzql` makes: [dzql](https://github.com/blueshed/dzql/tree/main/packages/dzql)
+draws every page on the server and tells each one what changed, and
+[delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents and serves
+it, in Postgres: PGlite in the process, in the data folder (`DATA_PATH`, else `data/`), until
+`DATABASE_URL` names a server. A new one begins as nothing but its page, waiting for its first story.
+
+```sh
+bun dev          # http://localhost:3000, and the model's page at /model, where the stories are told first
+bun test         # the page is served and drawn, and every story passes
+bun run stories  # each story in stories.ts, told against the app
+bun run model    # the model's page alone, http://localhost:3001/model
+bun run stop     # a server started in the background
+```
+
+## How it grows
+
+- **Stories first.** `stories.ts` says who does what and who then sees it, each a sentence a
+  customer could call true or false. Tell one, watch it fail, build the least that makes it pass.
+- **Routes and resources.** `src/routes.ts` is the server: the app's page and socket, any HTTP
+  route, and in development the model's page, on delta's one server (`@blueshed/delta/serve`: the
+  page, the socket, `/health`), never a `Bun.serve` of its own. Each document is a resource in
+  `src/resources/<name>/`: its document (`<name>-api.ts`), its rules (`<name>.ts`) and its part of
+  the page (`<name>-view.ts`). The first story says which document a person needs in front of them
+  to act.
+- **The page** is `src/page.ts`, drawn by the server from each resource's view.
+````
 
 ## The stories
 
@@ -532,4 +617,4 @@ Working: `tests/evolve.ts` makes a new app from this template, applies this page
 - **What changed for the people using it**, each by where it is drawn: Saved and Not saved are said beside the box, not in a toast; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
 - **The session:** nobody signs in, so the cookie is the session and no row is kept by it (`Example.session` left out). Sign-in by link, a session kept as a row (`sessionRows`), is dzql-app's `signin.md`; delta's `auth-link` ([auth.md](auth.md)) is for a page that is delta's client, not this one.
 - **The store is the server's**, as `orderDocs`'s was: opened as it starts, on its data folder, and closed as it stops, so a test runs servers on folders of its own, and `bun dev`'s reload closes the last store before it opens the next (its ids carry on).
-- From here the app grows with `dzql-app`; the other references here are the light page's. `CLAUDE.md` and `README.md` still describe the light page: say the thin one, as create-dzql's do.
+- From here the app grows with `dzql-app`, as its `CLAUDE.md` says; the other references here are the light page's.

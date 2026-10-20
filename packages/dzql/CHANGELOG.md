@@ -310,6 +310,16 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **`openStore` takes several schemas** (20 October, root #130): `openStore({ schema: [order.schema,
+  message.schema] })`, each resource's own, kept as one, where an app spread their `.tables` into
+  one; a table two of them declare is refused as the store is said
+  (`tests/delta-pg/app-store-pglite.test.ts`). One schema is taken as before.
+- **create-dzql's CLAUDE.md and README say what is true of any app in its shape** (20 October, root
+  #130): "An app in the shape `bun create dzql` makes", "a new one begins as nothing but its
+  page", a test's data in a scratch folder or in memory, the schema one or each resource's. The
+  evolve skill's thin-client step carries both word for word, and `scripts/docs.ts` holds the two
+  equal.
+
 - **Cmd+Enter or Ctrl+Enter in a textarea sends its form** (20 October, root #124): the client
   submits a `data-write` form from a textarea on either, as a field of one line submits on Enter;
   Enter alone is a new line, and an editing form's textarea (`data-write-on`, its fields writing)

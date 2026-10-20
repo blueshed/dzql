@@ -38,13 +38,13 @@ function run(cwd: string, cmd: string[]) {
   return out;
 }
 
-/** A reference's code blocks: the language, and the lines. */
+/** A reference's code blocks: the language, and the lines. A block that holds a fence of its own (Markdown's) is fenced by more backticks. */
 async function blocks(name: string) {
   const text = await Bun.file(`${references}/${name}`).text();
-  return [...text.matchAll(/^```(\w*)\n([\s\S]*?)^```$/gm)].map(([, lang, body]) => ({ lang, lines: body!.trimEnd().split("\n") }));
+  return [...text.matchAll(/^(`{3,})(\w*)\n([\s\S]*?)^\1$/gm)].map(([, , lang, body]) => ({ lang, lines: body!.trimEnd().split("\n") }));
 }
 
-/** Apply a section to an app: run its `bun add` and `rm` lines, and write each block whose first line names a file. */
+/** Apply a section to an app: run its `bun add` and `rm` lines, and write each block whose first line names a file: whole, under its heading (the line that names the app), or at a line. */
 async function apply(app: string, name: string) {
   for (const { lang, lines } of await blocks(name)) {
     if (lang === "sh") {
@@ -53,13 +53,18 @@ async function apply(app: string, name: string) {
       for (const line of lines.filter((l) => l.startsWith("rm "))) run(app, line.split(/\s+/)); // what a step takes away
       continue;
     }
-    const where = lines[0]!.match(/^\/\/ ([\w./-]+)(?:: (after|before|in place of) (.+))?$/);
+    const where = lines[0]!.match(/^\/\/ ([\w./-]+)(?:: (after|before|in place of|under its heading) ?(.*))?$/);
     if (!where) throw new Error(`${name}: a block's first line names no file: ${lines[0]}`); // every code block is applied
     const [, path, how, anchor] = where;
     const body = lines.slice(1);
     const file = join(app, path!);
     if (!how) {
       await Bun.write(file, body.join("\n") + "\n");
+      continue;
+    }
+    if (how === "under its heading") {
+      const [heading] = (await Bun.file(file).text()).split("\n");
+      await Bun.write(file, `${heading}\n\n${body.join("\n")}\n`);
       continue;
     }
     const text = (await Bun.file(file).text()).split("\n");

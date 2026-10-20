@@ -75,6 +75,15 @@ section up.
 
 ### Added
 
+- **The thin-client step leaves the app as `bun create dzql` makes one** (20 October, root #130;
+  needs dzql's next release, whose `openStore` takes several schemas): its `CLAUDE.md` and
+  `README.md` become create-dzql's, word for word, under the app's own heading (a block `//
+  CLAUDE.md: under its heading`, fenced by four backticks; `tests/evolve.ts` applies both forms,
+  and the skill's grammar says them), so the app's docs say the thin page and the `dzql-app`
+  skill it grows with; `scripts/docs.ts` holds the two to create-dzql's. `bun dev` serves the
+  model's page beside the app (`--model`), as create-dzql's does, and `store.ts` gives
+  `openStore` the two schemas, no longer spreading their `.tables`. The step is 620 lines, 86 of
+  them create-dzql's two files; the rest is 534, where it was 571.
 - **The kitchen has a view: the cook's cell** (20 October, root #122). evolve's `sqlite.md`, which
   adds the kitchen document, gives the light page a cell for it: each open order and what is on
   it (`KitchenCell`, `kitchen` in `order.ts`, the `Kitchen` type in `order-api.ts`), its story

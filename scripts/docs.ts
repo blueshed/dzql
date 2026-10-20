@@ -9,7 +9,8 @@
  * (`evals/<name>.json`): a skill is tested by a fresh session led by it, as code is by its tests.
  * And each of a shipped skill's reference pages (`reference/*.md`, `references/*.md`, `reference.md`)
  * has a line starting `Working:`, saying where its rules are shown working: an example its package's
- * tests run, the test that runs the page as written, or `none` and why.
+ * tests run, the test that runs the page as written, or `none` and why. And the evolve skill's
+ * thin-client step carries create-dzql's CLAUDE.md and README word for word.
  * `bun run affected` runs it.
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -54,6 +55,15 @@ const globs = skills.map(dirname).flatMap((d) => [`${d}/reference/*.md`, `${d}/r
 const pages = (await $`git ls-files ${globs}`.cwd(root).quiet().text()).split("\n").filter(Boolean);
 for (const page of pages) {
   if (!/^Working: /m.test(readFileSync(join(root, page), "utf8"))) wrong.push(`${page}: says nowhere where its rules are shown working (a line starting "Working:")`);
+}
+// the evolve skill's step to the thin client leaves an app as `bun create dzql` makes one: its
+// CLAUDE.md and README are create-dzql's, word for word, under the app's own heading
+const step = "packages/create-blueshed/template/.claude/skills/evolve/references/thin-client.md";
+const stepText = readFileSync(join(root, step), "utf8");
+for (const doc of ["CLAUDE.md", "README.md"]) {
+  const block = new RegExp(`^(\`{4,})md\\n// ${doc}: under its heading\\n([\\s\\S]*?)^\\1$`, "m").exec(stepText)?.[2];
+  const starter = /^# .*\n\n([\s\S]*)$/.exec(readFileSync(join(root, "packages/create-dzql/template", doc), "utf8"))?.[1];
+  if (block === undefined || block !== starter) wrong.push(`${step}: its ${doc} is not create-dzql's (packages/create-dzql/template/${doc}) under the app's heading`);
 }
 if (wrong.length) {
   console.error(wrong.join("\n"));

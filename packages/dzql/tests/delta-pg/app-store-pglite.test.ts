@@ -33,6 +33,17 @@ describe("openStore", () => {
     expect(() => store.last()).toThrow("The store is not open");
   });
 
+  test("several schemas, each a resource's, are one store's tables; a table two of them declare is refused as the store is said", async () => {
+    const said = defineSchema({ messages: { columns: { text: { type: "text", default: "Hello" } }, temporal: false } });
+    const store = openStore({ schema: [schema, said] });
+    store.register([notes, defineDoc("message:", { root: "messages", include: [], implied: true })]);
+    await store.open();
+    expect((await store.delta.call("open", { doc: "message:1" })).result.messages).toMatchObject({ text: "Hello" });
+    expect((await store.delta.call("open", { doc: "notes:" })).result.notes).toEqual({});
+    await store.close();
+    expect(() => openStore({ schema: [schema, defineSchema({ notes: { columns: {} } })] })).toThrow("Two schemas both declare the table notes");
+  });
+
   test("without a socket, served in this process; a folder of migrations not there runs none", async () => {
     const store = openStore({ schema, migrations: { dir: `${import.meta.dir}/no-such-folder` } });
     store.register([notes]);

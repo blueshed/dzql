@@ -22,6 +22,11 @@ differ, fixed where each differs.
   story keeps its words, and the template's `message-view.test.ts` goes.
 - **Typing not yet sent is kept, the caret gone or not** (#125, dzql's morph): the `refused` story
   keeps its second half through the step.
+- **The step leaves an app as `bun create dzql` makes one** (#130): create-dzql's CLAUDE.md and
+  README, word for word under the app's heading (`scripts/docs.ts` holds them equal), `bun dev`
+  with the model's page, and `openStore` taking several schemas. Every story keeps its words
+  through the step but `health` (an unknown page opens on the box), and the step writes no test
+  of the message's.
 
 ### The traps delta's examples found, removed (20 October, delta #88-#91)
 
