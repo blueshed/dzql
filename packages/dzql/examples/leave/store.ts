@@ -1,15 +1,18 @@
-import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { defineDoc, defineSchema, registerDocs, type DocDef } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { db, openTables } from "dzql/rendering/db";
 import { sessionRows } from "dzql/rendering/sessions";
 
-// leave's documents, in delta (`@blueshed/delta`). A team -- its people and their requests for days
+// leave's store: SQLite (dzql/rendering/db), its documents in delta (`@blueshed/delta`), each a
+// resource's (`resources/<name>/<name>-api.ts` registers it, with `register`). A team -- its people and their requests for days
 // off -- is one document, written by people and on the ledger. A session is who you are and your
 // draft -- the days you have dragged across and not yet asked for: yours alone until you ask, so
 // nobody is told of it. Where you are is each tab's own (its URL), never the session's. It is signed in by the sign-in page (./signin.ts), never over the wire, and never on the
 // ledger. How someone signs in -- an email and a password's hash, or a token's hash -- is a table
-// of its own that no document includes, so no hash can ever cross the wire. The tables are leave's own (`leave_`),
-// and every row is numbered: who a row is about is a person's number.
+// of its own that no document includes, so no hash can ever cross the wire. The tables are said
+// once, here, and made and seeded before any document is registered over them: the team's and the
+// session's, and those only the sign-in reads. They are leave's own (`leave_`), and every row is
+// numbered: who a row is about is a person's number.
 
 export const schema = defineSchema({
   teams: { table: "leave_teams", columns: { name: "text" }, temporal: false }, // an app from before tables kept their history: its migrations made them so (upgrade.test.ts holds such a database); keeping it is a migration of its own
@@ -48,14 +51,11 @@ if (!db.query("SELECT 1 FROM leave_teams").get()) {
 
 export const delta = createLocal();
 
-registerDocs(delta.server, db, schema, [defineDoc("team:", { root: "teams", include: ["people", "requests"] })], [], { ledger: true });
+/** A resource's documents, on delta over leave's tables: on the ledger unless it says not. */
+export const register = (docs: DocDef[], { ledger = true } = {}) => registerDocs(delta.server, db, schema, docs, [], { ledger });
 
-// A session, with no ledger: signing in, moving about and drafting are not the team's history. And
-// the session a cookie names, found and made by the cookie's hash.
-registerDocs(delta.server, db, schema, [
-  defineDoc("session:", { root: "sessions", include: [], implied: true, columns: { sessions: ["person_id", "draft"] } }),
-  defineDoc("visit:", { root: "sessions", scope: { cookie: ":cookie" }, include: [] }),
-]);
+// The session a cookie names, found and made by the cookie's hash, off the ledger.
+register([defineDoc("visit:", { root: "sessions", scope: { cookie: ":cookie" }, include: [] })], { ledger: false });
 export const sessions = sessionRows(delta, "sessions");
 
 export { db };

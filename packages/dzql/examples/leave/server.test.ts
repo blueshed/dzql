@@ -2,11 +2,12 @@ import { afterAll, afterEach, beforeAll, describe, expect, setSystemTime, test }
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { createServer } from "dzql/rendering/server";
 import { hear, type Heard } from "dzql/modelling/harness";
-import { may, placed, shape, shapeSession, type Person, type Team } from "./documents";
+import { may, shape, type Person, type Team } from "./resources/team/team-api";
+import { placed, shape as shapeSession } from "./resources/session/session-api";
 import { alsoOff, calendarHtml, clashes, colourOf, days, daysOf, isWorkingDay, listRows, mondayOf, nextDay, nextMonth, offOn, prevMonth, rowHtml, workingDaysOf, type CalendarProps } from "./calendar";
 import { app as example } from "./routes";
-import { session } from "./resources";
-import { db } from "./delta";
+import { session } from "./resources/session/session";
+import { db } from "./store";
 import { connectCli, runCommand } from "dzql/rendering/cli/commands";
 
 let server: ReturnType<typeof createServer>;

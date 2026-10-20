@@ -135,7 +135,7 @@ describe("Peter tells leave's stories on the model page and Claude builds leave;
     expect(load.stories.find((s) => s.post === "/login")).toMatchObject({ actor: "visitor", kind: "does" });
     expect(load.stories.some((s) => s.kind === "cannot")).toBe(true);
     const at = (start: string) => load.stories.findIndex((s) => s.text.startsWith(start));
-    const [team, session] = load.documents;
+    const [team, session] = ["team", "session"].map((name) => load.documents.find((d) => d.name === name)); // read in the order of its resources' folders
     expect(team).toMatchObject({ name: "team", root: "teams", own: false, held_by: ["ann", "bo", "mo"], fields: [{ name: "name", type: "text" }] });
     expect(team!.serves).toContain(at("Ann asks for her draft, and Mo and Bo see it"));
     expect(team!.holds.map((h) => [h.entity, h.under])).toEqual([["people", "teams"], ["requests", "teams"]]);

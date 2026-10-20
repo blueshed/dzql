@@ -3,27 +3,10 @@ import { serverWrite } from "dzql/rendering/documents";
 import { addressOf, moveTab } from "dzql/rendering/tabs";
 import { address, parseAddress } from "dzql/rendering/bento";
 import { splitPath } from "@blueshed/delta/core";
-import { may, session as sessionOf, shape, shapeSession, team as teamOf, TEAM, type Request } from "./documents";
+import { may, read as teamOf, shape, TEAM, type Request } from "./team-api";
+import { read as sessionOf } from "../session/session-api";
 
-// leave's two resources. The session: your draft, and who -- but who is written only by the sign-in
-// page (./signin.ts); over the wire a session's tab may move about, and the session draft and sign
-// out. The team is everyone's, and what a person may write to it is who they are (./documents.ts).
-
-export const session: Resource = {
-  docType: "session",
-  perSession: true, // keyed by the session id: this session's alone
-  ledger: false, // signing in, moving about and a draft are not the team's history (./delta.ts)
-  under: "/sessions",
-  resolveDoc: (ws) => ws.data.sessionId,
-  // Signed in: somewhere to stand, your draft to set, change and drop, and signing out. Never who you are.
-  permit(ws, op) {
-    if (sessionOf(ws.data.sessionId).person === null) return false;
-    if (op.path === "/person_id") return op.op === "remove";
-    if (op.path === "/draft") return op.op === "replace" || op.op === "remove";
-    return op.op === "replace" && (op.path === "/page" || op.path === "/draft/starts" || op.path === "/draft/ends");
-  },
-  shape: (ws, id, ops) => shapeSession({ ...sessionOf(id), page: addressOf(ws) }, ops), // from where the tab that sent it stands
-};
+// The team is everyone's, and what a person may write to it is who they are (./team-api.ts).
 
 export const team: Resource = {
   docType: "team",

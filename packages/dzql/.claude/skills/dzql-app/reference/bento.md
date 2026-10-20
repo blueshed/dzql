@@ -4,15 +4,17 @@ The kernel's parts for drawing a page as a box or a collection, with its drawers
 address that says where a person is. How a page is sent is [page.md](page.md).
 
 ```ts
-// examples/leave/page.ts (trimmed)
-const { tool, collectionPage, drawer, confirmModal, addTool, go, site, readingSwitch } = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
+// examples/leave/surfaces.ts
+export const surfaces = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
+
+// examples/leave/page.ts (trimmed): each resource's part of the page, composed
 
 export function render(sessionId: string, page: string): string { // page: where this tab stands
   const { person: me, draft } = sessionOf(sessionId);
   const { path, what, which } = parseAddress(page);                // "2026-10?request=1"
   …
-  const sheet = what === "request" && r ? requestSheet(t, me, r, path, sessionId) : what === "draft" ? draftSheet(t, me, draft, path, sessionId) : "";
-  const modal = what === "confirm" && r && stillMine(me, r) ? confirmModal("Take it back", `Take back ${days(r)}?`, write("team", "remove", `/requests/${r.id}`), go(address(path, "request", r.id)), "Take it back") : "";
+  const sheet = what === "request" && r ? requestSheet(t, me, r, path, sessionId) : what === "draft" ? draftSheet(t, me, draft, path, sessionId) : ""; // the team's view, the session's
+  const modal = what === "confirm" && r && stillMine(me, r) ? takeBack(r, path) : ""; // the team's view: confirmModal(...)
   return site(page, layers(collectionPage([{ label: t.name }], { key: "leave", reading, tools, body }), sheet, modal));
 }
 ```

@@ -4,10 +4,10 @@ A write refused says why beside the control that sent it; a write, an undo or a 
 it did. The rules are a resource's ([resource.md](resource.md)).
 
 ```ts
-// examples/leave/documents.ts: a rule in shape, in the story's words
+// examples/leave/resources/session/session-api.ts: a rule in shape, in the story's words
 if (ends < starts) throw refuse("The last day is before the first.");
 
-// examples/leave/page.ts: the line drawn beside the field that sent it
+// examples/leave/resources/team/team-view.ts: the line drawn beside the field that sent it
 `<input type="date" name="${which}"${write(doc, "replace", `${base}/${which}`)} value="${esc(s[which] ?? "")}"></label>${toldAt(sessionId, doc, `${base}/${which}`)}`
 
 // examples/wedding/resources/household/household.ts: a rule of time that holds against Undo too,

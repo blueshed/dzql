@@ -4,7 +4,7 @@ import { createTables, migrate, migrationStatus, type Migration, type Schema } f
 // one after another: each app's store migrates the one database as it loads, and imported side by side their top-level awaits would meet in one transaction
 type Migrating = { app: string; schema: Schema };
 const all: Migrating[] = [];
-const STORES: Record<string, string> = { chat: "../../examples/chat/store", leave: "../../examples/leave/delta", modeling: "../../src/modelling/page/delta", ticker: "../../examples/ticker/store", wedding: "../../examples/wedding/store" };
+const STORES: Record<string, string> = { chat: "../../examples/chat/store", leave: "../../examples/leave/store", modeling: "../../src/modelling/page/delta", ticker: "../../examples/ticker/store", wedding: "../../examples/wedding/store" };
 for (const name of ["chat", "leave", "modeling", "ticker", "wedding"]) all.push((await import(STORES[name]!)).migrating);
 const [chat, leave] = all as [Migrating, Migrating];
 

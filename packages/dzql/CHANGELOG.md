@@ -99,6 +99,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   Its 22 stories pass, with the same 3 warnings. The model's loader (`extract`) now reads a
   resource's api for code that touches a table with its own SQL, as it read `documents/<thing>.ts`
   (the wedding's couples, looked up by `whose()`, are read there).
+  Then leave: `resources/team/` and `resources/session/`, `documents.ts` split between their
+  apis and `resources.ts` between their resources; `page.ts` composes the team's view (the
+  calendar and the list, a request's drawer) and the session's (the door, the draft's drawer);
+  `calendar.ts`, the drawing the server and the applets share, and `signin.ts`, no document's,
+  stay at the root. Its tables stay `temporal: false`, the reason beside them, and
+  `upgrade.test.ts` still upgrades a database leave's older version left; its 25 stories pass.
 - **A ref keeps its surrogate** (20 October, #79, on Peter's design): a row that names a row a story
   can remove keeps, beside the key, what it shows of it, copied as it is written (`dish_name`,
   `dish_price` beside `dish`); the page shows the named row while it stands, and the copy once it
