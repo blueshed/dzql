@@ -18,7 +18,7 @@ import { rowAt, type Ledger } from "../ledger";
 import { meets, resolveScope, rowId, sameId, type Scope } from "../scope";
 import { holdsField, q, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { keeping, scopeValue } from "./keep";
-import { readDoc } from "./read";
+import { impliedDoc, readDoc } from "./read";
 import { carryUndeclared, closeRow, columnsOf, undeclaredColumns, undeclaredOf, current, decodeRow, insertCollectionRow, insertRow, leftOut, named, now, refuse, sqliteTime, updateRow } from "./rows";
 import { namesRootRow, validateOps } from "./validate";
 
@@ -76,7 +76,6 @@ export interface Registration<I> {
   findDoc(docName: string): Found | null;
   /** A document from the cache, or loaded into it. */
   load(docName: string, def: DocDef, docId: string): any | null;
-  emptyDoc(def: DocDef, docId: string): any;
   rootless(def: DocDef, docId: string): any;
   /** Another connection committed since: every copy dropped. */
   heardElsewhere(): boolean;
@@ -102,7 +101,7 @@ export type Failed = { error: { code: number; message: string } };
  */
 export function createWriter<I>(r: Registration<I>) {
   const { ws, db, schema, options, auth, ledger, custom, cache, implied, subscriptions } = r;
-  const { findDoc, load, emptyDoc, rootless, heardElsewhere, reloadEvicted, keepsReach, ownsOf, unheld } = r;
+  const { findDoc, load, rootless, heardElsewhere, reloadEvicted, keepsReach, ownsOf, unheld } = r;
 
   const me: Fanout = { holders, showing, announce };
   const fanouts = fanoutsOn.get(db) ?? new Set<Fanout>();
@@ -694,7 +693,7 @@ export function createWriter<I>(r: Registration<I>) {
         const show = (row: any) => showRow(m.def, schema, t.coll, row);   // the columns it holds
         if (was && is) ops.push(...changedFields(path, show(t.was), show(t.after)));
         else if (is) ops.push({ op: root ? "replace" : "add", path, value: show(t.after) });
-        else ops.push(root ? { op: "replace", path, value: m.def.implied ? show(emptyDoc(m.def, m.docId)[m.def.root]) : null } : { op: "remove", path });
+        else ops.push(root ? { op: "replace", path, value: m.def.implied ? show(impliedDoc(schema, m.def, m.docId)[m.def.root]) : null } : { op: "remove", path });
       }
       told.set(target, ops);
     }
@@ -820,7 +819,7 @@ export function createWriter<I>(r: Registration<I>) {
     if (!m) return;
     const doc = readDoc(db, schema, m.def, resolveScope(m.def, m.docId));
     if (doc) cache.set(docName, doc);
-    else if (m.def.implied) { cache.set(docName, emptyDoc(m.def, m.docId)); implied.add(docName); }
+    else if (m.def.implied) { cache.set(docName, impliedDoc(schema, m.def, m.docId)); implied.add(docName); }
     else cache.delete(docName);
   }
 

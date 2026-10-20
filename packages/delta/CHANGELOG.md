@@ -122,6 +122,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   #114): a line starting `Working:`, linking an example on GitHub (kanban, sites-bbox, lists, lobby,
   the create-blueshed template, dzql's), or for `recipe.md`, `tests/recipe.test.ts`. kanban's
   `board-view.tsx` builds its paths with `joinPath`, as `writes.md` (which quotes it) and
+- **An implied document's empty root is said once** (20 October, #92): `impliedDoc`
+  (`src/server/sqlite/read.ts`) is the row an implied document opens with before its first write,
+  for `open` (`load`), `open_at`, the write path's telling and a rootless walk alike; `sqlite.ts`'s
+  own `emptyDoc` is gone, and its column defaults are `leftOut`'s, as an add's are. Nothing a
+  client sees changes; the case suite passes unchanged.
+
   `paths.md` say, not with a template.
 - **The kanban example is routes and resources** (20 October, Peter's word: every app is routes
   and resources, joined by documents, as paintbrush is). `examples/kanban/` is `routes.ts` (the

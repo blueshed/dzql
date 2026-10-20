@@ -28,10 +28,10 @@ import { type DeltaOp, splitPath } from "../core";
 import { createLogger } from "./logger";
 import { createLedger, ledgerWho, socketCursor } from "./ledger";
 import { assertScopeKeys, resolveScope, rowId, whereOf } from "./scope";
-import { defaultForType, q, showDoc, showOps, type DocDef, type Schema } from "../schema";
+import { q, showDoc, showOps, type DocDef, type Schema } from "../schema";
 import { waitForLocks } from "./sqlite/ddl";
 import { keeping } from "./sqlite/keep";
-import { loadDocAt, readDoc } from "./sqlite/read";
+import { impliedDoc, loadDocAt, readDoc } from "./sqlite/read";
 import { named } from "./sqlite/rows";
 import { assertPath, parsePath, pathSql, startOf } from "../paths";
 import { createWriter, type Registration, type Written } from "./sqlite/write";
@@ -309,19 +309,7 @@ export function registerDocs<I = unknown>(
   // Open implied docs whose root row has not been written yet.
   const implied = new Set<string>();
 
-  function emptyDoc(def: DocDef, docId: string): any {
-    const rootTable = schema.tables[def.root]!;
-    const root: any = { id: rowId(docId) };
-    for (const [col, colDef] of Object.entries(rootTable.columns)) {
-      root[col] = colDef.default ?? (colDef.nullable ? null : defaultForType(colDef.type));
-    }
-    const doc: any = { [def.root]: root };
-    for (const coll of def.include) doc[coll] = {};
-    return doc;
-  }
-
-  /** A single document whose root row is not there: the root absent, each included collection empty. */
-  const rootless = (def: DocDef, docId: string): any => ({ ...emptyDoc(def, docId), [def.root]: null });
+  const rootless = (def: DocDef, docId: string): any => ({ ...impliedDoc(schema, def, docId), [def.root]: null });
 
 
   // Who has each of these documents open, by name (for scoped fan-out)
@@ -329,7 +317,7 @@ export function registerDocs<I = unknown>(
 
   const r: Registration<I> = {
     ws, db, schema, options, auth, ledger, custom, cache, implied, subscriptions,
-    findDoc, load, emptyDoc, rootless, heardElsewhere, reloadEvicted, keepsReach, ownsOf, unheld,
+    findDoc, load, rootless, heardElsewhere, reloadEvicted, keepsReach, ownsOf, unheld,
     gated, whoOf, cursorOf, identityOf, whenOwned, guarded, underLock,
   };
   const writer = createWriter(r);
@@ -416,7 +404,7 @@ export function registerDocs<I = unknown>(
     if (doc) return doc;
     doc = readDoc(db, schema, def, resolveScope(def, docId));
     if (!doc && def.implied) {
-      doc = emptyDoc(def, docId);
+      doc = impliedDoc(schema, def, docId);
       implied.add(docName);
     }
     if (doc) cache.set(docName, doc);
