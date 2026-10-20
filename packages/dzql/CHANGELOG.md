@@ -445,6 +445,17 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **A time only the server sets (`default: "now"`) on Postgres** (20 October, root #138), as delta
+  keeps it on SQLite and the JSON file: `delta_apply` gives a column it names that an add leaves out
+  the write's time to the millisecond (`_delta_default`, `_delta_server_time` in 001a), a replace
+  of the row whole keeps the row's own (`_delta_whole`), and an implied document's root shows none
+  until its first write makes it with the write's time (`impliedRoot`, `_delta_make_implied`). The
+  table's default is `date_trunc('milliseconds', now())`, never `'now'`, which Postgres reads once,
+  as the table is made; a column added with it gives each row already there the migration's time.
+  Values come back in UTC, as delta's `utcTime` gives them. delta's `serverTimeCases` run in
+  `tests/delta/writes.test.ts`, and `tests/delta/server-time-pglite.test.ts` has the implied root
+  and the migration. Snapshots unchanged: no compiled schema has such a column.
+
 - **A document's own rule (`accept`) on Postgres** (20 October, roots #138, #139): the listener asks
   delta's `refusedBy` of a write before `delta_apply`, given the writer's identity, so the rule holds
   as it does on SQLite. delta's `acceptCases` run in `tests/delta/writes.test.ts`, and

@@ -118,7 +118,8 @@ BEGIN
       _delta_build_path(p_def.root_collection, p_id::text), _delta_build_path(p_def.root_collection, '-')
       USING ERRCODE = '23505';
   END IF;
-  v_row := _delta_implied_root(p_def, p_id);
+  -- a time only the server sets, which it showed as none, is the time it is made
+  v_row := _delta_implied_root(p_def, p_id) || _delta_server_times(_delta_cols(p_def.root_collection, v_coll.columns_def), p_ts);
   IF v_coll.temporal THEN v_row := v_row || jsonb_build_object('valid_from', p_ts, 'valid_to', NULL); END IF;
   PERFORM _delta_row_add(p_def.root_collection, v_coll.table_name, v_row);
 END;

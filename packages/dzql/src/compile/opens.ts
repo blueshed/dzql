@@ -14,7 +14,7 @@
  * A pure function: the same definitions give the same text, byte for byte. A definition it cannot
  * compile is an error naming the document, never SQL that half works.
  */
-import { q, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
+import { isServerTime, q, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
 import { columnSqlType, distinctNames, lit, viewOf } from "../postgres/sql";
 export { lit };
 
@@ -85,11 +85,16 @@ const standing = (table: ResolvedTable, alias: string, at = "p_at"): string =>
     ? ` AND (CASE WHEN ${at} IS NULL THEN ${alias}.valid_to IS NULL ELSE ${alias}.valid_from <= ${at} AND (${alias}.valid_to IS NULL OR ${alias}.valid_to > ${at}) END)`
     : "";
 
-/** An implied document's root before its row is there: its id and each column's default, as `_delta_implied_root` gives it. */
+/**
+ * An implied document's root before its row is there: its id and each column's default, as
+ * `_delta_implied_root` gives it -- a time only the server sets, none, until the first write makes
+ * the row (`_delta_make_implied`).
+ */
 export function impliedRoot(table: ResolvedTable, doc: DocDef, id = "v_id"): string {
   const held = doc.columns?.[doc.root];
   const value = (d: ColumnDef): unknown =>
-    d.default !== undefined && d.default !== null ? d.default
+    isServerTime(d) ? null
+    : d.default !== undefined && d.default !== null ? d.default
     : d.nullable ? null
     : d.type === "text" ? ""
     : d.type === "integer" || d.type === "real" ? 0

@@ -146,7 +146,7 @@ export async function check(guards: Guards, write: { actor: string; doc: string;
     why.push(`story ${rule.story} ("${rule.text}") ${failed}`);
   }
   // refused in the words of the `cannot` story whose requirements hold: two on one write each say
-  // their own state (the Shed's feedback: a broken tool was refused as one someone had out)
+  // their own state (an evaluation's feedback: a damaged book was refused as one someone held)
   const cannots = saying.filter((r) => !r.allow && r.actor === actor);
   for (const cannot of cannots) if (!(await unmet(guards, cannot, { doc, op, entity, id, rowOf }))) return { ok: false, reason: cannot.text, story: cannot.story };
   // none whose state holds: why the story that would have let it did not, else the first that refuses it

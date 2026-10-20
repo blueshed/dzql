@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- **`./testing`'s unique-constraint app is a library, and `default: "now"` is a timestamptz's
+  alone** (20 October, root #138). `shedApp` is `libraryApp`: its documents `case-library:` and
+  `case-reader:` (were `case-shed:`, `case-member:`), its tables `case_books`, `case_readers`
+  and `case_holds` (were `case_tools`, `case_members`, `case_loans`), a hold's `book` and
+  `ended` (were a loan's `tool` and `returned`); `uniqueCases` asks the same of it. The
+  migration cases' table is `holds`, likewise. A column whose default is the text `"now"` and
+  whose type is not `timestamptz` is refused by `defineSchema`, naming the column, where it was
+  taken as text. **To move across**: a backend that stands `shedApp` up by name imports
+  `libraryApp`, and drops `case_books`, `case_readers` and `case_holds` where it dropped the old
+  tables; a text column defaulting to the word "now" gives it another default.
+
 - **A connection writes only what it has opened, and a time is only what Postgres's timestamptz
   holds** (20 October, root #136). Two writes that used to land are now refused, on every backend:
   - A `delta` from a socket for a document that socket has not opened (or has closed, or was let
@@ -71,6 +82,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it when you like.
 
 ### Added
+
+- **A time only the server sets: `default: "now"`** (20 October, root #138). A `timestamptz`
+  column with `default: "now"` takes the server's time where a write leaves it out, as the row is
+  written: every row of a write the same time (SQLite's, the write's; Postgres's, its
+  transaction's), in UTC to the millisecond as `utcTime` gives it, on SQLite, the JSON file and
+  dzql's Postgres. With the document's rule (`accept`) refusing a time a client sends, when
+  something happened is the server's to say, never a page's clock (the Shed's run 5, finding 8).
+  A replace of the row whole that leaves it out keeps the row's own: it is when the row was made,
+  and a client the rule forbids to send it could not otherwise replace the row without moving it
+  (RFC 6902's "a field left out takes its default" holds for every other column). An implied
+  document's root shows none (`null`) until its first write makes the row. The database never
+  stores the text: SQLite's table default is the time a row is written
+  (`strftime('%Y-%m-%dT%H:%M:%f+00:00', 'now')`), and `addColumn` (`migrateSchema`), which
+  SQLite cannot give a default that is not a constant, adds the column bare and gives each row
+  already there, every version, the migration's time by its own `UPDATE`, as Postgres's `ADD
+  COLUMN ... DEFAULT` does. `serverTimeCases` and `stampedApp` in `./testing` ask every backend,
+  and `migrationCases` the migration's time; `isServerTime` in `./backend` is how a backend
+  outside the package knows the column. delta-doc's `schema.md` teaches it, and the recipe's
+  messages are timed so.
 
 - **A document's own rule: `defineDoc(..., { accept })`** (20 October, roots #138, #139). What the
   schema cannot say (a name that is not blank, a list only some people write) is asked of each op

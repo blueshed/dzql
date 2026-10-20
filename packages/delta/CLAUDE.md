@@ -65,7 +65,8 @@ exact version, or the setup stops reading it).
   `tests/migrations-from-empty.test.ts`.
 - **Three op verbs** (`add`, `replace`, `remove`) on `/<coll>/<id>[/field]` paths. No new verbs.
   They mean what RFC 6902 says on every backend: a replace of a row is the row (a field it
-  leaves out takes its default; its id and parent key stay), never a merge.
+  leaves out takes its default; its id and parent key stay, and a time only the server sets,
+  `default: "now"`, which is when the row was made, keeps its own: `serverTimeCases`), never a merge.
 - **One pointer grammar.** Strict RFC 6901: `splitPath` / `joinPath` in `src/core.ts` (which
   `applyOps`, `dom-ops` and every backend use). Its vectors (`src/pointer-vectors.json`) are
   published in `./testing` as `pointerVectors`, for dzql to answer; `tests/pointer-vectors.test.ts`

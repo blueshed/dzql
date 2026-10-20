@@ -22,7 +22,17 @@ export type ColumnType =
 export interface ColumnDef {
   type: ColumnType;
   nullable?: boolean;
+  /**
+   * What a row a write makes holds where its value leaves the column out. `"now"`, on a
+   * `timestamptz` alone, is the server's time as the row is written (`isServerTime`): a replace
+   * of the row whole keeps the row's own.
+   */
   default?: unknown;
+}
+
+/** Is the column a time only the server sets (`default: "now"`, a `timestamptz`)? Every backend fills it as the row is written. */
+export function isServerTime(def: ColumnDef): boolean {
+  return def.default === "now";
 }
 
 /** Compact shorthand: `"text"` or `"text?"` (nullable). */
@@ -47,7 +57,7 @@ export interface TableDef {
   /**
    * Values no two current rows share, each refused with 409 on every backend: a column, columns
    * together, or `{ columns, whereNull }`, held only among rows where those columns are null
-   * (`{ columns: ["tool"], whereNull: ["returned"] }`: a tool is on one open loan at a time).
+   * (`{ columns: ["book"], whereNull: ["ended"] }`: a book is on one open hold at a time).
    */
   unique?: (string | string[] | UniqueDef)[];
 }
@@ -198,6 +208,10 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
       } else {
         columns[col] = shorthand;
       }
+      const made = columns[col]!;
+      if (isServerTime(made) && made.type !== "timestamptz") {
+        throw new Error(`${key}: ${col}'s default "now" is the time a row is written, which only a timestamptz column takes (${col} is ${made.type})`);
+      }
     }
 
     let parent: ResolvedTable["parent"];
@@ -259,7 +273,7 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
   return { tables };
 }
 
-/** A unique constraint as given (`"email"`, `["shed_id", "name"]`, `{ columns, whereNull }`), the same shape every time. */
+/** A unique constraint as given (`"email"`, `["library_id", "name"]`, `{ columns, whereNull }`), the same shape every time. */
 export function uniqueOf(u: string | string[] | UniqueDef): UniqueDef {
   if (typeof u === "string") return { columns: [u] };
   if (Array.isArray(u)) return { columns: [...u] };

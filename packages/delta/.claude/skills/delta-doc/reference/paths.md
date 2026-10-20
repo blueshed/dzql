@@ -32,7 +32,8 @@ server names (on an array, append). The parsers are `splitPath` / `joinPath` in 
 - `add` at an array index inserts before it; `replace` or `remove` of what is not there is a 404.
 - A row keeps the id its path names; an `id` in the value is ignored, and `id` is not a field.
 - A replace of a row is the whole row: a field left out takes its default (null if nullable),
-  a required one left out is 400. Its id and parent key stay unless the value names others.
+  a required one left out is 400. Its id and parent key stay unless the value names others, and
+  a time only the server sets (`default: "now"`, `schema.md`) keeps its own.
   To change some fields, replace each field.
 
 ## Ids

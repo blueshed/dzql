@@ -30,9 +30,10 @@ import type { WsServer } from "@blueshed/delta/server";
 import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/json";
 
 // A room is a row; its messages hang under it (the key column rooms_id).
+// `at` is the server's time as a message is written, never the page's clock.
 export const schema = defineSchema({
   rooms: { columns: { name: "text?" } },
-  messages: { parent: "rooms", columns: { author: "text", text: "text", at: "timestamptz" } },
+  messages: { parent: "rooms", columns: { author: "text", text: "text", at: { type: "timestamptz", default: "now" } } },
 });
 
 // What someone needs in front of them to chat: one room and its messages.
@@ -68,7 +69,7 @@ import { room } from "./room";
 function say(e: SubmitEvent) {
   e.preventDefault();
   const input = (e.target as HTMLFormElement).elements.namedItem("text") as HTMLInputElement;
-  if (input.value) room.send([{ op: "add", path: "/messages/-", value: { author: "me", text: input.value, at: new Date().toISOString() } }]); // a new row; the server names it
+  if (input.value) room.send([{ op: "add", path: "/messages/-", value: { author: "me", text: input.value } }]); // a new row; the server names it and times it
   input.value = "";
 }
 
@@ -153,7 +154,7 @@ test("what one person says, the other is told", async () => {
   try {
     const says = openDoc<Room>("room:1", ada), hears = openDoc<Room>("room:1", bo);
     await Promise.all([says.ready, hears.ready]);
-    await says.send([{ op: "add", path: "/messages/-", value: { author: "ada", text: "hello", at: new Date().toISOString() } }]);
+    await says.send([{ op: "add", path: "/messages/-", value: { author: "ada", text: "hello" } }]);
     const told = await waitFor(() => Object.values(hears.data.get()?.messages ?? {}).find((m) => m.text === "hello"));
     expect(told).toMatchObject({ author: "ada", rooms_id: 1 });   // the room made by its first message
   } finally {

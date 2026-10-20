@@ -25,7 +25,7 @@
  */
 import type { Schema, DocDef } from "./schema";
 import { lit, columnSqlType, currentViewSql, seqOf, sqlDefault, findCascadeOn } from "./sql";
-import { defaultForType, q, uniqueIndexSql } from "@blueshed/delta/backend";
+import { defaultForType, isServerTime, q, uniqueIndexSql, type ColumnDef } from "@blueshed/delta/backend";
 import { assertScopeKeys } from "@blueshed/delta/backend";
 import { compileOpens } from "../compile/opens";
 import { compileHolds } from "../compile/holds";
@@ -93,6 +93,16 @@ export function generateSql(
 }
 
 /**
+ * A column's default as the table keeps it. A time only the server sets (`default: "now"`) is the
+ * time a row is written, to the millisecond as delta keeps a time -- never `'now'`, which Postgres
+ * reads once, as the table is made. A column added with it gives each row already there the
+ * migration's time, as SQLite's migrateSchema does.
+ */
+function columnDefault(value: unknown, def: ColumnDef): string {
+  return isServerTime(def) ? "date_trunc('milliseconds', now())" : sqlDefault(value);
+}
+
+/**
  * One table's SQL, as `generateSql` writes each: its serial, the table (if it is not there), the
  * columns a later schema adds, a temporal one's view, its indexes. Every statement is idempotent: run
  * again over the table as it is, it adds what it lacks. A migration's createTable and addColumn run it.
@@ -115,7 +125,7 @@ export function tableSql(key: string, table: Schema["tables"][string]): string[]
     const sqlType = columnSqlType(def);
     const notNull = def.nullable ? "" : " NOT NULL";
     const defaultVal =
-      def.default !== undefined ? ` DEFAULT ${sqlDefault(def.default)}` : "";
+      def.default !== undefined ? ` DEFAULT ${columnDefault(def.default, def)}` : "";
     cols.push(`${q(col)} ${sqlType}${notNull}${defaultVal}`);
   }
 
@@ -135,7 +145,7 @@ export function tableSql(key: string, table: Schema["tables"][string]): string[]
   if (table.parent) lines.push(`ALTER TABLE ${q(table.name)} ADD COLUMN IF NOT EXISTS ${q(table.parent.fkColumn)} BIGINT;`);
   for (const [col, def] of Object.entries(table.columns)) {
     const fill = def.default !== undefined ? def.default : def.nullable ? undefined : defaultForType(def.type);
-    lines.push(`ALTER TABLE ${q(table.name)} ADD COLUMN IF NOT EXISTS ${q(col)} ${columnSqlType(def)}${fill !== undefined ? ` DEFAULT ${sqlDefault(fill)}` : ""};`);
+    lines.push(`ALTER TABLE ${q(table.name)} ADD COLUMN IF NOT EXISTS ${q(col)} ${columnSqlType(def)}${fill !== undefined ? ` DEFAULT ${columnDefault(fill, def)}` : ""};`);
   }
   // Own the sequence to the table.id so `TRUNCATE RESTART IDENTITY`
   // actually resets the counter — without this, re-seeds in tests and
