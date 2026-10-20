@@ -1,6 +1,6 @@
 # Skill evaluations
 
-Three scenarios per shipped skill (`railroad.json`, `bun-route.json`), each aimed at a trap
+A few scenarios per shipped skill (`railroad.json` four, `bun-route.json` three), each aimed at a trap
 the skill exists to prevent. They are not run by `bun test` and do not ship to npm.
 
 Every scenario, each a fresh session with nobody there: `bun scripts/evals.ts --only

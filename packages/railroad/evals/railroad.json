@@ -38,5 +38,27 @@
       "The /posts/:id route is a plain synchronous handler taking ({ id }) and returning when(resolved(...)), directly or through a component that returns it (({ id }) => <Post id={id} />), keyed by default, so going to /posts/2 loads post 2; not { keyed: false }",
       "Writes no async component or handler (and no thunk or fallback prop), no { keyed: true } (the default), and reads no params$ to refetch"
     ]
+  },
+  {
+    "skills": ["railroad"],
+    "query": "This railroad app's server.ts sends its jobs over a WebSocket at /ws: on connect {\"jobs\": [...]}, every job, then {\"job\": {...}} each time one changes, the whole job, e.g. {\"id\": 7, \"name\": \"lint #7\", \"status\": \"running\", \"updated\": 1761000000000}. There are thousands. Write the page, app.tsx, which index.html loads. At \"/\": the jobs filtered by a status select (all, queued, running, failed, done) and sorted by updated, newest first, each row linking to #/jobs/:id. At \"/jobs/:id\": that one job's name, status and updated time. Both must update live as messages arrive, and a message must not re-render every row.",
+    "files": [
+      "packages/railroad/evals/fixtures/feed: server.ts serving index.html at / and the jobs at /ws, on PORT, with a Listening on line; index.html loading ./app.tsx; the railroad tsconfig; package.json with railroad and @types/bun"
+    ],
+    "expected_behavior": [
+      "Keeps the jobs in a collection((j) => j.id): set for the first message, put (or patch) for each change; not a signal of an array copied per message, and never a job changed in place",
+      "The detail view follows its job with jobs.at(id), shown by when(jobs.at(...), ({ name, status, updated }) => ..., () => ...) or bound; not a find over the rows (jobs.get().find(...), jobs.peek().find(...), or a computed or .map() that finds)",
+      "Turns the route's id, a string, into the key's type before at(): jobs.at(Number(id))",
+      "The filter and the sort are a computed (or .map()) over the rows that reads the status signal, computed(() => jobs.get().filter(...).sort(...)); not done in JSX or by an effect writing another signal, and never sorting jobs.get() itself in place, which every reader shares",
+      "Renders the shown rows with keyed list(shown, jobs.key or (j) => j.id, ...), not .map(...) in JSX nor the index form",
+      "Each row, and the detail branch, is taken apart into its field signals (({ id, name, status, updated }) => ...), bound where they show, with id.peek() for the link's href; no .get() in JSX or a component body",
+      "The status select sets a signal from a lowercase onchange (or oninput) function; the page is started with routes(root, { \"/\": ..., \"/jobs/:id\": ({ id }) => ... }) at page load, the detail route a synchronous handler, keyed by default (no { keyed: false })"
+    ],
+    "copy": [
+      {
+        "from": "packages/railroad/evals/fixtures/feed",
+        "to": "."
+      }
+    ]
   }
 ]

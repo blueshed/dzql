@@ -88,10 +88,13 @@ and add `"types": ["bun"]` to `compilerOptions`:
 // server.ts
 import home from "./index.html";
 
-Bun.serve({
+const server = Bun.serve({
+  port: process.env.PORT || 3000,
   routes: { "/": home },
   development: process.env.NODE_ENV !== "production" && { hmr: true, console: true },
 });
+
+console.log(`Listening on ${server.url}`);
 ```
 
 `bun build --compile server.ts` turns the page, the TSX and the server into one

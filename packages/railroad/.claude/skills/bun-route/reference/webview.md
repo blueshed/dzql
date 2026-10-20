@@ -38,14 +38,14 @@ afterAll(() => {
   server.stop(true);
 });
 
-test("a click shows the answer", async () => {
+test("a step of 5 counts by 5", async () => {
   await open();
-  await view.click("#name");
-  await view.type("Ada");
-  await waitFor(`!document.querySelector("#submit").disabled`); // click waits for visible, not enabled
-  await view.click("#submit");
-  await waitFor(`document.querySelector("#out")?.textContent !== ""`);
-  expect(await view.evaluate<string>(`document.querySelector("#out").textContent`)).toBe("Hello, Ada");
+  await view.click("#step");
+  await view.type("5");
+  await waitFor(`!document.querySelector("#add").disabled`); // click waits for visible, not enabled
+  await view.click("#add");
+  await waitFor(`document.querySelector("#count")?.textContent !== "0"`);
+  expect(await view.evaluate<string>(`document.querySelector("#count").textContent`)).toBe("5");
 });
 ```
 
@@ -53,10 +53,10 @@ The server starts at the file's top level and stops in `afterAll`. The kit makes
 navigation in a `beforeAll` of its own, registered when `browser()` is called; a server started at
 the top stands before any hook runs.
 
-**The rules are the kit's** (`@blueshed/railroad/webview`, the header of `src/webview.ts` in the
-package): one view per file, `evaluate` takes a string expression, `await` every call, `type()`
-appends (`replaceText` replaces), a second window by `withOtherWindow`. Read them there; what
-follows is what the kit does not say.
+**The rules are the kit's**, in the header of `@blueshed/railroad/webview` (the file railroad's
+`exports` maps it to): one view per file, `evaluate` takes a string expression, `await` every
+call, `type()` appends (`replaceText` replaces), a second window by `withOtherWindow`. Read them
+there; what follows is what the kit does not say.
 
 **In an app without railroad**, use the kit all the same: `bun add -d @blueshed/railroad`. It is
 for tests, needs only `bun:test`, and puts nothing in the page. Where the user rules out a dev

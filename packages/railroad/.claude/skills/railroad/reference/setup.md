@@ -49,20 +49,25 @@ mount(document.getElementById("root")!, () => <Counter />);
 // server.ts
 import home from "./index.html";
 
-Bun.serve({
+const server = Bun.serve({
+  port: process.env.PORT || 3000,
   routes: { "/": home },
   development: process.env.NODE_ENV !== "production" && { hmr: true, console: true },
 });
+
+console.log(`Listening on ${server.url}`);
 ```
 
 ```sh
 bun add @blueshed/railroad
-bun server.ts                                        # dev with HMR
+bun server.ts                                        # dev with HMR, on PORT (or 3000)
 bun build ./index.html --production --outdir=dist    # production assets
 bun build --compile server.ts                        # one binary
 ```
 
 The server step adds `"types": ["bun"]` to the tsconfig, which needs `@types/bun` (`bun init` adds it; else `bun add -d @types/bun`).
+
+To check a route, start the server with `PORT=0` (any free port, never one another run holds), read its URL from the `Listening on` line, and stop it by its pid: the `bun-route` skill's [server](../../bun-route/reference/server.md#checking-a-route) has the command.
 
 Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), its `tsconfig.json`, `index.html`, `routes.ts` (`development`
 gated on `NODE_ENV`) and `app.tsx` (`routes()` in place of `mount()`), served, and built for

@@ -137,6 +137,16 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **The railroad and bun-route skills, from the third round of their evals** (21 October).
+  `testing.md` says to `bun add -d @types/bun @happy-dom/global-registrator` and shows the
+  preload, in `bunfig.toml` or, where that cannot be written, a `test` script
+  (`bun test --preload ./happy-dom.setup.ts`). The README's server, and `setup.md`'s, take `PORT`
+  (3000 if unset) and print `Listening on <url>`; `setup.md` points to bun-route's
+  *Checking a route*. `webview.md` names the kit by its import, `@blueshed/railroad/webview`, not a
+  path in the package, and its skeleton tests a counter, not a greeting form, so bun-route's third
+  scenario measures applying the rules, not copying them. A fourth railroad scenario
+  (`evals/railroad.json`, fixture `evals/fixtures/feed`): a keyed collection of jobs, listed
+  filtered and sorted by a `computed`, one followed by `at(id)`, live.
 - **The railroad and bun-route skills, from two rounds of their evals** (20 October, root #113).
   ts and tsx both need `@types/bun`, said one way on every page; the type check is `bun check`
   (never `tsc`); the js/ts template is a module (`export {};`), so its names do not clash with the
