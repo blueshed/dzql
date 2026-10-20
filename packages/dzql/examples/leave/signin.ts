@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { refuseOrigin } from "@blueshed/delta/server";
 import { tell } from "dzql/rendering/refusal";
 import { seeOther, cookieOf } from "dzql/rendering/server";
-import { db, sessions, tokenId } from "./delta";
+import { db, sessions, tokenId } from "./store";
 
 // Signing in: an email and a password, posted from the sign-in page as a plain form -- so the
 // password goes to this route alone and never crosses the socket, the op log or the ledger. A good

@@ -5,7 +5,7 @@ import { createServer } from "dzql/rendering/server";
 import { run } from "dzql/modelling/harness";
 import { Refusal } from "dzql/rendering/refusal";
 import { BOX, boxHeight, drawHeart, heartOf, layout, picked, plain, reason, related, shape as shapeOf, singular, type Raw, type Ui } from "../../../src/modelling/page/heart";
-import { may, model, shape, type Model } from "../../../src/modelling/page/model";
+import { may, model, shape, type Model } from "../../../src/modelling/page/resources/model/model-api";
 import { aliases, show, stdin } from "../../../src/modelling/page/cli";
 import { closureOf, plainClosure } from "../../../src/modelling/page/closure";
 import { stories } from "../../../src/modelling/page/stories";

@@ -1,5 +1,5 @@
 import { signInLinks } from "dzql/rendering/links";
-import { db, sessions } from "./delta";
+import { db, sessions } from "./store";
 
 // Signing in: a link for each person who keeps the model, printed where the server starts (`dzql
 // model`, an app's `modelRoute()`), so nobody needs an email or a password to get in. Opened, it

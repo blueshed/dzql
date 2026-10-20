@@ -315,7 +315,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.keep-drawer input[name=name]') !== null`, (v) => v === true);
 
     // each field is a form of its own (src/rendering/bento.ts field()), written as it is left: blanking the
-    // name is a required field's write the server refuses (see documents/values.ts's `text`); the
+    // name is a required field's write the server refuses (see values.ts's `text`); the
     // description's is accepted, so exactly one of the two lands.
     await view.evaluate(`(() => {
       const name = document.querySelector('.keep-drawer input[name=name]');

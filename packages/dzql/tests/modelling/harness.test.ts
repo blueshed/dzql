@@ -6,7 +6,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { defineDoc, registerDocs } from "@blueshed/delta/sqlite";
 import { app as example } from "../../examples/chat/routes";
-import { db, schema } from "../../examples/chat/delta";
+import { db, schema } from "../../examples/chat/store";
 import { stories } from "../../examples/chat/stories";
 import type { Resource } from "../../src/rendering/resources/resource";
 import { read } from "../../src/rendering/documents";
@@ -748,7 +748,7 @@ describe("stories harness", () => {
   // should see, or say what it should not.
   describe("what an author is told stands in for nothing, says its own words, and is of its own moment", async () => {
     const { example: wedding, stories: vows } = await load("wedding");
-    const visit = await import("../../examples/wedding/documents/session");
+    const visit = await import("../../examples/wedding/resources/session/session-api");
     const named = (start: string): Story => vows.stories.find((s) => s.name.startsWith(start))!;
     const withHousehold = (f: (household: Resource) => Partial<Resource>, from: Example = wedding): Example => ({ ...from, resources: from.resources.map((c) => (c.docType === "household" ? { ...c, ...f(c) } : c)) });
     const maybe = named("The Okafors say maybe");

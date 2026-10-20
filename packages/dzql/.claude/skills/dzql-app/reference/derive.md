@@ -4,12 +4,12 @@ For a collection nobody would write a page for (reference data: the wedding's ve
 what it declares, at render time, never generated, from [bento.md](bento.md)'s parts.
 
 ```ts
-// examples/wedding/delta.ts: beside the schema, what the columns cannot say
+// examples/wedding/resources/board/board-api.ts: beside the document, what the columns cannot say
 export const derived: Record<string, Declared> = {
   venues: { noun: "venue", fields: { picture_key: { label: "Picture", applet: "picture-field" } } },
 };
 
-// examples/wedding/views/board.ts
+// examples/wedding/resources/board/board-view.ts
 const d = derivedPage(surfaces, { doc: "board", table: schema.tables[table]!, declared: derived[table]!, rows: v.b.derived[table]!, page, trail: [{ label: coupleName(v.b), back: nav("") }], may: v.may });
 return frame(false, layers(d.page, d.drawer, d.modal), page);
 ```

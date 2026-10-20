@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createTables, defineDoc, defineSchema, fromFolder, migrate, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
-import { migrating, schema, tokenId } from "./delta";
+import { migrating, schema, tokenId } from "./store";
 
 // An upgrade is not a write, so this story is no harness story. It makes a database the way leave's
 // previous version left it -- that version's tables and seed, and a week Ann asked for and Mo
 // approved, each on the ledger along their session -- upgrades it with the migrations of the
-// version after (./upgrade/), as a delta.ts runs them at start-up, then runs leave's stories
+// version after (./upgrade/), as its store runs them at start-up, then runs leave's stories
 // against it, in a process of their own, and checks the old rows by hand.
 //
 // The previous version: a request was `asked_by` its person (now `person_id`), kept a count of its

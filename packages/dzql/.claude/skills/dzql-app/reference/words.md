@@ -22,7 +22,7 @@ export const app: Example = {
 - A **resource** looks after one type of document: which one a page is on, who may write to it,
   what a write becomes. It has no place on the page. → [resource.md](resource.md)
 - The **page** is the app's one `render(sessionId, address)`: which screen, reading whichever
-  documents it must. Much HTML goes in files of its own (the wedding's `views/`). → [page.md](page.md)
+  documents it must, composing each resource's part (its `<name>-view.ts`). → [page.md](page.md)
 - The **session** is each visitor's own document -- who you are and what is yours -- and a resource
   like any other; list it first. Keep in it only what the stories need. → [bento.md](bento.md)
 - A **tab** is one page open: where it stands is its **address**, its own and its URL, never the

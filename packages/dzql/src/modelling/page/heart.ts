@@ -20,6 +20,9 @@ export type Field = { name: string; type: string };
 export type { Requires, StoryWrite }; // reading's, the one statement of them
 export type Held = { parent: string | null; fields: Field[] };
 
+/** The one model: `model:1`. Said here, beside what it holds, so what reads a page of it (./loader/told.ts) opens no store. */
+export const MODEL = "1";
+
 /** The model document as delta keeps it: its stories and its documents, each a row by its id. */
 export type Raw = {
   models: { name: string };

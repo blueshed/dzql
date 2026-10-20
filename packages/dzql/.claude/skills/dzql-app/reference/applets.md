@@ -5,7 +5,7 @@ state a redraw would destroy: a drag halfway through, a scroll position, a chart
 Everything else is HTML from `render`. Its data, when it watches a document, is [watching.md](watching.md).
 
 ```ts
-// examples/leave/page.ts: the mount, drawn by the server first, saying what it writes
+// examples/leave/resources/team/team-view.ts: the mount, drawn by the server first, saying what it writes
 part("calendar", `<div id="calendar" class="calendar-view" data-applet="calendar"${appletWrites(["session", "replace", "/draft"], ["team", "replace", "/requests/*/starts"], ["team", "replace", "/requests/*/ends"])} data-props="${esc(JSON.stringify(p))}">${calendarHtml(p)}</div>`);
 
 // examples/leave/applets/calendar-applet.ts: the drags; the drawing is ../calendar.ts, shared with the server

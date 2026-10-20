@@ -21,7 +21,7 @@ export function up(db: Database) { dropColumn(db, "leave_requests", "days"); }
 leave's stories on it. The helpers are delta's (`@blueshed/delta/sqlite`: `renameColumn`,
 `dropColumn`, `renameTable`).
 
-- `delta.ts` runs them first, then the schema: `await openTables(schema, app, folder)`
+- `store.ts` runs them first, then the schema: `await openTables(schema, app, folder)`
   (`dzql/rendering/db`) is delta's `migrate`, then `createTables`, then `migrateSchema`. Change the
   schema to its new shape in the same commit.
 - `app` is whose they are, recorded with each id: apps sharing a database each run only their own.

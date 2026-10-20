@@ -27,6 +27,12 @@ what is open across them. Newest first.
   imports the example's schema from its new path, `resources/schema.ts`. delta's CHANGELOG has
   each move.
 
+### dzql: every app is routes and resources (20 October)
+
+- **dzql's examples are laid out as the cafe is** (Peter's decision): a `store.ts`, a folder of
+  `resources/<name>/` a document (its api, its resource, its view), a `page.ts` composing them.
+  Chat, the ticker, the wedding, leave and the model's page. dzql's CHANGELOG says what moved.
+
 ### delta keeps three stores and its kinds (20 October, #37, delta's part)
 
 - **The free-form document is gone** (`registerDoc`, breaking): a document is kept in the JSON

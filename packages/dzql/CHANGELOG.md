@@ -110,6 +110,43 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **Every app is routes and resources** (20 October, Peter's decision): the examples on SQLite are
+  laid out as the cafe is, as `bun create dzql` lays an app out. Chat first: `delta.ts` is
+  `store.ts` (the tables, said once, the database, `delta`, `migrating`, a `register` for each
+  resource's documents, and the sessions, with the `visit:` a cookie finds its session by); each
+  document a folder, `resources/<name>/` (`session`, `room`, `here`, `lobby`), holding its
+  `<name>-api.ts` (its document registered, `read`), its resource and its `<name>-view.ts`; `page.ts`
+  composes the views, `surfaces.ts` makes the bento once. `presence.ts` stays at the root: it keeps
+  two memory documents from the sessions and the connections, and is no one resource's. The tables,
+  the prefixes and the migrations folder are as they were; its 14 stories pass as before. The
+  dzql-app skill's documents, resource, page, controls and assistants pages quote the new files.
+  The ticker next: `resources/desk/`, `ticker/` (the market, its seed beside it), `quote/`,
+  `watchlist/` and `clock/`; `views/page.ts` is `page.ts`, composing the board (the watchlist's
+  view), the market (the ticker's) and the clock (the clock's); the default city is said with the
+  tables in `store.ts`, a column's default. Its 17 stories pass, with the same 5 warnings.
+  Then the wedding: `resources/session/`, `household/`, `board/`, `wedding/`, `welcome/` and
+  `everyone/` (the memory document; `everyone.ts`, which keeps it, stays at the root, as chat's
+  `presence.ts` does); `views/<thing>.ts` are each resource's `<name>-view.ts`, and `page.ts`
+  composes them; what both pages draw (`shared.ts`, `photo.ts`, `html.ts`, `surfaces.ts`,
+  `icons.ts`) and `values.ts` sit at the root; the pictures, no document, are kept by `http.ts`,
+  which serves them; the seed, the one-claim trigger and the pictures' table stay in `store.ts`.
+  Its 22 stories pass, with the same 3 warnings. The model's loader (`extract`) now reads a
+  resource's api for code that touches a table with its own SQL, as it read `documents/<thing>.ts`
+  (the wedding's couples, looked up by `whose()`, are read there).
+  Then leave: `resources/team/` and `resources/session/`, `documents.ts` split between their
+  apis and `resources.ts` between their resources; `page.ts` composes the team's view (the
+  calendar and the list, a request's drawer) and the session's (the door, the draft's drawer);
+  `calendar.ts`, the drawing the server and the applets share, and `signin.ts`, no document's,
+  stay at the root. Its tables stay `temporal: false`, the reason beside them, and
+  `upgrade.test.ts` still upgrades a database leave's older version left; its 25 stories pass.
+  Last the model's page (`src/modelling/page/`): `resources/model/` and `resources/session/`;
+  `store.ts`'s `register` keeps a document in the app's model file when it says `inFile` (the model,
+  beside an app), the sessions always in memory or the database as before; `heart.ts`,
+  `closure.ts`, `site.ts`, `cli.ts`, `signin.ts` and `loader/` stay where they were, no document's.
+  `MODEL`, the one model's id, is said beside `Raw` in `heart.ts`, so the loader reading a page
+  opens no store. Its 14 stories pass, with the same 2 warnings. The dzql-app skill no longer
+  calls the examples older: SKILL.md says they are laid out as the cafe is, on SQLite; dzql's
+  CLAUDE.md says the layout in its Project Structure.
 - **A ref keeps its surrogate** (20 October, #79, on Peter's design): a row that names a row a story
   can remove keeps, beside the key, what it shows of it, copied as it is written (`dish_name`,
   `dish_price` beside `dish`); the page shows the named row while it stands, and the copy once it

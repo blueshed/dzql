@@ -1,24 +1,31 @@
 import { run, serve } from "@blueshed/delta/serve";
 import { appOf } from "dzql/rendering/server";
 import type { Example } from "dzql/rendering/example";
-import { clock } from "./resources/clock";
-import { desk } from "./resources/desk";
-import { quote, render, ticker } from "./resources/ticker";
-import { watchlist } from "./resources/watchlist";
 import index from "./client/index.html";
-import { delta, sessions } from "./delta";
+import { delta, sessions } from "./store";
+import { render } from "./page";
+import { desk } from "./resources/desk/desk";
+import { ticker } from "./resources/ticker/ticker";
+import { quote } from "./resources/quote/quote";
+import { watchlist } from "./resources/watchlist/watchlist";
+import { clock } from "./resources/clock/clock";
+
+// The ticker: a market that moves while it is watched, a board of the symbols you watch, and a
+// clock. The app is its routes and its resources, each document a folder of ./resources/ (its api,
+// its resource, and its part of the page where it has one), its store ./store.ts, its page
+// ./page.ts, its stories ./stories.ts.
 
 export const app: Example = {
   name: "ticker",
-  // The ticker renders the page; the watchlist and the clock are written within it.
-  // The desk first: what is open, whose drawer, how the board is read -- the session's own.
+  // The page is the desk's; the market, the watchlist and the clock are drawn and written within it.
+  // The desk first: how the board is read -- the session's own.
   resources: [desk, ticker, quote, watchlist, clock],
   render,
   // No sign-in: a visitor's watchlist is their session's, and anyone may type a tick.
   active: () => true,
   index,
   address: { doc: "desk", path: "/page" }, // a tab's URL is where it stands: the desk says where it may, the kernel moves the tab
-  delta, // the documents are delta's (./delta.ts)
+  delta, // the documents are delta's (./store.ts)
   session: sessions.of, // a visit is a desk
 };
 

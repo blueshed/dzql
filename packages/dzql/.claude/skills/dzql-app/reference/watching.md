@@ -4,7 +4,7 @@ An applet's data comes from a document it watches, patched as delta tells it; it
 what to show, and for whom. The applet itself is [applets.md](applets.md).
 
 ```ts
-// examples/wedding/views/household.ts: the photo of everyone watches the `everyone` document
+// examples/wedding/resources/household/household-view.ts: the photo of everyone watches the `everyone` document
 function everyonePhoto(props: CrowdProps): string {
   const doc = watch(`everyone:${weddingDoc.WEDDING}`, "/everyone");
   return part("everyone-photo", `<div id="everyone-photo" data-applet="crowd"${appletProps(props, doc)}${tapsOf(crowd(props).photo.entries)}></div>`);
@@ -35,7 +35,7 @@ function everyonePhoto(props: CrowdProps): string {
 
 - The ticker's board is a row applet per symbol, each on its own document (`quote:<SYMBOL>`), so a
   board is told only the quotes it shows.
-- From one big document, cut a second over the same rows in `delta.ts` ([documents.md](documents.md)),
+- From one big document, cut a second over the same rows, in a resource's api ([documents.md](documents.md)),
   with a resource of its own that permits nothing. A `defineCustomDoc` recompute holds only what
   it selects but is told whole (`replace ""`) on every write to what it watches: keep it small. A
   plain `defineDoc` over just the collections is told field by field; `columns` narrows it.

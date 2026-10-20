@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import { db } from "./delta";
+import { db } from "./store";
 import { createServer } from "dzql/rendering/server";
 import { connect as socketTo, open, expectMessage, expectQuiet, heard as heardBy, htmlOf, nextMessage, opened, pageOf, write, type WireMessage } from "dzql/rendering/test-socket";
 import { assemble } from "dzql/rendering/resources/index";

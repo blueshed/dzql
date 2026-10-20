@@ -1,9 +1,9 @@
 import { activeDocuments, settled } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import * as boardDoc from "./documents/board";
-import * as householdDoc from "./documents/household";
-import * as weddingDoc from "./documents/wedding";
-import { whose } from "./documents/session";
+import * as boardDoc from "./resources/board/board-api";
+import * as householdDoc from "./resources/household/household-api";
+import * as weddingDoc from "./resources/wedding/wedding-api";
+import { whose } from "./resources/session/session-api";
 
 // For tests and scripts, with a server running: a write as the couple or a household would make
 // it from the wire, shaped the same way, written as nobody's session (so no one's Undo walks it),

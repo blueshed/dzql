@@ -175,7 +175,7 @@ describe("what a story writes and presupposes, as hjeli had them: precondition c
 
 describe("a story's writes and requires: kept by the model, said by the CLI, shown in plain text", () => {
   test("the model takes them in hjeli's shape, and refuses a write with no entity or verb, or a state half said", async () => {
-    const { model, shape, may } = await import("../../../src/modelling/page/model");
+    const { model, shape, may } = await import("../../../src/modelling/page/resources/model/model-api");
     const m = model({ models: { name: "x" }, stories: { "1": { id: 1, text: "t", actor: "a", kind: "does" } } });
     expect(may(m, { op: "replace", path: "/stories/1/writes", value: [] })).toBe(true);
     expect(may(m, { op: "replace", path: "/stories/1/requires", value: [] })).toBe(true);

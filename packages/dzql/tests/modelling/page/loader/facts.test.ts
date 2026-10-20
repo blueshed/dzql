@@ -114,7 +114,7 @@ describe("the heart, from a run", () => {
     expect(h.documents.every((d) => d.told !== null)).toBe(true);
     expect(h.entities.filter((e) => e.red).map((e) => e.name)).toEqual([]);
     expect(h.entities.filter((e) => e.looked).map((e) => e.name)).toEqual(["couples"]); // whose() looks it up: a credential, never held
-    expect(h.entities.find((e) => e.name === "couples")!.code.filter((c) => !c.seed).map((c) => `${c.by} ${c.at}`)).toEqual(["whose documents/session.ts:54"]);
+    expect(h.entities.find((e) => e.name === "couples")!.code.filter((c) => !c.seed).map((c) => `${c.by} ${c.at}`)).toEqual(["whose resources/session/session-api.ts:57"]);
     expect(h.documents.filter((d) => d.squared).map((d) => d.name)).toEqual(["everyone"]);
     const everyone = h.documents.find((d) => d.name === "everyone")!;
     expect(everyone).toMatchObject({ reach: ["weddings", "households", "guests", "claims"], computed: { by: "everyone.ts" }, for: "okafors, ben", squared: { story: 6, author: "okafors", asked: false } }); // it also tells ben what no story asked: a warning

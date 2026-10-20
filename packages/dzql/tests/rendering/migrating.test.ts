@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createTables, migrate, migrationStatus, type Migration, type Schema } from "@blueshed/delta/sqlite";
-// one after another: each delta.ts migrates the one database as it loads, and imported side by side their top-level awaits would meet in one transaction
+// one after another: each app's store migrates the one database as it loads, and imported side by side their top-level awaits would meet in one transaction
 type Migrating = { app: string; schema: Schema };
 const all: Migrating[] = [];
-for (const name of ["chat", "leave", "modeling", "ticker", "wedding"]) all.push((await import(name === "modeling" ? "../../src/modelling/page/delta" : `../../examples/${name}/delta`)).migrating);
+for (const name of ["chat", "leave", "modeling", "ticker", "wedding"]) all.push((await import(name === "modeling" ? "../../src/modelling/page/store" : `../../examples/${name}/store`)).migrating);
 const [chat, leave] = all as [Migrating, Migrating];
 
-// The examples may share a database (DB_PATH is one file whichever runs), so each delta.ts says
+// The examples may share a database (DB_PATH is one file whichever runs), so each app's store says
 // whose its migrations are, and its schema: each runs only its own, and one new to the database
 // runs none, though another's tables are there.
 

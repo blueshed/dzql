@@ -35,13 +35,15 @@ packages/
 ├── dzql/                # The dzql package on npm, shaped as the root CLAUDE.md says (The shape of a package)
 │   ├── src/modelling/   # dzql/modelling: stories.ts (the format), harness.ts (stories told; harness/: a page's controls, its applets,
 │   │                    #   a document's paths), by-hand.ts (in a browser), costs.ts, reading, definitions, guards;
-│   │                    #   page/ is the model's page, an app dzql ships (`dzql model` serves it)
+│   │                    #   page/ is the model's page, an app dzql ships (`dzql model` serves it), laid out as the examples are
 │   ├── src/rendering/   # dzql/rendering: the kernel: server.ts, resources/, client/ (the browser's), bento, applet.ts (an applet drawn by railroad)
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt; cli.ts: dzql sql | init | migrate | link
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
 │   ├── src/compile/     # the compiler from delta's definitions, a module per kind of function (generateSql runs them all)
 │   ├── src/cli/         # the bin (index.ts): dzql model (model.ts, model-tools.ts), then the Postgres commands
-│   ├── examples/<app>/  # the examples: cafe (the worked one, shipped beside the skills), chat, leave, starter, ticker, wedding
+│   ├── examples/<app>/  # the examples: cafe (the worked one, shipped beside the skills), chat, leave, starter, ticker, wedding;
+│   │                    #   each routes and resources: routes.ts, store.ts, page.ts, resources/<name>/ (<name>-api.ts,
+│   │                    #   <name>.ts, <name>-view.ts); the cafe and the starter on Postgres, the rest on SQLite
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
 │   ├── .claude/skills/  # modelling (someone telling the stories), dzql-app (building an app on dzql/rendering)
 │   ├── bench/           # delta's bench (bun run bench), todo #25
@@ -77,7 +79,7 @@ What a change to them must not break. How the pieces work is in the skills; the 
 `src/modelling/` and `src/rendering/` are the contract.
 
 - Someone telling you the stories, there to answer: the **modelling** skill. Building or extending an
-  app or an example, or touching the `Resource` contract, an app's `delta.ts`, the applet
+  app or an example, or touching the `Resource` contract, an app's `store.ts`, the applet
   registry or the wire: the **dzql-app** skill. Documents: delta's **delta-doc** skill.
 - **Stories first.** `docs/stories.md` is what it is for. An app's `stories.ts` says who does
   what and who then sees it; everything else follows. Start a feature with its story, watch it fail,
