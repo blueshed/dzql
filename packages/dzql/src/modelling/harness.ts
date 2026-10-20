@@ -84,7 +84,12 @@ async function sqliteStore(): Promise<StoryStore> {
   const max = kept ? db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM delta_ledger") : undefined;
   const since = kept ? db.query<{ id: number; doc: string; undoable: number; ops: string; inverse: string }, [number]>("SELECT id, doc, undoable, ops, inverse FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id") : undefined;
   return {
-    begin: async () => void db.exec("BEGIN"),
+    // a story that timed out (a test's 30 s) leaves its transaction open: rolled back here, so it
+    // fails alone and the stories after it begin as they should (dzql #78)
+    begin: async () => {
+      if (db.inTransaction) db.exec("ROLLBACK");
+      db.exec("BEGIN");
+    },
     end: async () => void db.exec("ROLLBACK"),
     last: async () => max?.get()?.id ?? 0,
     since: async (id) => (since?.all(id) ?? []).map((e) => ({ id: e.id, doc: e.doc, undoable: e.undoable !== 0, ops: JSON.parse(e.ops) as PatchOp[], inverse: JSON.parse(e.inverse) as PatchOp[] })),

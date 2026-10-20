@@ -44,6 +44,15 @@ const failuresOf = async (broken: Example, told: Story[], of: Stories = stories)
 // a finding, not a broken harness); this checks the harness reports honestly. Every one of chat's
 // stories, by name, is run in src/by-hand.test.ts, by hand too.
 describe("stories harness", () => {
+  test("a story left in its transaction (a test that timed out) is rolled back, and the next begins as it should", async () => {
+    db.exec("BEGIN"); // what a story cut off by a timeout leaves
+    db.run("CREATE TABLE left_over (x)"); // and what it wrote
+    const report = await run(example, { cast: stories.cast, stories: keyed(toldOf(stories).slice(0, 1)) });
+    expect(report.failed).toBe(0);
+    expect(db.inTransaction).toBe(false);
+    expect(db.query("SELECT 1 FROM sqlite_master WHERE name = 'left_over'").get()).toBeNull(); // rolled back, not kept
+  });
+
   describe("a story's cost on the wire", () => {
     const pick = (start: string) => toldOf(stories).find((s) => s.name.startsWith(start))!;
     const [hello, take, close] = [{ ...pick("Ada says hello"), budget: undefined }, pick("Nobody can take"), pick("Bob closes his tab")]; // hello's own budget aside: each test says its own

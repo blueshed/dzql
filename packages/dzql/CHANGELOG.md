@@ -462,6 +462,10 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **A story that times out fails alone** (20 October, #78): the stories' SQLite store rolls back a
+  transaction a cut-off story left open before it begins the next, so one slow story under load
+  no longer fails every story after it with "cannot start a transaction within a transaction".
+
 - **By hand, a refusal whose value no field can send is not tried** (20 October, root #128). A
   `cannot` story whose write a field on the page offers, with a value that field cannot send (a
   number to a date field or to words, words to a number field), was tried with what the field
