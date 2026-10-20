@@ -6,6 +6,14 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The traps delta's examples found, removed (20 October, delta #88-#91)
+
+- What root #116's examples had to work around is now delta's API (Peter's word: "ok - let's do
+  it"): a memory document's `write` on a socket server (the lobby's tee gone),
+  `ConnectOptions.headers` (a script or test signed in as a page is, with `connectWs` and
+  `openDoc`), `everyone<P>()` taking an interface, and `undo` / `redo` / `history` in
+  `./client`, typed. delta's CHANGELOG has each.
+
 ### Each reference page says where its rules are shown working (20 October, root #114)
 
 - **A package's examples are its skill's worked answers** (Peter's decision), said once in the
