@@ -6,7 +6,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { defineDoc, registerDocs } from "@blueshed/delta/sqlite";
 import { app as example } from "../../examples/chat/routes";
-import { db, schema } from "../../examples/chat/delta";
+import { db, schema } from "../../examples/chat/store";
 import { stories } from "../../examples/chat/stories";
 import type { Resource } from "../../src/rendering/resources/resource";
 import { read } from "../../src/rendering/documents";

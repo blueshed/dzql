@@ -4,23 +4,23 @@ A resource looks after one type of document: which one a page is on, who may wri
 write becomes, what follows. Saying why a write was refused is [refusal.md](refusal.md).
 
 ```ts
-// examples/chat/resources/room.ts
+// examples/chat/resources/room/room.ts
 export const room: Resource = {
   docType: "room",
   resolveDoc(ws) {
-    return sessionDoc.read(ws.data.sessionId).room ?? undefined; // the room this person is in
+    return sessionOf(ws.data.sessionId).room ?? undefined; // the room this person is in
   },
   permit(ws, op) {
     if (op.path !== "/messages/-" || op.op !== "add") return false;
-    return sessionDoc.read(ws.data.sessionId).name !== null;
+    return sessionOf(ws.data.sessionId).name !== null;
   },
-  // The wire says the text; the document takes a message: a new row, its author and the time.
+  // The wire says the text; the document takes a message: a new row, numbered by the store, with its author and the time.
   shape(ws, _room, ops) {
-    const { name } = sessionDoc.read(ws.data.sessionId);
+    const { name } = sessionOf(ws.data.sessionId);
     return ops
       .map((op) => String(op.value ?? "").trim())
       .filter((text) => text !== "")
-      .map((text): PatchOp => ({ op: "add", path: `/messages/${Bun.randomUUIDv7()}`, value: { name, text, sent_at: Date.now() } }));
+      .map((text): PatchOp => ({ op: "add", path: "/messages/-", value: { name, text, sent_at: Date.now() } }));
   },
   afterChange: () => keepLobby(), // the list of rooms follows
 };

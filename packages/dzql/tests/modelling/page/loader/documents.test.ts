@@ -6,7 +6,7 @@ import { serverWrite } from "dzql/rendering/documents";
 import type { Example } from "dzql/rendering/example";
 import { bornInto, toldNotAsked, touches } from "../../../../src/modelling/page/loader/facts";
 import { controlsOn, type Heard, type Trace } from "dzql/modelling/harness";
-import { attempt, documentsIn, documentsOf, importedDocs, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "../../../../src/modelling/page/loader/documents";
+import { attempt, documentSources, documentsIn, documentsOf, importedDocs, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "../../../../src/modelling/page/loader/documents";
 import { app as chat } from "../../../../examples/chat/routes";
 import { stories as chatStories } from "../../../../examples/chat/stories";
 import { stories as londons } from "./londons/stories";
@@ -156,10 +156,10 @@ describe("from a run", () => {
     expect(format("chat", r)).toContain("- permit allows room /messages/*/text: replace, remove — to ada, bob");
   });
 
-  test("a document delta.ts defines that no resource owns, and no story uses, is one nobody needs", async () => {
-    const src = (await Bun.file(`${import.meta.dir}/../../../../examples/chat/delta.ts`).text()) + '\nregisterDocs(delta.server, db, schema, [defineDoc("archive:", { root: "rooms", include: [] })]);\n';
+  test("a document an app defines that no resource owns, and no story uses, is one nobody needs", async () => {
+    const src = (await documentSources(`${import.meta.dir}/../../../../examples/chat`)).src + '\nregister([defineDoc("archive:", { root: "rooms", include: [] })]);\n';
     const defined = documentsIn(src, null).map((d) => d.name);
-    expect(defined).toEqual(["session", "room", "archive", "here", "lobby"]);
+    expect(defined).toEqual(["room", "session", "archive", "here", "lobby"]);
     const r = read(chatStories, chat, { traces: [], controls: new Set(), allowed: new Map() }, defined);
     expect(r.docs).toContainEqual({ name: "archive", kind: "no resource" });
     expect(r.unneeded).toContain("archive");

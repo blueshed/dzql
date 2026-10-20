@@ -10,7 +10,7 @@ import "dzql/rendering/client/tools"; // one line, for this app alone
 ```
 
 ```ts
-// examples/chat/resources/room.ts: labelled by the app, so this form is the tool `say_something`
+// examples/chat/resources/room/room-view.ts: labelled by the app, so this form is the tool `say_something`
 `<form class="say" aria-label="Say something"${write("room", "add", "/messages/-")}>…</form>`
 ```
 

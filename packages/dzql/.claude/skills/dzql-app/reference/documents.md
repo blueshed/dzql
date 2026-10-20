@@ -1,24 +1,25 @@
-# Documents (`resources/<name>/<name>-api.ts`; in the examples, `delta.ts` and `documents/<thing>.ts`)
+# Documents (`resources/<name>/<name>-api.ts`, over the tables `store.ts` makes)
 
-An app's documents are delta's: each resource's `<name>-api.ts` says its tables and its document,
-registers it on the app's `delta` and reads it for the page (the examples keep these in `delta.ts`
-and `documents/<thing>.ts`). Who may write them is [resource.md](resource.md).
+An app's documents are delta's: each resource's `<name>-api.ts` says its document, registers it
+on the app's `delta` (`register`, from `store.ts`) and reads it for the page. `store.ts` says the
+tables once: the database makes them before any document is registered over them, and one table
+may be held by several documents. Who may write them is [resource.md](resource.md).
 
 ```ts
-// examples/chat/delta.ts
+// examples/chat/store.ts
 export const schema = defineSchema({
   sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?", before: "integer?", cookie: "text?" }, temporal: false }, // a visit is no history
   messages: { table: "chat_messages", columns: { room: "text", name: "text", text: "text", sent_at: "integer" } }, // keeps its history, delta's default
 });
 export const migrating = await openTables(schema, "chat", `${import.meta.dir}/migrations`); // dzql/rendering/db; migrations.md
 export const delta = createLocal();
-registerDocs(delta.server, db, schema, [
-  defineDoc("session:", { root: "sessions", include: [], implied: true }),
-  defineDoc("room:", { root: "rooms", include: ["messages"], implied: true }),
-], [], { ledger: true });
-registerMemory(delta.server, { prefix: "here:", empty: () => ({ people: {} as Record<string, true> }) }); // a memory document
+export const register = (docs: DocDef[], { ledger = true } = {}) => registerDocs(delta.server, db, schema, docs, [], { ledger });
 
-// examples/chat/documents/session.ts
+// examples/chat/resources/here/here-api.ts: a memory document
+registerMemory(delta.server, { prefix: "here:", empty: () => ({ people: {} as Record<string, true> }) });
+
+// examples/chat/resources/session/session-api.ts
+register([defineDoc("session:", { root: "sessions", include: [], implied: true, columns: { sessions: ["name", "room", "before"] } })]);
 export function read(id: string): SessionDocument {
   const doc = readDoc<{ sessions?: Partial<SessionDocument> }>(`session:${id}`);
   return { name: doc?.sessions?.name ?? null, room: doc?.sessions?.room ?? null, before: doc?.sessions?.before ?? null };
@@ -32,7 +33,8 @@ synchronous; it throws `Pending` when the document is not held yet, and the kern
 again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server.
 
 - Prefix tables with the app's name (`chat_`). Seed only into empty tables.
-- At start-up `delta.ts` makes its tables (`openTables`, `dzql/rendering/db`): the app's migrations,
+- At start-up `store.ts` makes its tables (on SQLite `openTables`, `dzql/rendering/db`; on Postgres
+  `openStore`): the app's migrations,
   then a missing table (delta's `createTables`), then a missing column (`migrateSchema`). That is all a new table or column needs. A field renamed or
   dropped, or data moved, is a migration: [migrations.md](migrations.md). Never delete a database
   to change its shape: people keep real data in it.

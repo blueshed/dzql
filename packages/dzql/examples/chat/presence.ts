@@ -2,13 +2,15 @@ import { joinPath } from "@blueshed/delta/core";
 import { allOpenSockets } from "dzql/rendering/resources/audience";
 import { activeDocuments, read, serverWrite, settled } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import { db } from "./delta";
-import * as sessionDoc from "./documents/session";
+import { db } from "./store";
+import { read as sessionOf } from "./resources/session/session-api";
 
-// Who is in a room, and which rooms there are, are live (../delta.ts): the server keeps them true
-// from what is -- the open connections, and each one's session -- computed whole each time
-// something moves, not nudged by increments that could drift. A room is there while someone is
-// in it or something has been said in it.
+// Who is in a room, and which rooms there are, are live (./resources/here/here-api.ts,
+// ./resources/lobby/lobby-api.ts): the server keeps them true from what is -- the open connections,
+// and each one's session -- computed whole each time something moves, not nudged by increments that
+// could drift. A room is there while someone is in it or something has been said in it. This is no
+// resource's: it keeps two documents from a third and the connections, and is called by the
+// session's and the room's resources as what follows a change, so it sits beside them, at the app's root.
 
 /** Rooms this server has written presence into, so an emptied one is emptied. */
 const kept = new Set<string>();
@@ -18,7 +20,7 @@ async function whoIsWhere(): Promise<Map<string, Set<string>>> {
   const documents = activeDocuments()!;
   const rooms = new Map<string, Set<string>>();
   for (const ws of allOpenSockets()) {
-    const { name, room } = await settled(documents, () => sessionDoc.read(ws.data.sessionId));
+    const { name, room } = await settled(documents, () => sessionOf(ws.data.sessionId));
     if (name && room) rooms.set(room, (rooms.get(room) ?? new Set()).add(name));
   }
   return rooms;

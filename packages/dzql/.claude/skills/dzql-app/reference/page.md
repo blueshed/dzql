@@ -6,17 +6,17 @@ document is drawn again, each tab where it stands, and sent only the parts that 
 looks is [bento.md](bento.md).
 
 ```ts
-// examples/chat/resources/room.ts (trimmed)
+// examples/chat/page.ts: each resource's part of the page, composed
 export function render(sessionId: string): string {
-  const { name, room: current, before } = sessionDoc.read(sessionId);
-  const page = !name ? renderNameForm() : !current ? renderRooms(name, roomDoc.list()) : renderRoom(name, current, roomDoc.people(current), before, roomDoc.read(current, before));
+  const { name, room, before } = sessionOf(sessionId);
+  const page = !name ? renderNameForm() : !room ? renderRooms(name, list()) : renderRoom(name, room, people(room), before, roomOf(room, before));
   return layers(page, "", ""); // the bento's frame, nothing open over it
 }
-// in renderRoom: who is here, and the messages, each message a part of its own
+// examples/chat/resources/here/here-view.ts: who is here, a part
 part("people", `<ul id="people" class="people" aria-label="Here">${people.map(who).join("")}</ul>`),
+// examples/chat/resources/room/room-view.ts (trimmed): the messages, each message a part of its own
 part("messages", `<ul class="messages" id="messages" data-autoscroll>${messages.map((m, i) => renderMessage(m, i, messages, name)).join("")}</ul>`),
-// renderMessage
-return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>…</li>`);
+return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>…</li>`); // in renderMessage
 ```
 
 A message said goes as its one `<li>`, put in after the last; were the messages not parts, every

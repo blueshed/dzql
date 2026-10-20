@@ -76,6 +76,16 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **Every app is routes and resources** (20 October, Peter's decision): the examples on SQLite are
+  laid out as the cafe is, as `bun create dzql` lays an app out. Chat first: `delta.ts` is
+  `store.ts` (the tables, said once, the database, `delta`, `migrating`, a `register` for each
+  resource's documents, and the sessions, with the `visit:` a cookie finds its session by); each
+  document a folder, `resources/<name>/` (`session`, `room`, `here`, `lobby`), holding its
+  `<name>-api.ts` (its document registered, `read`), its resource and its `<name>-view.ts`; `page.ts`
+  composes the views, `surfaces.ts` makes the bento once. `presence.ts` stays at the root: it keeps
+  two memory documents from the sessions and the connections, and is no one resource's. The tables,
+  the prefixes and the migrations folder are as they were; its 14 stories pass as before. The
+  dzql-app skill's documents, resource, page, controls and assistants pages quote the new files.
 - **A ref keeps its surrogate** (20 October, #79, on Peter's design): a row that names a row a story
   can remove keeps, beside the key, what it shows of it, copied as it is written (`dish_name`,
   `dish_price` beside `dish`); the page shows the named row while it stands, and the copy once it
