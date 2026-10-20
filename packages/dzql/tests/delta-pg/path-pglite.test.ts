@@ -3,7 +3,7 @@
  * functions as a Postgres server, the same listener, the same cases
  * (src/cases/path.ts) -- no database to run.
  */
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
 import {
   applyFramework, applySql, createDocListener, docTypeFromDef, exportTables, generateSql, importTables, validateOps,
@@ -303,55 +303,6 @@ describe("pglite: only a walk writes through a document whose root is gone", () 
     }
     expect((await pool.query("SELECT count(*)::int AS n FROM fo_drinks WHERE courses_id = 1")).rows).toEqual([{ n: 0 }]);
   });
-});
-
-/**
- * A listener newer than the framework SQL it runs on -- vendored with `delta
- * init` and not re-applied -- has no `_delta_fetch_log` to read. It reads
- * `delta_fetch_ops` instead, each entry heard as told, and says once that the
- * SQL is behind: every broadcast still arrives (todo #44's review).
- */
-describe("pglite: a listener on framework SQL older than it", () => {
-  test("still tells every document, and says once that the SQL is behind", async () => {
-    const behind = await openPglite();
-    const warn = spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      await applyFramework(behind);
-      await behind.query("DROP FUNCTION _delta_fetch_log(text, bigint)");
-      await applySql(behind, generateSql(pathSchema, pathDocs));
-      await importTables(behind, pathSchema, pathSeed);
-      const local = createLocal();
-      const heard: { channel: string; data: any }[] = [];
-      local.onPublish((channel, data) => heard.push({ channel, data }));
-      setLogLevel("warn");
-      listeners.push(await createDocListener(local.server, behind, { types: [...pathDocs, ...pathPublicDocs].map((def) => docTypeFromDef(def, behind)), ledger: true, custom: [postgresInbox, postgresOpenSeats, postgresMenuCard, postgresEmails, postgresGuests] }));
-      setLogLevel("silent");
-      const b: PathBackend = {
-        process: { call: (action, msg) => local.call(action, msg), heard },
-        quiet: () => quietOn(behind, heard),
-        exportTables: () => exportTables(behind, pathSchema),
-      };
-      const copies = await openAll(b.process, ["fo-household:1", "fo-board:1", "fo-inbox:a@x", "fo-inbox:new@x"]);
-      // rows added and removed, told as applied: SQL this old tells a replace whole too, which
-      // its custom documents hear; this framework's own tell says a replace by its fields (todo #69)
-      await write(b.process, "fo-board:1", [{ op: "add", path: "/households/10", value: { email: "new@x" } }]);
-      await write(b.process, "fo-household:1", [{ op: "remove", path: "/households/1" }]);
-      await expectTold(b, "fo-household:1", [[{ op: "replace", path: "/households", value: null }]]);
-      await expectTold(b, "fo-board:1", [
-        [{ op: "add", path: "/households/10", value: household(10, "new@x") }],
-        [{ op: "remove", path: "/households/1" }],
-      ]);
-      await expectTold(b, "fo-inbox:a@x", [[{ op: "remove", path: "/households/1" }]]);
-      await expectTold(b, "fo-inbox:new@x", [[{ op: "add", path: "/households/10", value: household(10, "new@x") }]]);
-      await assertCopiesHold(b, copies);
-      expect(warn.mock.calls.map((c) => String(c[0])).filter((m) => m.includes("older than this listener"))).toHaveLength(1);
-    } finally {
-      setLogLevel("silent");
-      warn.mockRestore();
-      for (const l of listeners.splice(0)) await l.destroy();
-      await behind.end();
-    }
-  }, 30_000);   // many PGlite round trips: past bun's 5s default on a loaded machine
 });
 
 /**

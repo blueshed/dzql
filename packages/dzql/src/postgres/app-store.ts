@@ -1,7 +1,8 @@
 /**
  * An app's store on Postgres, the one way to start one: a server at DATABASE_URL, else PGlite in this
  * process, kept in PGLITE_DIR (in memory without one: the tests and the stories), or the `database`
- * it is given. The migrations run first (a folder, when it is there, or a list); then the framework;
+ * it is given; in `public`, or the Postgres schema it is given (`namespace`), so several apps share
+ * one database, each with its own tables, ledger and change channel. The migrations run first (a folder, when it is there, or a list); then the framework;
  * then, at `open()`, every document the app's resources registered is compiled from its definitions
  * and one listener answers for them all, each on the ledger unless it says not (a session is no
  * one's history): in this process (`delta`, as dzql's thin client reads them), or on the socket it
@@ -14,10 +15,9 @@ import type { Pool } from "pg";
 import { createLocal } from "@blueshed/delta/local";
 import type { DocDef, Migration, Schema } from "@blueshed/delta/backend";
 import type { WsServer } from "@blueshed/delta/server";
-import { applyFramework, applySql } from "./bootstrap";
+import { applyFramework, applySql, ensureNamespace } from "./bootstrap";
 import { generateSql } from "./codegen";
-import { createDocListener } from "./listener";
-import { docTypeFromDef } from "./registry";
+import { serveDocs } from "./register";
 import { fromFolder, migrate } from "./migrate";
 import { openDatabase } from "./pglite";
 import { storyStore } from "./story-store";
@@ -31,19 +31,22 @@ export type StoreOptions = {
   migrations?: { app?: string; schema?: Schema } & ({ dir: string } | { list: Migration[] });
   /** The socket the documents are served on (`createWs()`); without one, they are served in this process (`delta`). */
   ws?: WsServer;
+  /** The Postgres schema the app is kept in, made when it is not there: `public` without one, as a database has it. */
+  namespace?: string;
 };
 
-export async function openStore({ schema, database, migrations, ws }: StoreOptions) {
-  const pool: Pool = await openDatabase(database ?? (process.env.DATABASE_URL || process.env.PGLITE_DIR || undefined));
+export async function openStore({ schema, database, migrations, ws, namespace }: StoreOptions) {
+  const pool: Pool = await openDatabase(database ?? (process.env.DATABASE_URL || process.env.PGLITE_DIR || undefined), { namespace });
+  if (namespace !== undefined) await ensureNamespace(pool, namespace);   // the migrations run in it
   const history = !migrations ? undefined : "list" in migrations ? migrations.list : existsSync(migrations.dir) ? await fromFolder(migrations.dir) : undefined;
   if (history) await migrate(pool, history, { app: migrations!.app ?? "model", ...(migrations!.schema && { schema: migrations!.schema }) });
-  await applyFramework(pool);
+  await applyFramework(pool, { namespace });
 
   /** The documents, in delta, in this process. */
   const delta = createLocal();
   const registered: DocDef[] = [];
   const offLedger: string[] = [];
-  let listener: Awaited<ReturnType<typeof createDocListener>> | undefined;
+  let listener: Awaited<ReturnType<typeof serveDocs>> | undefined;
 
   return {
     pool,
@@ -59,9 +62,9 @@ export async function openStore({ schema, database, migrations, ws }: StoreOptio
      * (so a guard put on `delta` stands in front of it).
      */
     async open(prepare?: () => void | Promise<void>): Promise<void> {
-      await applySql(pool, generateSql(schema, registered));
+      await applySql(pool, generateSql(schema, registered), { namespace });
       await prepare?.();
-      listener = await createDocListener(ws ?? delta.server, pool, { types: registered.map((def) => docTypeFromDef(def, pool)), ledger: { except: offLedger }, schema });
+      listener = await serveDocs(ws ?? delta.server, pool, schema, registered, [], { ledger: { except: offLedger }, namespace });
     },
     /** The listener ended (it holds a client for LISTEN), then the pool: a PGlite folder is left as it was, for the next start. */
     async close(): Promise<void> {

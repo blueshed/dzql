@@ -64,7 +64,7 @@ packages/
   `tests/compile/` pins its answers (on PGlite, on the seed and after writes) and its text, by
   snapshots updated
   (`bun test --update-snapshots`, whole files: a `-t` filter drops the snapshots it did not run)
-  only with the change that explains it. One `generateSql` per database: one app's definitions.
+  only with the change that explains it. One `generateSql` per database, or per schema (`namespace`): one app's definitions.
 - **Permissions are a document's** (`owns` as a path), **migrations are delta's**: no table rules,
   no upgrade scheme of dzql's own.
 - **The Postgres step imports nothing of modelling or rendering**, and they nothing of it: an app on

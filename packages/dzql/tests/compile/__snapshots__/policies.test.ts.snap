@@ -1,0 +1,476 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`permissions: the rows each person reads on the seed 1`] = `
+{
+  "1": {
+    "members": [
+      "1",
+      "2",
+      "3",
+      "4",
+    ],
+    "orgs": [],
+    "people": [
+      "1",
+      "2",
+      "3",
+    ],
+    "posts": [
+      "1",
+    ],
+    "venues": [
+      "1",
+      "2",
+    ],
+  },
+  "2": {
+    "members": [
+      "1",
+      "2",
+      "3",
+      "4",
+    ],
+    "orgs": [],
+    "people": [
+      "1",
+      "2",
+      "3",
+    ],
+    "posts": [
+      "2",
+    ],
+    "venues": [
+      "1",
+      "2",
+    ],
+  },
+  "3": {
+    "members": [
+      "1",
+      "2",
+      "3",
+      "4",
+    ],
+    "orgs": [],
+    "people": [
+      "1",
+      "2",
+      "3",
+    ],
+    "posts": [],
+    "venues": [
+      "2",
+    ],
+  },
+  "null": {
+    "members": [],
+    "orgs": [],
+    "people": [
+      "1",
+      "2",
+      "3",
+    ],
+    "posts": [],
+    "venues": [],
+  },
+}
+`;
+
+exports[`permissions: the rows each person reads after writes: a membership let go, a board passed on, a card moved 1`] = `
+{
+  "1": {
+    "members": [
+      "1 (past)",
+      "1",
+      "2",
+      "3",
+      "4",
+    ],
+    "orgs": [],
+    "people": [
+      "1",
+      "2",
+      "3",
+    ],
+    "posts": [
+      "1",
+    ],
+    "venues": [],
+  },
+  "2": {
+    "members": [
+      "1 (past)",
+      "1",
+      "2",
+      "3",
+      "4",
+    ],
+    "orgs": [],
+    "people": [
+      "1",
+      "2",
+      "3",
+    ],
+    "posts": [
+      "2",
+    ],
+    "venues": [
+      "1",
+      "2",
+    ],
+  },
+  "3": {
+    "members": [
+      "1 (past)",
+      "1",
+      "2",
+      "3",
+      "4",
+    ],
+    "orgs": [],
+    "people": [
+      "1",
+      "2",
+      "3",
+    ],
+    "posts": [],
+    "venues": [
+      "2",
+    ],
+  },
+  "null": {
+    "members": [],
+    "orgs": [],
+    "people": [
+      "1",
+      "2",
+      "3",
+    ],
+    "posts": [],
+    "venues": [],
+  },
+}
+`;
+
+exports[`a board: the rows each person reads on the seed 1`] = `
+{
+  "1": {
+    "boards": [
+      "1",
+    ],
+    "cards": [
+      "1",
+      "2",
+    ],
+    "labels": [
+      "1",
+    ],
+    "lists": [
+      "1",
+    ],
+    "notes": [
+      "1",
+    ],
+  },
+  "2": {
+    "boards": [
+      "2",
+    ],
+    "cards": [
+      "3",
+    ],
+    "labels": [
+      "1",
+    ],
+    "lists": [
+      "2",
+    ],
+    "notes": [
+      "1",
+    ],
+  },
+  "3": {
+    "boards": [],
+    "cards": [
+      "2",
+    ],
+    "labels": [],
+    "lists": [],
+    "notes": [
+      "1",
+    ],
+  },
+  "null": {
+    "boards": [],
+    "cards": [],
+    "labels": [],
+    "lists": [],
+    "notes": [
+      "1",
+    ],
+  },
+}
+`;
+
+exports[`a board: the rows each person reads after writes: a membership let go, a board passed on, a card moved 1`] = `
+{
+  "1": {
+    "boards": [
+      "1",
+    ],
+    "cards": [
+      "1",
+    ],
+    "labels": [
+      "1",
+    ],
+    "lists": [
+      "1",
+    ],
+    "notes": [
+      "1",
+    ],
+  },
+  "2": {
+    "boards": [
+      "2 (past)",
+    ],
+    "cards": [
+      "3",
+    ],
+    "labels": [],
+    "lists": [],
+    "notes": [
+      "1",
+    ],
+  },
+  "3": {
+    "boards": [
+      "2 (past)",
+      "2",
+    ],
+    "cards": [
+      "2",
+      "3",
+    ],
+    "labels": [
+      "1",
+    ],
+    "lists": [
+      "2",
+    ],
+    "notes": [
+      "1",
+    ],
+  },
+  "null": {
+    "boards": [],
+    "cards": [],
+    "labels": [],
+    "lists": [],
+    "notes": [
+      "1",
+    ],
+  },
+}
+`;
+
+exports[`the compiled text is the same for the same definitions, and pinned 1`] = `
+"SELECT _delta_govern('people', NULL);
+
+CREATE OR REPLACE FUNCTION dzql_may__orgs(p_row "orgs", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- sealed:
+    COALESCE(FALSE, FALSE);
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__orgs("orgs", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('orgs', 'dzql_may__orgs');
+
+CREATE OR REPLACE FUNCTION dzql_may__members(p_row "members", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- members:
+    (COALESCE((v_person IS NOT NULL), FALSE) OR (NOT p_check AND COALESCE((v_person IS NOT NULL), FALSE)));
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__members("members", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('members', 'dzql_may__members');
+
+CREATE OR REPLACE FUNCTION dzql_may__venues(p_row "venues", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- venue:
+    COALESCE(EXISTS (SELECT 1 FROM "members" _p_members WHERE _p_members."org_id" = (p_row)."org_id" AND _p_members."active" = TRUE AND _p_members.valid_to IS NULL AND _p_members."person_id" = v_person), FALSE)
+    OR -- venues-of:
+    COALESCE(EXISTS (SELECT 1 FROM "members" _p_members WHERE _p_members."org_id" = (CASE WHEN ((p_row)."org_id")::text ~ '^\\s*[+-]?[0-9]+\\s*$' THEN ((p_row)."org_id")::text::BIGINT END) AND _p_members."active" = TRUE AND _p_members.valid_to IS NULL AND _p_members."person_id" = v_person), FALSE)
+    OR -- venues:
+    COALESCE(EXISTS (SELECT 1 FROM "members" _p_members WHERE _p_members."org_id" = 1 AND _p_members."active" = TRUE AND _p_members.valid_to IS NULL AND _p_members."person_id" = v_person), FALSE);
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__venues("venues", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('venues', 'dzql_may__venues');
+
+CREATE OR REPLACE FUNCTION dzql_may__posts(p_row "posts", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- post:
+    COALESCE(((p_row)."author_id" = v_person), FALSE);
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__posts("posts", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('posts', 'dzql_may__posts');
+"
+`;
+
+exports[`the compiled text is the same for the same definitions, and pinned 2`] = `
+"CREATE OR REPLACE FUNCTION dzql_may__boards(p_row "boards", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- board:
+    (COALESCE(((p_row)."owner_id" = v_person), FALSE) OR (NOT p_check AND COALESCE(((SELECT r."owner_id" FROM "boards" r WHERE r.id = (p_row).id AND r.valid_to IS NULL) = v_person), FALSE)));
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__boards("boards", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('boards', 'dzql_may__boards');
+
+CREATE OR REPLACE FUNCTION dzql_may__lists(p_row "lists", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- board:
+    COALESCE(((SELECT r."owner_id" FROM "boards" r WHERE r.id = (p_row)."boards_id" AND r.valid_to IS NULL) = v_person), FALSE);
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__lists("lists", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('lists', 'dzql_may__lists');
+
+CREATE OR REPLACE FUNCTION dzql_may__cards(p_row "cards", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- board:
+    COALESCE(((SELECT r."owner_id" FROM "boards" r WHERE r.id = (SELECT p."boards_id" FROM "lists" p WHERE p.id = (p_row)."lists_id") AND r.valid_to IS NULL) = v_person), FALSE)
+    OR -- cards-by:
+    COALESCE(((CASE WHEN ((p_row)."author_id")::text ~ '^\\s*[+-]?[0-9]+\\s*$' THEN ((p_row)."author_id")::text::BIGINT END) = v_person), FALSE);
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__cards("cards", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('cards', 'dzql_may__cards');
+
+CREATE OR REPLACE FUNCTION dzql_may__labels(p_row "labels", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- board:
+    EXISTS (SELECT 1 FROM "boards" t WHERE TRUE AND t.valid_to IS NULL AND COALESCE((t."owner_id" = v_person), FALSE));
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__labels("labels", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('labels', 'dzql_may__labels');
+
+SELECT _delta_govern('notes', NULL);
+"
+`;

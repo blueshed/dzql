@@ -25,30 +25,58 @@ serve({ routes: { "/": index }, ws, close: [store.close] });
 
 Without `ws`, the documents are served in the process (`store.delta`), as dzql's thin client reads
 them. `open(prepare)` runs `prepare` between the tables made and the documents served: a seed, a
-guard put in front. The steps it takes are below, for a database something else sets up; their
-options are `createDocListener` and `docTypeFromDef` in `packages/dzql/src/postgres/listener.ts` and
-`registry.ts`, and `openStore` in `app-store.ts`. Signing in: delta-doc's `auth.md` (on Postgres,
+guard put in front. The steps it takes are below, for a database something else sets up; the
+documents' step is one call, `registerDocs(ws, pool, schema, docs, customDocs, options)`, which
+takes what delta's SQLite `registerDocs` takes (`ledger`, `who`, `auth`, `owns`, `shared`; and
+`namespace`), awaited: an app moving from SQLite changes its import. Its options are in
+`packages/dzql/src/postgres/register.ts`, `openStore`'s in `app-store.ts`. Signing in: delta-doc's `auth.md` (on Postgres,
 `postgresLinkStore` from `dzql/auth-link`); who may open what: below, and `rls.md`.
 
 ## Setting up the database
 
 - **Programmatic**: `applyFramework(pool)`, `applyAuthJwtSchema(pool)` (if `jwtAuth`), then
-  `applySql(pool, generateSql(schema, docs))`.
+  `registerDocs(ws, pool, schema, docs, customDocs, { auth, ledger: true })`, which applies
+  `generateSql(schema, docs)` and serves the documents.
 - **Vendored** (a migration tool or `docker-entrypoint-initdb.d` owns the database):
   `bunx dzql init init_db --with-auth` copies `001a–001g` (and `002-users.sql`);
   `bunx dzql sql ./types.ts --out init_db/003-tables.sql` writes your tables. The SQL
   is yours, in git; only the SQL is vendored, the TypeScript is imported.
 - **The history makes the tables**: `migrate(pool, await fromFolder("migrations"), { app, schema })`
-  first, then `applyFramework` and `applySql(pool, generateSql(…))`. The same migrations as on
+  first, then `applyFramework` and `registerDocs`. The same migrations as on
   SQLite (`delta migrations make` writes them from the definitions): a new database runs them from
   the first; one made the older way, holding their tables, adopts them. A change the definitions
-  make is the next migration (delta-doc's `migrations.md`). Give the listener your
-  `schema` (`createDocListener(ws, pool, { types, schema })`): it sends and writes the columns
-  it declares, so two versions on one database each see their own.
+  make is the next migration (delta-doc's `migrations.md`). The listener sends and writes the
+  columns your `schema` declares, so two versions on one database each see their own.
 - **After upgrading dzql**, run `init <dir> --upgrade` (it keeps `.bak`s and says what changed)
   or `applyFramework` again. Never edit `001*` by hand: it is the stored-function contract.
 - Mount `init_db/` at `/docker-entrypoint-initdb.d`: Postgres applies it alphabetically on the
   first boot of an empty volume, then skips; `docker compose down -v` starts fresh.
+
+## Several apps on one database
+
+Each app in a Postgres schema of its own, named by `namespace` (`public` without one, as always):
+its tables, `_delta_*` tables, ledger and compiled functions are made there, and its changes are
+told on a channel of its own, `delta:<schema>` (`public`'s is `delta_changes`), so each listener
+hears its own app alone. Two apps may have the same table and document names.
+
+```ts
+const billing = await openStore({ schema, database: process.env.DATABASE_URL, namespace: "billing" });
+const rota = await openStore({ schema: rotaSchema, database: process.env.DATABASE_URL, namespace: "rota" });
+```
+
+`openStore` makes the schema when it is not there, opens the pool with it as every connection's
+search path, and runs the migrations, the framework and `generateSql` in it. By the steps:
+`openDatabase(url, { namespace })` (from `dzql/pglite`) is that pool (on PGlite, each query and
+transaction is given the path, so pools of several schemas share one PGlite);
+`applyFramework(pool, { namespace })` and `applySql(pool, sql, { namespace })` apply into the
+schema whatever path the pool has (an admin pool may apply, and the app's pool serve); and
+`createDocListener(ws, pool, { namespace })` refuses a pool that does not run in it. A namespace is
+lower-case letters, digits and `_`, 57 at most. The `SECURITY DEFINER` functions pin the schema
+they were applied in. Grant the app's role `USAGE` on its schema, not `public` (`rls.md`).
+
+The advisory locks a write takes on a row, a document or a cursor are the database's: two apps
+whose tables or documents share a name may wait on each other's writes for a moment, and neither
+sees the other's rows. A listener's own lock is keyed by its schema.
 
 ## Who may open a document
 
@@ -65,7 +93,9 @@ person)`, through delta's `pathSql`: the same SQL SQLite runs. The listener asks
 write, history and a walk, and before telling each socket of a change, so someone the path stops
 reaching is let go. A write that would leave the path not reaching the writer (handing the row
 away) is refused, 403. A path that cannot be followed is an error naming the document. There are
-no table rules.
+no table rules: beneath the documents, each table every document holding it says by a path gets
+row-level security derived from those paths, the backstop for the compiled reads and writes, which
+run as the caller (`rls.md`).
 
 ## Compiled SQL
 
@@ -92,6 +122,7 @@ delta's path cases, on the seed and after writes, and its text.
 | The ledger's reads: a document whole (an entry's inverse, a walk's guard), a field the same, a row beyond the document | `dzql_open_whole__<doc>` via `_delta_open`; `_delta_same`, `_delta_row_standing`, per collection |
 | A collection's definition, a table's serial | `_delta_collection`, `_delta_serial_new`, `_delta_serial_past`, per collection |
 | Who may have a document (`owns` as a path), and a write that keeps it in reach | `dzql_owns__<doc>`; `_delta_keeps_reach`, asked by `delta_apply` |
+| May the person have a document that holds a row (the table's row-level security) | `dzql_may__<coll>`, the policy `dzql_owns`, put on by `_delta_govern` |
 | What a remove takes with it, and what a moved row carries | `dzql_cascade_remove__<coll>`, `dzql_cascade_rows__<coll>`, `dzql_hanging_rows__<coll>`, via `_delta_cascade_remove`, `_delta_cascade_rows`, `_delta_hanging_rows` |
 
 Three rules follow:
@@ -102,10 +133,9 @@ Three rules follow:
   Re-apply it after `applyFramework` and after `init --upgrade`. Vendored, `003-tables.sql` sorts
   after `001*`, so a tool that re-applies the directory in order gets this right; one that
   re-applies only `001*` must re-apply `003` too.
-- **One app per database.** Each `generateSql` writes the whole set of an app's documents and
-  collections; a later one, with other definitions, takes their place. Two apps on one Postgres
-  server each have a database of their own (`CREATE DATABASE`), which keeps their changes apart too
-  (LISTEN/NOTIFY is per database). A schema per app is not supported yet (todo #29).
+- **One app per schema.** Each `generateSql` writes the whole set of an app's documents and
+  collections; a later one, with other definitions, takes their place. Two apps on one database
+  each have a Postgres schema of their own (below), or a database of their own.
 - **A document is what its definition compiles to.** Nothing registered by hand is read: add a
   document to your definitions and apply `generateSql`.
 
@@ -135,4 +165,5 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
 - PGlite (`openPglite(dir?)`, `bun add @electric-sql/pglite`) is one process: a `Pool` that
   `dzql/postgres` runs on unchanged.
 - **Never deploy PGlite**: it needs far more memory than a small server has. Tests and development only.
-- **The superuser bypasses RLS**, even with `FORCE`: a hand-written policy needs a non-superuser pool (`rls.md`).
+- **The superuser bypasses RLS**, even with `FORCE`: the policies derived from the paths, and a
+  hand-written one, hold only a pool that is neither a superuser nor `BYPASSRLS` (`rls.md`).

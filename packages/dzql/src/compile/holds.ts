@@ -18,11 +18,12 @@ export const holdsFunction = (prefix: string): string => named("holds", prefix);
 /**
  * The id of the root row an included row hangs from, as `_delta_chain_root`
  * finds it: its parent key, then each parent's, through the tables as they
- * stand; NULL where the chain ends short of the root.
+ * stand; NULL where the chain ends short of the root. `first` reads the row's own parent key: from
+ * the JSON row `p_row` here, from a row of the table where a policy asks (`compilePolicies`).
  */
-export function chainRoot(schema: Schema, doc: DocDef, coll: string): string {
+export function chainRoot(schema: Schema, doc: DocDef, coll: string, first = (fk: string) => `(p_row->>${lit(fk)})::BIGINT`): string {
   let table = need(schema, doc, coll);
-  let id = `(p_row->>${lit(table.parent!.fkColumn)})::BIGINT`;
+  let id = first(table.parent!.fkColumn);
   for (let depth = 0; depth < 32; depth++) {
     const parentKey = table.parent!.collection;
     if (parentKey === doc.root) return id;

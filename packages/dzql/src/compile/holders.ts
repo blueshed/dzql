@@ -7,11 +7,14 @@
  * its chain written as lookups, where the document is one row of an unscoped definition; else every
  * open name of its prefix) and the writer's; each name its own prefix owns (not a longer prefix's)
  * and whose document holds the row (`dzql_holds__<slug>`). SECURITY DEFINER, with the search path it
- * was applied with and pg_temp last: who is told does not depend on what the writer may read.
+ * was applied with and pg_temp last, and `dzql.definer` raised for its lookups, so the tables'
+ * policies let it past (`compilePolicies`): who is told does not depend on what the writer may read.
+ * It answers names, never a row; why a definer and not a policy is 001b's to say (`_delta_holders`).
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
 import { chainRoot, holdsFunction } from "./holds";
 import { lit, need, caseOf } from "./opens";
+import { PAST } from "./policies";
 
 /** One document's names that hold the row, for a collection it holds. */
 function askOf(schema: Schema, docs: DocDef[], doc: DocDef, coll: string): string {
@@ -46,13 +49,16 @@ DECLARE
   v_names TEXT[] := ARRAY[]::text[];
   v_rid   BIGINT;
   v_cand  TEXT;
+  ${PAST.declare}
 BEGIN
   IF current_setting('transaction_isolation') <> 'read committed' THEN
     RAISE EXCEPTION 'a delta write runs at READ COMMITTED, not %: a document opened while it ran would not be told of it',
       upper(current_setting('transaction_isolation')) USING ERRCODE = '0A000';
   END IF;
   IF p_row IS NULL THEN RETURN v_names; END IF;
-${caseOf("p_coll", branches, "NULL;", { alone: "" })}${branches.length ? "\n" : ""}  RETURN v_names;
+  ${PAST.raise}   -- the rows a chain climbs, past the policies: names come back, never a row (compilePolicies)
+${caseOf("p_coll", branches, "NULL;", { alone: "" })}${branches.length ? "\n" : ""}  ${PAST.lower}
+  RETURN v_names;
 END;
 $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 DO $$ BEGIN

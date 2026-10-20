@@ -25,6 +25,7 @@ import { isAuthError } from "@blueshed/delta/auth";
 import type { DeltaOp } from "@blueshed/delta/core";
 import { isEntryId, ledgerWho, socketCursor } from "@blueshed/delta/backend";
 import { assertOwned, createCustomDocs, NOT_FOUND, sendTo, type CustomDoc, type Owns, type Refusal } from "@blueshed/delta/backend";
+import { namespaceOf } from "./sql";
 
 const log = createLogger("[doc]");
 
@@ -138,25 +139,22 @@ const FETCH_PAGE = 1000;
  */
 const appliedOf = (row: any): DeltaOp[] => (row.applied ?? row.ops) as DeltaOp[];
 
-/**
- * How the listener reads a document's log. `_delta_fetch_log` (001e) gives each
- * entry with the write as applied, for custom documents. Framework
- * SQL older than this listener -- vendored with `dzql init` into an initdb
- * directory and not re-applied -- has no such function, and every fetch would
- * fail, so no broadcast would reach anyone: there the listener reads
- * `delta_fetch_ops`, each entry heard as told, as before, and says so once.
- */
+/** How the listener reads a document's log: `_delta_fetch_log` (001e), each entry with the write as applied, for custom documents. */
 const FETCH_LOG = "SELECT version, ops, applied FROM _delta_fetch_log($1, $2)";
-const FETCH_TOLD = "SELECT version, ops, NULL::jsonb AS applied FROM delta_fetch_ops($1, $2)";
-async function fetchQuery(pool: Pool): Promise<string> {
-  const { rows } = await pool.query("SELECT to_regprocedure('_delta_fetch_log(text, bigint)') IS NOT NULL AS ok");
-  if (rows[0]?.ok) return FETCH_LOG;
-  log.warn(
-    "the framework SQL is older than this listener (no _delta_fetch_log, 001e): changes are read with delta_fetch_ops, " +
-    "and a custom document hears a write once for each document told of it. Re-apply it (applyFramework, or " +
-    "bunx dzql init) and restart.",
-  );
-  return FETCH_TOLD;
+
+/**
+ * The channel the listener hears its app's changes on, asked of the pool (`_delta_channel`, 001c:
+ * `delta_changes` in `public`, `delta:<schema>` in a schema of an app's own), so it is the one the
+ * writes made through the pool are told on. Given a `namespace`, the pool must run in it (its search
+ * path's first schema), or the listener would read one app and hear another.
+ */
+async function channelOf(pool: Pool, namespace: string | undefined): Promise<string> {
+  if (namespace !== undefined) {
+    const ns = namespaceOf(namespace);
+    const here: string | null = (await pool.query("SELECT current_schema() AS ns")).rows[0]?.ns ?? null;
+    if (here !== ns) throw new Error(`createDocListener: the pool runs in schema ${here ?? "(none there)"}, not ${ns} -- open it there: openDatabase(url, { namespace: "${ns}" })`);
+  }
+  return (await pool.query("SELECT _delta_channel() AS channel")).rows[0].channel;
 }
 
 export async function createDocListener<I = unknown>(
@@ -183,6 +181,12 @@ export async function createDocListener<I = unknown>(
      * listener starts (`_delta_collections`, the last `generateSql` applied).
      */
     schema?: Schema;
+    /**
+     * The Postgres schema the app is in (todo #29), when it is not `public`: the pool must run in it
+     * (`openDatabase(url, { namespace })`), and the listener hears that schema's changes alone.
+     * Without it, those of the schema the pool runs in, as always.
+     */
+    namespace?: string;
   },
 ) {
   const auth = opts?.auth;
@@ -262,8 +266,8 @@ export async function createDocListener<I = unknown>(
     return type?.owns ? (identity, name) => type.owns!(identity, name) : undefined;
   };
 
-  // Single LISTEN connection with auto-reconnect
-  const fetchSql = await fetchQuery(pool);
+  // Single LISTEN connection with auto-reconnect, on the app's own channel
+  const channel = await channelOf(pool, opts?.namespace);
   let listener: PoolClient = await pool.connect();
   let destroyed = false;
   let reconnecting = false;
@@ -282,7 +286,7 @@ export async function createDocListener<I = unknown>(
 
   /** LISTEN on `client`, and keep this holder's lock on it. */
   async function setupListener(client: any): Promise<void> {
-    await client.query("LISTEN delta_changes");
+    await client.query(`LISTEN "${channel.replace(/"/g, '""')}"`);
     client.on("notification", heard);
     errorHandler = (err: Error) => {
       log.error(`listener error: ${err.message}`);
@@ -357,10 +361,10 @@ export async function createDocListener<I = unknown>(
 
   /** The custom documents told the one write a notification announces: its document's entry at that version. */
   async function hearCustom(msg: any) {
-    if (destroyed || msg.channel !== "delta_changes" || !msg.payload) return;
+    if (destroyed || msg.channel !== channel || !msg.payload) return;
     try {
       const { doc: docName, v } = JSON.parse(msg.payload);
-      const rows = (await pool.query(fetchSql, [docName, v - 1])).rows.filter((row: any) => Number(row.version) === v);
+      const rows = (await pool.query(FETCH_LOG, [docName, v - 1])).rows.filter((row: any) => Number(row.version) === v);
       if (auth && rows.length > 0) await custom.letGoWatching(rows.flatMap(appliedOf));
       for (const row of rows) custom.tell(appliedOf(row));
     } catch (err) {
@@ -371,7 +375,7 @@ export async function createDocListener<I = unknown>(
   // Notification handler — fans out LISTEN/NOTIFY to the document's WS subscribers.
   async function onNotification(msg: any) {
     if (destroyed) return;
-    if (msg.channel !== "delta_changes" || !msg.payload) return;
+    if (msg.channel !== channel || !msg.payload) return;
     try {
       const { doc: docName, v } = JSON.parse(msg.payload);
       const state = tracked.get(docName);
@@ -405,7 +409,7 @@ export async function createDocListener<I = unknown>(
       state.pending = false;
       let more = true;
       while (more && state.version < state.until) {
-        const page = (await pool.query(fetchSql, [docName, state.version])).rows;
+        const page = (await pool.query(FETCH_LOG, [docName, state.version])).rows;
         // only what a notification has announced (`until`): the rest is heard with its own
         const rows = page.filter((row: any) => Number(row.version) <= state.until);
         more = page.length >= FETCH_PAGE && rows.length === page.length;
@@ -668,8 +672,7 @@ export async function createDocListener<I = unknown>(
             return respond({ error: NOT_FOUND });
           }
         }
-        // a change named takes 001g's newer forms; none, the ones a database on 0.10.0's SQL has too
-        const args = [cursor, whoOf(writer), way === "undo", msg.dry === true, msg.entry ?? null, ...(change === null ? [] : [change])];
+        const args = [cursor, whoOf(writer), way === "undo", msg.dry === true, msg.entry ?? null, change];
         const walked = (await callAs(db, "delta_walk", args, auth, identity, declared)) ?? null;
         const def = walked?.doc ? resolveDoc(walked.doc)?.type.def : undefined;
         const result = walked?.doc ? shownAnswer(def, await showAnswer(db, walked.doc, walked, def)) : walked;   // as its document shows them

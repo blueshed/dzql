@@ -2,26 +2,29 @@
  * Carrying an app's rows into, and out of, a Postgres database -- a server, or
  * PGlite in this process. The same `Snapshot` every backend gives and takes
  * (`@blueshed/delta/backend`), so the data moves along the path with its ids and
- * sequences unchanged.
+ * sequences unchanged. Each is one transaction, as the tables' owner (`asOwner`):
+ * every row, past the policies the documents' paths make.
  */
 import type { Pool } from "pg";
 import { isoTime, lastId, q, type Schema, type Snapshot } from "@blueshed/delta/backend";
-import { seqOf } from "./sql";
+import { asOwner, seqOf } from "./sql";
 
 /** Every row of the schema's tables (every version of a temporal row), and each sequence's last id. */
 export async function exportTables(pool: Pool, schema: Schema): Promise<Snapshot> {
-  const tables: Snapshot["tables"] = {};
-  const sequences: Record<string, number> = {};
-  for (const [key, table] of Object.entries(schema.tables)) {
-    const order = table.temporal ? "id, valid_from" : "id";
-    const { rows } = await pool.query(`SELECT to_jsonb(t.*) AS row FROM ${q(table.name)} t ORDER BY ${order}`);
-    tables[key] = rows.map(({ row }: { row: Record<string, unknown> }) =>
-      table.temporal ? { ...row, valid_from: isoTime(row.valid_from), valid_to: isoTime(row.valid_to) } : row,
-    );
-    const seq = (await pool.query(`SELECT last_value, is_called FROM ${q(seqOf(table.name))}`)).rows[0];
-    sequences[key] = seq ? Number(seq.last_value) - (seq.is_called ? 0 : 1) : 0;
-  }
-  return { tables, sequences };
+  return asOwner(pool, async (db) => {
+    const tables: Snapshot["tables"] = {};
+    const sequences: Record<string, number> = {};
+    for (const [key, table] of Object.entries(schema.tables)) {
+      const order = table.temporal ? "id, valid_from" : "id";
+      const { rows } = await db.query(`SELECT to_jsonb(t.*) AS row FROM ${q(table.name)} t ORDER BY ${order}`);
+      tables[key] = rows.map(({ row }: { row: Record<string, unknown> }) =>
+        table.temporal ? { ...row, valid_from: isoTime(row.valid_from), valid_to: isoTime(row.valid_to) } : row,
+      );
+      const seq = (await db.query(`SELECT last_value, is_called FROM ${q(seqOf(table.name))}`)).rows[0];
+      sequences[key] = seq ? Number(seq.last_value) - (seq.is_called ? 0 : 1) : 0;
+    }
+    return { tables, sequences };
+  });
 }
 
 /**
@@ -30,12 +33,14 @@ export async function exportTables(pool: Pool, schema: Schema): Promise<Snapshot
  * last one named where the rows came from. The tables should be empty.
  */
 export async function importTables(pool: Pool, schema: Schema, snapshot: Snapshot): Promise<void> {
-  for (const [key, table] of Object.entries(schema.tables)) {
-    for (const row of snapshot.tables[key] ?? []) {
-      const value = table.temporal ? { valid_from: new Date().toISOString(), valid_to: null, ...row } : row;
-      await pool.query(`INSERT INTO ${q(table.name)} SELECT * FROM jsonb_populate_record(null::${q(table.name)}, $1)`, [JSON.stringify(value)]);
+  await asOwner(pool, async (db) => {
+    for (const [key, table] of Object.entries(schema.tables)) {
+      for (const row of snapshot.tables[key] ?? []) {
+        const value = table.temporal ? { valid_from: new Date().toISOString(), valid_to: null, ...row } : row;
+        await db.query(`INSERT INTO ${q(table.name)} SELECT * FROM jsonb_populate_record(null::${q(table.name)}, $1)`, [JSON.stringify(value)]);
+      }
+      const last = lastId(snapshot, key);
+      await db.query(`SELECT setval($1, $2, $3)`, [seqOf(table.name), Math.max(last, 1), last > 0]);
     }
-    const last = lastId(snapshot, key);
-    await pool.query(`SELECT setval($1, $2, $3)`, [seqOf(table.name), Math.max(last, 1), last > 0]);
-  }
+  });
 }

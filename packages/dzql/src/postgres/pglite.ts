@@ -16,6 +16,7 @@
  */
 import { mkdirSync } from "node:fs";
 import type { Pool } from "pg";
+import { namespaceOf } from "./sql";
 
 /** The slice of PGlite this drives (structural: no hard import). */
 interface PGliteish {
@@ -52,8 +53,20 @@ const verb = (text: string) => text.trim().replace(/;$/, "").toUpperCase();
  * transactions under one lock), so nothing lands inside another's
  * transaction. `LISTEN` on a client is PGlite's `listen`, its payloads the
  * client's `notification` events.
+ *
+ * With a `namespace` (an app in a Postgres schema of its own, todo #29), every
+ * query and transaction runs with that schema as its search path, set for its
+ * own transaction: the one session is shared by every pool made on it, so two
+ * apps on one PGlite each run in theirs.
  */
-export function pglitePool(db: PGliteish): Pool {
+export function pglitePool(db: PGliteish, opts: { namespace?: string } = {}): Pool {
+  const namespace = opts.namespace === undefined ? undefined : namespaceOf(opts.namespace);
+  /** The search path a transaction of this pool runs with: its namespace, when it has one. */
+  const inPath = async (on: Runner) => { if (namespace) await on.query("SELECT set_config('search_path', $1, true)", [namespace]); };
+  /** A query outside a transaction: as it is, or in a transaction of its own on the namespace's path. */
+  const runAlone = (text: string, params?: unknown[]): Promise<Result> =>
+    namespace ? db.transaction(async (t) => { await inPath(t); return run(t, text, params); }) : run(db, text, params);
+
   function connect() {
     const handlers = new Set<(msg: { channel: string; payload: string }) => void>();
     const unlisten: (() => Promise<void>)[] = [];
@@ -74,6 +87,7 @@ export function pglitePool(db: PGliteish): Pool {
             if (!(await ended)) throw new Rollback();
           }).catch((err) => { if (!(err instanceof Rollback)) throw err; });
           tx = { on: await ready, end, done };
+          await inPath(tx.on);
           return { rows: [], rowCount: 0 };
         }
         if (v === "COMMIT" || v === "ROLLBACK") {
@@ -84,17 +98,19 @@ export function pglitePool(db: PGliteish): Pool {
           await open.done;
           return { rows: [], rowCount: 0 };
         }
-        const listen = /^LISTEN\s+"?([\w.]+)"?$/.exec(v);
+        const listen = /^LISTEN\s+("[^"]+"|[\w.]+)$/.exec(v);
         if (listen) {
-          const channel = text.trim().replace(/;$/, "").split(/\s+/)[1]!.replace(/"/g, "");
-          unlisten.push(await db.listen(channel, (payload) => { for (const h of handlers) h({ channel, payload }); }));
+          // as written: a quoted name (`"delta:app"`, a schema's channel) is given to PGlite quoted
+          const name = text.trim().replace(/;$/, "").split(/\s+/)[1]!;
+          const channel = name.replace(/"/g, "");
+          unlisten.push(await db.listen(name, (payload) => { for (const h of handlers) h({ channel, payload }); }));
           return { rows: [], rowCount: 0 };
         }
         if (v.startsWith("UNLISTEN")) {
           for (const off of unlisten.splice(0)) await off();
           return { rows: [], rowCount: 0 };
         }
-        return run(tx ? tx.on : db, text, params);
+        return tx ? run(tx.on, text, params) : runAlone(text, params);
       },
       on(event: string, handler: (msg: any) => void) {
         if (event === "notification") handlers.add(handler);
@@ -113,7 +129,7 @@ export function pglitePool(db: PGliteish): Pool {
   }
 
   const pool = {
-    query: (text: string, params?: unknown[]) => run(db, text, params),
+    query: runAlone,
     connect: async () => connect(),
     end: () => db.close(),
     on: () => pool,
@@ -125,9 +141,10 @@ class Rollback extends Error {}
 
 /**
  * Open (or create) an in-process Postgres: in `dir`, or in memory when none
- * is given, as the Pool delta's Postgres backend takes.
+ * is given, as the Pool delta's Postgres backend takes; in `namespace`, a
+ * Postgres schema, when it is given (`pglitePool`).
  */
-export async function openPglite(dir?: string): Promise<Pool> {
+export async function openPglite(dir?: string, opts: { namespace?: string } = {}): Promise<Pool> {
   let PGlite: any;
   try {
     ({ PGlite } = await import("@electric-sql/pglite"));
@@ -140,14 +157,18 @@ export async function openPglite(dir?: string): Promise<Pool> {
   // its folder made, parents and all, as a new app's `data/pg` needs (PGlite makes only the last)
   if (dir) mkdirSync(dir, { recursive: true });
   const db: PGliteish = await PGlite.create(dir, { extensions: { pgcrypto } });
-  return pglitePool(db);
+  return pglitePool(db, opts);
 }
 
 /**
  * A Postgres to talk to, said one way everywhere (`dzql migrate`, `dzql link`, `openStore`): a server
- * at a `postgres://` URL, else PGlite in a folder, else PGlite in memory.
+ * at a `postgres://` URL, else PGlite in a folder, else PGlite in memory. With a `namespace`, every
+ * query runs in that Postgres schema (its search path): a server's connections are opened so.
  */
-export async function openDatabase(target?: string): Promise<Pool> {
-  if (target && /^postgres(ql)?:\/\//.test(target)) return new (await import("pg")).Pool({ connectionString: target });
-  return openPglite(target);
+export async function openDatabase(target?: string, opts: { namespace?: string } = {}): Promise<Pool> {
+  if (target && /^postgres(ql)?:\/\//.test(target)) {
+    const namespace = opts.namespace === undefined ? undefined : namespaceOf(opts.namespace);
+    return new (await import("pg")).Pool({ connectionString: target, ...(namespace && { options: `-c search_path=${namespace}` }) });
+  }
+  return openPglite(target, opts);
 }

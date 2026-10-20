@@ -3,6 +3,36 @@
 -- =========================================================================
 
 -- ---------------------------------------------------------------------------
+-- _delta_namespace: the Postgres schema this framework was applied in, written
+-- in as it is applied (the first schema on the search path then), so an app in
+-- a schema of its own (todo #29) says its own whatever path a caller runs
+-- with. _delta_channel: the channel its changes are told on -- `delta_changes`
+-- in `public`, as always, and `delta:<schema>` in any other, so a listener
+-- hears its own app's changes and no other's (LISTEN/NOTIFY is per database).
+-- _delta_held_lock: the key a listener's lock is taken on (_delta_holder_start),
+-- one per schema, so a listener of one app never keeps another's alive.
+-- ---------------------------------------------------------------------------
+
+DO $$ BEGIN
+  IF current_schema() IS NULL THEN
+    RAISE EXCEPTION 'no schema to apply the framework in: the search path (%) names none that is there', current_setting('search_path');
+  END IF;
+  IF current_schema() <> 'public' AND length('delta:' || current_schema()) > 63 THEN
+    RAISE EXCEPTION 'schema % is too long a name for its change channel (delta:<schema>, 63 bytes at most)', current_schema();
+  END IF;
+  EXECUTE format('CREATE OR REPLACE FUNCTION _delta_namespace() RETURNS TEXT LANGUAGE sql IMMUTABLE AS %L',
+    format('SELECT %L::text', current_schema()));
+END $$;
+
+CREATE OR REPLACE FUNCTION _delta_channel() RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE WHEN _delta_namespace() = 'public' THEN 'delta_changes' ELSE 'delta:' || _delta_namespace() END;
+$$;
+
+CREATE OR REPLACE FUNCTION _delta_held_lock() RETURNS INTEGER LANGUAGE sql IMMUTABLE AS $$
+  SELECT hashtext(CASE WHEN _delta_namespace() = 'public' THEN '_delta_held' ELSE '_delta_held:' || _delta_namespace() END);
+$$;
+
+-- ---------------------------------------------------------------------------
 -- _delta_bump_and_notify: bump version, log ops, fire NOTIFY — one place.
 -- `p_applied` is the write as applied, for custom documents (the log's
 -- `applied`, 001a); the two-argument form logs none, and is heard as told.
@@ -26,7 +56,7 @@ BEGIN
   INSERT INTO _delta_ops_log (doc_name, version, ops, applied)
     VALUES (p_doc, v_version, p_ops, p_applied);
 
-  PERFORM pg_notify('delta_changes',
+  PERFORM pg_notify(_delta_channel(),
     json_build_object('doc', p_doc, 'v', v_version)::text
   );
 
@@ -184,7 +214,7 @@ CREATE OR REPLACE FUNCTION _delta_clear_dead_holders() RETURNS void LANGUAGE sql
     SELECT objid::bigint::integer FROM pg_locks
      WHERE locktype = 'advisory' AND granted AND objsubid = 2
        AND database = (SELECT oid FROM pg_database WHERE datname = current_database())
-       AND classid = hashtext('_delta_held')::oid);
+       AND classid = _delta_held_lock()::oid);
 $$;
 
 -- _delta_holder_start: a listener starts, on the connection it keeps, as a new
@@ -197,7 +227,7 @@ DROP FUNCTION IF EXISTS _delta_holder_live(INTEGER);
 CREATE OR REPLACE FUNCTION _delta_holder_start(p_holder INTEGER) RETURNS INTEGER AS $$
 DECLARE v_holder INTEGER := COALESCE(p_holder, nextval('_delta_holder_ids')::INTEGER);
 BEGIN
-  PERFORM pg_advisory_lock_shared(hashtext('_delta_held'), v_holder);   -- shared: a lost connection may not have ended yet
+  PERFORM pg_advisory_lock_shared(_delta_held_lock(), v_holder);   -- shared: a lost connection may not have ended yet
   PERFORM _delta_clear_dead_holders();
   RETURN v_holder;
 END;
@@ -207,7 +237,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION _delta_holder_stop(p_holder INTEGER) RETURNS void AS $$
 BEGIN
   DELETE FROM _delta_held WHERE holder = p_holder;
-  PERFORM pg_advisory_unlock_shared(hashtext('_delta_held'), p_holder);
+  PERFORM pg_advisory_unlock_shared(_delta_held_lock(), p_holder);
 END;
 $$ LANGUAGE plpgsql;
 

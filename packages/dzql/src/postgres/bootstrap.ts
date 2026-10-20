@@ -18,6 +18,39 @@
 import type { Pool } from "pg";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { namespaceOf } from "./sql";
+
+/** Where SQL is applied: an app's Postgres schema (todo #29); without one, the pool's own search path, as always. */
+export type ApplyOptions = { namespace?: string };
+
+/** An app's Postgres schema made, when it is not there: asked first, so a role that may not create a schema may still apply into one made for it. */
+export async function ensureNamespace(db: Pick<Pool, "query">, namespace: string): Promise<void> {
+  const ns = namespaceOf(namespace);
+  if ((await db.query("SELECT to_regnamespace($1) IS NULL AS missing", [ns])).rows[0].missing) await db.query(`CREATE SCHEMA ${ns}`);
+}
+
+/**
+ * `sql` run on the pool: as it is, or in `namespace`, made first when it is not there, with it as
+ * the transaction's search path -- so the tables and functions are made there, and the definer
+ * functions pin it (001b, 001d, compileLookups), whatever path the pool's connections have.
+ */
+async function applyIn(pool: Pool, sql: string, namespace: string | undefined): Promise<void> {
+  if (namespace === undefined) { await pool.query(sql); return; }
+  const ns = namespaceOf(namespace);
+  const db = await pool.connect();
+  try {
+    await db.query("BEGIN");
+    await ensureNamespace(db, ns);
+    await db.query("SELECT set_config('search_path', $1, true)", [ns]);
+    await db.query(sql);
+    await db.query("COMMIT");
+  } catch (err) {
+    try { await db.query("ROLLBACK"); } catch { /* the connection may be gone */ }
+    throw err;
+  } finally {
+    db.release();
+  }
+}
 
 const FRAMEWORK_SQL_DIR = join(import.meta.dir, "..", "sql");
 
@@ -34,12 +67,13 @@ export function frameworkSqlFiles(): string[] {
 /**
  * Apply the framework SQL to the given pool. Runs every `001*` file in
  * `src/sql/` alphabetically — 001a through 001g today. Safe to call
- * repeatedly (idempotent statements).
+ * repeatedly (idempotent statements). With `namespace`, into that Postgres
+ * schema: an app of its own there, told on its own channel (`applyIn`).
  */
-export async function applyFramework(pool: Pool): Promise<void> {
+export async function applyFramework(pool: Pool, { namespace }: ApplyOptions = {}): Promise<void> {
   for (const path of frameworkSqlFiles()) {
     const sql = readFileSync(path, "utf8");
-    await pool.query(sql);
+    await applyIn(pool, sql, namespace);
   }
 }
 
@@ -50,6 +84,6 @@ export async function applyFramework(pool: Pool): Promise<void> {
  *   await applyFramework(pool);
  *   await applySql(pool, generateSql(schema, docs));
  */
-export async function applySql(pool: Pool, sql: string): Promise<void> {
-  if (sql.trim()) await pool.query(sql);
+export async function applySql(pool: Pool, sql: string, { namespace }: ApplyOptions = {}): Promise<void> {
+  if (sql.trim()) await applyIn(pool, sql, namespace);
 }

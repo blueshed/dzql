@@ -1,5 +1,6 @@
 /** SQL helpers for codegen.ts (the schema's DDL) and carry.ts (export and import). */
 import { q } from "@blueshed/delta/backend";
+import type { Pool, PoolClient } from "pg";
 import type { ColumnDef, Schema } from "./schema";
 
 /**
@@ -22,6 +23,40 @@ export function distinctNames<T>(items: T[], nameOf: (item: T) => string, clash:
     const other = seen.get(name);
     if (other !== undefined) throw new Error(clash(other, item, name));
     seen.set(name, item);
+  }
+}
+
+/**
+ * An app's Postgres schema (todo #29), checked: a plain lower-case name, so it is written on a search
+ * path or a connection's options with no quoting, and short enough that its change channel
+ * (`delta:<schema>`, 001c's `_delta_channel`) is one Postgres takes (63 bytes).
+ */
+export function namespaceOf(namespace: string): string {
+  if (!/^[a-z_][a-z0-9_]{0,56}$/.test(namespace)) {
+    throw new Error(`namespace "${namespace}" is not a schema dzql can keep an app in: lower-case letters, digits and _, from a letter or _, 57 at most`);
+  }
+  return namespace;
+}
+
+/**
+ * `fn` on a connection of its own, in one transaction with `dzql.definer` raised: what a table's
+ * owner does to every row (carrying them in and out), past the policies generateSql derives from the
+ * documents' paths (todo #19), which let the owner past while it is raised. To another role it gives
+ * nothing; a superuser, or a role with BYPASSRLS, needs none.
+ */
+export async function asOwner<T>(pool: Pool, fn: (db: PoolClient) => Promise<T>): Promise<T> {
+  const db = await pool.connect();
+  try {
+    await db.query("BEGIN");
+    await db.query("SELECT set_config('dzql.definer', 'on', true)");
+    const out = await fn(db);
+    await db.query("COMMIT");
+    return out;
+  } catch (err) {
+    try { await db.query("ROLLBACK"); } catch { /* the connection may be gone */ }
+    throw err;
+  } finally {
+    db.release();
   }
 }
 

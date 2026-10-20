@@ -6,12 +6,14 @@
  * that apply JSON-Patch ops and emit NOTIFY events. The doc-listener fans
  * those events out to WebSocket subscribers.
  *
- *   import {
- *     defineSchema, defineDoc,
- *     createDocListener, docTypeFromDef,
- *   } from "dzql/postgres";
+ *   import { applyFramework, registerDocs } from "dzql/postgres";
  *
- * The stored functions are `src/sql/001*.sql`: `applyFramework(pool)` applies
+ *   await applyFramework(pool);
+ *   await registerDocs(ws, pool, schema, docs, customDocs, { auth, ledger: true });
+ *
+ * `registerDocs` takes what delta's SQLite `registerDocs` takes; `openStore`
+ * does the whole start (migrations, framework, documents) for an app. The
+ * stored functions are `src/sql/001*.sql`: `applyFramework(pool)` applies
  * them, or `bunx dzql init <dir>` copies them for a migration tool
  * (plain idempotent SQL; order is alphabetical).
  */
@@ -19,7 +21,6 @@
 export {
   defineSchema,
   defineDoc,
-  loadDocAt,
   pruneOpsLog,
   validateOps,
 } from "./schema";
@@ -47,6 +48,8 @@ export {
 export { migrate, migrationStatus, renameColumn, dropColumn, renameTable, fromFolder } from "./migrate";
 export type { Migration, MigrateOptions, MigrateResult, MigrationStatus } from "./migrate";
 
+export { registerDocs } from "./register";
+export type { RegisterOptions } from "./register";
 export { createDocListener, defineCustomDoc } from "./listener";
 export { storyStore } from "./story-store";
 export { openStore } from "./app-store";

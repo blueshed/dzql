@@ -39,6 +39,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The evolve skill's Postgres page registers documents with signing in as SQLite does**
+  (20 October, root #37): dzql's `registerDocs(ws, pool, schema, docs, [], { auth })`, in place of
+  a `docTypeFromDef` for each and a `createDocListener`.
+
 - **A new app's skills come again on every install** (20 October, root #68): setup makes
   `delta install-skills --skip bun-route,dzql-app` (`SKILLS`) the app's `prepare`, as create-dzql's
   template has it, so `bun update` brings its packages' skills; and one copy rule, `copyTemplate`,

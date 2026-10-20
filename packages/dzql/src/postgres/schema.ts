@@ -5,7 +5,7 @@
  * DocDef, defineSchema, defineDoc) lives in delta (`@blueshed/delta/backend`) and is identical
  * across the Postgres and SQLite backends. This module re-exports those
  * types and adds the Postgres helpers that hit the live database
- * (time-travel, ops-log pruning, op validation).
+ * (ops-log pruning, op validation).
  */
 import type { Pool } from "pg";
 import { type DeltaOp, joinPath, splitPath } from "@blueshed/delta/core";
@@ -33,12 +33,6 @@ export { defineSchema, defineDoc } from "@blueshed/delta/backend";
 // ---------------------------------------------------------------------------
 // Postgres-specific doc helpers — all thin wrappers over stored functions.
 // ---------------------------------------------------------------------------
-
-export async function loadDocAt(pool: Pool, docName: string, at: string | Date): Promise<any | null> {
-  const ts = at instanceof Date ? at.toISOString() : at;
-  const { rows } = await pool.query("SELECT delta_open_at($1, $2) AS doc", [docName, ts]);
-  return rows[0]?.doc ?? null;
-}
 
 export async function pruneOpsLog(pool: Pool, keepInterval = "1 hour"): Promise<number> {
   const { rows } = await pool.query("SELECT delta_prune_ops($1::interval) AS count", [keepInterval]);
