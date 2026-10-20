@@ -34,6 +34,12 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Added
 
+- **A computed kept from an effect's run says it has gone stale** (20 October, Peter's word; #9).
+  What an effect run makes is disposed before its next run, and a computed disposed so keeps its
+  last value: `label ??= name.map(…)` in an effect worked once and then never updated, silently.
+  In development a `.get()` of a computed after the run that made it was disposed warns, once per
+  computed, naming the run by its source; a read in that run's own teardown (a cleanup) doesn't.
+  A production build drops it, as the other warnings. No API change.
 - **`mount(target, render, { before })` places a root where it is asked** (20 October, Peter's
   word; #10): before a child of `target` (`null` or no options: at the end, as before), and its
   disposer takes the nodes out wherever they went. A root placed by hand was `scoped(build)`,

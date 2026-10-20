@@ -33,6 +33,8 @@ kept (`watchTitle` in `resources/jobs/jobs.ts`).
   effect(() => { user.get(); label ??= name.map((n) => n.toUpperCase()); });
   ```
 
+  A computed kept so keeps its last value and never updates; in development a `.get()` of it after its run warns, once, naming the run.
+
 - Opening a fresh resource each run is fine when that is the intent: ``openDoc(`room:${room.get()}`)`` follows `room`.
 - An effect at module top level is never disposed: keep its disposer.
 - An event handler is not a scope: an effect made in `onclick` leaks. Derive in the component body.

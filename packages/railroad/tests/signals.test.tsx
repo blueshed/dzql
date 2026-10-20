@@ -435,6 +435,55 @@ describe("effect(): each run owns what it creates", () => {
     dispose();
   });
 
+  // A computed kept from one run (label ??= …) was disposed with that run and kept its last
+  // value: label.get() in a later run read it stale, silently (#9).
+  test("a computed read after the run that made it was disposed warns, once, naming the run", () => {
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const user = signal(1);
+      const name = signal("ada");
+      let label: ReadonlySignal<string> | undefined;
+      const seen: string[] = [];
+      const dispose = effect(() => {
+        user.get();
+        label ??= name.map((n) => n.toUpperCase()); // made in the first run, kept: the trap
+        seen.push(label.get());
+      });
+      expect(warnSpy).not.toHaveBeenCalled(); // the run that made it reads it live
+      user.set(2); // the first run is disposed, and its computed with it
+      name.set("grace"); // nothing follows name now
+      user.set(3);
+      expect(seen).toEqual(["ADA", "ADA", "ADA"]); // stale, as it always was: now it says so
+      const said = warnSpy.mock.calls.map((c) => String(c[0])).filter((m) => m.includes("effect run that made it"));
+      expect(said).toHaveLength(1);
+      expect(said[0]).toContain("label ??= name.map"); // the run, by its source
+      dispose();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test("a computed made beside the effect, or read in the teardown of its run, doesn't warn", () => {
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const n = signal(1);
+      const doubled = n.map((v) => v * 2); // beside the effect: the right way
+      const seen: number[] = [];
+      const dispose = effect(() => {
+        seen.push(doubled.get());
+        const mine = n.map((v) => v + 1);
+        mine.get();
+        return () => { mine.get(); }; // a cleanup reads its run's last value on purpose
+      });
+      n.set(2);
+      dispose();
+      expect(seen).toEqual([2, 4]);
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   test("a nested effect is disposed before re-run and on dispose", () => {
     const outer = signal(0);
     const inner = signal(0);
@@ -1084,6 +1133,7 @@ describe("an app's production build drops the development warnings", () => {
     "A reactive child held a DOM Node",
     "created outside a dispose scope",
     "duplicate keys detected",
+    "the effect run that made it was disposed", // a computed kept from an effect's run
   ];
 
   test("their text is in a development bundle and not in a production one", async () => {
