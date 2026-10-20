@@ -264,18 +264,19 @@ $$ LANGUAGE plpgsql;
 -- it is, stay. A required column the value leaves out (not nullable, no
 -- default) is the writer's mistake: 23502, 400 on the wire, as for an add,
 -- and asked with the value's fields, before whether the row is there (todo
--- #3; replaceRow in sqlite.ts).
+-- #3; replaceRow in sqlite.ts), in delta's words after the op's path (`p_path`).
 -- ---------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION _delta_whole(p_columns JSONB, p_value JSONB)
+DROP FUNCTION IF EXISTS _delta_whole(jsonb, jsonb);   -- its first form named no op's path
+CREATE OR REPLACE FUNCTION _delta_whole(p_columns JSONB, p_value JSONB, p_path TEXT)
 RETURNS JSONB AS $$
 DECLARE
   v_missing TEXT;
 BEGIN
-  SELECT string_agg(col_key, ', ' ORDER BY col_key) INTO v_missing
+  SELECT string_agg(p_path || ': Required field missing: ' || col_key || ' (give it a value, or declare a default or make it nullable in the schema)', '; ' ORDER BY col_key) INTO v_missing
     FROM jsonb_each(p_columns) AS x(col_key, col_def)
    WHERE NOT p_value ? col_key AND NOT COALESCE((col_def->>'nullable')::boolean, false) AND NOT col_def ? 'default';
   IF v_missing IS NOT NULL THEN
-    RAISE EXCEPTION 'Required field missing: % (give it a value, or declare a default or make it nullable in the schema)', v_missing
+    RAISE EXCEPTION '%', v_missing
       USING ERRCODE = '23502';
   END IF;
   RETURN COALESCE((SELECT jsonb_object_agg(col_key, COALESCE(col_def->'default', 'null'::jsonb)) FROM jsonb_each(p_columns) AS x(col_key, col_def)), '{}'::jsonb);
@@ -432,10 +433,14 @@ BEGIN
 
     v_parts := _delta_split_path(v_op->>'path');
     v_coll_key := v_parts[1];
+    -- what the op says is refused in delta's words, as SQLite's validateOps says each: after its path
+    IF COALESCE(v_coll_key, '') = '' THEN
+      RAISE EXCEPTION '%: Empty path', v_op->>'path' USING ERRCODE = '22023';
+    END IF;
 
     v_coll := _delta_collection(v_coll_key);
     IF v_coll.collection_key IS NULL THEN
-      RAISE EXCEPTION 'unknown collection: %', v_coll_key USING ERRCODE = '22023';
+      RAISE EXCEPTION '%: Unknown collection: %', v_op->>'path', v_coll_key USING ERRCODE = '22023';
     END IF;
     -- a walk puts back what the ledger recorded, whole
     -- (the columns this process declares, _delta_cols; a walk's, every column the row was stored with too)
@@ -456,10 +461,14 @@ BEGIN
     v_outside := v_coll_key IS DISTINCT FROM v_def.root_collection
                  AND NOT (v_coll_key = ANY(COALESCE(v_def.include, ARRAY[]::text[])));
     IF v_outside AND NOT (COALESCE(p_walk, FALSE) AND array_length(v_parts, 1) = 2 AND v_op->>'op' IN ('add', 'remove')) THEN
-      RAISE EXCEPTION
-        'op collection "%" is not part of doc "%" (root: %, include: %)',
-        v_coll_key, v_def.prefix, v_def.root_collection, v_def.include
-        USING ERRCODE = '22023';
+      RAISE EXCEPTION '%: Unknown collection: %', v_op->>'path', v_coll_key USING ERRCODE = '22023';
+    END IF;
+    -- `/<coll>` is a single document's root row, replaced whole, and nothing else
+    IF array_length(v_parts, 1) = 1 AND (v_is_list OR v_coll_key IS DISTINCT FROM v_def.root_collection) THEN
+      RAISE EXCEPTION '%: Whole-collection ops are not supported: % %', v_op->>'path', v_op->>'op', v_op->>'path' USING ERRCODE = '22023';
+    END IF;
+    IF array_length(v_parts, 1) = 1 AND v_op->>'op' IS DISTINCT FROM 'replace' THEN
+      RAISE EXCEPTION '%: Root supports replace only', v_op->>'path' USING ERRCODE = '22023';
     END IF;
 
     v_view := _delta_source_view(v_coll.table_name, v_coll.temporal);
@@ -478,12 +487,12 @@ BEGIN
       -- field: its path (here, the document's name) says it.
       IF array_length(v_parts, 1) = 2 THEN
         IF v_parts[2] = 'id' THEN
-          RAISE EXCEPTION 'Unknown field: id (a row keeps the id its path names)' USING ERRCODE = '22023';
+          RAISE EXCEPTION '%: Unknown field: id', v_op->>'path' USING ERRCODE = '22023';
         END IF;
         v_op := jsonb_set(v_op, '{value}', jsonb_build_object(v_parts[2], v_op->'value'));
       END IF;
-      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value');
-      v_blank := CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_whole(v_cols, v_op->'value') ELSE '{}'::jsonb END;
+      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 2);
+      v_blank := CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_whole(v_cols, v_op->'value', v_op->>'path') ELSE '{}'::jsonb END;
 
       -- Read + lock
       v_row := _delta_row_lock(v_coll_key, v_coll.table_name, v_coll.temporal, v_doc_id);   -- read, and lock
@@ -545,13 +554,15 @@ BEGIN
           v_op->>'path', p_doc_name, v_def.root_collection
           USING ERRCODE = '22023';
       END IF;
-      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value');
       v_id_text := v_parts[2];
+      -- the id the path names, then the value, as SQLite's validateOps asks them
+      IF v_id_text <> '-' THEN
+        v_id := _delta_row_id(v_coll_key, v_id_text, v_op->>'path');
+      END IF;
+      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', TRUE, FALSE);
       -- Auto-generate ID from sequence if path ends with '-'
       IF v_id_text = '-' THEN
         v_id := _delta_next_id(v_coll_key, v_coll.table_name);
-      ELSE
-        v_id := _delta_row_id(v_coll_key, v_id_text);
       END IF;
       -- An add makes a new row, under an id the serial has not handed out
       --: one it has (minted, or passed for an add that named it) is
@@ -637,14 +648,14 @@ BEGIN
 
       -- A required column (not nullable, no declared default) the value leaves
       -- out is the writer's mistake: refuse it (SQLSTATE 23502, 400 on the
-      -- wire) rather than store '' / 0 / false for it.
-      SELECT string_agg(col_key, ', ' ORDER BY col_key) INTO v_missing
+      -- wire) rather than store '' / 0 / false for it: in delta's words, after the op's path.
+      SELECT string_agg((v_op->>'path') || ': Required field missing: ' || col_key || ' (give it a value, or declare a default or make it nullable in the schema)', '; ' ORDER BY col_key) INTO v_missing
         FROM jsonb_each(_delta_cols(v_coll_key, v_coll.columns_def)) AS x(col_key, col_def)
        WHERE NOT v_new_row ? col_key
          AND NOT COALESCE((col_def->>'nullable')::boolean, false)
          AND NOT col_def ? 'default';
       IF v_missing IS NOT NULL THEN
-        RAISE EXCEPTION 'Required field missing: % (give it a value, or declare a default or make it nullable in the schema)', v_missing
+        RAISE EXCEPTION '%', v_missing
           USING ERRCODE = '23502';
       END IF;
 
@@ -704,7 +715,7 @@ BEGIN
     -- Remove row:  remove /<collection>/<id>  (+ cascades)
     -- ---------------------------------------------------------------
     IF array_length(v_parts, 1) = 2 AND v_op->>'op' = 'remove' THEN
-      v_id := _delta_row_id(v_coll_key, v_parts[2]);
+      v_id := _delta_row_id(v_coll_key, v_parts[2], v_op->>'path');
       -- _delta_cascade_remove addresses rows by id alone, so without this gate a
       -- client could name any id and delete a sibling doc's row.
       IF NOT v_outside AND NOT _delta_row_in_scope(v_def, p_doc_name, v_coll_key, v_id) THEN
@@ -742,19 +753,19 @@ BEGIN
     -- Field replace: replace /<collection>/<id>/field (single field shorthand)
     -- ---------------------------------------------------------------
     IF (array_length(v_parts, 1) = 2 OR array_length(v_parts, 1) = 3) AND v_op->>'op' = 'replace' THEN
-      v_id := _delta_row_id(v_coll_key, v_parts[2]);
+      v_id := _delta_row_id(v_coll_key, v_parts[2], v_op->>'path');
 
       -- 3-segment: wrap single field into partial row value. A row's id is
       -- not a field: its path says it. What the op says is asked before its
       -- row (400 before 404), as for an add, and as SQLite's validateOps asks.
       IF array_length(v_parts, 1) = 3 THEN
         IF v_parts[3] = 'id' THEN
-          RAISE EXCEPTION 'Unknown field: id (a row keeps the id its path names)' USING ERRCODE = '22023';
+          RAISE EXCEPTION '%: Unknown field: id', v_op->>'path' USING ERRCODE = '22023';
         END IF;
         v_op := jsonb_set(v_op, '{value}', jsonb_build_object(v_parts[3], v_op->'value'));
       END IF;
-      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value');
-      v_blank := CASE WHEN array_length(v_parts, 1) = 2 THEN _delta_whole(v_cols, v_op->'value') ELSE '{}'::jsonb END;
+      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 3);
+      v_blank := CASE WHEN array_length(v_parts, 1) = 2 THEN _delta_whole(v_cols, v_op->'value', v_op->>'path') ELSE '{}'::jsonb END;
 
       -- Same gate as remove: the row is addressed by bare id, so it must belong
       -- to this doc. (The single-mode root branch above never reaches here — it
@@ -836,7 +847,7 @@ BEGIN
       CONTINUE;
     END IF;
 
-    RAISE EXCEPTION 'invalid op: % %', v_op->>'op', v_op->>'path' USING ERRCODE = '22023';
+    RAISE EXCEPTION '%: Invalid op: % %', v_op->>'path', v_op->>'op', v_op->>'path' USING ERRCODE = '22023';
   END LOOP;
 
   -- Told: the writer's document and every other that holds a row changed,

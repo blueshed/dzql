@@ -154,9 +154,10 @@ $$;
 -- seq_<table>, so anything else is a client error (SQLSTATE 22P02 → 400) that
 -- names the fix. So is a number past 2^53 - 1: a row is read out as JSON, and
 -- no JavaScript number holds such an id exactly, so the row would be told under
--- another (the SQLite backend refuses it too). Digits name their number, however
--- many there are ("007" is 7).
-CREATE OR REPLACE FUNCTION _delta_row_id(p_collection TEXT, p_segment TEXT)
+-- another (the SQLite backend refuses it too, in these words, after the op's
+-- path: `p_path`, else the row's). Digits name their number, however many there are ("007" is 7).
+DROP FUNCTION IF EXISTS _delta_row_id(text, text);   -- its first form named no op's path
+CREATE OR REPLACE FUNCTION _delta_row_id(p_collection TEXT, p_segment TEXT, p_path TEXT DEFAULT NULL)
 RETURNS bigint LANGUAGE plpgsql IMMUTABLE AS $$
 BEGIN
   IF p_segment IS NULL OR p_segment !~ '^[0-9]+$' THEN
@@ -165,8 +166,8 @@ BEGIN
       USING ERRCODE = '22P02';
   END IF;
   IF p_segment::numeric > 9007199254740991 THEN
-    RAISE EXCEPTION 'row id % in /%/% is past 2^53 - 1, which no number holds exactly -- add to /%/- and read the id from the echo',
-      p_segment, p_collection, p_segment, p_collection
+    RAISE EXCEPTION '%: Row id % is past 2^53 - 1, which no number holds exactly -- add to % and read the id from the echo',
+      COALESCE(p_path, _delta_build_path(p_collection, p_segment)), p_segment, _delta_build_path(p_collection, '-')
       USING ERRCODE = '22P02';
   END IF;
   RETURN p_segment::bigint;
@@ -179,42 +180,56 @@ $$;
 -- the temporal columns are the row's own. By the columns given (`p_columns`): a
 -- set the compiler did not write in (another version's, `delta.declared`; a
 -- walk's, as its entry was stored) is checked here.
+-- In delta's words, as SQLite's validateOps says each: after the op's path
+-- (`p_path`), and a field of a row's value (not `p_field`, one field's op) after
+-- the field's; several refusals of one kind joined by "; ". An add (`p_add`)
+-- may leave its parent key null: its document's root, or found in scope.
+DROP FUNCTION IF EXISTS _delta_assert_fields_declared(text, jsonb, text, jsonb);   -- its first form named no op's path
+DROP FUNCTION IF EXISTS _delta_assert_fields(text, jsonb, text, jsonb);
 CREATE OR REPLACE FUNCTION _delta_assert_fields_declared(
-  p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB
+  p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN
 ) RETURNS void LANGUAGE plpgsql IMMUTABLE AS $$
 DECLARE
   v_unknown TEXT;
 BEGIN
   IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
-    RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+    RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
   END IF;
-  SELECT string_agg(k, ', ' ORDER BY k) INTO v_unknown
+  SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_unknown
     FROM jsonb_object_keys(p_value) AS k
    WHERE NOT COALESCE(p_columns, '{}'::jsonb) ? k
      AND k NOT IN ('id', 'valid_from', 'valid_to')
      AND k IS DISTINCT FROM p_parent_fk;
   IF v_unknown IS NOT NULL THEN
-    RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_unknown, p_collection USING ERRCODE = '22023';
+    RAISE EXCEPTION '%', v_unknown USING ERRCODE = '22023';
   END IF;
-  -- the parent key, given, is a whole number or text; text that is no number's digits is
-  -- refused when the column casts it (22P02, 400), as SQLite refuses a key that names no row
-  IF p_parent_fk IS NOT NULL AND p_value ? p_parent_fk AND jsonb_typeof(p_value->p_parent_fk) <> 'null'
-     AND NOT (jsonb_typeof(p_value->p_parent_fk) = 'string'
-              OR (jsonb_typeof(p_value->p_parent_fk) = 'number' AND (p_value->>p_parent_fk)::numeric = trunc((p_value->>p_parent_fk)::numeric))) THEN
-    RAISE EXCEPTION '% must be an id: an integer', p_parent_fk USING ERRCODE = '22023';
-  END IF;
-  -- each column's value of its type, as SQLite's validateOps asks: not cast (5 into a text column is "5")
-  SELECT string_agg(format('%s must be %s', k, CASE c->>'type' WHEN 'text' THEN 'a string' WHEN 'integer' THEN 'an integer'
-           WHEN 'real' THEN 'a number' WHEN 'boolean' THEN 'a boolean' ELSE 'an ISO-8601 time' END), '; ' ORDER BY k) INTO v_unknown
-    FROM jsonb_each(p_value) AS v(k, val), LATERAL (SELECT p_columns->k AS c) col
-   WHERE c IS NOT NULL AND jsonb_typeof(val) <> 'null' AND NOT CASE c->>'type'
-     WHEN 'text' THEN jsonb_typeof(val) = 'string'
-     WHEN 'integer' THEN jsonb_typeof(val) = 'number' AND val::text::numeric = trunc(val::text::numeric)
-     WHEN 'real' THEN jsonb_typeof(val) = 'number'
-     WHEN 'boolean' THEN jsonb_typeof(val) = 'boolean'
-     -- ISO-8601, as isIsoTime (src/postgres/schema.ts) reads it; a day off the calendar is refused by the cast (22008, 400)
-     WHEN 'timestamptz' THEN jsonb_typeof(val) = 'string' AND (val #>> '{}') ~ '^\d{4}-\d{2}-\d{2}([T ]([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,6})?)?(Z|[+-]([01]\d|2[0-3])(:?[0-5]\d)?)?)?$'
-     ELSE TRUE END;
+  -- each field's value as it may be written, as SQLite's validateOps asks: of its column's type, not
+  -- cast (5 into a text column is "5"); null only where its column takes it; the parent key, given,
+  -- a whole number or text (text that is no number's digits is refused when the column casts it,
+  -- 22P02, 400, as SQLite refuses a key that names no row), null only where an add leaves it
+  SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_unknown
+    FROM (
+      SELECT k, CASE
+        WHEN k = p_parent_fk THEN CASE
+          WHEN jsonb_typeof(val) = 'null' THEN CASE WHEN p_add THEN NULL ELSE k || ' cannot be null' END
+          WHEN jsonb_typeof(val) = 'string' OR (jsonb_typeof(val) = 'number' AND val::text::numeric = trunc(val::text::numeric)) THEN NULL
+          ELSE k || ' must be an id: an integer, or text' END
+        WHEN c IS NULL THEN NULL
+        WHEN jsonb_typeof(val) = 'null' THEN CASE WHEN COALESCE((c->>'nullable')::boolean, false) THEN NULL ELSE k || ' cannot be null' END
+        WHEN CASE c->>'type'
+          WHEN 'text' THEN jsonb_typeof(val) = 'string'
+          WHEN 'integer' THEN jsonb_typeof(val) = 'number' AND val::text::numeric = trunc(val::text::numeric)
+          WHEN 'real' THEN jsonb_typeof(val) = 'number'
+          WHEN 'boolean' THEN jsonb_typeof(val) = 'boolean'
+          -- ISO-8601, as isIsoTime (src/postgres/schema.ts) reads it; a day off the calendar is refused by the cast (22008, 400)
+          WHEN 'timestamptz' THEN jsonb_typeof(val) = 'string' AND (val #>> '{}') ~ '^\d{4}-\d{2}-\d{2}([T ]([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,6})?)?(Z|[+-]([01]\d|2[0-3])(:?[0-5]\d)?)?)?$'
+          ELSE TRUE END THEN NULL
+        ELSE k || ' must be ' || CASE c->>'type' WHEN 'text' THEN 'a string' WHEN 'integer' THEN 'an integer'
+          WHEN 'real' THEN 'a number' WHEN 'boolean' THEN 'a boolean' ELSE 'an ISO-8601 time' END
+        END AS m
+        FROM jsonb_each(p_value) AS v(k, val), LATERAL (SELECT p_columns->k AS c) col
+    ) AS checked
+   WHERE m IS NOT NULL;
   IF v_unknown IS NOT NULL THEN
     RAISE EXCEPTION '%', v_unknown USING ERRCODE = '22023';
   END IF;
@@ -225,8 +240,8 @@ $$;
 -- with one that checks each column set it compiled by its own statements, and
 -- any other by the columns given.
 CREATE OR REPLACE FUNCTION _delta_assert_fields(
-  p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB
-) RETURNS void LANGUAGE sql IMMUTABLE AS $$ SELECT _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value); $$;
+  p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN
+) RETURNS void LANGUAGE sql IMMUTABLE AS $$ SELECT _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value, p_path, p_add, p_field); $$;
 
 -- Pick the source relation for a collection.
 --   temporal + no timestamp → current_<table> view

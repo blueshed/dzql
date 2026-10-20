@@ -11,8 +11,8 @@
  *   own, and refuses a name no document has.
  * - `_delta_assert_fields`: for each collection, each set of columns the definitions give it (all
  *   of them, and each document's own), checked by written statements -- the fields there are, the
- *   parent key, each column's type -- with one message each, in one order (`ORDER BY` in SQL, so the
- *   database's collation orders both alike). Another set (a walk's, another version's) is checked
+ *   parent key, each column's type -- in delta's words (SQLite's), after the op's path (a row's field,
+ *   after the field's), in one order (`ORDER BY` in SQL, so the database's collation orders both alike). Another set (a walk's, another version's) is checked
  *   by the columns given (`_delta_assert_fields_declared`).
  */
 import type { ColumnDef, DocDef, ResolvedTable, Schema } from "@blueshed/delta/backend";
@@ -58,34 +58,39 @@ const MUST: Record<string, [string, (v: string) => string]> = {
     `jsonb_typeof(${v}) = 'string' AND (${v} #>> '{}') ~ '^\\d{4}-\\d{2}-\\d{2}([T ]([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d{1,6})?)?(Z|[+-]([01]\\d|2[0-3])(:?[0-5]\\d)?)?)?$'`],
 };
 
-/** The checks of one set of a collection's columns, as written statements. */
+/**
+ * The checks of one set of a collection's columns, as written statements, each refusal in delta's
+ * words (as `_delta_assert_fields_declared` says them): after the op's path, a row's field after the field's.
+ */
 function checksOf(table: ResolvedTable, columns: Record<string, ColumnDef>): string {
   const fk = table.parent?.fkColumn;
   const known = ["id", "valid_from", "valid_to", ...(fk ? [fk] : []), ...Object.keys(columns)];
-  const typed = Object.entries(columns).filter(([, d]) => MUST[d.type]);
   const lines = [
     `IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
-          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+          RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;`,
-    `SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN (${[...new Set(known)].map(lit).join(", ")});
-        IF v_bad IS NOT NULL THEN
-          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
-        END IF;`,
+    `SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN (${[...new Set(known)].map(lit).join(", ")});
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;`,
   ];
+  // each field's value as it may be written: the parent key an id, null only where an add leaves it
+  // (its document's root, or found in scope); a column of its type, null only where it is nullable
+  const rows: string[] = [];
   if (fk) {
-    const v = `p_value->${lit(fk)}`;
-    lines.push(`IF p_value ? ${lit(fk)} AND jsonb_typeof(${v}) <> 'null'
-           AND NOT (jsonb_typeof(${v}) = 'string' OR (jsonb_typeof(${v}) = 'number' AND (p_value->>${lit(fk)})::numeric = trunc((p_value->>${lit(fk)})::numeric))) THEN
-          RAISE EXCEPTION '% must be an id: an integer', ${lit(fk)} USING ERRCODE = '22023';
-        END IF;`);
+    const v = `(p_value->${lit(fk)})`;
+    rows.push(`(${lit(fk)}, CASE WHEN jsonb_typeof(${v}) = 'null' THEN CASE WHEN p_add THEN NULL ELSE ${lit(`${fk} cannot be null`)} END
+            WHEN NOT (jsonb_typeof(${v}) = 'string' OR (jsonb_typeof(${v}) = 'number' AND ${v}::text::numeric = trunc(${v}::text::numeric))) THEN ${lit(`${fk} must be an id: an integer, or text`)} END)`);
   }
-  if (typed.length) {
-    const rows = typed.map(([col, d]) => {
-      const v = `(p_value->${lit(col)})`;   // in parentheses: `::` binds tighter than `->`
-      const [must, ok] = MUST[d.type]!;
-      return `(${lit(col)}, CASE WHEN jsonb_typeof(${v}) <> 'null' AND NOT (${ok(v)}) THEN ${lit(`${col} must be ${must}`)} END)`;
-    });
-    lines.push(`SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+  for (const [col, d] of Object.entries(columns)) {
+    const v = `(p_value->${lit(col)})`;   // in parentheses: `::` binds tighter than `->`
+    const must = MUST[d.type];
+    const whens = [
+      ...(d.nullable ? [] : [`WHEN jsonb_typeof(${v}) = 'null' THEN ${lit(`${col} cannot be null`)}`]),
+      ...(must ? [`WHEN jsonb_typeof(${v}) <> 'null' AND NOT (${must[1](v)}) THEN ${lit(`${col} must be ${must[0]}`)}`] : []),
+    ];
+    if (whens.length) rows.push(`(${lit(col)}, CASE ${whens.join(" ")} END)`);
+  }
+  if (rows.length) {
+    lines.push(`SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
           ${rows.join(",\n          ")}) AS x(k, m) WHERE m IS NOT NULL;
         IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;`);
   }
@@ -118,14 +123,14 @@ ${[...sets.values()].map((cols) => `        IF p_columns = ${asStored(cols)} THE
         END IF;`).join("\n")}
       END IF;`;
   });
-  const checks = `CREATE OR REPLACE FUNCTION _delta_assert_fields(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB)
+  const checks = `CREATE OR REPLACE FUNCTION _delta_assert_fields(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN)
 RETURNS void AS $$
 DECLARE
   v_bad TEXT;
 BEGIN
 ${caseOf("p_collection", branches, "NULL;")}
   -- another set of columns (a walk's, another version's): by the columns given
-  PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value);
+  PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value, p_path, p_add, p_field);
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;`;
   return [...docs.map((d) => columnsOf(schema, d)), dispatch, checks, ""].join("\n\n");

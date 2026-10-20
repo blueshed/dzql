@@ -13,8 +13,8 @@
  * document's own, and sets the compiler never saw), each parent key (the
  * schema's, none, another), and values made to probe each check -- not an
  * object, fields there are not, the parent key as every kind of value, each
- * column given every kind of value, several wrong at once --
- * `_delta_assert_fields` and the check by the columns given
+ * column given every kind of value, several wrong at once -- each as an add, a row replaced and a
+ * field replaced would ask it, `_delta_assert_fields` and the check by the columns given
  * (`_delta_assert_fields_declared`, the framework's, which stays for a set the
  * compiler never saw) accept the same values and refuse the rest with the same
  * code and message.
@@ -42,10 +42,11 @@ beforeAll(async () => {
   await applyFramework(pool);
   await applySql(pool, generateSql(pathSchema, docs));   // the compiled columns and checks
   // a check's answer, compiled or by the columns given: ok, or its code and message
-  await pool.query(`CREATE FUNCTION _t_check(p_fw BOOLEAN, p_coll TEXT, p_cols JSONB, p_fk TEXT, p_value JSONB) RETURNS TEXT AS $$
+  // as an op asks it: its path, whether it adds, whether its value is one field's
+  await pool.query(`CREATE FUNCTION _t_check(p_fw BOOLEAN, p_coll TEXT, p_cols JSONB, p_fk TEXT, p_value JSONB, p_add BOOLEAN DEFAULT FALSE, p_field BOOLEAN DEFAULT FALSE) RETURNS TEXT AS $$
     BEGIN
-      IF p_fw THEN PERFORM _delta_assert_fields_declared(p_coll, p_cols, p_fk, p_value);
-      ELSE PERFORM _delta_assert_fields(p_coll, p_cols, p_fk, p_value); END IF;
+      IF p_fw THEN PERFORM _delta_assert_fields_declared(p_coll, p_cols, p_fk, p_value, '/' || p_coll || '/1', p_add, p_field);
+      ELSE PERFORM _delta_assert_fields(p_coll, p_cols, p_fk, p_value, '/' || p_coll || '/1', p_add, p_field); END IF;
       RETURN 'ok';
     EXCEPTION WHEN OTHERS THEN RETURN SQLSTATE || ' ' || SQLERRM;
     END $$ LANGUAGE plpgsql`);
@@ -120,11 +121,13 @@ describe("the checks of every collection's columns, as by the columns given", ()
       sets.push({}, Object.fromEntries(rest.map((c) => [c, table.columns[c]])), { ...table.columns, ...(first ? { [first]: { type: "text", nullable: true } } : {}) });
       for (const cols of sets) {
         for (const parentFk of [fk ?? null, null, "other_id"]) {
-          const values = valuesOf(table.columns, fk);
-          const answer = async (fw: boolean) => (await pool.query(
-            `SELECT array_agg(_t_check($1, $2, $3::jsonb, $4, v) ORDER BY n) AS a FROM jsonb_array_elements($5::jsonb) WITH ORDINALITY AS e(v, n)`,
-            [fw, coll, JSON.stringify(cols), parentFk, JSON.stringify(values)])).rows[0].a;
-          expect({ coll, cols, parentFk, checks: await answer(false) }).toEqual({ coll, cols, parentFk, checks: await answer(true) });
+          for (const [add, field] of [[true, false], [false, false], [false, true]]) {
+            const values = valuesOf(table.columns, fk);
+            const answer = async (fw: boolean) => (await pool.query(
+              `SELECT array_agg(_t_check($1, $2, $3::jsonb, $4, v, $6, $7) ORDER BY n) AS a FROM jsonb_array_elements($5::jsonb) WITH ORDINALITY AS e(v, n)`,
+              [fw, coll, JSON.stringify(cols), parentFk, JSON.stringify(values), add, field])).rows[0].a;
+            expect({ coll, cols, parentFk, add, field, checks: await answer(false) }).toEqual({ coll, cols, parentFk, add, field, checks: await answer(true) });
+          }
         }
       }
       // and a value that is no JSON at all
@@ -136,7 +139,7 @@ describe("the checks of every collection's columns, as by the columns given", ()
 
 describe("the sets of columns compiled are checked by their own statements", () => {
   test("every collection's own and each document's, with the check by the columns given gone", async () => {
-    await pool.query(`CREATE OR REPLACE FUNCTION _delta_assert_fields_declared(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB)
+    await pool.query(`CREATE OR REPLACE FUNCTION _delta_assert_fields_declared(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN)
       RETURNS void LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'checked by the columns given'; END $$`);
     try {
       for (const [coll, table] of tables) {
@@ -160,6 +163,6 @@ describe("the compiled text", () => {
   });
 
   test("a set of columns it never saw is checked by the columns given", () => {
-    expect(compileColumns(pathSchema, docs)).toContain("PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value);");
+    expect(compileColumns(pathSchema, docs)).toContain("PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value, p_path, p_add, p_field);");
   });
 });

@@ -1,5 +1,5 @@
 /**
- * delta's write cases (@blueshed/delta/testing: the error table, a row the
+ * delta's write cases (@blueshed/delta/testing: the error table, a schema's refusals in delta's words, a row the
  * server names, write scope) on dzql's Postgres: in this process (PGlite),
  * and on the test database the suite starts (DATABASE_URL), as on CI.
  */
@@ -7,7 +7,7 @@ import { describe } from "bun:test";
 import { Pool } from "pg";
 import { createWs } from "@blueshed/delta/server";
 import { setLogLevel } from "@blueshed/delta/logger";
-import { createRowCases, errorCodeCases, uniqueCases, writeScopeCases, type CaseApp, type CaseBackend } from "@blueshed/delta/testing";
+import { createRowCases, errorCodeCases, refusalCases, uniqueCases, writeScopeCases, type CaseApp, type CaseBackend } from "@blueshed/delta/testing";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
 import { openPglite } from "../../src/postgres/pglite";
 import { PG_URL } from "../delta-pg/setup";
@@ -51,6 +51,7 @@ const onServer: CaseBackend = async (app) => {
 for (const [name, backend] of [["PGlite", onPglite], ["a Postgres server", onServer]] as const) {
   describe(name, () => {
     errorCodeCases(backend);
+    refusalCases(backend);
     createRowCases(backend);
     writeScopeCases(backend);
     uniqueCases(backend);

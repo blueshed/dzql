@@ -1,9 +1,9 @@
 /** A document read from the tables: as they stand (open) or as they stood (open_at). */
-import { defaultForType, q, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { q, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { toMap } from "../custom";
 import { resolveScope, rowId, whereOf, type Scope } from "../scope";
 import { keeping } from "./keep";
-import { columnsOf, current, decodeRow, sqliteTime } from "./rows";
+import { columnsOf, current, decodeRow, leftOut, sqliteTime } from "./rows";
 
 /**
  * Load a doc as it existed at a specific point in time (`at`: ISO-8601, or SQLite's own form). An
@@ -18,7 +18,7 @@ export function loadDocAt(db: any, schema: Schema, def: DocDef, docId: string, a
 /** An implied document before its root row is made: the row its first write would make, by its id and its columns' defaults, each included collection empty. */
 export function impliedDoc(schema: Schema, def: DocDef, docId: string): any {
   const root: any = { id: rowId(docId) };
-  for (const [col, colDef] of Object.entries(schema.tables[def.root]!.columns)) root[col] = colDef.default ?? (colDef.nullable ? null : defaultForType(colDef.type));
+  for (const [col, colDef] of Object.entries(schema.tables[def.root]!.columns)) root[col] = leftOut(colDef);
   return { [def.root]: root, ...Object.fromEntries(def.include.map((coll) => [coll, {}])) };
 }
 

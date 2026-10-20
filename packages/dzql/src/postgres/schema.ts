@@ -92,7 +92,8 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
     const fieldErr = (field: string, v: unknown): string | null => {
       if (field === fk) {
         if (v === null || v === undefined) return `${field} cannot be null`;
-        return Number.isInteger(v) || (typeof v === "string" && /^\s*[+-]?\d+\s*$/.test(v)) ? null : `${field} must be an id: an integer`;
+        if (typeof v !== "string") return Number.isInteger(v) ? null : `${field} must be an id: an integer, or text`;   // delta's words, as delta_apply says them
+        return /^\s*[+-]?\d+\s*$/.test(v) ? null : `${field} must be an id: an integer`;   // text the column cannot cast, which delta_apply leaves to the cast
       }
       const col = Object.hasOwn(table.columns, field) ? table.columns[field]! : undefined;
       if (!col || v === null || v === undefined) return col && !col.nullable && v === null ? `${field} cannot be null` : null;
@@ -125,14 +126,14 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
     // A row's id, as the path names it: the number its digits name, up to 2^53 - 1 (_delta_row_id).
     const idErr = (seg: string): string | null =>
       !/^[0-9]+$/.test(seg) ? `Row id "${seg}" in ${op.path} is not a number: Postgres mints row ids -- add to ${joinPath(collKey, "-")} and read the id from the echo`
-      : pastSafeId(seg) ? `Row id ${seg} in ${op.path} is past 2^53 - 1, which no number holds exactly -- add to ${joinPath(collKey, "-")} and read the id from the echo`
+      : pastSafeId(seg) ? `Row id ${seg} is past 2^53 - 1, which no number holds exactly -- add to ${joinPath(collKey, "-")} and read the id from the echo`
       : null;
 
     // A single document's root: `replace /<root>` is the root row, whole, and
     // `replace /<root>/<field>` (a segment that is not an id) writes one field
     // -- a column, or the parent key: the row moves (#37).
     if (collKey === def.root && !opts.list && op.op === "replace" && (parts.length === 1 || (parts.length === 2 && !/^\d+$/.test(parts[1]!)))) {
-      if (parts[1] === "id") fail("Unknown field: id (a row keeps the id its path names)");
+      if (parts[1] === "id") fail("Unknown field: id");   // a row keeps the id its path names
       else if (parts.length === 2) rowErrs({ [parts[1]!]: value }, "replace");
       else if (!isObject) fail("Replace value must be an object");
       else { rowErrs(value, "replace"); required(value); }
