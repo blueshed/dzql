@@ -29,7 +29,8 @@
       "Creates contact/contact.html and contact/contact.css, the CSS self-contained",
       "Adds import contactPage from \"./contact/contact.html\" to server.ts and \"/contact\": contactPage to its routes, leaving the existing route alone",
       "Does not add an external bundler, a build script or a framework dependency"
-    ]
+    ],
+    "start": "empty"
   },
   {
     "skills": [
@@ -46,6 +47,7 @@
       "Each evaluate argument is a single expression, or multi-statement code wrapped in Function(\"...; return ...;\")()",
       "Uses no waitForSelector or waitForFunction, which Bun.WebView does not have",
       "Runs with plain bun test, no --browser flag"
-    ]
+    ],
+    "start": "empty"
   }
 ]

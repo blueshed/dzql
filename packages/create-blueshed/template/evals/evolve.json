@@ -1,6 +1,10 @@
 [
   {
-    "skills": ["evolve", "railroad", "delta-doc"],
+    "skills": [
+      "evolve",
+      "railroad",
+      "delta-doc"
+    ],
     "query": "Add a notes page: I type a note, press Add, and it appears in a list under the box.",
     "files": [],
     "expected_behavior": [
@@ -13,7 +17,11 @@
     ]
   },
   {
-    "skills": ["evolve", "railroad", "delta-doc"],
+    "skills": [
+      "evolve",
+      "railroad",
+      "delta-doc"
+    ],
     "query": "Customers pick from our menu and build an order. The kitchen should see every order as it comes in, and a customer should be able to undo their last change.",
     "files": [],
     "expected_behavior": [
@@ -25,7 +33,10 @@
     ]
   },
   {
-    "skills": ["evolve", "railroad"],
+    "skills": [
+      "evolve",
+      "railroad"
+    ],
     "query": "Let people upload a photo and get a link to it.",
     "files": [],
     "expected_behavior": [
@@ -36,7 +47,10 @@
     ]
   },
   {
-    "skills": ["evolve", "delta-doc"],
+    "skills": [
+      "evolve",
+      "delta-doc"
+    ],
     "query": "The order page is live and people have orders in it. Now an order should count an item: two teas are one line with a quantity of 2, not two lines. Don't lose anyone's order.",
     "files": [],
     "expected_behavior": [
@@ -45,6 +59,7 @@
       "Tests an upgrade: a database as the earlier version left it, with lines in it, comes through with every order kept, and a second start runs nothing",
       "Leaves the page and its documents as they were",
       "bun test passes at 100% coverage and bun run typecheck is clean"
-    ]
+    ],
+    "after": 2
   }
 ]

@@ -29,6 +29,13 @@
       "Does not give the order a time to read the menu as it stood: the copy is what shows once the dish is gone, the menu's row while it stands",
       "Whoever holds the bill holds the menu too (the reachability check's unseen-ref closed by adding them to the menu's holders)",
       "Answers the follow-on coverage question itself where it has one sensible answer (may a customer change the menu? no: a cannot story), saying so in a line"
+    ],
+    "copy": [
+      {
+        "from": "packages/dzql/examples/cafe/model.json",
+        "to": "model.json",
+        "at": "3d12b19d"
+      }
     ]
   },
   {
@@ -36,9 +43,9 @@
       "modelling",
       "dzql-app"
     ],
-    "query": "The leave model is done: every check is closed and I've read each story and they're all true. Now build it.",
+    "query": "The café model is done: every check is closed and I've read each story and they're all true. Now build it.",
     "files": [
-      "model.json, a team's leave model with every check closed"
+      "model.json: dzql's examples/cafe/model.json, every check closed"
     ],
     "expected_behavior": [
       "Stops modelling: runs dzql model check (or dzql model) so model/types.ts, guards.ts, migrations and model.test.ts are made, and does not write or reword stories on the model's page",
@@ -46,6 +53,12 @@
       "Lays the app out as routes and resources: src/routes.ts, and a folder per document, resources/<name>/ with <name>-api.ts, <name>.ts and <name>-view.ts",
       "Puts the model's guards in front of the store, so a write no story says is refused in the story's own words",
       "Reads the app back against the model (model:check --against-page) and closes every gap it names"
+    ],
+    "copy": [
+      {
+        "from": "packages/dzql/examples/cafe/model.json",
+        "to": "model.json"
+      }
     ]
   }
 ]
