@@ -21,6 +21,7 @@ what is open across them. Newest first.
 - **One way to install a package's skills** (#100, #101): `delta install-skills`, which delta's
   `prepare` now is too; railroad's README teaches it; the starters' words point at the one list.
 - **paintbrush's leave-behind list, once** (#109): `UNCOPIED`, read by create-blueshed's copy and pack.
+- **delta-doc's recipe draws with railroad, and its SKILL.md is under 600 words** (#30).
 - **sites-bbox once** (#62): dzql's Postgres server of it runs over delta's schema, and its test over
   delta's story.
 - **A new app's skills, again on every install; one copy of the template** (#68): paintbrush's

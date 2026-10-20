@@ -10,29 +10,23 @@ description: "Use in a project that uses @blueshed/delta (it is in package.json)
 **A document is what someone needs in front of them to act.** To place an order: the catalogue
 and your order, two documents over shared rows. Open one and you are subscribed; change it with
 `add`, `replace` or `remove` on a JSON Pointer path, and everyone holding it sees it. What grows
-is where documents are kept (a JSON file, then SQLite, then Postgres on dzql); the client stays
-the same.
+is where they are kept (a JSON file, SQLite, Postgres on dzql); the client stays the same.
 
-**The shape**: an app is routes and resources on both sides of the socket, joined by documents.
-On the server, the routes given to delta's `serve` (`@blueshed/delta/serve`, the one server: no
-`Bun.serve` of the app's own) serve resources: a registered document, or an HTTP endpoint. On the
-client, railroad's `routes()` draw resources: an `openDoc` handle and its view. Entities are
-behind the documents, on the server: the collections of `defineSchema`. Think in documents, not
-entities; the tables follow.
+**The shape**: an app is routes and resources on both sides of the socket, joined by documents:
+delta's `serve` (the one server) serves the server's, railroad's `routes()` draw the client's.
+Entities (`defineSchema`'s collections) are behind the documents. Think in documents; the tables
+follow.
 
 ## Order of work
 
 1. **Name the documents**: for each thing a person does, what must be in front of them.
 2. **Declare them**: `defineSchema` (tables, `parent` chains) and `defineDoc` (prefix, root,
-   include, scope) in one module the server and client both import (in a paintbrush app, each
-   resource's `<name>-api.ts`).
-3. **Keep them in the smallest backend that fits** (the JSON file first), registered on
-   `createWs()` and served with the app's routes by `serve` / `run` (`reference/server.md`), or
-   on `createLocal()` (in-process).
+   include, scope), imported by server and client (in a paintbrush app, each resource's `<name>-api.ts`).
+3. **Keep them in the smallest backend that fits** (the JSON file first), on `createWs()` served
+   by `serve` / `run` (`reference/server.md`), or on `createLocal()` (in-process).
 4. **Client**: `connectWs`, `openDoc`, one keyed render path, `doc.send(ops)`. The echo renders.
-5. **Grow when a story needs it**: `{ ledger: true }` for undo, `auth` and a document's `owns`
-   for who sees what, a migration for each change to the tables, dzql when servers share the
-   data. The app does not change.
+5. **Grow when a story needs it**: `{ ledger: true }` for undo, `auth` and `owns` for who sees
+   what, a migration per change to the tables, dzql when servers share the data.
 
 ## Invariants
 
@@ -40,38 +34,34 @@ entities; the tables follow.
   the whole row (left-out fields take defaults); to change fields, replace each field.
 - A batch applies whole or not at all.
 - New rows are `add /<coll>/-`; the server names the id. Address rows by id, never position.
-- Never update optimistically, never reload: `doc.send` echoes back through `onOps` and
-  `doc.data`. Reconnect re-opens every document itself.
-- One render path, keyed: `applyOpsToCollection` (vanilla DOM) or railroad's `list()` (JSX),
-  never both, never a rebuild from `doc.data` in an `effect`.
-- A told replace may be one field: apply broadcasts with `applyOps`, never assume a whole row.
+- Never update optimistically, never reload: `doc.send` echoes back through `doc.data`, and a
+  reconnect re-opens every document itself.
+- One render path, keyed: railroad's `list()`, never a rebuild from `doc.data` in an `effect`. A
+  told replace may be one field: never assume a whole row.
 - Undo is the ledger's (`{ ledger: true }`), never a hand-rolled stack.
 - A line is a row under its parent, never JSON of ids; a fact from other rows is a recompute
   document, never a stored copy; "one at a time" is `unique` (`schema.md`).
-- The schema is the contract: delta sends and writes only declared columns. A database may
-  hold more, never less. Its tables are made by its migrations, from empty: change the schema,
-  then `delta migrations make` writes the next one; `migrate` runs them at start-up.
-- With `auth`, every document says who may have it: `owns`, a path from its row to the person
-  (a function only where no path can say it), or `shared: true`. A name is its broadcast channel: whoever holds it hears every write through it.
-- Tokens never in the socket URL. Sign in with `connectWs(url, { onConnect })`.
-- No Redux, REST, `fetch` of state or React patterns. `doc.data` is a signal.
+- The schema is the contract: delta sends and writes only declared columns. Its tables are made
+  by its migrations: change the schema, `delta migrations make` writes the next, `migrate` runs it.
+- With `auth`, every document says who may have it: `owns`, a path from its row to the person,
+  or `shared: true`. A name is its broadcast channel.
+- Tokens never in the socket URL (`connectWs(url, { onConnect })`). No Redux, REST, `fetch` of
+  state or React patterns: `doc.data` is a signal.
 
 ## The types are the contract
 
-In the package (`node_modules/@blueshed/delta/`): `src/core.ts`, `src/schema.ts`,
-`src/client/client.ts`, `src/server/sqlite.ts`, `src/server/auth.ts`, `src/server/auth-link.ts`,
-`src/paths.ts`, `src/server/changes.ts`, `src/server/migrate.ts`; the exports map in `package.json`.
+In the package (`node_modules/@blueshed/delta/`): `src/` (`core.ts`, `schema.ts`, `client/`,
+`server/`, `paths.ts`), and the exports map in `package.json`.
 
 ## Which reference for which job
 
-- First app: `reference/recipe.md`. Storage: `reference/backends.md`, `reference/sqlite.md`;
-  moving on to Postgres: `reference/postgres.md`; upgrading, data kept: `reference/migrations.md`.
+- First app: `reference/recipe.md`. Storage: `reference/backends.md`, `reference/sqlite.md`,
+  `reference/postgres.md`; upgrading, data kept: `reference/migrations.md`.
 - JSON Pointer paths, ids, error codes: `reference/paths.md`. Tables: `reference/schema.md`.
 - Document shapes: `reference/documents.md`; names and filters: `reference/scope.md`.
 - What a write may do: `reference/writes.md`; who is told: `reference/fanout.md`.
 - Derived views: `reference/custom-docs.md`. Other kinds: `reference/kinds.md`.
 - The page: `reference/rendering.md`, `reference/write-loop.md`. The server: `reference/server.md`.
-- Sign-in: `reference/auth.md` (a link is someone; no passwords). Who opens what, `owns` as a
-  path: `reference/ownership.md`.
+- Sign-in: `reference/auth.md`. Who opens what: `reference/ownership.md`.
 - Undo and history: `reference/ledger.md`. In-process: `reference/local.md`.
 - The wire: `reference/wire.md`. CLI: `reference/cli.md`. Tests and scripts: `reference/testing.md`.

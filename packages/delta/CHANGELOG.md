@@ -56,6 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The recipe's client is railroad's** (20 October, root #30): `client.tsx` draws the room with
+  `list()` over `doc.data`, as the recipe's first line says the client needs, in place of raw DOM
+  and `applyOpsToCollection`; a `tsconfig.json` says the JSX. `tests/recipe.test.ts` runs it as
+  written. SKILL.md is under its 600 words again (566).
+
 - **`stop(file, { grace })`** (`@blueshed/delta/serve`, 20 October): how long a server is given to
   stop when asked before it is killed (10 seconds, as before). The test of a server that will not
   stop gives it 300 ms, so delta's fast tier no longer waits ten seconds on it (21 s to 11 s).

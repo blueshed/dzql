@@ -1,6 +1,6 @@
 /**
  * The skill's recipe runs as written: reference/recipe.md's `types.ts`, `server.ts`,
- * `client.ts` and `index.html` blocks, saved in a folder inside the package
+ * `client.tsx`, `tsconfig.json` and `index.html` blocks, saved in a folder inside the package
  * (so `@blueshed/delta/...` resolves to this source, as from node_modules).
  * The server runs on a free port; each browser is a Bun process with
  * happy-dom for the page and Bun's own WebSocket. One types a message and
@@ -17,7 +17,7 @@ const skill = await Bun.file(new URL("../.claude/skills/delta-doc/reference/reci
 
 const blockAfter = (marker: string) => blockOf(skill, marker, "reference/recipe.md");
 
-/** One browser: the recipe's page in happy-dom, its client.ts, then (if asked) a message typed and sent; it exits once `#log` shows `HEAR`, or fails after 5 s. */
+/** One browser: the recipe's page in happy-dom, its client.tsx, then (if asked) a message typed and sent; it exits once `#log` shows `HEAR`, or fails after 5 s. */
 const BROWSER = `
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 const Native = globalThis.WebSocket;
@@ -25,7 +25,7 @@ GlobalRegistrator.register({ url: "http://localhost:" + process.env.PORT + "/" }
 globalThis.WebSocket = Native;
 const html = await Bun.file(new URL("./index.html", import.meta.url)).text();
 document.body.innerHTML = html.replace(/<!doctype html>/i, "").replace(/<script[^>]*><\\/script>/, "");
-await import("./client.ts");
+await import("./client.tsx");
 if (process.env.SAY) {
   const form = document.getElementById("say");
   form.elements.namedItem("text").value = process.env.SAY;
@@ -53,7 +53,8 @@ test("the recipe (reference/recipe.md), as written: one browser sends a message,
     expect(server).toContain("{ port: 3100 }");   // the one change: a free port, which run says on stdout
     await Bun.write(join(dir, "server.ts"), server.replace("{ port: 3100 }", "{ port: 0 }"));
     await Bun.write(join(dir, "types.ts"), blockAfter("### `types.ts`"));
-    await Bun.write(join(dir, "client.ts"), blockAfter("### `client.ts`"));
+    await Bun.write(join(dir, "client.tsx"), blockAfter("### `client.tsx`"));
+    await Bun.write(join(dir, "tsconfig.json"), blockAfter("### `tsconfig.json`"));
     await Bun.write(join(dir, "index.html"), blockAfter("### `index.html`"));
     await Bun.write(join(dir, "browser.ts"), BROWSER);
 
