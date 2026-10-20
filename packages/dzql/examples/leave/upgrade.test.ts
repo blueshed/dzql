@@ -101,7 +101,11 @@ describe("Ann's requests are still there after leave is upgraded to a version th
   });
 
   test("leave's stories pass against the upgraded database, and Ann's requests from before are still hers", async () => {
-    const run = Bun.spawn(["bun", "src/modelling/stories-run.ts"], { cwd: join(import.meta.dir, "../.."), env: { ...process.env, ETA_EXAMPLE: "leave", DB_PATH: path, LOG_LEVEL: "warn" }, stdout: "pipe", stderr: "pipe" });
+    // as `bun run stories` tells them, by dzql's names, so it runs wherever leave is (its own folder, or a project's src/)
+    const tell = `import { appIn, storiesIn } from "dzql/rendering/names"; import { print, run } from "dzql/modelling/harness";
+      const app = await appIn(import.meta.dir); const report = await run(app, (await import(storiesIn(import.meta.dir))).stories);
+      print(report); process.exit(report.failed > 0 ? 1 : 0);`;
+    const run = Bun.spawn(["bun", "-e", tell], { cwd: import.meta.dir, env: { ...process.env, DB_PATH: path, LOG_LEVEL: "warn" }, stdout: "pipe", stderr: "pipe" });
     const [out, err, code] = await Promise.all([new Response(run.stdout).text(), new Response(run.stderr).text(), run.exited]);
     expect(code === 0 ? "passed" : out + err).toBe("passed");
     const db = new Database(path);

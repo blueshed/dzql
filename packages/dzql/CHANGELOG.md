@@ -190,6 +190,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The dzql-app skill, from two rounds of its evals** (20 October, root #113). `stories.md` says
+  what the harness does with undo (every landed `does` story undone and redone, every page
+  compared), how to tell a refused undo, `premise`, and that "watch it fail" is a story failing on
+  its own terms, never a module that will not load. `permit` returns `false` for a write no control
+  of that person's could send, and `refuse(words)` is for one a control sent and a rule turns down,
+  the same in `resource.md` and `refusal.md`. `documents.md` seeds with `prepare` and
+  `importTables`, and the schema's default place is `store.ts`. `bento.md`: Undo follows the role.
+  `scope.md`: a day's flat rows are a list named by date; the day is a root row when it keeps
+  state. chat, leave, ticker and wedding import `dzql/rendering/bento.css`, as an app does, so one
+  copied into a project's `src/` runs; leave's upgrade test runs from leave's own folder. The
+  evals: scenario 2 starts from leave before tabs had addresses (`evals/fixtures/`), and builds it.
+
 - **A session with nobody there stops the model's page** (20 October, found by the modelling
   evals, root #113): the page is a server that never exits, and two headless sessions waited on it
   until they were killed. The modelling skill says to stop it (`bun run stop`) before the last
@@ -512,6 +524,9 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   for the CLI and the model's page).
 
 ### Fixed
+
+- **The model's loader takes an undo story** (20 October): a story that writes `walked("undo")` was
+  read as a write to `ledger`, "a document the example does not have". The ledger is the kernel's.
 
 - **`dzql model check` reads the model as it stands** (20 October, found by the evolve evals,
   root #113). `model.json` is delta's file, which keeps every version of a row; `modelIn` read them

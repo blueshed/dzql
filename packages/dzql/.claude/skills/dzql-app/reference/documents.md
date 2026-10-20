@@ -35,18 +35,35 @@ again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server
 Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/store.ts), the tables said once (`store.ts`), a memory
 document (`resources/here/here-api.ts`) and a session read for the page
 (`resources/session/session-api.ts`); [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/resources/kitchen/kitchen-api.ts), a
-ref's surrogate (`orderOf`, `resources/kitchen/kitchen-api.ts`);
+ref's surrogate (`orderOf`, `resources/kitchen/kitchen-api.ts`) and a seed in `prepare` (`store.ts`);
 [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/resources/team/team.ts), the draft that follows an ask and its Undo
 (`afterWrite`, `afterWalk`, `resources/team/team.ts`).
 
-- Prefix tables with the app's name (`chat_`). Seed only into empty tables.
+- Prefix tables with the app's name (`chat_`).
+- Seed in `openStore`'s `prepare`, which runs at each open, once the tables are there and before
+  any document is served; only into empty tables. `importTables` (`dzql/postgres`) puts rows in as
+  they are, by the schema's keys, ids kept, and sets each sequence past them. The cafe's
+  (`examples/cafe/store.ts`):
+
+  ```ts
+  export const store = openStore({
+    schema,
+    migrations: { dir: `${import.meta.dir}/model/migrations`, app: "cafe-model", schema: modelSchema },
+    prepare: async (pool) => {
+      if ((await pool.query(`SELECT 1 FROM "tables" LIMIT 1`)).rows.length === 0)
+        await importTables(pool, schema, { tables: { tables: [{ id: 1, name: "Table 1", seated: false }], staff: [{ id: 1, name: "Mo", role: "manager" }] } });
+    },
+  });
+  ```
 - At start-up `store.ts` makes its tables (on SQLite `openTables`, `dzql/rendering/db`; on Postgres
   `openStore`): the app's migrations,
   then a missing table (delta's `createTables`), then a missing column (`migrateSchema`). That is all a new table or column needs. A field renamed or
   dropped, or data moved, is a migration: [migrations.md](migrations.md). Never delete a database
   to change its shape: people keep real data in it.
-- `openStore({ schema })` takes one schema, or several (`[order.schema, message.schema]`: each
-  resource's own, in its `-api.ts`), kept as one; a table two of them declare is refused.
+- The tables are said in `store.ts`, the app's one schema: that is the default, and the starter's
+  and the cafe's. `openStore({ schema })` also takes several (`[order.schema, message.schema]`),
+  kept as one, a table two of them declare refused: only for an app that already keeps each
+  resource's tables in its `-api.ts`.
 - A row that names a row of another document (a **ref**, `dish: menu:/items`, kept as `dish_id`)
   keeps its **surrogate** beside the key when a story can remove what it names: what it shows of
   it, copied as it is written (`dish_name`, `dish_price`). Show the named row while it stands, and

@@ -49,6 +49,11 @@ CLAUDE.md, README.md, .claude/skills/ (from `delta install-skills`, run by `bun 
 The kernel finds an app by `ETA_EXAMPLE`: an example by name (`chat`, in dzql) or a folder (`./src`),
 and in it the `app` its `routes.ts` exports.
 
+To start from one of dzql's examples, copy its folder over `src/`: it imports dzql by name, as an
+app does, and runs as it is. Its `stories.ts` is in `src/`, which `bun run stories` reads first;
+make the root `stories.ts` export it (`export { stories } from "./src/stories"`), and make the
+starter's `routes.test.ts`, in its tests folder, expect the example's first page, not its own.
+
 ## Moving a project to a later dzql
 
 Bump `dzql` (and `@blueshed/delta`) in `package.json` and `bun install`: the skills refresh with

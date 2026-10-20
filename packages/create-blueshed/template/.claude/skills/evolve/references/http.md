@@ -1,6 +1,11 @@
 # Serve what isn't communication
 
-HTTP routes serve what isn't communication: the health check, files, the server's status. Files go in an S3 bucket through `Bun.s3`:
+HTTP routes serve what isn't communication: the health check, files, the server's status. Files go in an S3 bucket through `Bun.s3`, never on the data volume, even while there is one server and the volume would hold them:
+
+- A Railway volume belongs to one service. A second server cannot see it, and neither can the app once its documents move to Postgres across servers ([postgres.md](postgres.md)). The documents move by changing an import; files on the volume would have to be copied out, and their routes rewritten, on live data.
+- A GET answers a redirect to the bucket, so a file's bytes never pass through the app's server, the one process that holds every socket.
+
+The bucket costs the tests nothing: `startServer` takes the S3 client as an option (`s3`), and a test passes a stand-in for the bucket, a few lines of `Bun.serve`, with no credentials and no network. Only the running app needs a bucket's credentials (below).
 
 ```ts
 // src/resources/files/files-api.ts
@@ -109,5 +114,4 @@ Working: `tests/evolve.ts` makes a new app from this template, applies this page
 - Validate what a client sends and answer 400 with `{ error }`. Test every route and method, a 400 included. The view says when a load fails.
 - Never install an AWS SDK. `Bun.s3` reads `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` (or their `AWS_` names) from `.env` or the environment when Bun starts, not from `process.env` later.
 - On Railway they are a bucket's variables, named in `.railway/railway.ts` with `preserve()`.
-- `startServer` takes the client as an option, so tests pass their own.
 - `new Response(file)` redirects to the bucket: the browser must be able to reach its endpoint.

@@ -7,7 +7,8 @@ memory, loaded from the file and saved after every change.
 ```ts
 import { Database } from "bun:sqlite";
 import { createWs } from "@blueshed/delta/server";
-import { defineSchema, defineDoc, createTables, registerDocs } from "@blueshed/delta/sqlite";
+import { defineSchema, defineDoc, migrate, registerDocs } from "@blueshed/delta/sqlite";
+import { migrations } from "./migrations";   // written by `delta migrations make` (migrations.md)
 
 export const schema = defineSchema({
   lists: { columns: { title: "text?" } },
@@ -16,7 +17,7 @@ export const schema = defineSchema({
 export const listDoc = defineDoc("list:", { root: "lists", include: ["todos"], implied: true });
 
 const db = new Database("app.db");
-createTables(db, schema);                  // before the first open
+await migrate(db, migrations, { app: "lists", schema });   // the tables, before the first open
 const ws = createWs();
 registerDocs(ws, db, schema, [listDoc]);   // , customDocs?, { ledger, auth, shared, who }
 ```
@@ -24,18 +25,19 @@ registerDocs(ws, db, schema, [listDoc]);   // , customDocs?, { ledger, auth, sha
 Options: `RegisterOptions` in `src/server/sqlite.ts`. It returns `{ evict }` (the JSON file's
 also `persisted()`, resolving once every change so far is in the file).
 
-Working: [examples/sites-bbox](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/sites-bbox/README.md), the tables made and the
-world's document registered (`resources/world/world-api.ts`), and on the same database the box's,
-told of every write through the world (`resources/box/box-api.ts`, `routes.ts`);
-[examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), a shared set (`people:`) and a set by
-paths (the lists) on one file (`resources/people/people-api.ts`, `resources/lists/lists-api.ts`).
+Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), each resource's tables made by
+its migrations, then a shared set (`people:`) and a set by paths (the lists) on one file
+(`resources/people/people-api.ts`, `resources/lists/lists-api.ts`);
+[examples/sites-bbox](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/sites-bbox/README.md), a database in memory, thrown
+away (`createTables`), the world's document registered (`resources/world/world-api.ts`), and on
+the same database the box's, told of every write through the world (`resources/box/box-api.ts`,
+`routes.ts`).
 
 ## Gotchas
 
-- `createTables(db, schema)` before the first open; a missing table's error says so.
-  `migrateSchema(db, schema)` only adds what a later schema declares (columns, and
-  `console.warn`s on type drift: treat that as a real signal). A rename, a drop, a change of
-  type or data moved is a migration, run first: `migrations.md`.
+- **The tables are made before the first open**, by the app's migrations (`migrate`); a missing
+  table's error says so. `createTables(db, schema)` is only for a database thrown away
+  (`:memory:` in a test or a script): `migrations.md`.
 - A single document's root row must exist before it opens: seed it, or declare it `implied: true`.
 - A `delta` for a name this connection has not opened is 404 `Doc not loaded`, as on every
   backend (`wire.md`). `doc.send` never meets it; a script sending `delta` itself opens the

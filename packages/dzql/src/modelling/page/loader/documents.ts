@@ -262,7 +262,11 @@ export function privateEntry(example: Example): (entry: Trace["ledger"][number])
  * (`documentsIn`): one no resource owns is a document too, and nobody can be shown it.
  */
 export function read(stories: Stories, example?: Example, watched?: Watched, defined: string[] = []): Reading {
-  const write = writeOf;
+  // an undo or a redo walks the kernel's ledger, no document of the example's
+  const write = (s: Story) => {
+    const w = writeOf(s);
+    return w && typeOf(w.doc) !== "ledger" ? w : undefined;
+  };
   const told = toldOf(stories);
   const types: Reading["docs"] = example ? example.resources.map((c) => ({ name: c.docType, kind: c.kind ?? "stored" })) : [];
   for (const name of defined) if (!types.some((t) => t.name === name)) types.push({ name, kind: "no resource" });

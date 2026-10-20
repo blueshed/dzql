@@ -6,6 +6,26 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### Every skill's evaluations run, and what they found fixed (20 October, root #113)
+
+- `scripts/evals.ts` ran every shipped skill's scenarios as fresh `claude -p` sessions (round 2,
+  after round 1's harness faults), and the Shed ran a fifth time (`runs/2026-10-20-run-5.md`: every
+  must-not passes through stage 4 for the first time). What they found in the code is fixed:
+  `dzql model check`, `model show` and `--against-page` read `model.json` as it stands (they read
+  every past version of a row, or nothing); delta's `migrate` puts SQLite in WAL as `createTables`
+  does; the model's loader takes an undo story. In the skills: delta-doc's one rule for tables
+  (migrations; `createTables` for a database thrown away), its recipe's test run as written;
+  dzql-app's undo in the stories, `permit` against `refuse`, seeding, Undo by role, and examples a
+  project can copy; evolve's files in the bucket and why; modelling's page stopped when nobody is
+  there; and both starters say asked to build, build. `scripts/docs.ts` now fails on a Shed noun in
+  any skill page (run 5 found four), so the Shed stays held out.
+- The harness installs the checkout's packages as npm ships them (packed: a session's search does
+  not follow `file:` links), gives each scenario its own ports, stops what a session leaves
+  running, and makes a copied example's tsconfig stand alone.
+- The Shed's API findings are Peter's: roots #137 (a group with people outside it), #138 (a rule
+  the schema cannot say), #139 (who may write a document everyone reads) and #140 (`openStore` and
+  sign-in).
+
 ### A connection writes only what it has opened; a time is what every backend holds (20 October, root #136)
 
 - **Breaking**, delta and dzql: a socket's `delta` for a document it has not opened is 404 `Doc not

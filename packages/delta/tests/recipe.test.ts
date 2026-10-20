@@ -5,7 +5,8 @@
  * node_modules).
  * The server runs on a free port; each browser is a Bun process with
  * happy-dom for the page and Bun's own WebSocket. One types a message and
- * submits the form, and the other's `#log` shows it.
+ * submits the form, and the other's `#log` shows it. Then the block under "Its test", saved as the
+ * app's `tests/room.test.ts`, passes.
  */
 import { expect, test } from "bun:test";
 import { mkdirSync, rmSync } from "node:fs";
@@ -66,6 +67,12 @@ test("the recipe (reference/recipe.md), as written: one browser sends a message,
     expect((await until(reader, /heard (.*)/))[1]).toBe("me hello from ada");   // author, then text
     // the room is kept in the JSON file (saved after the change is told)
     await waitFor(async () => (await Bun.file(join(dir, "chat.json")).text()).includes("hello from ada"));
+
+    // and the app's own test, as "Its test" gives it, passes in the app's tests/
+    await Bun.write(join(dir, "tests/room.test.ts"), blockAfter("## Its test"));
+    const own = Bun.spawnSync(["bun", "test", "tests/room.test.ts"], { cwd: dir, stdout: "pipe", stderr: "pipe" });
+    expect(own.stderr.toString()).toContain(" 1 pass");
+    expect(own.exitCode).toBe(0);
   } finally {
     for (const p of procs) p.kill();
     await Promise.all(procs.map((p) => p.exited));

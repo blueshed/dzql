@@ -29,6 +29,9 @@ rows under it, and a column with a default (`done`), in `resources/lists/lists-a
 
 - Column types: `text`, `integer`, `real`, `boolean`, `json`, `timestamptz`; append `?` for
   nullable, or `{ type, default, nullable }`.
+- **A time is a `timestamptz` column, never `text`.** A write gives ISO 8601 with a zone
+  (`new Date().toISOString()`); what is no time is 400, and every backend gives it back in UTC
+  (`2026-10-20T09:00:00+00:00`). The zone's rules: `scope.md`.
 - A column neither nullable nor defaulted is **required**: an add without it is 400 `Required
   field missing`. Give it a default or make it nullable.
 - `parent: "lists"` makes the key column `lists_id`; `cascadeOn: ["user_id"]` removes a row when
@@ -53,8 +56,8 @@ rows under it, and a column with a default (`done`), in `resources/lists/lists-a
   server. Rows that become parts of another move under it (a migration's `up`, `migrations.md`).
 - **A fact that comes from other rows is worked out, never stored**: whether a room is taken, from
   its open stays. A recompute document reads it (`custom-docs.md`); a column written beside each
-  stay is a second copy the app must keep honest. Its limit: a value a person may change (a due
-  date someone extends), or one from a rule that may change, is the row's own and is stored, set as
+  stay is a second copy the app must keep honest. Its limit: a value a person may change (a stay's
+  last night, which a guest extends), or one from a rule that may change, is the row's own and is stored, set as
   the row is written; when the rule changes, a migration fills it for the rows before.
 
 ## Validating before a write

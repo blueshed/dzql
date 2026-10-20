@@ -48,6 +48,13 @@ describe("the list", () => {
     await expect(sqlite.migrate(db, [])).rejects.toThrow(/outside a transaction/);
     db.run("ROLLBACK");
   });
+
+  test("a database migrate makes is in WAL mode, as createTables' is: processes share the file", async () => {
+    const db = new Database(join(tempDir(), "app.db"));
+    await sqlite.migrate(db, []);
+    expect((db.query("PRAGMA journal_mode").get() as { journal_mode: string }).journal_mode).toBe("wal");
+    db.close();
+  });
 });
 
 describe("the CLI: delta migrate", () => {

@@ -1,0 +1,87 @@
+/* leave's look: the kernel's bento surfaces (src/rendering/bento.css) in a plain office ink, light and dark,
+   then the calendar. */
+
+@import "dzql/rendering/bento.css";
+
+:root {
+  color-scheme: light dark;
+  --paper: #f5f6f8; --tray: #dde2ea; --card: #ffffff; --card-hover: #fafbfc; --well: #eef1f5;
+  --ink: #1d2733; --accent: #2f5fb3; --muted: #5d6877; --line: rgba(29, 39, 51, 0.14); --edge: rgba(29, 39, 51, 0.52);
+  --add: #2f7d4f; --danger: #b3261e; --ink-rgb: 29, 39, 51;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0f1318; --tray: #1d2430; --card: #151b23; --card-hover: #1a212b; --well: #111720;
+    --ink: #dfe6ee; --accent: #7fa8ea; --muted: #97a3b2; --line: rgba(223, 230, 238, 0.14); --edge: rgba(223, 230, 238, 0.42);
+    --add: #6fcf97; --danger: #f28b82; --ink-rgb: 0, 0, 0;
+  }
+}
+
+body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.45; }
+main#app { box-sizing: border-box; position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
+h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
+
+/* ── the calendar: a week a row of seven days; a request a bar across its days, stacked where they share one ── */
+.calendar { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: var(--space-2xl); }
+.month h3 { margin-bottom: var(--space-sm); }
+.weekdays, .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.weekdays span { font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; padding-bottom: var(--space-xs); }
+.week { grid-auto-flow: row dense; row-gap: 3px; padding: 2px 0 var(--space-sm); border-top: 1px solid var(--line); min-height: 3rem; }
+.week .date { grid-row: 1; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; border-radius: var(--radius-inner); }
+.week .date.clash { background: var(--danger); color: var(--card); font-weight: 700; }
+.week .date.weekend { opacity: 0.55; }
+.week .date.today { box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent); font-weight: 700; }
+/* who is who: d3's Tableau10 (d3-scale-chromatic), less its red -- red is a clash here -- with purple
+   and brown darkened so a name on them reads at 4.5:1. The same person, the same colour, everywhere. */
+.who-0 { --who: #4e79a7; --who-ink: #ffffff; }
+.who-1 { --who: #f28e2c; --who-ink: #1d2733; }
+.who-2 { --who: #76b7b2; --who-ink: #1d2733; }
+.who-3 { --who: #59a14f; --who-ink: #1d2733; }
+.who-4 { --who: #edc949; --who-ink: #1d2733; }
+.who-5 { --who: #8c5f80; --who-ink: #ffffff; }
+.who-6 { --who: #ff9da7; --who-ink: #1d2733; }
+.who-7 { --who: #7e5c48; --who-ink: #ffffff; }
+.who-8 { --who: #bab0ab; --who-ink: #1d2733; }
+.swatch { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: var(--space-xs); border-radius: 50%; background: var(--who); vertical-align: -0.05rem; }
+.key { display: flex; flex-wrap: wrap; gap: var(--space-lg); margin: 0 0 var(--space-lg); padding: 0; list-style: none; font-size: 13px; }
+
+/* a bar: waiting a tint of its person's colour with a darker edge, approved filled */
+.bar { height: 1.35rem; margin: 0 2px; padding: 0 var(--space-xs); border: 1.5px solid color-mix(in srgb, var(--who) 70%, var(--ink)); border-radius: 999px; background: color-mix(in srgb, var(--who) 42%, var(--card)); font-size: 11px; font-weight: 600; line-height: calc(1.35rem - 3px); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar.approved { background: var(--who); border-color: var(--who); color: var(--who-ink); }
+button.bar { display: block; font: inherit; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; }
+.bar:hover { filter: brightness(0.95); }
+.bar[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); } /* its drawer is open */
+/* your draft: dashed, a tint of your colour -- what you would ask for, not yet asked */
+.bar.draft { border-style: dashed; background: color-mix(in srgb, var(--who) 18%, var(--card)); }
+/* your own waiting requests: dragged to move, stretched by a grip at either end */
+.bar { position: relative; }
+.bar.movable { cursor: grab; }
+.bar .grip { position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
+.bar .grip.start { left: 0; }
+.bar .grip.end { right: 0; }
+.calendar-view .week { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.bar.open-start { border-left-style: dashed; border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 0; }
+.bar.open-end { border-right-style: dashed; border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; }
+@media (forced-colors: active) {
+  .week .date.clash { background: Highlight; color: HighlightText; }
+  .bar.approved { border-width: 3px; } /* the colours are gone: approved is the heavier edge */
+}
+
+/* ── the list: every request, a row each, drawn as it scrolls into view ── */
+.vlist { position: relative; max-height: calc(100dvh - 12rem); overflow: auto; overscroll-behavior: contain; }
+.vspace { position: relative; }
+.vitem { position: absolute; left: 0; right: 0; height: 52px; }
+.list-view [role="list"]:not(.vlist) { display: flex; flex-direction: column; } /* before the applet: every row, drawn by the server */
+.vrow { display: grid; grid-template-columns: auto 5rem 1fr auto; align-items: center; gap: var(--space-md); width: 100%; height: 52px; padding: 0 var(--space-md); border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.vrow:hover { background: rgba(var(--ink-rgb), 0.04); }
+.vrow[aria-expanded="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.vrow .who { font-weight: 600; }
+.vrow .state { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+/* the drawer's two days, a field each */
+form.days { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-sm); margin-bottom: var(--space-md); }
+form.days input { width: 100%; min-width: 0; }
+
+.state-approved { color: var(--add); }
+.state-declined { color: var(--danger); }

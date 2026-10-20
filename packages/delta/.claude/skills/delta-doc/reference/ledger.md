@@ -73,6 +73,10 @@ Undo and Redo (`undo`, `redo`, `Walk`) in `resources/lists/lists-view.tsx`.
   it, never who did.
 - With `auth`, undo and redo pass the gate and `owns` of the entry's document.
 - An empty write records nothing. The ledger does not carry to the next backend.
+- **Starting afresh is a fresh database**: `:memory:`, or stop the server and delete the file
+  (and its `-wal` and `-shm`, if there). A seed that deletes and re-adds rows under a kept
+  ledger leaves entries naming rows that are not theirs. Never write delta's own tables
+  (`delta_ledger`, `delta_versions`) by hand.
 - **Without a ledger**, `inverse: true` on a `delta` answers `{ ack, ops, inverse }` on SQLite
   (`inverseOf` in `./sqlite`); on a memory document, the ops as applied only.
   A row made and removed in one write has no inverse.

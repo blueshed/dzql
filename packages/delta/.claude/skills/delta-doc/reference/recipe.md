@@ -1,7 +1,7 @@
 # The recipe: a chat room in a JSON file
 
-`bun add @blueshed/delta @blueshed/railroad` (the client needs railroad), then these files.
-No database to run, no fetch, no codegen. `tests/recipe.test.ts` runs them as written, so keep
+`bun add @blueshed/delta @blueshed/railroad` (the client needs railroad) and `bun add -d
+@types/bun` (the tsconfig's `types`), then these files. No database to run, no fetch, no codegen. `tests/recipe.test.ts` runs them as written, so keep
 the headings and blocks exact.
 
 The app is its routes and its resources, as every app is: `routes.ts` gives delta's `serve` the
@@ -32,7 +32,7 @@ import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/json";
 // A room is a row; its messages hang under it (the key column rooms_id).
 export const schema = defineSchema({
   rooms: { columns: { name: "text?" } },
-  messages: { parent: "rooms", columns: { author: "text", text: "text", at: "text" } },
+  messages: { parent: "rooms", columns: { author: "text", text: "text", at: "timestamptz" } },
 });
 
 // What someone needs in front of them to chat: one room and its messages.
@@ -42,8 +42,9 @@ export const docs = [defineDoc("room:", { root: "rooms", include: ["messages"], 
 export interface Message { id: number; rooms_id: number; author: string; text: string; at: string }
 export interface Room { rooms: { id: number; name: string | null }; messages: Record<string, Message> }
 
-export function roomApi(ws: WsServer) {
-  return registerDocs(ws, "./chat.json", schema, docs);   // where the documents are kept
+// Where the documents are kept: chat.json in `dir` (a test gives a folder of its own).
+export function roomApi(ws: WsServer, dir = ".") {
+  return registerDocs(ws, `${dir}/chat.json`, schema, docs);
 }
 ```
 
@@ -109,13 +110,65 @@ mount(document.getElementById("app")!, () => <RoomView />);
 ### `tsconfig.json`
 
 ```json
-{ "compilerOptions": { "jsx": "react-jsx", "jsxImportSource": "@blueshed/railroad", "strict": true } }
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["bun"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "esnext",
+    "strict": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@blueshed/railroad"
+  }
+}
 ```
 
 `bun routes.ts` and open <http://localhost:3100> in two tabs. Bun's fullstack bundler handles
-the TypeScript automatically.
+the TypeScript automatically; `bun check` type-checks it.
 
-Working: `tests/recipe.test.ts` saves each block at its heading's path, starts the server, and
-has a message typed in one browser show in the other's log.
+## Its test
 
-**Moving to SQLite** changes `room-api.ts` and nothing else: its imports come from `@blueshed/delta/sqlite`, and `roomApi` opens `const db = new Database("chat.db")` (`bun:sqlite`), carries the rows once, into empty tables, with `createTables(db, schema); importTables(db, schema, exportTables(file, schema))`, and registers on it: `registerDocs(ws, db, schema, docs)`. `exportTables` alone is from `@blueshed/delta/json` (`file` is the JSON file). Ids carry, so the next message named follows on; `routes.ts`, the room's handle and view, and the page stay as they are.
+**An app keeps a test of its documents, and is not done until `bun test` passes**: two people
+on a real server, one writes, the other is told (`testing.md`). `room.test.ts`, in the app's `tests/`:
+
+```ts
+import { expect, test } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { connectWs, openDoc } from "@blueshed/delta/client";
+import { createWs } from "@blueshed/delta/server";
+import { serve } from "@blueshed/delta/serve";
+import { waitFor } from "@blueshed/delta/testing";
+import { roomApi, type Room } from "../resources/room/room-api";
+
+test("what one person says, the other is told", async () => {
+  const dir = mkdtempSync(`${tmpdir()}/room-`);   // a folder of its own, never the app's data
+  const ws = createWs();
+  await roomApi(ws, dir);
+  const server = serve({ ws, routes: {} }, { port: 0, dev: false });
+  const url = new URL(ws.path, server.url).href.replace("http", "ws");
+  const ada = connectWs(url), bo = connectWs(url);   // two people, a socket each
+  try {
+    const says = openDoc<Room>("room:1", ada), hears = openDoc<Room>("room:1", bo);
+    await Promise.all([says.ready, hears.ready]);
+    await says.send([{ op: "add", path: "/messages/-", value: { author: "ada", text: "hello", at: new Date().toISOString() } }]);
+    const told = await waitFor(() => Object.values(hears.data.get()?.messages ?? {}).find((m) => m.text === "hello"));
+    expect(told).toMatchObject({ author: "ada", rooms_id: 1 });   // the room made by its first message
+  } finally {
+    ada.close(); bo.close();   // before the server stops, or they reconnect for ever
+    await server.stop(true);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+```
+
+Working: `tests/recipe.test.ts` saves each block under a `###` heading at its path, starts the
+server, and has a message typed in one browser show in the other's log; then saves this test in the
+app's tests folder and runs it.
+
+**Moving to SQLite** changes `room-api.ts`, and `routes.ts` awaits `roomApi`: the tables are made
+by the room's migrations, written by `delta migrations make`, run before the documents register,
+and the file's rows are carried in once. The whole of it is in `backends.md`. Ids carry, so the
+next message named follows on; the room's handle and view, the page and its test stay as they are.

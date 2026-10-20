@@ -168,3 +168,5 @@ test(`${stories.stories.ordering.name} -- two windows order and remove`, async (
 ```
 
 Working: `tests/evolve.ts` makes a new app from this template, applies this page and runs its type check and tests (`bun run test:evolve`).
+
+- The kitchen (every order, a third document over the same rows) and undo need no move to SQLite: the JSON file holds both. [sqlite.md](sqlite.md) has them worked: the `kitchen:` document, the cook's cell, Undo and Redo on the page, and their test. Take those, and keep `@blueshed/delta/json`, turning on the ledger in its `registerDocs(ws, file, schema, docs, [], { ledger: true })`.

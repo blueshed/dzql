@@ -5,14 +5,14 @@
       "railroad",
       "delta-doc"
     ],
-    "query": "Add a notes page: I type a note, press Add, and it appears in a list under the box.",
+    "query": "Add notes: I write a note, press Add, and it shows in a list of notes on the page. I can remove one too.",
     "files": [],
     "expected_behavior": [
       "Makes the notes a shared document from the start (registerDocs from @blueshed/delta/json with a schema in notes-api.ts, openDoc in notes.ts), not HTTP routes and not a 'live' feature added later",
-      "Makes src/resources/notes/ with notes-api.ts, notes.ts and notes-view.tsx, registers the document in startServer and puts the view in a route in src/app.tsx",
-      "Adds with add /notes/- and removes by id; never sets notes.data or adds the note locally: the change that comes back draws it",
-      "Renders the list with list() keyed by id, and binds signals ({x}, x$.map) rather than calling .get() in JSX",
-      "Tests what a person sees: a second window sees a note added, a refused change says Not saved; bun test passes at 100% coverage and bun run typecheck is clean",
+      "Makes src/resources/notes/ with notes-api.ts, notes.ts and notes-view.tsx, registers the document in startServer, and puts the view on the page in src/app.tsx: its cell in cells, a new note and a removal each asked in a modal (modalOf), opened by go",
+      "Adds with add /notes/- and removes with remove at the note's id (joinPath(\"notes\", id)); never sets notes.data or changes the list locally: the change that comes back draws it",
+      "Draws the list with rowsOf keyed by id, and binds signals (functions, x$.map) rather than calling .get() in JSX",
+      "Tests what a person sees: a second window sees a note added and one removed, a refused change says Not saved; bun test passes at 100% coverage and bun run typecheck is clean",
       "Adds a CHANGELOG.md entry under [Unreleased]"
     ]
   },
@@ -25,10 +25,13 @@
     "query": "Customers pick from our menu and build an order. The kitchen should see every order as it comes in, and a customer should be able to undo their last change.",
     "files": [],
     "expected_behavior": [
-      "Designs from the action: the order page holds two documents (the menu and the customer's order), and the kitchen is a document over every order",
-      "Keeps them in SQLite with delta's backend, because the kitchen and every order share rows; the schema follows from the documents",
-      "Turns on the ledger ({ ledger: true }) for undo rather than keeping an undo stack of its own",
-      "A test shows a line added to an order reaching the kitchen's document, and an undo taking it back from both",
+      "Builds it now: the stories go straight into stories.ts and are made true, with no stop on the model's page; a question it cannot answer goes into todo.jsonl with the reading it took",
+      "Designs from the action: the order page holds two documents (the menu and the customer's order), and the kitchen is a third document over the same rows, every order",
+      "Keeps them in the JSON file (registerDocs from @blueshed/delta/json): documents over the same rows and undo work there, so it does not move to SQLite or Postgres for them",
+      "Turns on the ledger ({ ledger: true } in registerDocs' options) for undo rather than keeping an undo stack of its own",
+      "Puts the kitchen on the page as a cell of its own in cells, and Undo among the page's tools (bento({ undo, redo }), with delta's client undo and redo)",
+      "Tests the documents as the page reads them, through tests/documents.ts (documents(server), dzql's documentsOf): a line added to an order reaches the kitchen's document, and an undo takes it back from both",
+      "A browser test presses Undo on the page and sees the line go from the order and from the kitchen's cell",
       "bun test passes at 100% coverage and bun run typecheck is clean"
     ]
   },
@@ -40,7 +43,7 @@
     "query": "Let people upload a photo and get a link to it.",
     "files": [],
     "expected_behavior": [
-      "Serves files over HTTP routes with Bun.s3, not as a document: a file is not communication",
+      "Serves files over HTTP routes with Bun.s3, not as a document (a file is not communication) and not on the data volume",
       "Installs no AWS SDK; startServer takes the S3 client as an option so tests pass their own",
       "Tests against a stand-in bucket: a put, a GET that redirects to the file, and a 404 for one that is not there",
       "bun test passes at 100% coverage and bun run typecheck is clean"
@@ -52,14 +55,21 @@
       "delta-doc"
     ],
     "query": "The order page is live and people have orders in it. Now an order should count an item: two teas are one line with a quantity of 2, not two lines. Don't lose anyone's order.",
-    "files": [],
+    "files": [
+      "packages/create-blueshed/template/evals/fixtures/orders: the order app as two-documents.md and sqlite.md leave it (app/, over a new app), its three tests (tests/, each copied to tests/<name>.test.ts: stored without .test so the template's own bun test leaves them), and data/app.db as that version left it: 001-order run, and three orders with repeated lines (order 1 two Teas and a Cake, order 2 three Cakes and a Tea, order 3 a Tea)"
+    ],
     "expected_behavior": [
       "Declares quantity in the schema, then lets `delta migrations make` write the next migration (an addColumn), and adds beside it an up that folds an order's lines of one item into one, with its count",
       "Keeps the history from empty: migrate runs it at start-up, with the resource's app and schema, before any document opens; no createTables",
       "Tests an upgrade: a database as the earlier version left it, with lines in it, comes through with every order kept, and a second start runs nothing",
-      "Leaves the page and its documents as they were",
+      "Leaves the page and its documents as they were: the order, kitchen and Undo tests pass unchanged",
       "bun test passes at 100% coverage and bun run typecheck is clean"
     ],
-    "after": 2
+    "copy": [
+      { "from": "packages/create-blueshed/template/evals/fixtures/orders/app", "to": "." },
+      { "from": "packages/create-blueshed/template/evals/fixtures/orders/tests/order.ts", "to": "tests/order.test.ts" },
+      { "from": "packages/create-blueshed/template/evals/fixtures/orders/tests/kitchen.ts", "to": "tests/kitchen.test.ts" },
+      { "from": "packages/create-blueshed/template/evals/fixtures/orders/tests/order-move.ts", "to": "tests/order-move.test.ts" }
+    ]
   }
 ]

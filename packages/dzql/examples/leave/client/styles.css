@@ -1,7 +1,7 @@
 /* leave's look: the kernel's bento surfaces (src/rendering/bento.css) in a plain office ink, light and dark,
    then the calendar. */
 
-@import "../../../src/rendering/bento.css";
+@import "dzql/rendering/bento.css";
 
 :root {
   color-scheme: light dark;

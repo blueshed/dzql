@@ -20,14 +20,16 @@ export function render(sessionId: string, page: string): string { // page: where
 ```
 
 `docs/bento/README.md` says what a page is for: where am I, what can I do. `bento()` (`src/rendering/bento.ts`)
-binds the app's icons, its session's docType and the page's tools, once: Undo and Redo only when
-asked (`undo: true`, for documents on the ledger), as railroad's bento draws them only when given
-them, and leaving (`leave`) last. These are defaults, not rules.
+binds the app's icons, its session's docType and the page's tools: Undo and Redo only when
+asked (`undo: true`, for documents on the ledger, and only for those who write:
+[below](#undo-follows-the-role)), as railroad's bento draws them only when given them, and leaving
+(`leave`) last. These are defaults, not rules.
 
 Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/page.ts), a collection with its drawers and modals at an
 address (`page.ts`, `surfaces.ts`), a write moving the writer's tab (`resources/team/team.ts`);
 [examples/ticker](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/ticker/page.ts), a box of cells (`page.ts`), whose desk takes find and the
-reading switch (`resources/desk/desk.ts`).
+reading switch (`resources/desk/desk.ts`). A bento per role: none, since everyone in the examples
+writes.
 
 - A page is a **box** (`boxPage`: cells in a tray, one may grow into the window; laid out by
   `grid()`, `src/rendering/grid.ts`) or a **collection** (`collectionPage`: the window alone).
@@ -70,6 +72,24 @@ reading switch (`resources/desk/desk.ts`).
   `data-reveal` scrolls the chosen row into the clear, one too tall by its top.
 - A render keeps the reader's place below a sticky bar; one the client cannot measure is declared
   with `scroll-padding-top`.
+
+## Undo follows the role
+
+`undo: true` puts Undo and Redo on every page that bento draws. An undo with nothing of yours on
+the ledger is refused without a word, so for someone who writes nothing there it is a control that
+always fails, and their `cannot: walked("undo")` story fails ([stories.md](stories.md#undo-in-the-stories)).
+Where only some people write, make a bento per role in `surfaces.ts`, and let `page.ts` pick one by
+who the session is:
+
+```ts
+// surfaces.ts: the receptionist signs visitors in; the rest of the team only reads
+const surfacesOf = (undo: boolean) => bento({ icon, session: "session", undo, leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
+const writes = surfacesOf(true);
+const reads = surfacesOf(false);
+export const surfacesFor = (role: string | null) => (role === "receptionist" ? writes : reads);
+```
+
+Where everyone shown Undo writes on the ledger (the cafe, leave), one bento is enough.
 
 ## Where you are: the address
 

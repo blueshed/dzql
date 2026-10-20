@@ -30,25 +30,28 @@ the step: read it, then do the step in your app. Stories, then documents, then p
 least that makes the next story pass; `bun run stories` after each.
 
 1. **The story**, `stories.ts`: a member of the cast (`as`) `does` or `cannot` a write -- a
-   document and its ops -- and who then sees it (`seen`). Watch it fail; a teller asking to see the
-   page now is no reason to skip it. If the stories were modelled, `dzql model` has already made
-   `model/` (the definitions, the guards, the migrations), and each story names the model story it
-   tells (`model: 6`; `model: false` for the app's own). → [stories](reference/stories.md)
+   document and its ops -- and who then sees it (`seen`). Watch it fail on its own terms: a module
+   that will not load is not a story failing, so make what `stories.ts` imports first. A teller
+   asking to see the page now is no reason to skip it. If the stories were modelled, `dzql model`
+   has already made `model/` (the definitions, the guards, the migrations), and each story names
+   the model story it tells (`model: 6`; `model: false` for the app's own). →
+   [stories](reference/stories.md), [failing](reference/stories.md#watch-it-fail-on-its-own-terms)
 2. **The store**, `store.ts`: Postgres, through dzql's `openStore({ schema, migrations })` -- PGlite
    in the process (in the data folder's `pg/`: `DATA_PATH`, a Railway volume, else `data/`; in
-   memory for the tests, `DATA_PATH=:memory:`), or a server at `DATABASE_URL`. The
-   tables (`defineSchema`: the model's `tables`, and the app's own beside them), the model's
-   migrations, `prepare` to seed it, `delta` (the model's guards put on it as the app loads, before
-   any listener), `register` for each resource's documents; the store is the app's `Example.store`,
-   which `appOf` opens as the server starts (each document compiled) and closes as it stops, and
-   the stories put back between stories. → [documents](reference/documents.md),
-   [migrations](reference/migrations.md)
+   memory for the tests, `DATA_PATH=:memory:`), or a server at `DATABASE_URL`. The tables, said
+   here and only here (`defineSchema`: the model's `tables`, and the app's own beside them), the
+   model's migrations, `prepare` to seed it (`importTables`, into empty tables), `delta` (the
+   model's guards put on it as the app loads, before any listener), `register` for each resource's
+   documents; the store is the app's `Example.store`, which `appOf` opens as the server starts
+   (each document compiled) and closes as it stops, and the stories put back between stories. →
+   [documents](reference/documents.md), [migrations](reference/migrations.md)
 3. **A document, a folder**, `resources/floor/`: `floor-api.ts` registers its definition, `read()`s
    it for the page, and keeps the pure rules a write follows; `floor.ts` is its **resource**, which
    says which document a session is on (`resolveDoc`; a list's is `""`), what may be sent
-   (`permit`), what a write becomes (`shape`) and what follows it. Undo is the ledger
-   (`{ ledger: true }`). → [resource](reference/resource.md); refusing, saying why,
-   [refusal](reference/refusal.md); a document that would grow forever, [scope](reference/scope.md)
+   (`permit`: `false` for a write no control of theirs could send, `refuse(words)` for one a
+   control did send and a rule turns down), what a write becomes (`shape`) and what follows it.
+   Undo is the ledger (`{ ledger: true }`). → [resource](reference/resource.md); refusing, saying
+   why, [refusal](reference/refusal.md); a document that would grow forever, [scope](reference/scope.md)
 4. **The session**, `resources/visit/`: each visitor's own document, a `perSession` resource listed
    first, found by its cookie (`sessionRows`). It keeps only what the stories need: who you are and
    what is yours. Where you are is one **address**, each tab's own and its URL: written on the
@@ -56,8 +59,9 @@ least that makes the next story pass; `bun run stories` after each.
    → [bento](reference/bento.md#where-you-are-the-address)
 5. **The page**, `page.ts` and each `<name>-view.ts`: a **box** of **cells** (`boxPage`), a list
    `rows()` of `row()`s, a deed a `tool()`, a drawer or a modal over it, a refusal drawn where it
-   happened (`toldAt`). `surfaces.ts` makes the bento once (`bento({ icon, session, undo, leave })`: Undo and Redo only when asked);
-   `icons.ts` is lucide. → [page](reference/page.md), [bento](reference/bento.md),
+   happened (`toldAt`). `surfaces.ts` makes the bento (`bento({ icon, session, undo, leave })`:
+   Undo and Redo only when asked, and a bento per role where only some write); `icons.ts` is
+   lucide. → [page](reference/page.md), [bento](reference/bento.md),
    [controls](reference/controls.md); reference data, [derive](reference/derive.md)
 6. **The routes**, `routes.ts`: the app (its `Example`: resources, page, who is active, the
    address, its routes) on delta's one server, the model's page beside it in development. People

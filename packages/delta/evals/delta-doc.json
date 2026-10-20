@@ -8,9 +8,10 @@
     "expected_behavior": [
       "One defineSchema (items with parent: \"lists\") and one defineDoc(\"list:\", { root: \"lists\", include: [\"items\"], ... }), used unchanged by both steps",
       "The JSON step registers with registerDocs(ws, file, schema, docs) from @blueshed/delta/json, not a hand-written file store",
-      "The SQLite step changes only the server's wiring: createTables(db, schema), then registerDocs(ws, db, schema, docs) from @blueshed/delta/sqlite; the schema, the document and the client are the same files",
+      "The SQLite step changes only the server's wiring: the tables made by a migration that delta migrations make wrote, run with migrate(db, migrations, …) before registerDocs(ws, db, schema, docs) from @blueshed/delta/sqlite (createTables only on a :memory: database in a test); the schema, the document and the client are the same files",
       "Carries the data with exportTables from @blueshed/delta/json and importTables from @blueshed/delta/sqlite, not by copying rows by hand",
-      "The client uses connectWs and openDoc from @blueshed/delta/client and installs @blueshed/railroad beside delta",
+      "The client uses connectWs and openDoc from @blueshed/delta/client",
+      "Keeps a test of the documents (two clients on a real server: one writes, the other is told) that passes on the JSON file and, unchanged, on SQLite",
       "New items are sent as add /items/- with the server naming the id; done is changed with replace /items/<id>/done",
       "No optimistic update and no fetch or reload: the page changes only through onOps or doc.data, and one keyed render path (applyOpsToCollection or railroad's list()) serves the first paint and every change",
       "The server is delta's one server: serve({ ws, routes }) from @blueshed/delta/serve (run() when it is the entry), never a hand-written Bun.serve with ws.setServer"
@@ -51,7 +52,7 @@
       "Names venues by number (venue:1), not by text, so the app moves to Postgres unchanged",
       "Adds the room with add /rooms/- and reads its id from what comes back (the echo's /rooms/<id> path or the row's id), never by guessing or by position",
       "Adds the booking with add /bookings/- whose value carries rooms_id set to that room's id",
-      "Calls createTables(db, schema) before registerDocs"
+      "Makes the tables with migrate(db, migrations, …) before registerDocs, the migration written by delta migrations make; createTables only on a :memory: database in a test"
     ]
   }
 ]

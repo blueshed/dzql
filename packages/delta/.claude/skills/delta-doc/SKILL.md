@@ -25,7 +25,9 @@ follow.
 3. **Keep them in the smallest backend that fits** (the JSON file first), on `createWs()` served
    by `serve` / `run` (`reference/server.md`), or on `createLocal()` (in-process).
 4. **Client**: `connectWs`, `openDoc`, one keyed render path, `doc.send(ops)`. The echo renders.
-5. **Grow when a story needs it**: `{ ledger: true }` for undo, `auth` and `owns` for who sees
+5. **Test it**: a test of the documents, two people on a real server (`reference/recipe.md`,
+   *Its test*). Done is `bun test` passing.
+6. **Grow when a story needs it**: `{ ledger: true }` for undo, `auth` and `owns` for who sees
    what, a migration per change to the tables, dzql when servers share the data.
 
 ## Invariants
@@ -41,8 +43,9 @@ follow.
 - Undo is the ledger's (`{ ledger: true }`), never a hand-rolled stack.
 - A line is a row under its parent, never JSON of ids; a fact from other rows is a recompute
   document, never a stored copy; "one at a time" is `unique` (`schema.md`).
-- The schema is the contract: delta sends and writes only declared columns. Its tables are made
-  by its migrations: change the schema, `delta migrations make` writes the next, `migrate` runs it.
+- The schema is the contract: delta sends and writes only declared columns. An app's tables are
+  made by its migrations: change the schema, `delta migrations make` writes the next, `migrate`
+  runs it. `createTables` is for a database thrown away (`:memory:` in a test).
 - With `auth`, every document says who may have it: `owns`, a path from its row to the person,
   or `shared: true`. A name is its broadcast channel.
 - Tokens never in the socket URL (`connectWs(url, { onConnect })`). No Redux, REST, `fetch` of

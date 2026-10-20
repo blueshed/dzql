@@ -56,6 +56,15 @@ const pages = (await $`git ls-files ${globs}`.cwd(root).quiet().text()).split("\
 for (const page of pages) {
   if (!/^Working: /m.test(readFileSync(join(root, page), "utf8"))) wrong.push(`${page}: says nowhere where its rules are shown working (a line starting "Working:")`);
 }
+// the Shed (create-blueshed's template's evals/shed/) is held out: no skill page names its nouns, or
+// a run measures what the page said, not what the skills lead to (run 5 found four such lines)
+const shed = /\b(allotment|plots?|plotholders?|strimmer|shears|spade|rake|committee|borrow\w*|loans?|shed)\b/i;
+const skillFiles = (await $`git ls-files ${skills.map(dirname)}`.cwd(root).quiet().text()).split("\n").filter((f) => f.endsWith(".md"));
+for (const file of skillFiles)
+  readFileSync(join(root, file), "utf8").split("\n").forEach((line, i) => {
+    const noun = shed.exec(line)?.[0];
+    if (noun) wrong.push(`${file}:${i + 1}: names "${noun}", one of the Shed's: the Shed is held out of every skill`);
+  });
 // the evolve skill's step to the thin client leaves an app as `bun create dzql` makes one: its
 // CLAUDE.md and README are create-dzql's, word for word, under the app's own heading
 const step = "packages/create-blueshed/template/.claude/skills/evolve/references/thin-client.md";

@@ -31,7 +31,8 @@ The hooks, in the order they run: see `Resource` in `src/rendering/resources/res
 Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/resources/room/room.ts), a room's `resolveDoc`, `permit`,
 `shape` and `afterChange` (`resources/room/room.ts`), its memory documents kept true one run at a
 time (`presence.ts`); [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/resources/team/team.ts), `afterWrite` moving the
-writer's tab, and `afterWalk` (`resources/team/team.ts`).
+writer's tab, and `afterWalk` (`resources/team/team.ts`), and a `permit` that is `false` where no
+control sends the write (`may`, `resources/team/team-api.ts`).
 
 ## Who sees what
 
@@ -49,7 +50,12 @@ writer's tab, and `afterWalk` (`resources/team/team.ts`).
 ## A write: seen, `permit`, `shape`, then delta
 
 1. **Seen:** the page can see the document.
-2. **`permit`:** may this person make this change, to this path? Omitted: nobody may.
+2. **`permit`:** may this person make this change, to this path? Omitted: nobody may. Return
+   `false` for a write no control of that person's could send: there is nowhere to say why, and
+   its `cannot` story has no `told`. Throw `refuse(words)`, here or in `shape`, only for a write a
+   control did send and a rule turns down: the words are drawn beside that control, and its story
+   says them ([refusal.md](refusal.md)). Leave's member has no Approve, so `may` is `false`
+   (`onlyManagerAnswers`); a last day before the first is typed into a field, so `shape` refuses it.
 3. **`shape`:** what the page sent, as the document keeps it: checked, trimmed, an id made, a wire
    path (`/guests/2/minifigure/top`) turned into the rows it moves. Shaped to nothing is refused.
 4. **delta:** is it valid data?

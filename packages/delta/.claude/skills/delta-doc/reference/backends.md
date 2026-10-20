@@ -1,30 +1,40 @@
 # Backends: where documents are kept
 
-Moving the recipe's chat from the JSON file to SQLite changes `room-api.ts` only (its imports
-from `./sqlite`, and `roomApi`'s wiring):
+Moving the recipe's chat from the JSON file to SQLite changes `room-api.ts`, and `routes.ts`
+awaits `roomApi` (`await roomApi(ws)`). The tables are the room's history of migrations. First,
+on `room-api.ts` as it stands, `bunx @blueshed/delta migrations make resources/room/room-api.ts
+--dir resources/room/migrations --name room` writes the first (every table) and the folder's
+`index.ts` (`migrations.md`). Then `room-api.ts` takes them:
 
 ```ts
 import { Database } from "bun:sqlite";
+import type { WsServer } from "@blueshed/delta/server";
 import { exportTables } from "@blueshed/delta/json";
-import { createTables, importTables, registerDocs } from "@blueshed/delta/sqlite";
+import { defineDoc, defineSchema, importTables, migrate, registerDocs } from "@blueshed/delta/sqlite";
+import { migrations } from "./migrations";
 
-const db = new Database("chat.db");
-createTables(db, schema);
-importTables(db, schema, exportTables("./chat.json", schema));   // once, into empty tables
-registerDocs(ws, db, schema, docs);
+// schema, docs and the types as they were
+
+export async function roomApi(ws: WsServer, dir = ".") {
+  const db = new Database(`${dir}/chat.db`);
+  await migrate(db, migrations, { app: "room", schema });   // the history makes the tables
+  if (!db.query("SELECT 1 FROM rooms").get()) importTables(db, schema, exportTables(`${dir}/chat.json`, schema));   // once, into empty tables
+  return registerDocs(ws, db, schema, docs);
+}
 ```
 
 Working: [create-blueshed/template](https://github.com/blueshed/dzql/blob/main/packages/create-blueshed/template/src/resources/message/message-api.ts), a document kept in the JSON file
-(`src/resources/message/message-api.ts`), moved to SQLite with `exportTables` and `importTables`
-by its evolve skill's `references/sqlite.md`, applied to a new app and tested;
+(`src/resources/message/message-api.ts`), moved to SQLite, its tables made by a history of
+migrations and its rows carried with `exportTables` and `importTables`, by its evolve skill's `references/sqlite.md`, applied to a new app and tested;
 [examples/sites-bbox](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/sites-bbox/README.md), one schema and its documents
 (`resources/schema.ts`) on SQLite, and on Postgres in dzql's `server-pg.ts`.
 
 ## Pick the smallest that fits
 
 - **JSON file** (`registerDocs(ws, file, …)`, `./json`): starting out, one process, a file you can read.
-- **SQLite** (`createTables` then `registerDocs(ws, db, …)`, `./sqlite`): more rows; processes may
-  share the file but hear only their own writes live (`sqlite.md`).
+- **SQLite** (`migrate`, then `registerDocs(ws, db, …)`, `./sqlite`): more rows, a schema that
+  changes on kept data; processes may share the file but hear only their own writes live
+  (`sqlite.md`).
 - **Postgres**: servers that share the data, people who see only their own: the next step is
   dzql's, not delta's (`postgres.md`).
 - **Memory, source, static**: not tables (`kinds.md`).

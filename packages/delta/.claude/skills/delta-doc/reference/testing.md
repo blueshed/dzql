@@ -1,6 +1,11 @@
 # Testing an app, and scripts
 
-From `tests/local.test.ts`: the lightest harness, no socket and no mock.
+An app's own test is the recipe's (`recipe.md`, *Its test*): two people on a real server, one
+writes, the other is told. It runs unchanged as the documents move from the JSON file to SQLite.
+
+From `tests/local.test.ts`: the lightest harness, no socket and no mock. A test's database is
+`:memory:`, thrown away, so `createTables` makes its tables; an app's are its migrations
+(`migrations.md`).
 
 ```ts
 function setup() {
@@ -27,8 +32,8 @@ test, its document held from Bun and its page in a browser, on a real server.
 
 ## Other harnesses
 
-- **A real server**: `serve({ ws, routes }, { port: 0 })` (`@blueshed/delta/serve`), then
-  `connectWs(new URL("/ws", url).href.replace("http", "ws"))`
+- **A real server**, as an app's test has: `serve({ ws, routes }, { port: 0 })`
+  (`@blueshed/delta/serve`), then `connectWs(new URL("/ws", url).href.replace("http", "ws"))`
   (`tests/serve.test.ts`).
 - **`@blueshed/delta/testing`** (`src/testing.ts`): `mockClient(data?)` (a socket-shaped client,
   what it was sent in `.sent`; `{ identity }` signed in, `{ local: true }` in-process),

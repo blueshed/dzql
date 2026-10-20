@@ -13,13 +13,24 @@ window by a keyset (`/before`, `resources/session/session.ts`); and
 [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/resources/kitchen/kitchen-api.ts), a list of only what is open:
 `kitchen:placed`, every order not yet placed, the model's `kitchen` scoped as the app registers it
 (`resources/kitchen/kitchen-api.ts`). Placing an order at its table takes it out, and every page
-that read it is told; paying for it changes nothing there. The day as the root, none yet.
+that read it is told; paying for it changes nothing there. Today's, by date or as a root row,
+none yet.
 
-## Today's, or one shift's: make the day the root
+## Today's, or one shift's
 
-A single document is one root row and its children, by their parent keys
+Today's rows, flat, with nothing of the day's own to keep (a front desk's visitors), are a list
+scoped by their date column, named by the date: `desk:2026-10-20`, which `resolveDoc` works out
+(`new Date().toISOString().slice(0, 10)`: the day in UTC, as leave's page takes today).
+
+```ts
+defineDoc("desk:", { root: "visitors", include: [], scope: { day: ":id" } }), // desk:2026-10-20, today's and nothing older
+```
+
+Make the day, or the shift, a root row of its own when what happens in it hangs beneath it (bills,
+and their orders), when it keeps something of its own (opened, closed), or when it does not end at
+midnight (a shift). A single document is one root row and its children, by their parent keys
 (`defineDoc("household:", { root: "households", include: ["guests", "asks", "claims"] })`, the
-wedding's). So give the day, or the shift, a row, and hang what happens in it beneath it:
+wedding's):
 
 ```ts
 shifts: { table: "cafe_shifts", columns: { opened_at: "text", closed_at: "text?" } },
@@ -29,9 +40,9 @@ orders: { table: "cafe_orders", parent: "bills", columns: { item: "text" } },
 defineDoc("shift:", { root: "shifts", include: ["bills", "orders"] }), // shift:7 is its bills and their orders, nothing older
 ```
 
-`resolveDoc` names the open shift (a query of the tables: which shift has no `closed_at`); a past
-one is its own document, opened only by a page that asks for it. Name it by its row's id, not a
-date.
+`resolveDoc` names the open shift (a query of the tables: which shift has no `closed_at`), by its
+row's id: a shift is not a date. A past one is its own document, opened only by a page that asks
+for it.
 
 ## What is open: a list scoped by a column
 

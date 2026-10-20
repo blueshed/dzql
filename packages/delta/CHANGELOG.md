@@ -158,6 +158,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`migrate` puts a SQLite file in WAL mode, as `createTables` does** (20 October, found with
+  the delta-doc evals, root #113): an app whose tables come from its migrations, as the skill
+  teaches, ran in the rollback journal, so a second process sharing the file waited on every read.
+
 - **`install-skills` copies a skill whose files are links** (20 October): a package installed from
   a checkout (`file:`, a workspace, `bun create dzql --local`) lays its files out as links, and they
   were skipped, so the skill arrived as empty folders. A link counts as what it points at. Found by
@@ -195,6 +199,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   here keeps are saved as they were.
 
 ### Changed
+
+- **The delta-doc skill says one rule for tables** (20 October, from two rounds of its evals, root
+  #113): an app's tables are its migrations (`migrate`, each written by `delta migrations make`);
+  `createTables` only for a database thrown away (`:memory:` in a test). `recipe.md`, `backends.md`,
+  `sqlite.md` and `testing.md` said otherwise. The recipe's `tsconfig.json` is whole (`"types":
+  ["bun"]`), a time is `timestamptz`, and an app keeps a test of its documents, part of done: the
+  recipe's, which `tests/recipe.test.ts` now runs as written. `ledger.md` says how to start a
+  ledgered database afresh.
 
 - **The server's logger is railroad's again, line for line** (20 October): `loggedRequest` is
   generic over the route handler (railroad #11), so a Bun route keeps its typed `req.params`.

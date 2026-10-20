@@ -28,12 +28,18 @@ async afterWalk(ws, id, { way, ops, inverse }) {
 
 Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/resources/session/session-api.ts), a rule in `shape`
 (`resources/session/session-api.ts`) told beside the field that sent it
-(`resources/team/team-view.ts`); [examples/wedding](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/wedding/resources/household/household.ts),
+(`resources/team/team-view.ts`), and `false` where no control sends the write (`may`,
+`resources/team/team-api.ts`); [examples/wedding](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/wedding/resources/household/household.ts),
 answers closed against Undo too (`permitUndo`) and what a walk did, told (`afterWalk`), in
 `resources/household/household.ts`.
 
-- Throw `refuse(reason)` from `permit` or `shape`. A plain `false` refuses without a word: right for
-  a write no control offers, where there is nowhere to say why.
+- `permit` returns `false` for a write no control of that person's could send: there is nowhere to
+  say why, and its `cannot` story has no `told`. Throw `refuse(reason)`, from `permit` or `shape`,
+  only for a write a control did send and a rule turns down: the words are drawn beside that
+  control, and its story says them (`told`). Leave's member has no Approve, so `may` is `false`
+  (`onlyManagerAnswers`); a last day before the first is typed into a field, so `shape` refuses it.
+  The stories hold one half: a control on the page refused without a word fails as a control that
+  always fails.
 - `toldAt(sessionId, doc, path)`, where `doc` and `path` are the control's `data-write`, draws
   `<p class="refused" role="alert">`, `<p class="said" role="status">` for a success, or nothing.
 - A success is told, not thrown: `tell(sessionId, { doc, path, said })`, from `afterWrite`,
@@ -60,7 +66,8 @@ answers closed against Undo too (`permitUndo`) and what a walk did, told (`after
 - The kernel asks delta what an undo or redo would write, in the wire's paths (each field it sets
   back its own `replace`), and asks `permitUndo(ws, docId, ops)`. Omitted: always.
 - It is not `permit`: Undo may do what permit refuses (a message taken back). It is for a rule of
-  time or state that holds against Undo too.
+  time or state that holds against Undo too. Its story is `cannot: walked("undo")` with the words
+  as `told` ([stories.md](stories.md#undo-in-the-stories)).
 - An undo that meets someone else's later write changes nothing, and says so: "Someone has changed
   that since, so it cannot be undone."
 - Why an undo or redo was refused, and what `afterWalk` tells on `{ doc: "ledger", path: "/latest" }`,

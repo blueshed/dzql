@@ -47,8 +47,8 @@ Each leads with its example: code and tests, proven by applying them to a new ap
 
 - [references/document.md](references/document.md): a new shared document (notes: add and remove)
 - [references/testing.md](references/testing.md): the document in the browser: two windows, a refusal
-- [references/two-documents.md](references/two-documents.md): the catalogue and an order on one page
-- [references/sqlite.md](references/sqlite.md): the move to SQLite, with the kitchen (documents over the same rows) and undo
+- [references/two-documents.md](references/two-documents.md): the catalogue and an order on one page; the kitchen and undo stay on its JSON file
+- [references/sqlite.md](references/sqlite.md): the move to SQLite, with the kitchen (documents over the same rows) and undo worked
 - [references/migrations.md](references/migrations.md): a schema that changes on a database holding data
 - [references/postgres.md](references/postgres.md): servers that share data; people who see only their own (dzql, delta's Postgres)
 - [references/thin-client.md](references/thin-client.md): the page drawn on the server, the order app on dzql's thin client (after postgres.md)

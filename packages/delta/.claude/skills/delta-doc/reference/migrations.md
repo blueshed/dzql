@@ -8,6 +8,10 @@ next one from what your definitions say beyond them, so a person writes only wha
 know: a rename, a change of type, data. A new database runs the history from its first migration;
 one database, many years, one history (`tests/migrations-from-empty.test.ts`).
 
+**`createTables(db, schema)` is for a database thrown away**: `:memory:` in a test or a script, or
+a demo that starts afresh each run (`testing.md`). It makes the tables straight from the schema,
+with no history, so a database an app keeps never takes it: an app's tables are its migrations.
+
 ```ts
 // migrations/001-people.ts and 002-posts.ts, as `delta migrations make src/db.ts` writes them
 import { createTable } from "@blueshed/delta/migrations";

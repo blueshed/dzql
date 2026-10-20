@@ -31,12 +31,13 @@ every write through it, so who may have the name is who may see its rows.
   have under each member; the group's document roots at the group and includes both, and its
   path is `@id->members[groups_id=$].person_id`. A recompute document, or a function, written
   for a group's rows is the sign they hang in the wrong place.
-- **A group not everyone is in** (a field's plotholders; the keeper is in none): people stay rows
-  of their own, and a membership row joins one group to one person (`memberships` under `fields`,
-  with `person_id`). What the field has hangs under the field, and its path runs through the
-  memberships: `@id->memberships[fields_id=$].person_id`. One more table, never a function.
-- **Everything, for some people** (a committee, the staff): a list has no row to start from, so
-  its path starts at a table with a filter: `people[committee=true].id`.
+- **A group not everyone is in** (a project's contributors; the office manager is on none): people
+  stay rows of their own, and a membership row joins one group to one person (`memberships` under
+  `projects`, with `person_id`). What the project has hangs under the project, and its path runs
+  through the memberships: `@id->memberships[projects_id=$].person_id`. One more table, never a
+  function.
+- **Everything, for some people** (the staff, the admins): a list has no row to start from, so
+  its path starts at a table with a filter: `people[admin=true].id`.
 - **Anyone signed in**: `AUTHENTICATED`; nobody: `FALSE`.
 
 ## The grammar

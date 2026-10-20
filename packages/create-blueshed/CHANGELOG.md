@@ -148,6 +148,14 @@ section up.
 
 ### Changed
 
+- **The evolve skill and its evals, from round 2** (20 October, root #113). `http.md` says why
+  files go in the bucket and never on the data volume (a volume is one service's; a redirect keeps
+  the bytes off the app's server), and what a test stands in for. `two-documents.md` says the
+  kitchen and undo need no move to SQLite: the JSON file holds both. The evals follow the skill
+  (cells, `rowsOf`, Undo on the page, `documentsOf`), and the quantity migration starts from a
+  fixture of its own, the order app with a database holding repeated lines. The template's
+  CLAUDE.md says why the ledger is written with the file tools.
+
 - **Asked to build, an app builds** (20 October, found by the evolve evals, root #113). The
   template's CLAUDE.md sent every new app's stories to the model's page first, so a session asked
   for a whole app (a menu, orders, the kitchen) modelled it and stopped with questions. It, and the

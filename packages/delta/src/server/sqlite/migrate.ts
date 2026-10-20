@@ -21,6 +21,7 @@ function store(db: Database, app: string, collections?: string): Store<Database>
     async lock() {
       if (db.inTransaction) throw new Error("[delta-migrate] migrate runs outside a transaction: each migration is its own");
       waitForLocks(db);
+      db.run("PRAGMA journal_mode = WAL"); // as createTables makes it: processes may share the file
     },
     async unlock() {},
     async exists() { return has(db, "table", "delta_migrations"); },

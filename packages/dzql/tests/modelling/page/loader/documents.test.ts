@@ -4,6 +4,7 @@ import { post, story, toldOf, type Stories } from "dzql/modelling/stories";
 import { keyed } from "../../keyed";
 import { run } from "dzql/modelling/harness";
 import { serverWrite } from "dzql/rendering/documents";
+import { walked } from "dzql/rendering/json-patch";
 import type { Example } from "dzql/rendering/example";
 import { bornInto, toldNotAsked, touches } from "../../../../src/modelling/page/loader/facts";
 import { controlsOn, type Heard, type Trace } from "dzql/modelling/harness";
@@ -195,6 +196,7 @@ describe("from a run", () => {
         story("A story the run never told", { as: "ada", does: { doc: "room", ops: [] }, seen: ["ada"] }),
         story("Ada files a room away", { as: "ada", cannot: { doc: "archive", ops: [{ op: "add", path: "/-", value: 1 }] } }),
         story("Ada says something nobody sees", { as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "shh" }] }, seen: [] }),
+        story("Ada cannot take back what nobody wrote", { as: "ada", cannot: walked("undo") }), // the kernel's ledger, no document of the example's
       ]),
     };
     const step = (name: string, heard: Trace["heard"]): Trace => ({ story: name, phase: "does", as: "ada", heard, holds: [{ member: "ada", docs: ["told:x", "session:x"] }], ledger: [] });

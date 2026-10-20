@@ -13,11 +13,16 @@
  * the checkout, or an app as `bun create dzql` or `bun create blueshed` make one (`--local`); by
  * default, its package's. `after: <n>` starts from what scenario n of the same skill left;
  * `copy: [{ from, to, at?, replace? }]` puts a file or folder of the repository in (at a revision, if
- * `at` says one; in place of what is there, with `replace`).
+ * `at` says one; in place of what is there, with `replace`), and a tsconfig it brings that extends one
+ * left behind is made to stand alone.
+ *
+ * The checkout's packages are installed as npm ships them (packed), never as links a search will not
+ * follow. Each scenario has ports of its own (`PORT`, `MODEL_PORT`), and whatever a session leaves
+ * running in its folder is stopped when it ends.
  */
 import { $ } from "bun";
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 const root = join(import.meta.dir, "..");
 const args = process.argv.slice(2);
@@ -50,6 +55,76 @@ const OWNER: Record<string, string> = { railroad: "railroad", "bun-route": "rail
 
 const sh = (cmd: string[], cwd: string) => Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, CI: "" } });
 
+/** The checkout's packages as npm would ship them: one tarball each, packed once a run. */
+const LOCAL: Record<string, string> = { dzql: "dzql", "@blueshed/delta": "delta", "@blueshed/railroad": "railroad" };
+const tarballs = new Map<string, string>();
+function tarball(pkg: string): string {
+  if (!tarballs.has(pkg)) {
+    const dest = join(out, ".packed");
+    mkdirSync(dest, { recursive: true });
+    const packed = sh(["bun", "pm", "pack", "--destination", dest, "--ignore-scripts", "--quiet"], join(root, "packages", pkg));
+    tarballs.set(pkg, packed.stdout.toString().trim().split("\n").at(-1)!);
+  }
+  return tarballs.get(pkg)!;
+}
+
+/**
+ * A `file:` install is a folder of links into the checkout, which a session's search does not
+ * follow (it then reads the checkout, outside its project): each is put back as the package ships,
+ * its own node_modules kept, at every depth. A peer the install nested under it (a second railroad,
+ * whose signals the page's never see) goes, as npm would: the app's own is the one, or the first,
+ * hoisted, where the app has none.
+ */
+function shipped(modules: string, top = modules): void {
+  if (!existsSync(modules)) return;
+  if (modules !== top)
+    for (const name of Object.keys(LOCAL)) {
+      if (!existsSync(join(modules, name))) continue;
+      if (existsSync(join(top, name))) rmSync(join(modules, name), { recursive: true, force: true });
+      else (mkdirSync(dirname(join(top, name)), { recursive: true }), renameSync(join(modules, name), join(top, name)), shipped(top)); // hoisted, the one copy
+    }
+  for (const [name, pkg] of Object.entries(LOCAL)) {
+    const at = join(modules, name);
+    if (!existsSync(at) || !readdirSync(at).some((f) => lstatSync(join(at, f)).isSymbolicLink())) continue;
+    const tmp = mkdtempSync(join(modules, ".shipped-"));
+    sh(["tar", "-xzf", tarball(pkg), "-C", tmp], tmp);
+    if (existsSync(join(at, "node_modules"))) renameSync(join(at, "node_modules"), join(tmp, "package", "node_modules"));
+    rmSync(at, { recursive: true, force: true });
+    renameSync(join(tmp, "package"), at);
+    rmSync(tmp, { recursive: true, force: true });
+    shipped(join(at, "node_modules"), top);
+  }
+}
+
+/** A copied tsconfig that extends one outside what was copied stands alone: what it extends, inlined. */
+function standalone(copied: string, from: string): void {
+  const file = existsSync(join(copied, "tsconfig.json")) ? join(copied, "tsconfig.json") : copied.endsWith("tsconfig.json") ? copied : undefined;
+  if (!file) return;
+  let own = JSON.parse(readFileSync(file, "utf8")) as { extends?: string; compilerOptions?: object };
+  let base = file === copied ? dirname(from) : from;
+  while (own.extends && !existsSync(resolve(dirname(file), own.extends))) {
+    const parent = resolve(base, own.extends);
+    const up = JSON.parse(readFileSync(parent, "utf8")) as typeof own;
+    const { extends: _, ...rest } = own;
+    own = { ...up, ...rest, compilerOptions: { ...up.compilerOptions, ...rest.compilerOptions } };
+    base = dirname(parent);
+  }
+  const { "//": _said, ...alone } = own as typeof own & { "//"?: string }; // the repository's note on its own layout
+  writeFileSync(file, JSON.stringify(alone, null, 2) + "\n");
+}
+
+/** Every process still running in a folder: a server a session started and left. */
+function stopLeftIn(dir: string): number[] {
+  const lines = sh(["lsof", "-a", "-d", "cwd", "-Fpn"], dir).stdout.toString().split("\n");
+  const pids: number[] = [];
+  for (let i = 0, pid = 0; i < lines.length; i++) {
+    if (lines[i]!.startsWith("p")) pid = Number(lines[i]!.slice(1));
+    else if (lines[i]!.startsWith("n") && (lines[i]!.slice(1) === dir || lines[i]!.slice(1).startsWith(`${dir}/`)) && pid !== process.pid) pids.push(pid);
+  }
+  for (const pid of pids) try { process.kill(pid); } catch {}
+  return pids;
+}
+
 /** A project as the scenario starts it, committed. */
 async function make(r: (typeof runs)[number], dir: string): Promise<void> {
   const local = (names: string[]) => Object.fromEntries(names.map((n) => [`@blueshed/${n}`, `file:${join(root, "packages", n)}`]));
@@ -80,8 +155,12 @@ async function make(r: (typeof runs)[number], dir: string): Promise<void> {
     if (c.replace) rmSync(to, { recursive: true, force: true });
     mkdirSync(join(to, ".."), { recursive: true });
     if (c.at) await Bun.write(to, (await $`git show ${c.at}:${c.from}`.cwd(root).quiet()).stdout);
-    else cpSync(join(root, c.from), to, { recursive: true });
+    else {
+      cpSync(join(root, c.from), to, { recursive: true });
+      standalone(to, join(root, c.from));
+    }
   }
+  shipped(join(dir, "node_modules"));
   if (!existsSync(join(dir, ".git"))) sh(["git", "init", "-q"], dir);
   if (!existsSync(join(dir, ".gitignore"))) writeFileSync(join(dir, ".gitignore"), "node_modules/\n");
   sh(["git", "add", "-A"], dir);
@@ -101,10 +180,15 @@ async function run(r: (typeof runs)[number]): Promise<Result> {
   await Bun.write(join(out, `${r.id}.prompt.md`), r.s.query);
   if (process.env.EVALS_SETUP_ONLY) return { id: r.id, pkg: r.pkg, skill: r.skill, n: r.n, dir, minutes: 0, exit: null, check: sh(["bun", "check"], dir).exitCode === 0, tests: null, files: [] };
   const started = performance.now();
-  const proc = Bun.spawn(["claude", "-p", r.s.query, "--allowedTools", "Bash,Edit,Write,Read,Glob,Grep,MultiEdit,TodoWrite,Skill", "--permission-mode", "acceptEdits", "--output-format", "text"], { cwd: dir, stdout: Bun.file(join(out, `${r.id}.log`)), stderr: "pipe", stdin: "ignore" });
+  // ports of its own, so scenarios running at once never meet on 3000 or the model's 3001
+  const port = 4000 + runs.indexOf(r) * 10;
+  const env = { ...process.env, CI: "", PORT: String(port), MODEL_PORT: String(port + 1) };
+  const proc = Bun.spawn(["claude", "-p", r.s.query, "--allowedTools", "Bash,Edit,Write,Read,Glob,Grep,MultiEdit,TodoWrite,Skill", "--permission-mode", "acceptEdits", "--output-format", "text"], { cwd: dir, env, stdout: Bun.file(join(out, `${r.id}.log`)), stderr: "pipe", stdin: "ignore" });
   const timer = setTimeout(() => proc.kill(), 45 * 60_000);
   const exit = await proc.exited;
   clearTimeout(timer);
+  const left = stopLeftIn(dir);
+  if (left.length) console.error(`${r.id}: stopped what the session left running (${left.join(", ")})`);
   const minutes = +((performance.now() - started) / 60000).toFixed(1);
   sh(["git", "add", "-A"], dir);
   sh(["git", "commit", "-qm", "the session"], dir);
