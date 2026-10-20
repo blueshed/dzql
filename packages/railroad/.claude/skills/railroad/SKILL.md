@@ -26,10 +26,10 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 2. A function child returns text, not a Node: `when()` for an element, `list()` for many. → jsx
 3. A keyed `list()` row is its fields, each a signal: `({ name }) => <li>{name}</li>`. Keys unique and stable. → when-list
 4. An array that changes needs `list()`; a plain `.map()` is for a static array. → when-list
-5. `when()` rebuilds only when truthiness flips: read the value through `v$`. A route runs its handler again when its params change, so `({ id }) => …` is right; a layout that stays mounted is `{ keyed: false, handler }`, reading `params$`. → when-list, routes
-6. Effects, `when()` and `list()` are disposed only inside a scope (component, route handler, branch, row, `mount()`). Each effect run owns what its body makes, so what must outlive a run is made outside it (a computed kept from a run warns when read). An event handler is not a scope. → scopes
+5. `when()` rebuilds only when truthiness flips: read the value through `v$`. A route runs again when its params change, so `({ id }) => …` is right; a layout is `{ keyed: false, handler }`. → when-list, routes
+6. Effects, `when()` and `list()` are disposed only inside a scope (component, route handler, branch, row, `mount()`). Each effect run owns what its body makes, so what must outlive a run is made outside it (one kept warns). An event handler is not a scope. → scopes
 7. Handlers are lowercase functions: `onclick={() => …}`, never `onClick`, a call, or a Signal. `oninput` per keystroke; `onchange` on commit. → jsx
-8. Async components and async route handlers resolve to a thunk: `return () => <div/>`. `effect(async …)` is an error. → async
+8. Data that comes later is a signal: `when(resolved(promise), (r$) => …, () => <p>wait</p>)` in a synchronous component; never `await` first. `effect(async …)` is an error. → async
 9. Rows changed one at a time (a feed) are a `collection(key)`: it replaces the row it changes, so `list()` updates that row alone, and `at(id)` follows one. Never change a row in place. → realtime
 10. Routes match in declaration order, on segments only: no query strings, a trailing slash is a segment. → routes
 11. One copy of railroad per page, or signals silently stop crossing. → [one-copy](reference/one-copy.md)
@@ -48,7 +48,7 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 - [signals](reference/signals.md): `signal`, `computed`, `effect`, `batch`, `collection`, scheduling
 - [scopes](reference/scopes.md): what is disposed when; custom roots
 - [jsx](reference/jsx.md): components, props, handlers, SVG
-- [async](reference/async.md): async components and route handlers
+- [async](reference/async.md): data that comes later, `resolved()`
 - [when-list](reference/when-list.md): conditional and keyed rendering
 - [routes](reference/routes.md): `routes`, `route`, `navigate`, keyed and wildcard routes, `onError`
 - [realtime](reference/realtime.md): patch streams, `@blueshed/delta`, and an applet in a page dzql's server draws

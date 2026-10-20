@@ -31,12 +31,12 @@
     "query": "In a railroad app, add a Profile component that fetches /api/me ({ name, avatarUrl }) and shows the name and avatar, with \"loading...\" while it waits. Also add a route \"/posts/:id\" that fetches /api/posts/:id and shows the post title; going from /posts/1 to /posts/2 must load post 2.",
     "files": [],
     "expected_behavior": [
-      "Profile is an async function whose return after the await is a thunk: return () => <div>...</div>, not a bare JSX element",
-      "The loading message is passed as a thunk: <Profile fallback={() => <p>loading...</p>} />",
+      "Profile is a synchronous component returning when(resolved(fetch(...).then(...)), (r$) => ..., () => <p>loading...</p>): no async function, no await before it builds",
+      "The loading message is when()'s falsy branch, not a fallback prop",
+      "The branch reads the settled result once (r$.peek()) and handles the error case (\"error\" in r) before reading r.value",
       "No effect(async () => ...); any async work started from an effect writes its result to a signal",
-      "The /posts/:id route is a plain handler taking ({ id }), keyed by default, so going to /posts/2 runs it again; not { keyed: false }",
-      "An async route handler, if used, resolves to a thunk () => <Node>, not a Node",
-      "Writes no { keyed: true } (the default) and reads no params$ to refetch"
+      "The /posts/:id route is a plain synchronous handler taking ({ id }) and returning when(resolved(...)), keyed by default, so going to /posts/2 loads post 2; not { keyed: false }",
+      "Writes no async component or handler resolving to a thunk, no { keyed: true } (the default), and reads no params$ to refetch"
     ]
   }
 ]

@@ -7,7 +7,9 @@
  *   - tag: async function → placeholder now, content when it resolves — the
  *     component must resolve to a THUNK (`return () => <div>…</div>`) so its
  *     post-await effects get an owner scope; optional `fallback` prop (a
- *     thunk) renders until settlement. See "Async components" below.
+ *     thunk) renders until settlement. See "Async components" below. Data that
+ *     comes later is better a signal: when(resolved(promise), …) from a
+ *     synchronous component needs neither the thunk nor the fallback.
  *   - props: attributes, event handlers (onclick etc), ref — applied after the
  *     children are appended, so a <select>'s value finds its <option>s and a
  *     ref sees the element whole

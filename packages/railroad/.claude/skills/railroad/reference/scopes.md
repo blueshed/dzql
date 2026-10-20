@@ -42,4 +42,4 @@ kept (`watchTitle` in `resources/jobs/jobs.ts`).
 - `route()` (singular) opens no scope; at module level it lives for the app, which is allowed.
 - A root of your own, made where there is no scope (a socket's handler), is a `mount()`: `const dismiss = mount(host, () => <Toast />, { before: host.firstChild })` places it before a child (at the end without `before`), and its disposer stops what it made and takes its nodes out, wherever they went.
 - A root that is not nodes is `const { value, dispose } = scoped(() => build())`: what `build` makes is in a scope of its own, closed on every path, a throw included. It is synchronous: never across an `await`. `trackDispose(fn)` registers a cleanup; `hasActiveDisposeScope()` says whether one is open.
-- After an `await` there is no scope: that is why async components resolve to a thunk ([async](async.md)).
+- After an `await` there is no scope: data that comes later is `resolved(promise)`, shown by `when()` from a synchronous component ([async](async.md)).

@@ -48,6 +48,16 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Added
 
+- **`resolved(promise)`: data that comes later, as a signal** (20 October, Peter's word; #7). It is
+  `null` until the promise settles, then `{ value }` or `{ error }` (the `Settled<T>` type), once,
+  and `when()` shows it: `when(resolved(load(id)), (r$) => …, () => <p>loading…</p>)` from a
+  component or route handler that stays synchronous, so everything the branch builds is in a scope
+  however late the promise settles, and nothing is built if it was left first. An async component
+  or handler had to resolve to a thunk (`return () => <div/>`) for that, with a `fallback` prop for
+  the wait; both are still accepted, and the skill teaches `resolved()` in their place. Exported
+  from the root and `./signals`. `examples/jobs`' `JobPage`, `JobLog` and `NewJobPage` are
+  synchronous (no thunk, no `fallback`, and `NewJobPage`'s `inject()` is back in its body); a job
+  the server has not got is the `{ error }` its page shows, and a malformed id throws to `onError`.
 - **A computed kept from an effect's run says it has gone stale** (20 October, Peter's word; #9).
   What an effect run makes is disposed before its next run, and a computed disposed so keeps its
   last value: `label ??= name.map(…)` in an effect worked once and then never updated, silently.

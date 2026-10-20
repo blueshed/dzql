@@ -70,7 +70,7 @@ const { name, status, progress } = job;
 | signals | `jobs-view.tsx` (`computed`, `.map`, `batch`, `.update`, `.mutate`, `.peek`), `jobs.ts` (`collection`, `.put`), `runners-view.tsx` (an effect's cleanup) |
 | scopes | `toast.tsx` (`mount` with `before`, `trackDispose`), `runners-view.tsx` (made beside the effect), `jobs.ts` (`watchTitle`'s disposer) |
 | jsx | `jobs-view.tsx` (handlers, `oninput`/`onchange`, props after children, `ref`, `readonly`, style, SVG) |
-| async | `jobs-view.tsx` (`JobPage`, `JobLog` and its fallback, `NewJobPage`), `runners-view.tsx` (async work from an effect) |
+| async | `jobs-view.tsx` (`resolved()` shown by `when()`: `JobPage`, `JobLog`, `NewJobPage`), `runners-view.tsx` (async work from an effect) |
 | when-list | `jobs-view.tsx` (a row taken apart, `jobs.at(id)`), `runners-view.tsx`, `toast.tsx` |
 | routes | `app.tsx`, `jobs-view.tsx` (the query split off), `runners-view.tsx` (`route()`) |
 | realtime | `jobs.ts`, `jobs-view.tsx` |

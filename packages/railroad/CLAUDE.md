@@ -64,8 +64,8 @@ so after a dependency change run `bun install` and commit `bun.lock`.
 
   | File (`src/`) | Exports | Depends on |
   |---|---|---|
-  | `signals.ts` | `signal` `computed` `effect` `batch` `untrack` `Signal` `collection` `Collection` `trackDispose` `scoped` `hasActiveDisposeScope` (and `pushDisposeScope`, `popDisposeScope`, `assertOwnSignal`, `untrackRender`, `warn`, internal: for `jsx.ts` and `routes.ts`) | — |
-  | `jsx.ts` | `createElement` `Fragment` `when` `list` `mount`, the `Row` and `JSX` types (on `createElement`, not global; and `adoptIntoSvg`, `renderThunk`, internal: for `routes.ts`) | signals |
+  | `signals.ts` | `signal` `computed` `effect` `batch` `untrack` `Signal` `collection` `Collection` `resolved` (and the `Settled` type) `trackDispose` `scoped` `hasActiveDisposeScope` (and `pushDisposeScope`, `popDisposeScope`, `assertOwnSignal`, `untrackRender`, `warn`, internal: for `jsx.ts` and `routes.ts`) | — |
+  | `jsx.ts` | `createElement` `Fragment` `when` `list` `mount`, the `Row`, `MountOptions` and `JSX` types (on `createElement`, not global; and `adoptIntoSvg`, `renderThunk`, internal: for `routes.ts`) | signals |
   | `routes.ts` | `routes` `route` `navigate` `matchRoute` | signals, jsx (SVG adoption only; loads without a DOM) |
   | `shared.ts` | `key` `provide` `inject` `tryInject` `clearProviders` | — |
   | `logger.ts` | `createLogger` `setLogLevel` `getLogLevel` `loggedRequest` | — |
@@ -139,7 +139,8 @@ so after a dependency change run `bun install` and commit `bun.lock`.
   `title` are adopted on append, and adoption disposes the old element's prop
   effects before re-applying them.
 - **Async components and async route handlers resolve to a thunk**, run under
-  a scope railroad owns.
+  a scope railroad owns. (What the skill teaches is `resolved()` shown by `when()`, from a
+  synchronous component; the thunk stays, for code written before it.)
 - **`routes()` dispose is idempotent** and releases the shared `hashchange`
   refcount exactly once.
 

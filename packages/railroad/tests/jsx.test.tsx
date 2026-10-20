@@ -1,5 +1,5 @@
 import { describe, test, expect, spyOn, beforeEach, afterEach, mock } from "bun:test";
-import { signal, effect, computed, collection, untrack, pushDisposeScope, popDisposeScope, trackDispose, hasActiveDisposeScope } from "../src/signals";
+import { signal, effect, computed, collection, resolved, untrack, pushDisposeScope, popDisposeScope, trackDispose, hasActiveDisposeScope } from "../src/signals";
 import type { ReadonlySignal, Signal } from "../src/signals";
 import { createElement, when, list, mount, Fragment } from "../src/jsx";
 import type { JSX } from "../src/jsx";
@@ -957,6 +957,75 @@ describe("component error handling", () => {
     probe.set(1); // the scope around it is still open
     expect(runs).toBe(0);
     popDisposeScope()();
+  });
+});
+
+// An async component had to resolve to a thunk, `return () => <div/>`, for what it built after
+// its await to have a scope (#7). A promise as a signal keeps the component synchronous: when()
+// shows it, and its branch is built under when()'s scope however late the promise settles.
+describe("resolved(): a promise as a signal, shown by when()", () => {
+  test("null until it settles, then { value } or { error }, once", async () => {
+    const ok = defer<number>();
+    const bad = defer<number>();
+    const a = resolved(ok.promise);
+    const b = resolved(bad.promise);
+    expect(a.peek()).toBeNull();
+    ok.resolve(7);
+    bad.reject(new Error("no"));
+    await flush();
+    expect(a.peek()).toEqual({ value: 7 });
+    const r = b.peek()!;
+    expect("error" in r && (r.error as Error).message).toBe("no"); // handled: no unhandled rejection
+  });
+
+  test("a synchronous component: loading, then the value, its effects in the component's scope", async () => {
+    const d = defer<{ name: string }>();
+    const theme = signal("light");
+    let runs = 0;
+    function Profile() {
+      return when(resolved(d.promise), (r$) => {
+        const r = r$.peek();
+        if ("error" in r) return <p>failed</p>;
+        effect(() => { theme.get(); runs++; }); // made after the promise settled
+        return <p class={theme}>{r.value.name}</p>;
+      }, () => <p>loading</p>);
+    }
+    const root = document.createElement("div");
+    const dispose = mount(root, () => <Profile />);
+    expect(root.textContent).toBe("loading");
+    d.resolve({ name: "ada" });
+    await flush();
+    expect(root.innerHTML).toContain('<p class="light">ada</p>');
+    theme.set("dark");
+    expect(runs).toBe(2);
+    expect(root.querySelector("p")!.className).toBe("dark");
+    dispose(); // the branch built after the await goes with the component
+    theme.set("light");
+    expect(runs).toBe(2);
+    expect(root.textContent).toBe("");
+  });
+
+  test("a rejection is its error branch; disposed before it settles, nothing is built", async () => {
+    const failing = defer<string>();
+    const late = defer<string>();
+    let built = 0;
+    const show = (p: Promise<string>) => () => when(resolved(p), (r$) => {
+      built++;
+      const r = r$.peek();
+      return <p>{"error" in r ? `failed: ${(r.error as Error).message}` : r.value}</p>;
+    });
+    const root = document.createElement("div");
+    const one = mount(root, show(failing.promise));
+    failing.reject(new Error("404"));
+    await flush();
+    expect(root.textContent).toBe("failed: 404");
+    one();
+    const two = mount(root, show(late.promise));
+    two(); // left first, as a navigation leaves a route
+    late.resolve("too late");
+    await flush();
+    expect(built).toBe(1);
+    expect(root.textContent).toBe("");
   });
 });
 

@@ -1,34 +1,39 @@
-# Async components and handlers
+# Data that comes later
 
 ```tsx
-import { mount, routes } from "@blueshed/railroad";
+import { mount, resolved, routes, when } from "@blueshed/railroad";
 
-async function Profile() {
-  const user = await fetch("/api/me").then((r) => r.json() as Promise<{ name: string }>);
-  return () => <div>{user.name}</div>;        // the () => is the whole contract
+type User = { name: string };
+const load = (url: string) => fetch(url).then((r) => r.json() as Promise<User>);
+
+function Profile() {
+  return when(resolved(load("/api/me")), (r$) => {
+    const r = r$.peek();                          // settled: it never changes again
+    return "error" in r ? <p class="error">no profile</p> : <div>{r.value.name}</div>;
+  }, () => <p>loading…</p>);
 }
 
-mount(document.getElementById("profile")!, () => <Profile fallback={() => <p>loading…</p>} />);
+mount(document.getElementById("profile")!, () => <Profile />);
 
 routes(document.getElementById("root")!, {
-  "/users/:id": async ({ id }) => {
-    const u = await fetch(`/api/users/${id}`).then((r) => r.json() as Promise<{ name: string }>);
-    return () => <h1>{u.name}</h1>;
-  },
+  "/users/:id": ({ id }) => when(resolved(load(`/api/users/${id}`)), (r$) => {
+    const r = r$.peek();
+    return "error" in r ? <p class="error">no such user</p> : <h1>{r.value.name}</h1>;
+  }),
 });
 ```
 
-After an `await` there is no scope (browser JS has no AsyncContext). The thunk gives railroad a synchronous moment to run your bindings under a scope it owns, so they are torn down however late the promise settles.
+What a promise brings is a signal: `resolved(promise)` is `null` until it settles, then `{ value }` or `{ error }`, and `when()` shows it. The component or handler stays synchronous, so everything its branch builds is in a scope railroad owns, however late the promise settles. Never `await` before you build: after an `await` there is no scope (browser JS has no AsyncContext).
 
-Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a keyed async route (`JobPage`), an async component with a
-fallback, disposed before it settles (`JobLog`), and `NewJobPage`, in
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a job's page by route (`JobPage`), its log, left before
+it comes (`JobLog`), and `NewJobPage`, which waits for the runners, in
 `resources/jobs/jobs-view.tsx`; async work started from an effect in
 `resources/runners/runners-view.tsx`.
 
-- A bare Node after an `await` is a console error and renders nothing; in `routes()` it goes to `onError` if given.
-- Effects made before the first `await` belong to the component as usual.
-- Disposed before it settles, the thunk never runs.
-- `fallback` is a thunk, shown at once and swapped out on settlement; on a rejection it is cleared and the error logged.
-- An async route handler's bindings die on navigation.
+- `resolved()` settles once and never changes again, so the branch reads it with `r$.peek()`. `"error" in r` tells the two apart; TypeScript won't let `r.value` be read until the error is ruled out. A rejection is that `{ error }`, never an unhandled rejection.
+- `when()`'s falsy branch is the wait; it goes when the promise settles.
+- Left before it settles (a navigation, a branch swapped out), nothing is built.
+- A route is keyed, so `({ id }) => when(resolved(load(id)), …)` loads again for each id. A handler that throws goes to `routes()`' `onError`.
 - For streams or several stages rather than one swap, an effect writes a signal and `when()` shows it.
 - `effect(async () => …)` is an error (logged in development): start the async work from a synchronous effect and write the result to a signal.
+- An `async` component or handler is still accepted, for code written before `resolved()`: it must resolve to a thunk (`return () => <div/>`), with a `fallback` thunk prop for the wait. Write new ones with `resolved()`.

@@ -35,6 +35,8 @@
  *   batch(fn)                 — group writes into a single flush
  *   untrack(fn)               — read without registering a dependency
  *   collection<T>(key, rows?) — a keyed list of rows, changed a row at a time
+ *   resolved<T>(promise)      — a promise as a signal: null until it settles,
+ *                               then { value } or { error }, for when()
  *
  * Signal<T> methods:
  *   .get()                    — read (tracks dependency when inside effect/computed)
@@ -880,6 +882,34 @@ export function batch(fn: () => void): void {
 
 export function signal<T>(initialValue: T, options?: SignalOptions<T>): Signal<T> {
   return new Signal(initialValue, options);
+}
+
+// === resolved() ===
+
+/** What a promise settled as: its value, or what it rejected with. */
+export type Settled<T> = { value: T } | { error: unknown };
+
+/**
+ * A promise as a signal: null until it settles, then `{ value }` or
+ * `{ error }`, once, never changing again. Data that comes later is shown by
+ * when() over it, from a component or route handler that stays synchronous,
+ * so everything the branch builds is in a scope however late the promise
+ * settles (after an await there is none: browser JS has no AsyncContext):
+ *
+ *   function Profile() {
+ *     return when(resolved(load("/api/me")), (r$) => {
+ *       const r = r$.peek(); // settled: it never changes again
+ *       return "error" in r ? <p>no profile</p> : <p>{r.value.name}</p>;
+ *     }, () => <p>loading…</p>);
+ *   }
+ *
+ * A rejection is the `{ error }` it settles as, not an unhandled rejection. A
+ * branch that was disposed first (a navigation) is never built.
+ */
+export function resolved<T>(promise: PromiseLike<T>): ReadonlySignal<Settled<T> | null> {
+  const s = new Signal<Settled<T> | null>(null);
+  promise.then((value) => s.set({ value }), (error: unknown) => s.set({ error }));
+  return s;
 }
 
 // === collection() ===
