@@ -712,4 +712,47 @@ export function fanOutCases(backend: () => PathBackend): void {
       await assertCopiesHold(b, copies);
     });
   });
+
+  describe("a scoped list holds what hangs under the roots it admits (#137)", () => {
+    test("opened, a scoped list holds its roots and the rows under them, never a row under a root it does not admit; a list with no condition holds them all", async () => {
+      const b = backend();
+      const so = (await b.process.call("open", { doc: "fo-menu-like:So" })).result;
+      expect(content(so)).toEqual({ courses: { "1": course(1, "Soup") }, drinks: { "1": drink(1, 1, "Sherry") } });
+      const sa = (await b.process.call("open", { doc: "fo-menu-like:Sa" })).result;
+      expect(content(sa)).toEqual({ courses: { "2": course(2, "Salad", 2) }, drinks: { "2": drink(2, 2, "Water") } });
+      expect(Object.keys((await b.process.call("open", { doc: "fo-catalog:" })).result.drinks)).toEqual(["1", "2"]);
+    });
+
+    test("a write under a root a scoped list does not admit is not told to it; under one it admits, it is", async () => {
+      const b = backend();
+      const copies = await openAll(b.process, ["fo-menu-like:So", "fo-menu-like:Sa", "fo-catalog:"]);
+      await write(b.process, "fo-catalog:", [{ op: "add", path: "/drinks/9", value: { courses_id: 2, name: "Lemonade" } }]);
+      await write(b.process, "fo-board:1", [{ op: "replace", path: "/drinks/1/name", value: "Port" }]);
+      await write(b.process, "fo-catalog:", [{ op: "remove", path: "/drinks/2" }]);
+      await expectTold(b, "fo-menu-like:So", [[field("/drinks/1/name", "Port")]]);
+      await expectTold(b, "fo-menu-like:Sa", [[{ op: "add", path: "/drinks/9", value: drink(9, 2, "Lemonade") }], [{ op: "remove", path: "/drinks/2" }]]);
+      await assertCopiesHold(b, copies);
+    });
+
+    test("a root renamed into a scoped list's condition brings the rows under it, course first; renamed out, it takes them away; a list that holds it either way is told the field", async () => {
+      const b = backend();
+      const copies = await openAll(b.process, ["fo-menu-like:So", "fo-menu-like:Fi", "fo-catalog:", "fo-board:1"]);
+      await write(b.process, "fo-board:1", [{ op: "replace", path: "/courses/1/name", value: "Fish soup" }]);
+      await expectTold(b, "fo-menu-like:So", [[{ op: "remove", path: "/courses/1" }, { op: "remove", path: "/drinks/1" }]]);
+      await expectTold(b, "fo-menu-like:Fi", [[{ op: "add", path: "/courses/1", value: course(1, "Fish soup") }, { op: "add", path: "/drinks/1", value: drink(1, 1, "Sherry") }]]);
+      await expectTold(b, "fo-catalog:", [[field("/courses/1/name", "Fish soup")]]);
+      await assertCopiesHold(b, copies);
+    });
+
+    test("a scoped list writes only what it holds: a row under a root it does not admit is not there (404), and nobody is told", async () => {
+      const b = backend();
+      const copies = await openAll(b.process, ["fo-menu-like:So", "fo-menu-like:Sa", "fo-catalog:"]);
+      const code = async (ops: unknown[]) => (await b.process.call("delta", { doc: "fo-menu-like:So", ops })).error?.code;
+      expect(await code([{ op: "replace", path: "/drinks/2/name", value: "Gin" }])).toBe(404);
+      expect(await code([{ op: "replace", path: "/drinks/2", value: { courses_id: 1, name: "Gin" } }])).toBe(404);
+      expect(await code([{ op: "remove", path: "/drinks/2" }])).toBe(404);
+      await expectSilent(b, "fo-menu-like:So", "fo-menu-like:Sa", "fo-catalog:");
+      await assertCopiesHold(b, copies);
+    });
+  });
 }

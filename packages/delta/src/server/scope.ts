@@ -5,7 +5,8 @@
  * same (its compiled opens, and `_delta_resolve_scope`), held equal by delta's
  * published cases. A document with an id in its scope is one
  * root row and its children (single mode); one without is every root row its
- * conditions admit (list mode), with its included collections in full.
+ * conditions admit (list mode), with the rows of its included collections
+ * that hang under those (one that hangs from no root row, in full).
  *
  * `scope` maps a root column to a binding:
  *   ":name" or "=:name"  column = the name's value     (equality)

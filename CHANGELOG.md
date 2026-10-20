@@ -6,6 +6,17 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### A scoped list holds what hangs under the roots it admits (20 October, root #137)
+
+- **Breaking**, delta and dzql: a list document with conditions holds its admitted root rows and
+  the rows that hang under those, never rows under a root it does not admit, on every backend
+  (SQLite, the JSON file, dzql's Postgres): opened, told of a write, and written through. A root
+  written into its conditions arrives with what hangs under it; written out, it leaves with it.
+  So a person's own rows that their group sees too need no `owns` function: people at the root,
+  their rows under them, and a list of people scoped by their group (delta-doc `ownership.md`,
+  `scope.md`). The Shed's run 5, finding 1. To move across: a scoped list read for every row of an
+  included collection reads it through a list with no condition.
+
 ### Every skill's evaluations run, and what they found fixed (20 October, root #113)
 
 - `scripts/evals.ts` ran every shipped skill's scenarios as fresh `claude -p` sessions (round 2,

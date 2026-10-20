@@ -13,7 +13,7 @@
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
 import { chainRoot, holdsFunction } from "./holds";
-import { lit, need, caseOf } from "./opens";
+import { hangsFrom, lit, need, caseOf } from "./opens";
 import { PAST } from "./policies";
 
 /** One document's names that hold the row, for a collection it holds. */
@@ -35,6 +35,28 @@ ${longer.length ? `           AND NOT (${longer.map((d) => `starts_with(v_cand, 
           v_names := v_names || v_cand;
         END IF;
       END LOOP;`;
+}
+
+/**
+ * `_delta_rescopes(coll, was, value)`: does `value`, written over a row of `coll` as it `was`,
+ * change a column a list document rooted at `coll` scopes by, where it holds rows that hang under
+ * its roots? Then the rows under it may arrive in a list or leave one, and are carried as a
+ * row moved to another parent carries them (`rescopedBy` in delta's write path).
+ */
+export function compileRescopes(schema: Schema, docs: DocDef[]): string {
+  const branches = Object.keys(schema.tables).flatMap((coll) => {
+    const cols = [...new Set(docs.filter((d) => d.root === coll && d.include.some((c) => hangsFrom(schema, c, coll)))
+      .flatMap((d) => Object.entries(d.scope ?? {}).filter(([col, binding]) => col !== "id" && !binding.startsWith("at:")).map(([col]) => col)))].sort();
+    return cols.length ? [`    WHEN ${lit(coll)} THEN RETURN EXISTS (SELECT 1 FROM unnest(ARRAY[${cols.map(lit).join(", ")}]) AS c WHERE p_value ? c AND (p_value->c) IS DISTINCT FROM (p_was->c));`] : [];
+  });
+  return `CREATE OR REPLACE FUNCTION _delta_rescopes(p_coll TEXT, p_was JSONB, p_value JSONB)
+RETURNS BOOLEAN AS $$
+BEGIN
+  IF jsonb_typeof(p_value) IS DISTINCT FROM 'object' THEN RETURN FALSE; END IF;
+${caseOf("p_coll", branches, "RETURN FALSE;", { alone: "RETURN FALSE;" })}
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+`;
 }
 
 /** The SQL that answers who holds a row: `_delta_holders`, each of `docs` asked by its own lookups. */

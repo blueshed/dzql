@@ -600,8 +600,8 @@ exports[`on the seed, every name may write what the framework says it may fo-cou
     false,
     false,
     true,
-    true,
-    true,
+    false,
+    false,
     false,
     true,
     true,
@@ -640,9 +640,9 @@ exports[`on the seed, every name may write what the framework says it may fo-cou
     false,
     false,
     false,
-    true,
-    true,
-    true,
+    false,
+    false,
+    false,
     false,
     true,
     true,
@@ -682,8 +682,8 @@ exports[`on the seed, every name may write what the framework says it may fo-men
     false,
     false,
     true,
-    true,
-    true,
+    false,
+    false,
     false,
     true,
     true,
@@ -2765,9 +2765,9 @@ exports[`after writes of every kind, still fo-courses-like:So 1`] = `
     false,
     false,
     true,
+    false,
     true,
-    true,
-    true,
+    false,
     false,
     true,
     true,
@@ -2808,10 +2808,10 @@ exports[`after writes of every kind, still fo-courses-like:X 1`] = `
     false,
     false,
     false,
-    true,
-    true,
-    true,
-    true,
+    false,
+    false,
+    false,
+    false,
     false,
     true,
     true,
@@ -2853,9 +2853,9 @@ exports[`after writes of every kind, still fo-menu-like:So 1`] = `
     false,
     false,
     true,
+    false,
     true,
-    true,
-    true,
+    false,
     false,
     true,
     true,
@@ -4408,9 +4408,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -4441,9 +4441,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -4474,9 +4474,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'households' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_households" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'households' THEN RETURN EXISTS (SELECT 1 FROM "fo_households" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4507,9 +4507,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'courses' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4540,9 +4540,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -4573,9 +4573,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -4606,9 +4606,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -4639,9 +4639,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'courses' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4672,9 +4672,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'courses' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4705,9 +4705,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'courses' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4740,9 +4740,12 @@ BEGIN
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'courses' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%'));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%')); END IF;
+    CASE p_coll
+        WHEN 'drinks' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = (SELECT x."courses_id" FROM "fo_drinks" x WHERE x.id = p_id) AND (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%'));
+      ELSE RETURN TRUE;
+    END CASE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4775,9 +4778,12 @@ BEGIN
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'courses' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%'));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%')); END IF;
+    CASE p_coll
+        WHEN 'drinks' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = (SELECT x."courses_id" FROM "fo_drinks" x WHERE x.id = p_id) AND (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%'));
+      ELSE RETURN TRUE;
+    END CASE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4810,9 +4816,9 @@ BEGIN
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'tags' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_tags" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."label" = v_s1::TEXT));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'tags' THEN RETURN EXISTS (SELECT 1 FROM "fo_tags" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."label" = v_s1::TEXT)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4843,9 +4849,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -4885,9 +4891,9 @@ BEGIN
     END;
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'seats' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."kept" = v_s1::BOOLEAN));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'seats' THEN RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."kept" = v_s1::BOOLEAN)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4927,9 +4933,9 @@ BEGIN
     END;
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'seats' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."kept" <= v_s1::BOOLEAN));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'seats' THEN RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."kept" <= v_s1::BOOLEAN)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -4967,9 +4973,9 @@ BEGIN
     END IF;
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'seats' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."table_no" = v_s1::BIGINT));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'seats' THEN RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."table_no" = v_s1::BIGINT)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5009,9 +5015,9 @@ BEGIN
     END;
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'seats' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."wishes" = v_s1::JSONB));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'seats' THEN RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."wishes" = v_s1::JSONB)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5052,9 +5058,9 @@ BEGIN
     END;
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'slots' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."price" <= v_s1::DOUBLE PRECISION));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'slots' THEN RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."price" <= v_s1::DOUBLE PRECISION)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5100,9 +5106,9 @@ BEGIN
     END IF;
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'slots' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."weddings_id" = v_s1::BIGINT ELSE FALSE END)));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'slots' THEN RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."weddings_id" = v_s1::BIGINT ELSE FALSE END))); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5148,9 +5154,9 @@ BEGIN
     END IF;
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'slots' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."weddings_id" <= v_s1::BIGINT ELSE t."weddings_id" IS NOT NULL END)));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'slots' THEN RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."weddings_id" <= v_s1::BIGINT ELSE t."weddings_id" IS NOT NULL END))); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5192,9 +5198,9 @@ BEGIN
     v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'slots' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."starts" <= v_s1::TIMESTAMPTZ));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'slots' THEN RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."starts" <= v_s1::TIMESTAMPTZ)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5236,9 +5242,9 @@ BEGIN
     v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'slots' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."starts" = v_s1::TIMESTAMPTZ));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'slots' THEN RETURN EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id AND (v_s1 IS NULL OR t."starts" = v_s1::TIMESTAMPTZ)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5269,9 +5275,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'notes' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_notes" t WHERE t.id = p_id AND t.valid_to IS NULL);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'notes' THEN RETURN EXISTS (SELECT 1 FROM "fo_notes" t WHERE t.id = p_id AND t.valid_to IS NULL); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5302,9 +5308,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'notes' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_notes" t WHERE t.id = p_id AND t.valid_to IS NULL);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'notes' THEN RETURN EXISTS (SELECT 1 FROM "fo_notes" t WHERE t.id = p_id AND t.valid_to IS NULL); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5335,9 +5341,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -5368,9 +5374,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'courses' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5401,9 +5407,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -5434,9 +5440,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -5485,9 +5491,9 @@ BEGIN
   IF v_s1 IS NOT NULL THEN v_single := TRUE; v_id := v_s1::BIGINT; END IF;
   v_s2 := NULLIF(v_parts[2], '');
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'households' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_households" t WHERE t.id = p_id AND (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."id" = v_s1::BIGINT ELSE FALSE END)) AND (v_s2 IS NULL OR t."email" = v_s2::TEXT));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'households' THEN RETURN EXISTS (SELECT 1 FROM "fo_households" t WHERE t.id = p_id AND (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."id" = v_s1::BIGINT ELSE FALSE END)) AND (v_s2 IS NULL OR t."email" = v_s2::TEXT)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5541,9 +5547,9 @@ BEGIN
     END IF;
   END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'seats' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."id" = v_s1::BIGINT ELSE FALSE END)) AND (v_s2 IS NULL OR t."table_no" = v_s2::BIGINT));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'seats' THEN RETURN EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id AND (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."id" = v_s1::BIGINT ELSE FALSE END)) AND (v_s2 IS NULL OR t."table_no" = v_s2::BIGINT)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5574,9 +5580,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'households' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_households" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'households' THEN RETURN EXISTS (SELECT 1 FROM "fo_households" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5607,9 +5613,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -5640,9 +5646,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -5685,9 +5691,9 @@ BEGIN
   END IF;
   IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'notes' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_notes" t WHERE t.id = p_id AND t.valid_to IS NULL);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'notes' THEN RETURN EXISTS (SELECT 1 FROM "fo_notes" t WHERE t.id = p_id AND t.valid_to IS NULL); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5730,9 +5736,9 @@ BEGIN
   END IF;
   IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'courses' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5791,9 +5797,19 @@ BEGIN
   END IF;
   IF v_s2 IS NOT NULL THEN v_single := TRUE; v_id := v_s2::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END))); END IF;
+    CASE p_coll
+        WHEN 'households' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = (SELECT x."weddings_id" FROM "fo_households" x WHERE x.id = p_id) AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+        WHEN 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = (SELECT x."weddings_id" FROM "fo_courses" x WHERE x.id = p_id) AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+        WHEN 'drinks' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = (SELECT x."weddings_id" FROM "fo_courses" x WHERE x.id = (SELECT x."courses_id" FROM "fo_drinks" x WHERE x.id = p_id)) AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+        WHEN 'notes' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = (SELECT x."weddings_id" FROM "fo_notes" x WHERE x.id = p_id AND x.valid_to IS NULL) AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+        WHEN 'seats' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = (SELECT x."weddings_id" FROM "fo_seats" x WHERE x.id = p_id) AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+        WHEN 'slots' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = (SELECT x."weddings_id" FROM "fo_slots" x WHERE x.id = p_id) AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+        WHEN 'favours' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = (SELECT x."weddings_id" FROM "fo_favours" x WHERE x.id = p_id) AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+        WHEN 'asks' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = (SELECT x."group" FROM "order" x WHERE x.id = p_id AND x.valid_to IS NULL) AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+      ELSE RETURN TRUE;
+    END CASE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE) AND EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = v_id AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
@@ -5824,9 +5840,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'weddings' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'weddings' THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN COALESCE(p_id = v_id, FALSE);
@@ -5859,9 +5875,9 @@ BEGIN
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'asks' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "order" t WHERE t.id = p_id AND t.valid_to IS NULL AND (v_s1 IS NULL OR t."from" = v_s1::TEXT));
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'asks' THEN RETURN EXISTS (SELECT 1 FROM "order" t WHERE t.id = p_id AND t.valid_to IS NULL AND (v_s1 IS NULL OR t."from" = v_s1::TEXT)); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;
@@ -5892,9 +5908,9 @@ BEGIN
   v_single := v_rest <> '';
   IF v_single THEN v_id := v_rest::BIGINT; END IF;
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM 'courses' THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id);
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM 'courses' THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id); END IF;
+    RETURN TRUE;
   END IF;
   CASE p_coll
       WHEN 'weddings' THEN RETURN FALSE;

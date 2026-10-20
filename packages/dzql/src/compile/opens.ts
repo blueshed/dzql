@@ -100,11 +100,27 @@ export function impliedRoot(table: ResolvedTable, doc: DocDef, id = "v_id"): str
 }
 
 /**
- * A collection a single document includes, held under its root row `v_id`:
- * its rows joined up their parent chain to the root. A collection with no
- * parent is held whole; one whose chain ends short of the root holds nothing.
+ * Does a row of `coll` hang from a row of `root`: does its chain of parents, walked up the schema,
+ * reach it? A list holds such a collection's rows only under the root rows its scope admits;
+ * one that does not (no parent, or a chain that ends short of the root) whole -- as delta's
+ * `hangsFrom` says.
  */
-function includedSingle(schema: Schema, doc: DocDef, coll: string): string {
+export function hangsFrom(schema: Schema, coll: string, root: string): boolean {
+  let table = schema.tables[coll];
+  for (let depth = 0; depth < 32 && table?.parent; depth++) {
+    if (table.parent.collection === root) return true;
+    table = schema.tables[table.parent.collection];
+  }
+  return false;
+}
+
+/**
+ * A collection a document includes, held under its root rows (`under`, a condition on the
+ * root's id: a single document's `= v_id`, a list's `IN` the rows its scope admits): its rows
+ * joined up their parent chain to the root. A collection with no parent is held whole; one
+ * whose chain ends short of the root holds nothing.
+ */
+function includedSingle(schema: Schema, doc: DocDef, coll: string, under = "= v_id"): string {
   const table = need(schema, doc, coll);
   if (!table.parent) return includedList(schema, doc, coll);
   const joins: string[] = [];
@@ -114,7 +130,7 @@ function includedSingle(schema: Schema, doc: DocDef, coll: string): string {
   for (let hop = 1; ; hop++) {
     const parentKey = child.parent!.collection;
     if (parentKey === doc.root) {
-      where = `${alias}.${q(child.parent!.fkColumn)} = v_id${standing(table, "t")}`;
+      where = `${alias}.${q(child.parent!.fkColumn)} ${under}${standing(table, "t")}`;
       break;
     }
     const parent = need(schema, doc, parentKey);
@@ -127,7 +143,7 @@ function includedSingle(schema: Schema, doc: DocDef, coll: string): string {
   return `(SELECT COALESCE(jsonb_object_agg(t.id, ${rowOf(table, doc, coll, "t")}), '{}'::jsonb) FROM ${[`${q(table.name)} t`, ...joins].join(" ")} WHERE ${where})`;
 }
 
-/** A collection a list document includes: every row of it, as `_delta_load_collection_all` reads it. */
+/** A collection a list document includes whole (one that hangs from no root row): every row of it. */
 function includedList(schema: Schema, doc: DocDef, coll: string): string {
   const table = need(schema, doc, coll);
   return `(SELECT COALESCE(jsonb_object_agg(t.id, ${rowOf(table, doc, coll, "t")}), '{}'::jsonb) FROM ${q(table.name)} t${standing(table, "t").replace(" AND", " WHERE")})`;
@@ -335,6 +351,8 @@ export function readOf(schema: Schema, given: DocDef, at: boolean, whole = false
   const fn = whole ? openWholeFunction(doc.prefix) : at ? openAtFunction(doc.prefix) : openFunction(doc.prefix);
   const scope = scopeOf(schema, doc);
   const where = (first: string[]) => [...first, ...(scope.conds ? [scope.conds] : [])].join(" AND ") || "TRUE";
+  // a list's root rows, by its name's conditions: what hangs under them is what it holds
+  const admitted = `IN (SELECT t.id FROM ${q(root.name)} t WHERE ${where([])}${standing(root, "t")})`;
   const params = at ? "p_name TEXT, p_given TIMESTAMPTZ" : "p_name TEXT";
   const missing = doc.implied ? `v_doc := jsonb_build_object(${lit(doc.root)}, ${impliedRoot(root, doc)})${emptyIncludes};` : "RETURN NULL;";
   const done = at
@@ -356,7 +374,7 @@ DECLARE
 BEGIN
   ${scope.body}${at ? "\n  p_at := p_given;" : ""}
   ${scope.single ? "IF NOT v_single THEN\n    " : ""}SELECT COALESCE(jsonb_object_agg(t.id, ${rootJson}), '{}'::jsonb) INTO v_rows FROM ${q(root.name)} t WHERE ${where([])}${standing(root, "t")};
-  ${scope.single ? "  " : ""}v_doc := jsonb_build_object(${lit(doc.root)}, v_rows)${fields((c) => includedList(schema, doc, c))};${scope.single ? `
+  ${scope.single ? "  " : ""}v_doc := jsonb_build_object(${lit(doc.root)}, v_rows)${fields((c) => (scope.conds && hangsFrom(schema, c, doc.root) ? includedSingle(schema, doc, c, admitted) : includedList(schema, doc, c)))};${scope.single ? `
   ELSE
     SELECT ${rootJson} INTO v_root FROM ${q(root.name)} t WHERE ${where(["t.id = v_id"])}${standing(root, "t")};
     IF v_root IS NULL THEN

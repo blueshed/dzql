@@ -316,7 +316,7 @@ export function registerDocs<I = unknown>(
   const subscriptions = new Map<string, Set<any>>();
 
   const r: Registration<I> = {
-    ws, db, schema, options, auth, ledger, custom, cache, implied, subscriptions,
+    ws, db, schema, docs, options, auth, ledger, custom, cache, implied, subscriptions,
     findDoc, load, rootless, heardElsewhere, reloadEvicted, keepsReach, ownsOf, unheld,
     gated, whoOf, cursorOf, identityOf, whenOwned, guarded, underLock,
   };

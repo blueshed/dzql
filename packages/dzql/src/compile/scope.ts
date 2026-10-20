@@ -4,13 +4,14 @@
  * not read is answered as one that is not there.
  *
  * `compileInScope(schema, docs)` writes `dzql_in_scope__<slug>(name, collection, id)` for each
- * document. A list document holds its included collections whole and its root rows by the name's
- * conditions; a single document holds a row whose parent chain, walked up through the tables as
- * they stand, reaches its root, which meets the rest of its name's scope. `_delta_row_in_scope`
+ * document. A list document holds its root rows by the name's conditions, a row that hangs from
+ * its root only under one of those, and a collection that hangs from no root row whole; a
+ * single document holds a row whose parent chain, walked up through the tables as they stand,
+ * reaches its root, which meets the rest of its name's scope. `_delta_row_in_scope`
  * sends each document to its own, and refuses a name no document has (`no doc def for`).
  */
 import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
-import { lit, named, need, noDoc, scopeOf, currentOnly, prefixDispatch } from "./opens";
+import { hangsFrom, lit, named, need, noDoc, scopeOf, currentOnly, prefixDispatch } from "./opens";
 
 /** A document's write-scope function: `dzql_in_scope__<slug>`. */
 export const inScopeFunction = (prefix: string): string => named("in_scope", prefix);
@@ -27,6 +28,21 @@ function inScopeOf(schema: Schema, doc: DocDef): string {
     ? `COALESCE(${id} = v_id, FALSE) AND EXISTS (SELECT 1 FROM ${q(root.name)} t WHERE t.id = v_id${currentOnly(root, "t")}${conds})`
     : `COALESCE(${id} = v_id, FALSE)`;
   const included = new Set(doc.include);
+  // a list's root row: there, and meeting its name's conditions
+  const admitted = (id: string) => `EXISTS (SELECT 1 FROM ${q(root.name)} t WHERE t.id = ${id}${currentOnly(root, "t")}${conds})`;
+
+  // a list's: a row that hangs from its root, under a root row it admits; any other, as it names it
+  const lists = Object.entries(schema.tables).flatMap(([coll, table]) => {
+    if (!scope.conds || coll === doc.root || !hangsFrom(schema, coll, doc.root)) return [];
+    let id = "p_id";
+    let t = table;
+    for (let depth = 0; depth < 32; depth++) {
+      id = `(SELECT x.${q(t.parent!.fkColumn)} FROM ${q(t.name)} x WHERE x.id = ${id}${currentOnly(t, "x")})`;
+      if (t.parent!.collection === doc.root) break;
+      t = schema.tables[t.parent!.collection]!;
+    }
+    return [`      WHEN ${lit(coll)} THEN RETURN ${admitted(id)};`];
+  });
 
   const singles = Object.entries(schema.tables).map(([coll, table]) => {
     if (coll === doc.root) return `      WHEN ${lit(coll)} THEN RETURN ${rootMeets("p_id")};`;
@@ -56,9 +72,12 @@ BEGIN
   IF p_id IS NULL THEN RETURN FALSE; END IF;
   ${scope.body}
   IF NOT v_single THEN
-    -- a list holds its included collections whole; its root rows by the name's conditions
-    IF p_coll IS DISTINCT FROM ${lit(doc.root)} THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM ${q(root.name)} t WHERE t.id = p_id${currentOnly(root, "t")}${conds});
+    -- a list holds its root rows by the name's conditions, a row that hangs from its root under one of those, any other whole
+    IF p_coll IS NOT DISTINCT FROM ${lit(doc.root)} THEN RETURN ${admitted("p_id")}; END IF;
+${lists.length ? `    CASE p_coll
+${lists.map((l) => `  ${l}`).join("\n")}
+      ELSE RETURN TRUE;
+    END CASE;` : "    RETURN TRUE;"}
   END IF;
   CASE p_coll
 ${singles.join("\n")}

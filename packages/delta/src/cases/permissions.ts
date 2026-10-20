@@ -21,17 +21,18 @@ export const permissionAuth: DeltaAuth<Person> = {
 };
 
 export const permissionSchema = defineSchema({
-  people: { columns: { name: "text" }, temporal: false },
+  people: { columns: { name: "text", team_id: "integer?" }, temporal: false },   // team_id: the team a person is on, if any
   orgs: { columns: { name: "text" }, temporal: false },
   members: { columns: { org_id: "integer", person_id: "integer", active: "boolean" } },   // keeps versions
   venues: { columns: { org_id: "integer", name: "text" }, temporal: false },
   posts: { columns: { author_id: "integer", title: "text" }, temporal: false },
+  tasks: { parent: "people", columns: { title: "text" }, temporal: false },   // a person's own
 });
 
-/** Ann and Ben in North, Cy in South, Ben once in South and no longer. */
+/** Ann and Ben in North, Cy in South, Ben once in South and no longer; Ann and Ben on team 1, Cy on none, a task each. */
 export const permissionSeed = {
   tables: {
-    people: [{ id: 1, name: "Ann" }, { id: 2, name: "Ben" }, { id: 3, name: "Cy" }],
+    people: [{ id: 1, name: "Ann", team_id: 1 }, { id: 2, name: "Ben", team_id: 1 }, { id: 3, name: "Cy", team_id: null }],
     orgs: [{ id: 1, name: "North" }, { id: 2, name: "South" }],
     members: [
       { id: 1, org_id: 1, person_id: 1, active: true },
@@ -41,6 +42,7 @@ export const permissionSeed = {
     ],
     venues: [{ id: 1, org_id: 1, name: "Hall" }, { id: 2, org_id: 2, name: "Barn" }],
     posts: [{ id: 1, author_id: 1, title: "Ann's" }, { id: 2, author_id: 2, title: "Ben's" }],
+    tasks: [{ id: 1, people_id: 1, title: "Ann's task" }, { id: 2, people_id: 2, title: "Ben's task" }, { id: 3, people_id: 3, title: "Cy's task" }],
   },
 };
 
@@ -57,6 +59,10 @@ export const permissionDocs = {
   members: defineDoc("members:", { root: "members", include: [], owns: "AUTHENTICATED" }),
   /** Nobody's. */
   sealed: defineDoc("sealed:", { root: "orgs", include: [], owns: "FALSE" }),
+  /** A person and their own tasks, for them. */
+  mine: defineDoc("mine:", { root: "people", include: ["tasks"], owns: "@id" }),
+  /** A team's people and their tasks, for its members: a scoped list holds only what hangs under the people it admits. */
+  team: defineDoc("team:", { root: "people", include: ["tasks"], scope: { team_id: ":team" }, owns: "people[team_id=@team_id].id" }),
 };
 
 const ann: Person = { id: 1, name: "Ann" };
@@ -144,6 +150,16 @@ export function permissionCases(name: string, backend: () => PermissionBackend):
       const p = await backend().start(all);
       expect(Object.keys((await p.as(ann).call("open", { doc: "venues:" })).result.venues)).toEqual(["1", "2"]);
       expect((await p.as(cy).call("open", { doc: "venues:" })).error).toEqual(NOT_FOUND);
+    });
+
+    test("a person's own rows, which their team sees: a team's list holds its members and their tasks, never another's; to one off the team it is not there, and their own opens for them alone", async () => {
+      const p = await backend().start(all);
+      const team = (await p.as(ben).call("open", { doc: "team:1" })).result;
+      expect(Object.keys(team.people)).toEqual(["1", "2"]);
+      expect(Object.values(team.tasks).map((t: any) => t.title)).toEqual(["Ann's task", "Ben's task"]);
+      expect((await p.as(cy).call("open", { doc: "team:1" })).error).toEqual(NOT_FOUND);
+      expect(Object.values((await p.as(cy).call("open", { doc: "mine:3" })).result.tasks).map((t: any) => t.title)).toEqual(["Cy's task"]);
+      expect((await p.as(ann).call("open", { doc: "mine:3" })).error).toEqual(NOT_FOUND);
     });
 
     test("TRUE, FALSE and AUTHENTICATED: anyone signed in opens members:; nobody opens sealed:", async () => {

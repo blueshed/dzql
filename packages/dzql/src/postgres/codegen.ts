@@ -30,7 +30,7 @@ import { assertScopeKeys } from "@blueshed/delta/backend";
 import { compileOpens } from "../compile/opens";
 import { compileHolds } from "../compile/holds";
 import { compileInScope } from "../compile/scope";
-import { compileHolders } from "../compile/holders";
+import { compileHolders, compileRescopes } from "../compile/holders";
 import { compileResolve } from "../compile/resolve";
 import { compileRootThere } from "../compile/root";
 import { compileColumns } from "../compile/columns";
@@ -88,7 +88,7 @@ export function generateSql(
   for (const doc of docs) assertScopeKeys(doc, schema);   // its scope's keys and the columns it names are its collections' columns
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
-  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs), "", compilePolicies(schema, docs));
+  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileRescopes(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs), "", compilePolicies(schema, docs));
   return lines.join("\n");
 }
 

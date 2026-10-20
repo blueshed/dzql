@@ -6,10 +6,11 @@
  * document: the collections it holds, its name's conditions tested on the row's own values
  * (`scopeOf`; a name its columns cannot take holds nothing), a temporal row not told to a document
  * named with a time past, and an included row's chain of parents up to the root, as written
- * lookups. `_delta_doc_holds` sends each document to its own, and refuses a name no document has.
+ * lookups -- a list's, to a root row its name's conditions admit. `_delta_doc_holds` sends each
+ * document to its own, and refuses a name no document has.
  */
 import { q, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
-import { lit, named, need, noDoc, scopeOf, currentOnly, prefixDispatch } from "./opens";
+import { hangsFrom, lit, named, need, noDoc, scopeOf, currentOnly, prefixDispatch } from "./opens";
 
 /** A document's holds function: `dzql_holds__<slug>`. */
 export const holdsFunction = (prefix: string): string => named("holds", prefix);
@@ -50,8 +51,12 @@ function holdsOf(schema: Schema, doc: DocDef): string {
       RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::${q(root.name)}, p_row) t WHERE ${scope.conds || "TRUE"});`;
     }
     if (!table.parent) return `    WHEN ${lit(coll)} THEN${pastTime(table)}\n      RETURN TRUE;`;
+    // a list holds a row that hangs from its root only under a root row it admits; one that hangs from none, whole
+    const list = scope.conds && hangsFrom(schema, coll, doc.root)
+      ? `RETURN EXISTS (SELECT 1 FROM ${q(root.name)} t WHERE t.id = ${chainRoot(schema, doc, coll)}${currentOnly(root, "t")}${scope.conds ? ` AND ${scope.conds}` : ""});`
+      : "RETURN TRUE;";
     return `    WHEN ${lit(coll)} THEN${pastTime(table)}
-      IF NOT v_single THEN RETURN TRUE; END IF;
+      IF NOT v_single THEN ${list} END IF;
       RETURN ${chainRoot(schema, doc, coll)} IS NOT DISTINCT FROM v_id;`;
   });
   return `CREATE OR REPLACE FUNCTION ${holdsFunction(doc.prefix)}(p_name TEXT, p_coll TEXT, p_row JSONB)

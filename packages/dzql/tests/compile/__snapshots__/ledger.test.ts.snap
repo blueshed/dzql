@@ -760,11 +760,6 @@ exports[`on the seed, every document reads whole as the framework reads it fo-me
         "id": 1,
         "name": "Sherry",
       },
-      "2": {
-        "courses_id": 2,
-        "id": 2,
-        "name": "Water",
-      },
     },
   },
 }
@@ -787,11 +782,6 @@ exports[`on the seed, every document reads whole as the framework reads it fo-me
         "courses_id": 1,
         "id": 1,
         "name": "Sherry",
-      },
-      "2": {
-        "courses_id": 2,
-        "id": 2,
-        "name": "Water",
       },
     },
   },
@@ -20185,7 +20175,7 @@ BEGIN
   v_single := FALSE;
   v_s1 := NULLIF(v_parts[1], '');
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_courses" t WHERE (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%');
-  v_doc := jsonb_build_object('courses', v_rows) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) FROM "fo_drinks" t));
+  v_doc := jsonb_build_object('courses', v_rows) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) FROM "fo_drinks" t WHERE t."courses_id" IN (SELECT t.id FROM "fo_courses" t WHERE (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%'))));
   INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
   SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
   RETURN v_doc || jsonb_build_object('_version', v_version);
@@ -21060,7 +21050,7 @@ BEGIN
   IF v_s2 IS NOT NULL THEN v_single := TRUE; v_id := v_s2::BIGINT; END IF;
   IF NOT v_single THEN
     SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_weddings" t WHERE (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END));
-    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, (to_jsonb(t.*) - 'valid_from' - 'valid_to' - 'override')), '{}'::jsonb) FROM "fo_notes" t WHERE (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, (to_jsonb(t.*) - 'valid_from' - 'valid_to' - 'override')), '{}'::jsonb) FROM "fo_notes" t WHERE t."weddings_id" IN (SELECT t.id FROM "fo_weddings" t WHERE (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END))) AND (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
   ELSE
     SELECT to_jsonb(t.*) INTO v_root FROM "fo_weddings" t WHERE t.id = v_id AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END));
     IF v_root IS NULL THEN

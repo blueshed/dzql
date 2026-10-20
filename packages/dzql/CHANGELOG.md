@@ -25,6 +25,22 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **A scoped list holds what hangs under the roots it admits, on Postgres** (20 October, root
+  #137), as delta's SQLite now does. The compiled open of a list with conditions reads an included
+  collection that hangs from its root through the parent chain to the root rows its name admits
+  (`includedSingle`, with the admitted rows for `v_id`), never every row; the compiled holds and
+  write scope (`dzql_holds__*`, `dzql_in_scope__*`) judge such a row by its chain's root row against
+  the name's conditions, so a row under a root the list does not admit is neither told nor written
+  (404). A root written into a list's conditions or out of them carries the rows under it
+  (`_delta_rescopes`, compiled by `compileRescopes`; `delta_apply` asks it beside a parent key's
+  move, for a single document's root too). A list with no condition, and a collection that hangs
+  from no root row, are as they were. delta's cases answer it on PGlite and the Postgres server.
+  **To move across**: as delta's: a scoped list read for every row of an included collection reads
+  it through a list with no condition. Snapshots updated: `opens`, `holds`, `holders`, `scope`,
+  `ledger` (the scoped lists' reads, holders and write scope, and the compiled text), and
+  `policies` (delta's permission fixture now has a person's own tasks, `mine:` and `team:`, so
+  `people` is held by paths and governed; `rls-backstop` says so).
+
 - **A socket writes only what it has opened; a time past what timestamptz holds is 400, not 500**
   (20 October, root #136). The Postgres listener answers a `delta` from a socket for a document
   that socket has not opened (or has closed, or was let go of) 404 `Doc not loaded: open <doc>

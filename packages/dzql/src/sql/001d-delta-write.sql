@@ -508,6 +508,19 @@ BEGIN
       PERFORM _delta_assert_parent_held(v_def, p_doc_name, v_coll.parent_fk, v_coll.parent_collection, v_row, v_op->'value');
       v_before := _delta_holders(v_coll_key, _delta_strip_temporal(v_row), p_doc_name);
 
+      -- A root written into a list's condition, or out of one, takes the rows
+      -- under it along: who holds each is asked before it changes, once a
+      -- run, and each is told after the row, as a row moved to another parent's are.
+      v_hung := '[]'::jsonb;
+      IF NOT (v_broadcast_ops->-1->>'op' = 'replace' AND v_broadcast_ops->-1->>'path' = _delta_build_path(v_def.root_collection)) THEN
+        v_run_carried := FALSE;
+      END IF;
+      IF NOT v_run_carried AND _delta_rescopes(v_coll_key, v_row, v_blank || (v_op->'value')) THEN
+        SELECT COALESCE(jsonb_agg(jsonb_build_object('coll', r->'coll', 'id', r->'id', 'after', r->'row', 'carried', TRUE,
+                                    'before', to_jsonb(_delta_holders(r->>'coll', r->'row', p_doc_name))) ORDER BY n), '[]'::jsonb)
+          INTO v_hung FROM jsonb_array_elements(_delta_hanging_rows(v_coll_key, v_doc_id)) WITH ORDINALITY AS e(r, n);
+      END IF;
+
       -- `/<root>` is the row whole (_delta_whole); `/<root>/<field>` that field.
       -- The row keeps its id: one in the value is the document's, as an add's
       -- is the path's (it renumbered the row).
@@ -539,8 +552,9 @@ BEGIN
         v_touched := v_touched || jsonb_build_array(jsonb_build_object(
           'coll', v_coll_key, 'id', v_doc_id, 'before', to_jsonb(v_before), 'after', v_new_row, 'was', CASE WHEN v_coll.temporal THEN _delta_strip_temporal(v_row) ELSE v_row END));
         v_run_at := jsonb_array_length(v_touched) - 1;
-        v_run_carried := FALSE;
       END IF;
+      v_run_carried := v_run_carried OR jsonb_array_length(v_hung) > 0;
+      v_touched := v_touched || v_hung;
       CONTINUE;
     END IF;
 
@@ -796,15 +810,18 @@ BEGIN
         v_told_path := _delta_build_path(v_coll_key, v_id::text);
       END IF;
 
-      -- A row moved to another parent takes the rows under it along:
-      -- who holds each is asked before it moves, once a run, and each is told
-      -- after the row, where it arrives or leaves (endRun in sqlite.ts).
+      -- A row moved to another parent takes the rows under it along, as does a
+      -- root row written into a list's condition or out of one
+      -- (_delta_rescopes): who holds each, asked before it moves, once a run,
+      -- and each is told after the row, where it arrives or leaves (endRun in
+      -- sqlite.ts).
       v_hung := '[]'::jsonb;
       IF NOT (v_broadcast_ops->-1->>'op' = 'replace' AND v_broadcast_ops->-1->>'path' = v_told_path) THEN
         v_run_carried := FALSE;
       END IF;
-      IF NOT v_run_carried AND (v_op->'value') ? v_coll.parent_fk
-         AND (v_op->'value'->>v_coll.parent_fk) IS DISTINCT FROM (v_row->>v_coll.parent_fk) THEN
+      IF NOT v_run_carried AND (((v_op->'value') ? v_coll.parent_fk
+                                 AND (v_op->'value'->>v_coll.parent_fk) IS DISTINCT FROM (v_row->>v_coll.parent_fk))
+                                OR _delta_rescopes(v_coll_key, v_row, v_blank || (v_op->'value'))) THEN
         SELECT COALESCE(jsonb_agg(jsonb_build_object('coll', r->'coll', 'id', r->'id', 'after', r->'row', 'carried', TRUE,
                                     'before', to_jsonb(_delta_holders(r->>'coll', r->'row', p_doc_name))) ORDER BY n), '[]'::jsonb)
           INTO v_hung FROM jsonb_array_elements(_delta_hanging_rows(v_coll_key, v_id)) WITH ORDINALITY AS e(r, n);

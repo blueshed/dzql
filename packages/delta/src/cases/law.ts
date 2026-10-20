@@ -139,7 +139,7 @@ const written = [
   "fo-seating:1", "fo-slots-of:1", "fo-tagged:1",
 ];
 const read = [
-  "fo-courses-like:S", "fo-weddings:", "fo-drinks:1", "fo-courses-noted-on:", "fo-board-on:1:2021-01-01", "fo-notes-on:2021-01-01",
+  "fo-courses-like:S", "fo-menu-like:S", "fo-weddings:", "fo-drinks:1", "fo-courses-noted-on:", "fo-board-on:1:2021-01-01", "fo-notes-on:2021-01-01",
   "fo-inbox:a@x", "fo-inbox:b@x", "fo-menu-card:1", "fo-menu-card:2",
   "fo-seats-kept:1", "fo-seats-at:3", "fo-slots-upto:5", "fo-slots-by:2026-01-01", "fo-tags-labelled:red",
 ];
