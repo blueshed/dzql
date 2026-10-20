@@ -11,12 +11,9 @@ async function Profile() {
 mount(document.getElementById("profile")!, () => <Profile fallback={() => <p>loading…</p>} />);
 
 routes(document.getElementById("root")!, {
-  "/users/:id": {
-    keyed: true,
-    handler: async ({ id }) => {
-      const u = await fetch(`/api/users/${id}`).then((r) => r.json() as Promise<{ name: string }>);
-      return () => <h1>{u.name}</h1>;
-    },
+  "/users/:id": async ({ id }) => {
+    const u = await fetch(`/api/users/${id}`).then((r) => r.json() as Promise<{ name: string }>);
+    return () => <h1>{u.name}</h1>;
   },
 });
 ```

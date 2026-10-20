@@ -8,6 +8,20 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Breaking
 
+- **A route is keyed by default** (20 October, Peter's word; #8). A bare handler ran once per
+  pattern, so `"/users/:id": ({ id }) => …` kept the first id after `/users/1` → `/users/2`, unless
+  the route said `{ keyed: true, handler }`. Now every route is keyed: when the matched params
+  change (compared value by value) the old run is disposed and the handler runs again, so its
+  `params` are the match and destructuring them is right. A layout that must stay mounted opts out
+  with `{ keyed: false, handler }`, which runs once per pattern as a bare handler did, its params
+  following through `params$`. To move across: a wildcard layout (`"/sites/*": () => <Sites />`),
+  and any handler that keeps state or focus across a change of its params by reading `params$`,
+  becomes `{ keyed: false, handler: … }`; `{ keyed: true, handler: h }` may become `h` (it still
+  works). A handler that reads `params$` and is left keyed still works, and runs again on each
+  change. A route whose params do not change (`"/"`, `"/about"`) behaves as before. No package in
+  this repository calls `routes()`. `examples/jobs`: `"/jobs/:id": JobPage`, the runners layout
+  says `keyed: false`, and the catch-all takes its path apart (`({ "*": path }) => …`) in place of
+  reading `params$`.
 - **A keyed `list()` row is its fields, each a signal** (20 October, Peter's word; #6). render's
   first argument was `ReadonlySignal<T>`, read field by field as `row$.map((r) => r.x)`, and
   destructuring it read nothing live. It is now `Row<T>`: for a row that is an object, a signal per

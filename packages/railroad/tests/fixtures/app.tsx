@@ -158,7 +158,7 @@ const root = document.getElementById("root")!;
 routes(root, {
   "/": () => <Home />,
   "/list": () => <ListPage />,
-  "/users/:id": usersHandler,
+  "/users/:id": { keyed: false, handler: usersHandler }, // stays mounted: params$ follows
   "/svg": () => <SvgPage />,
   "/slow": () => SlowPage(),
 });

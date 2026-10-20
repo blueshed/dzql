@@ -122,8 +122,9 @@ if (root) {
   void disposeApp;
   routes(root, {
     "/": () => <App />,
-    // keyed: the handler re-runs when the params change; params are inferred
-    "/sites/:id": { keyed: true, handler: ({ id }) => <p>{id}</p> },
+    // keyed (the default): the handler re-runs when the params change; params are inferred
+    "/sites/:id": ({ id }) => <p>{id}</p>,
+    "/said/:id": { keyed: true, handler: ({ id }) => <p>{id}</p> },
     "/load/:id": {
       keyed: true,
       handler: async ({ id }) => {
@@ -131,13 +132,14 @@ if (root) {
         return () => <p>{id}</p>;
       },
     },
-    "/users/:id": (_p, params$) => {
+    // keyed: false, a layout: runs once, and follows its params through params$
+    "/users/:id": { keyed: false, handler: (_p, params$) => {
       const span = document.createElement("span");
       effect(() => {
         span.textContent = params$.get().id ?? "";
       });
       return span;
-    },
+    } },
   });
 }
 navigate("/");

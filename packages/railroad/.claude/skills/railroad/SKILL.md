@@ -26,7 +26,7 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 2. A function child returns text, not a Node: `when()` for an element, `list()` for many. → jsx
 3. A keyed `list()` row is its fields, each a signal: `({ name }) => <li>{name}</li>`. Keys unique and stable. → when-list
 4. An array that changes needs `list()`; a plain `.map()` is for a static array. → when-list
-5. `when()` rebuilds only when truthiness flips: read the value through `v$`. A route handler runs once per pattern: read `params$`, or mark it `keyed: true`. → when-list, routes
+5. `when()` rebuilds only when truthiness flips: read the value through `v$`. A route runs its handler again when its params change, so `({ id }) => …` is right; a layout that stays mounted is `{ keyed: false, handler }`, reading `params$`. → when-list, routes
 6. Effects, `when()` and `list()` are disposed only inside a scope (component, route handler, branch, row, `mount()`). Each effect run owns what its body makes, so what must outlive a run is made outside it (a computed kept from a run warns when read). An event handler is not a scope. → scopes
 7. Handlers are lowercase functions: `onclick={() => …}`, never `onClick`, a call, or a Signal. `oninput` per keystroke; `onchange` on commit. → jsx
 8. Async components and async route handlers resolve to a thunk: `return () => <div/>`. `effect(async …)` is an error. → async

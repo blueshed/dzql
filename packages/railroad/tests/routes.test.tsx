@@ -86,7 +86,7 @@ describe("routes()", () => {
     dispose();
   });
 
-  test("params$ updates within the same pattern without re-render", async () => {
+  test("keyed: false — params$ updates within the same pattern without re-render", async () => {
     const target = document.createElement("div");
     document.body.append(target);
     location.hash = "#/users/1";
@@ -94,12 +94,12 @@ describe("routes()", () => {
 
     let renders = 0;
     const dispose = routes(target, {
-      "/users/:id": (_p, params$) => {
+      "/users/:id": { keyed: false, handler: (_p, params$) => {
         renders++;
         const el = document.createElement("span");
         effect(() => { el.textContent = params$.get().id ?? ""; });
         return el;
-      },
+      } },
     });
     expect(renders).toBe(1);
     expect(target.textContent).toBe("1");
@@ -336,7 +336,7 @@ describe("routes()", () => {
     expect(target.children.length).toBe(0);
   });
 
-  test("nested routes via wildcard — outer stays mounted", async () => {
+  test("nested routes via an unkeyed wildcard — outer stays mounted", async () => {
     const target = document.createElement("div");
     document.body.append(target);
     location.hash = "#/sites/1";
@@ -344,12 +344,12 @@ describe("routes()", () => {
 
     let outerRenders = 0;
     const dispose = routes(target, {
-      "/sites/*": () => {
+      "/sites/*": { keyed: false, handler: () => {
         outerRenders++;
         const wrapper = document.createElement("div");
         wrapper.setAttribute("data-layout", "sites");
         return wrapper;
-      },
+      } },
     });
     expect(outerRenders).toBe(1);
     expect(target.querySelector("[data-layout=sites]")).not.toBeNull();
@@ -439,7 +439,7 @@ describe("routes(): async handlers, double dispose and onError", () => {
     db();
   });
 
-  test("same-pattern param change during a pending async render re-runs the handler", async () => {
+  test("keyed: false — a same-pattern param change during a pending async render re-runs the handler", async () => {
     const target = document.createElement("div");
     document.body.append(target);
     location.hash = "#/users/1";
@@ -448,13 +448,13 @@ describe("routes(): async handlers, double dispose and onError", () => {
     const calls: string[] = [];
     const deferreds = new Map<string, ReturnType<typeof defer<() => Node>>>();
     const dispose = routes(target, {
-      "/users/:id": (params) => {
+      "/users/:id": { keyed: false, handler: (params) => {
         const id = params.id!;
         calls.push(id);
         const d = defer<() => Node>();
         deferreds.set(id, d);
         return d.promise;
-      },
+      } },
     });
     expect(calls).toEqual(["1"]); // first render in flight
 
@@ -591,36 +591,45 @@ describe("routes(): an async handler's thunk that returns no Node is an error", 
   });
 });
 
-describe("routes(): a keyed route re-runs its handler when the params change", () => {
-  // A handler runs once per pattern, so `({ id }) => …` kept the first id after /users/1 → /users/2.
-  // `{ keyed: true, handler }` re-runs it, as Solid's <Show keyed> does.
-  test("/users/1 → /users/2 re-runs a keyed handler and disposes the old run", async () => {
+describe("routes(): a route is keyed, and re-runs its handler when the params change", () => {
+  // A bare handler ran once per pattern, so `({ id }) => …` kept the first id after /users/1 →
+  // /users/2 unless the route said `{ keyed: true, handler }` (#8). Keyed is the default now, as
+  // Solid's <Show keyed>; `{ keyed: false, handler }` is the layout's opt-out.
+  test("/users/1 → /users/2 re-runs a bare handler and disposes the old run", async () => {
     location.hash = "#/users/1";
     await tick();
     const target = document.createElement("div");
     const runs: string[] = [];
     let live = 0;
     const dispose = routes(target, {
-      "/users/:id": {
-        keyed: true,
-        handler: ({ id }) => {
-          runs.push(id!);
-          live++;
-          trackDispose(() => live--);
-          return <h1>user {id}</h1>;
-        },
+      "/users/:id": ({ id }) => {
+        runs.push(id!);
+        live++;
+        trackDispose(() => live--);
+        return <h1>user {id}</h1>;
       },
-      "/plain/:id": { handler: ({ id }) => <h2>{id}</h2> },
+      "/entry/:id": { handler: ({ id }) => <h2>{id}</h2> },
+      "/said/:id": { keyed: true, handler: ({ id }) => <h3>{id}</h3> },
+      "/layout/:id": { keyed: false, handler: ({ id }, p$) => <h4>{id} {p$.map((p) => p.id)}</h4> },
     });
     expect(target.textContent).toBe("user 1");
     navigate("/users/2");
     expect(target.textContent).toBe("user 2");
     expect(runs).toEqual(["1", "2"]);
     expect(live).toBe(1);
-    // An entry without keyed runs once per pattern, as a bare handler does.
-    navigate("/plain/1");
-    navigate("/plain/2");
-    expect(target.textContent).toBe("1");
+    // An entry without keyed is keyed, as is one that says so
+    navigate("/entry/1");
+    navigate("/entry/2");
+    expect(target.textContent).toBe("2");
+    navigate("/said/1");
+    navigate("/said/2");
+    expect(target.textContent).toBe("2");
+    // keyed: false runs once per pattern: params stays the first, params$ follows
+    navigate("/layout/1");
+    const h4 = target.querySelector("h4");
+    navigate("/layout/2");
+    expect(target.textContent).toBe("1 2");
+    expect(target.querySelector("h4")).toBe(h4);
     dispose();
     expect(live).toBe(0);
     location.hash = "";
@@ -866,9 +875,9 @@ describe("routes() into an <svg>: an adopted <a> keeps its props for as long as 
     await tick();
     const href = signal("#1");
     const svg = document.createElementNS(SVG_NS, "svg");
-    const dispose = routes(svg, { "/u/:id": () => createElement("a", { href }, "x") });
+    const dispose = routes(svg, { "/u/:id": { keyed: false, handler: () => createElement("a", { href }, "x") } });
     expect(svg.querySelector("a")!.namespaceURI).toBe(SVG_NS);
-    navigate("/u/2"); // same pattern: params$ moves, the router's effect runs again
+    navigate("/u/2"); // same pattern, unkeyed: params$ moves, the router's effect runs again
     href.set("#2");
     expect(svg.querySelector("a")!.getAttribute("href")).toBe("#2"); // before: "#1"
     dispose();

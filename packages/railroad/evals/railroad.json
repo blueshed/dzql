@@ -19,8 +19,8 @@
     "files": [],
     "expected_behavior": [
       "Calls routes(element, { ... }) with the root element, started at page load",
-      "The /users/:id handler reads the id through its second argument (_, params$) => ... params$.map((p) => ...), or the route is { keyed: true, handler: ({ id }) => ... }",
-      "Does not destructure ({ id }) in an unkeyed /users/:id handler and render from it",
+      "The /users/:id handler takes the id from its params, ({ id }) => ..., a route being keyed by default (it runs again for user 2)",
+      "Does not mark /users/:id { keyed: false }, and writes no { keyed: true } (the default), nor reads params$ to work around a route that does not run again",
       "Declares \"/users/new\" before \"/users/:id\"",
       "Links use href=\"#/users/2\" (a hash path) or call navigate(\"/users/2\")",
       "Imports nothing from react; uses class, not className"
@@ -34,9 +34,9 @@
       "Profile is an async function whose return after the await is a thunk: return () => <div>...</div>, not a bare JSX element",
       "The loading message is passed as a thunk: <Profile fallback={() => <p>loading...</p>} />",
       "No effect(async () => ...); any async work started from an effect writes its result to a signal",
-      "The /posts/:id route either is { keyed: true, handler: async ({ id }) => { ...; return () => <...>; } } or refetches from params$ inside an effect that writes a signal shown with when()",
+      "The /posts/:id route is a plain handler taking ({ id }), keyed by default, so going to /posts/2 runs it again; not { keyed: false }",
       "An async route handler, if used, resolves to a thunk () => <Node>, not a Node",
-      "Does not destructure ({ id }) in an unkeyed async /posts/:id handler"
+      "Writes no { keyed: true } (the default) and reads no params$ to refetch"
     ]
   }
 ]
