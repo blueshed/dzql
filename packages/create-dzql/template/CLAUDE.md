@@ -22,8 +22,10 @@ page, so the routes and resources are the server's:
   HTTP route and, in development, the model's page at `/model`, on delta's one server (`serve`,
   `run`). `bun dev` and `bun start` run it; never a `Bun.serve` of the app's own.
 - `src/store.ts` is where the documents are kept: Postgres, through dzql's `openStore` -- PGlite in
-  the process (`data/pg`; in memory for `bun test`), or a server at `DATABASE_URL`. Its schema takes
-  the model's `tables` once `dzql model` has made `model/`, and the app's own beside them.
+  the process, in the data folder's `pg/` (`DATA_PATH`, a Railway volume, else `data/`; in memory
+  for `bun test`, whose `.env.test` says `DATA_PATH=:memory:`), or a server at `DATABASE_URL`. The
+  server opens it as it starts and closes it as it stops (`appOf(app, { dataDir })`). Its schema
+  takes the model's `tables` once `dzql model` has made `model/`, and the app's own beside them.
 - `src/resources/<name>/` is one document: `<name>-api.ts` its document, registered with the store
   (`register`); `<name>.ts` its resource (who may write it, what a write becomes), listed in the app's
   `resources`; `<name>-view.ts` its part of the page, drawn by `src/page.ts`.

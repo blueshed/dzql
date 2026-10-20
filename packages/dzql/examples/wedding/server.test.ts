@@ -11,13 +11,13 @@ import { keepEveryone } from "./everyone";
 import { serverWrite } from "dzql/rendering/documents";
 import { esc } from "dzql/rendering/html";
 
-let server: ReturnType<typeof createServer>;
+let server: Awaited<ReturnType<typeof createServer>>;
 /** A household of this file's own, so nothing here disturbs the seed another file reads. */
 let code: string;
 let hid: number;
 
 beforeAll(async () => {
-  server = createServer(example, 0);
+  server = await createServer(example, 0);
   const email = `server-${Date.now()}@example.com`;
   await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Tess Test, Tom Test", plus_ones: 1 } }]);
   const h = (await board()).households.find((x) => x.email === email)!;

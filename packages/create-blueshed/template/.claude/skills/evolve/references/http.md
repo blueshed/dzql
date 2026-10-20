@@ -46,7 +46,7 @@ const files = filesApi(s3);
 Its story:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // Files
   files: story("A file put on the site can be fetched again, and one that is not there says so."),
 ```
@@ -88,14 +88,14 @@ afterAll(async () => {
 });
 const api = (path: string, init?: RequestInit) => fetch(new URL(path, server.url), init);
 
-test(`${stories.files.name} -- a file is put in the bucket, and a GET redirects to it`, async () => {
+test(`${stories.stories.files.name} -- a file is put in the bucket, and a GET redirects to it`, async () => {
   expect((await api("/api/files/hello.txt", { method: "PUT", body: "hello, bucket" })).status).toBe(204);
   const res = await api("/api/files/hello.txt", { redirect: "manual" });
   expect(res.status).toBe(302);
   expect(await (await fetch(res.headers.get("location")!)).text()).toBe("hello, bucket");
 });
 
-test(`${stories.files.name} -- a file that is not there is a 404`, async () => {
+test(`${stories.stories.files.name} -- a file that is not there is a 404`, async () => {
   const res = await api("/api/files/nope.txt");
   expect(res.status).toBe(404);
   expect(await res.json()).toEqual({ error: "no such file" });

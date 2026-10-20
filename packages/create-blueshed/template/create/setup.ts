@@ -18,6 +18,7 @@ import { join } from "node:path";
 export const NAMED = [
   "src/index.html",
   "tests/site.test.ts",
+  "tests/app.test.ts",
   "CLAUDE.md",
   ".claude/launch.json",
   ".railway/railway.ts",
@@ -149,7 +150,7 @@ A story, in \`stories.ts\`: a sentence someone using the app could call true or 
 
 \`\`\`ts
 // stories.ts
-  follows: story("Anyone who opens the page sees the message, and a change made anywhere else shows in it, with nothing to reload."),
+    follows: story("Anyone who opens the page sees the message, and a change made anywhere else shows in it, with nothing to reload."),
 \`\`\`
 
 A schema and a document, in \`src/resources/message/message-api.ts\`: the rows, and what someone
@@ -167,7 +168,7 @@ A test named from the story, in \`tests/message.test.ts\`: its proof.
 
 \`\`\`ts
 // tests/message.test.ts
-test(\`\${stories.follows.name} -- the message is on the box and in its drawer, and a change made anywhere else shows in both\`, async () => {
+test(\`\${stories.stories.follows.name} -- the message is on the box and in its drawer, and a change made anywhere else shows in both\`, async () => {
 \`\`\`
 
 ## What you get

@@ -17,32 +17,32 @@ const yesterday = { bob: [say("See you all tomorrow")], ada: Array.from({ length
 // kitchen, Dee has a name and is choosing a room, Eve has only just arrived. A story hands a page
 // 4.5 KB at most (`budget`), by its write, its undo or its redo: a place you go to comes whole, and
 // after that only what changed in it. The most is Dee's attic taken back, 4,401 bytes: the lobby again.
-export const stories: Stories = {
+export const stories = {
   cast: { ada: [name("Ada"), room("general")], bob: [name("Bob"), room("general")], cy: [name("Cy"), room("kitchen")], dee: [name("Dee")], eve: [] },
   budget: 4608,
-  stories: [
+  stories: {
     // ── what's your name ──
-    story("Eve gives her name, and is asked which room", { as: "eve", does: name("Eve"), seen: ["eve"] }),
-    story("Without a name you cannot enter a room", { as: "eve", cannot: room("general") }),
+    eveGivesName: story("Eve gives her name, and is asked which room", { as: "eve", does: name("Eve"), seen: ["eve"] }),
+    noNameNoRoom: story("Without a name you cannot enter a room", { as: "eve", cannot: room("general") }),
 
     // ── what room ──
-    story("Dee goes into general, and Ada and Bob see her arrive", { as: "dee", does: room("general"), seen: ["dee", "ada", "bob"], untold: ["cy"] }),
-    story("Dee names a room nobody has made, and is in it", { as: "dee", does: room("attic"), seen: ["dee"], untold: ["ada", "bob", "cy"] }),
-    story("Without a room name you cannot enter a room", { as: "dee", cannot: room("  ") }),
-    story("Cy leaves the kitchen, and the kitchen, empty now, leaves Dee's list of rooms", { as: "cy", does: leave, seen: ["cy", "dee"] }),
-    story("Bob leaves, and the room shows him gone", { as: "bob", does: leave, seen: ["bob", "ada"] }),
+    deeGoesInto: story("Dee goes into general, and Ada and Bob see her arrive", { as: "dee", does: room("general"), seen: ["dee", "ada", "bob"], untold: ["cy"] }),
+    deeNamesRoom: story("Dee names a room nobody has made, and is in it", { as: "dee", does: room("attic"), seen: ["dee"], untold: ["ada", "bob", "cy"] }),
+    noRoomName: story("Without a room name you cannot enter a room", { as: "dee", cannot: room("  ") }),
+    cyLeavesKitchen: story("Cy leaves the kitchen, and the kitchen, empty now, leaves Dee's list of rooms", { as: "cy", does: leave, seen: ["cy", "dee"] }),
+    bobLeavesRoom: story("Bob leaves, and the room shows him gone", { as: "bob", does: leave, seen: ["bob", "ada"] }),
 
     // ── say something ──
-    story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", { as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "dee", "eve"], budget: 1024 }), // a message is its row
-    story("Nobody can take a message back over the wire; only Undo can", { as: "ada", cannot: { doc: "room", ops: [{ op: "remove", path: "/messages/any" }] } }),
+    adaSaysHello: story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", { as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "dee", "eve"], budget: 1024 }), // a message is its row
+    noTakingBack: story("Nobody can take a message back over the wire; only Undo can", { as: "ada", cannot: { doc: "room", ops: [{ op: "remove", path: "/messages/any" }] } }),
 
     // ── and reading back ──
-    story("Ada scrolls back past the first fifty messages and reads what Bob said yesterday", { as: "ada", premise: yesterday, does: earlier, seen: ["ada"], budget: 10240 }),
-    story("Bob speaks while Ada is reading old messages, and her place does not move", { as: "bob", premise: { ...yesterday, ada: [...yesterday.ada, earlier] }, does: say("Morning"), seen: ["bob"], untold: ["cy", "dee", "eve"] }),
-    story("Ada comes back from old messages to what is being said now", { as: "ada", premise: { ...yesterday, ada: [...yesterday.ada, earlier] }, does: latest, seen: ["ada"], budget: 10240 }),
+    adaScrollsBack: story("Ada scrolls back past the first fifty messages and reads what Bob said yesterday", { as: "ada", premise: yesterday, does: earlier, seen: ["ada"], budget: 10240 }),
+    bobSpeaksAda: story("Bob speaks while Ada is reading old messages, and her place does not move", { as: "bob", premise: { ...yesterday, ada: [...yesterday.ada, earlier] }, does: say("Morning"), seen: ["bob"], untold: ["cy", "dee", "eve"] }),
+    adaComesBack: story("Ada comes back from old messages to what is being said now", { as: "ada", premise: { ...yesterday, ada: [...yesterday.ada, earlier] }, does: latest, seen: ["ada"], budget: 10240 }),
 
     // ── and going ──
-    story("Ada logs out, and the room shows her gone", { as: "ada", does: logout, seen: ["ada", "bob"] }),
-    story("Bob closes his tab, and Ada sees him leave general", { as: "bob", closesTab: true, seen: ["ada"], untold: ["cy", "dee", "eve"] }),
-  ],
-};
+    adaLogsOut: story("Ada logs out, and the room shows her gone", { as: "ada", does: logout, seen: ["ada", "bob"] }),
+    bobClosesTab: story("Bob closes his tab, and Ada sees him leave general", { as: "bob", closesTab: true, seen: ["ada"], untold: ["cy", "dee", "eve"] }),
+  },
+} satisfies Stories;

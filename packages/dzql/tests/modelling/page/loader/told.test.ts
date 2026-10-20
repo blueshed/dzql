@@ -111,12 +111,12 @@ describe("the model as told, against the model as built", () => {
 
 describe("Peter tells leave's stories on the model page and Claude builds leave; model:check leave --against-page names each gap", () => {
   let load: Load;
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
   let session: string;
   let url: string;
   beforeAll(async () => {
     load = writesOf((await extract("leave")).heart);
-    server = createServer(example, 0);
+    server = await createServer(example, 0);
     url = `${server.url.href.replace(/^http/, "ws")}model`; // the model is a route of its own, at /model
     session = sessionIn((await fetch(links.say(server.url.origin)[1]!.slice("Claude: ".length), { redirect: "manual" })).headers.get("set-cookie"))!; // Claude's link
     db.exec("BEGIN"); // the seeded model comes back after
@@ -131,7 +131,7 @@ describe("Peter tells leave's stories on the model page and Claude builds leave;
   // writes.test.ts's, here so leave's stories are run once: what loading leave writes
   test("leave: every story, the team and each person's session, as the model's seed has them by hand", async () => {
     const { stories } = await import("../../../../examples/leave/stories"); // leave's own, so a story added there moves nothing here
-    expect(load.stories.map((s) => s.text)).toEqual(stories.stories.map((s) => s.name));
+    expect(load.stories.map((s) => s.text)).toEqual(Object.values(stories.stories).map((s) => s.name));
     expect(load.stories.find((s) => s.post === "/login")).toMatchObject({ actor: "visitor", kind: "does" });
     expect(load.stories.some((s) => s.kind === "cannot")).toBe(true);
     const at = (start: string) => load.stories.findIndex((s) => s.text.startsWith(start));

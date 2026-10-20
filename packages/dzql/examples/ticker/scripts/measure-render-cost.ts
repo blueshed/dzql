@@ -10,7 +10,7 @@ import { app as example } from "../routes";
 import { connect as socketTo, heard as heardAll, rawOf } from "dzql/rendering/test-socket";
 
 const VIEWERS = 5;
-const server = createServer(example, 0);
+const server = await createServer(example, 0);
 const wire = await tap(server.port!); // what crosses it, as sent: every socket goes through it
 const sessions = new WeakMap<WebSocket, string>();
 

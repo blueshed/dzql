@@ -15,17 +15,18 @@ import { openStore } from "dzql/postgres";
 import { schema, docs } from "./schema";
 
 const ws = createWs();
-// DATABASE_URL's server, else PGlite in PGLITE_DIR (in memory without it), or `database`: a URL or a folder
-const store = await openStore({ schema, migrations: { dir: "migrations", app: "board", schema }, ws });
+// DATABASE_URL's server, else PGlite in the data folder's pg/ (in memory without one), or `database`: a URL or a folder
+const store = openStore({ schema, migrations: { dir: "migrations", app: "board", schema }, ws }); // said: nothing opened yet
 store.register(docs);
-await store.open();   // each document compiled, then served on the socket
+await store.open({ dataDir: process.env.DATA_PATH });   // as the server starts: the tables, each document compiled, then served on the socket
 // delta's one server: the socket on its path, and on shutdown the listener (it holds a pool client for LISTEN), then the pool
 serve({ routes: { "/": index }, ws, close: [store.close] });
 ```
 
 Without `ws`, the documents are served in the process (`store.delta`), as dzql's thin client reads
-them. `open(prepare)` runs `prepare` between the tables made and the documents served: a seed, a
-guard put in front. The steps it takes are below, for a database something else sets up; the
+them; there the app's `store` is the `Example`'s, and `appOf` opens it as the server starts and
+closes it as it stops. `prepare` (an option) runs at each open between the tables made and the
+documents served: a seed. A store closed is opened again by the next start, its listener a new one. The steps it takes are below, for a database something else sets up; the
 documents' step is one call, `registerDocs(ws, pool, schema, docs, customDocs, options)`, which
 takes what delta's SQLite `registerDocs` takes (`ledger`, `who`, `auth`, `owns`, `shared`; and
 `namespace`), awaited: an app moving from SQLite changes its import. Its options are in
@@ -60,8 +61,8 @@ told on a channel of its own, `delta:<schema>` (`public`'s is `delta_changes`), 
 hears its own app alone. Two apps may have the same table and document names.
 
 ```ts
-const billing = await openStore({ schema, database: process.env.DATABASE_URL, namespace: "billing" });
-const rota = await openStore({ schema: rotaSchema, database: process.env.DATABASE_URL, namespace: "rota" });
+const billing = openStore({ schema, database: process.env.DATABASE_URL, namespace: "billing" });
+const rota = openStore({ schema: rotaSchema, database: process.env.DATABASE_URL, namespace: "rota" });
 ```
 
 `openStore` makes the schema when it is not there, opens the pool with it as every connection's

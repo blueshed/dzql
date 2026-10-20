@@ -10,9 +10,9 @@ import { createServer } from "dzql/rendering/server";
 const data = mkdtempSync(join(tmpdir(), "dzql-readme-page-"));
 process.env.DATA_PATH = data;
 process.env.NODE_ENV = "production"; // no file watcher: the suite's dev servers use up the system's
-let server: ReturnType<typeof createServer>;
+let server: Awaited<ReturnType<typeof createServer>>;
 beforeAll(async () => {
-  server = createServer((await import("./rendering/routes")).app, 0);
+  server = await createServer((await import("./rendering/routes")).app, 0);
 });
 const page = browser(() => server.url);
 afterAll(() => {

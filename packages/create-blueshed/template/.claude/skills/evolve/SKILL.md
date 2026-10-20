@@ -16,7 +16,7 @@ description: "Grows this app from its stories: a new shared document, two docume
 ## Order of work
 
 ```
-- [ ] Write what the user asked into stories.ts as stories (`story("...")`): sentences someone could call true or false; each test that makes one true is named from it (`stories.<key>.name`)
+- [ ] Write what the user asked into stories.ts as stories (`story("...")`): sentences someone could call true or false; each under a key of its own; each test that makes one true is named from it (`stories.stories.<key>.name`)
 - [ ] Ask what someone needs in front of them to make each true: those are the documents
 - [ ] Copy the closest reference below (each says when it is the one), or message / status in src/resources/
 - [ ] A test named for each story: what a person sees and clicks (a refused change included), and every route and method

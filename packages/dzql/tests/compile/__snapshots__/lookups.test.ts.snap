@@ -4366,7 +4366,14 @@ exports[`on the seed, every document as it stood, as the framework reads it fo-p
 exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 1`] = `
 {
   "at": "2000-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -4374,7 +4381,14 @@ exports[`on the seed, every document as it stood, as the framework reads it fo-p
 exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 2`] = `
 {
   "at": "2021-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -4382,7 +4396,14 @@ exports[`on the seed, every document as it stood, as the framework reads it fo-p
 exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 3`] = `
 {
   "at": "2026-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -4390,7 +4411,14 @@ exports[`on the seed, every document as it stood, as the framework reads it fo-p
 exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 4`] = `
 {
   "at": "2999-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -4398,7 +4426,14 @@ exports[`on the seed, every document as it stood, as the framework reads it fo-p
 exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 5`] = `
 {
   "at": "now",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -7753,7 +7788,14 @@ exports[`after writes of every kind, still fo-plan:1 5`] = `
 exports[`after writes of every kind, still fo-plan:7 1`] = `
 {
   "at": "2000-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -7761,7 +7803,14 @@ exports[`after writes of every kind, still fo-plan:7 1`] = `
 exports[`after writes of every kind, still fo-plan:7 2`] = `
 {
   "at": "2021-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -7769,7 +7818,14 @@ exports[`after writes of every kind, still fo-plan:7 2`] = `
 exports[`after writes of every kind, still fo-plan:7 3`] = `
 {
   "at": "2026-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -7777,7 +7833,14 @@ exports[`after writes of every kind, still fo-plan:7 3`] = `
 exports[`after writes of every kind, still fo-plan:7 4`] = `
 {
   "at": "2999-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -7785,7 +7848,14 @@ exports[`after writes of every kind, still fo-plan:7 4`] = `
 exports[`after writes of every kind, still fo-plan:7 5`] = `
 {
   "at": "now",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;

@@ -4,5 +4,6 @@ import type { Stories } from "dzql/modelling/stories";
 // true or false -- who does what, and who then sees it
 // (https://github.com/blueshed/dzql/blob/main/docs/stories.md). Tell them; they are
 // modelled as they are told, on the model's page, and the app is built from them: `bun run stories`
-// checks each.
-export const stories: Stories = { cast: {}, stories: [] };
+// checks each. Each is under a key of its own (`seats: story("...", { as, does, seen })`); one with
+// no body yet (`story("...")`) is told by a test named from its key until it gains one, there.
+export const stories = { cast: {}, stories: {} } satisfies Stories;

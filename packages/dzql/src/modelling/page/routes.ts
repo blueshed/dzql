@@ -35,7 +35,7 @@ export const app: Example = {
 
 /** The model's page on its own, on `PORT`: served at /model, the root sending you there (`dzql model`, `bun run dev:modeling`). */
 export async function startServer({ port = Number(process.env.PORT ?? 3001) } = {}) {
-  return serve(compose(appOf(app), { routes: { "/": Response.redirect(app.at!, 302) } }), { port });
+  return serve(compose(await appOf(app), { routes: { "/": Response.redirect(app.at!, 302) } }), { port });
 }
 
 if (import.meta.main) await run(startServer);

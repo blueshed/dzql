@@ -27,10 +27,10 @@ function peopleIn(html: string): string[] {
 }
 
 
-let server: ReturnType<typeof createServer>;
+let server: Awaited<ReturnType<typeof createServer>>;
 
-beforeAll(() => {
-  server = createServer(example, 0);
+beforeAll(async () => {
+  server = await createServer(example, 0);
 });
 
 afterAll(() => {

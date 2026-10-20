@@ -5,7 +5,7 @@ import { hear, type Heard, type HeardOp } from "../rendering/resources/render";
 // a page as the browser keeps it is rendering's; said here too, as the stories hold pages so
 export { hear, type Heard };
 import { createServer } from "../rendering/server";
-import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
+import { isPost, STORY_KEYS, toldOf, unprovenOf, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
 import { isTest, isVerb, walked, type PatchOp, type WriteId } from "../rendering/json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "../rendering/documents";
 import { onFailure } from "../rendering/failed";
@@ -20,11 +20,11 @@ import { prefixDoc, splitDoc } from "../rendering/names";
 import { size, sum, tap } from "./costs";
 import { controlsOn, goesTo, offers, placeOf, writesOn, type Control, type Writing } from "./harness/controls";
 import { holding, propsCost, retake, takersOn, taking, type PropsCost, type Taken } from "./harness/applets";
-import { anyOne, holds, keysOf, pathsIn, valueAt } from "./harness/paths";
+import { anyOne, asHeld, holds, keysOf, pathsIn, valueAt } from "./harness/paths";
 // what a page offers, what its applets hold, and the paths in a document: each a module of its own (src/modelling/harness/), said here too
 export { controlsOn, goesTo, offers, placeOf, writesOn, type Control } from "./harness/controls";
 export { holding, MOST_PROPS, propsCost, retake, takersOn, taking } from "./harness/applets";
-export { anyOne, holds, pathsIn, valueAt } from "./harness/paths";
+export { anyOne, asHeld, holds, pathsIn, valueAt } from "./harness/paths";
 
 // Runs an example's stories against it, over real sockets, and reports by story name: what each
 // step checks is docs/stories.md, "The harness". Canon 1 compares every member's page, drawn from
@@ -57,7 +57,7 @@ export type Trace = {
 };
 /** What the stories found that does not fail them: what props cost (`propsCost`), each kind for each applet once, in the first story that sent it; a control the wire refuses, on the page it was first drawn on (`miswritten`); and a permit wider than its stories (`hiddenVerbs`), by the document it is on. */
 export type Warning = { story: string; says: string };
-export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand; /** The stories with no body yet (`Stories.unproven`): a test of the app tells each. */ unproven?: string[] };
+export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand; /** The stories with no body yet (`story(name)`, no body): a test of the app tells each. */ unproven?: string[] };
 
 /** The stories done by hand in a browser (`byHand`, or a story's own `gesture`): how many, how many presses (a button pressed, a form typed into and sent, a drag), how many writes sent as an applet declares them, and how long it took. */
 export type ByHand = { stories: number; presses: number; applets: number; ms: number };
@@ -215,7 +215,7 @@ type Run = {
   example: Example;
   stories: Stories;
   observe?: (trace: Trace) => void;
-  server: ReturnType<typeof createServer>;
+  server: Awaited<ReturnType<typeof createServer>>;
   /** The cast's sockets go through it, so what each page is handed is counted as it crossed the wire. */
   tapped: Awaited<ReturnType<typeof tap>>;
   draw: Assembled["draw"];
@@ -470,7 +470,7 @@ async function miswritten(r: Run, ws: Tab, w: Writing): Promise<string | undefin
   if (w.op !== "replace") return undefined;
   const { owner, docId } = target;
   const value = valueAt(await settled(r.documents, () => r.documents.read(prefixDoc(owner.docType, docId))), owner.under ?? "");
-  if (holds(value, w.path)) return undefined;
+  if (holds(value, asHeld(value, w.path))) return undefined; // as delta takes it: a single document's root by its id too
   if (!owner.shape) return `${w.doc} holds nothing at ${w.path} to replace`;
   // the example's own words, which its shape translates: its permit must take them, or say why not
   try {
@@ -1165,13 +1165,13 @@ async function refusedBy(r: Run, m: Member, write: Write): Promise<string> {
 async function hiddenVerbs(r: Run): Promise<Warning[]> {
   const found = new Map<string, Map<string, string[]>>(); // document → verb → who may
   // what goTo writes is the URL bar's, anyone's: for each place a story names
-  const places = r.stories.stories.flatMap((s) => [s.from, s.opensTab, ...(s.seen && !Array.isArray(s.seen) ? Object.values(s.seen) : [])]);
+  const places = toldOf(r.stories).flatMap((s) => [s.from, s.opensTab, ...(s.seen && !Array.isArray(s.seen) ? Object.values(s.seen) : [])]);
   const anyone = r.stories.goTo ? ["", ...places].filter((p) => typeof p === "string").map(r.stories.goTo) : [];
   /** Is `n` who is asked about: `name`, or anyone when it names none? */
   const whose = (n: string, name?: string): boolean => name === undefined || n === name;
   /** Each op on `doc` the stories tell `name` (anyone, with none), and each a page of theirs offered. */
   const toldTo = (doc: string, name?: string): { op: string; path: string; value?: unknown; pattern?: true }[] => {
-    const writes = [...anyone, ...Object.entries(r.stories.cast).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...r.stories.stories.flatMap((s) => [...Object.entries(s.premise ?? {}).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...(whose(s.as, name) ? [writeOf(s)] : [])])];
+    const writes = [...anyone, ...Object.entries(r.stories.cast).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...toldOf(r.stories).flatMap((s) => [...Object.entries(s.premise ?? {}).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...(whose(s.as, name) ? [writeOf(s)] : [])])];
     return [...writes.flatMap((w) => (w && sameDoc(w.doc, doc) ? w.ops : [])), ...[...r.met].flatMap(([n, { offered }]) => (whose(n, name) ? [...offered.values()].filter((c) => sameDoc(c.doc, doc)) : []))];
   };
   await r.store.begin();
@@ -1185,14 +1185,14 @@ async function hiddenVerbs(r: Run): Promise<Warning[]> {
         const owner = r.byDocType.get(docType)!;
         if (!owner.permit || docType === "ledger" || !isStored(owner)) continue;
         const value = valueAt(await settled(r.documents, () => r.documents.read(prefixDoc(docType, docId))), owner.under ?? "");
-        const saying = (op: string, path: string): string => `${op} ${anyOne(path, value) || "the document"}`; // a verb, as the warning says it
+        const saying = (op: string, path: string): string => `${op} ${anyOne(asHeld(value, path), value) || "the document"}`; // a verb, as the warning says it: a path as delta takes it
         const known = new Set(toldTo(doc, m.name).map((w) => saying(w.op, w.path)));
         const written = toldTo(doc); // anyone's: more paths to try, and the values written there
         const paths = new Set([...pathsIn(value), ...written.filter((w) => !w.pattern).map((w) => w.path)]);
         const verbs = found.get(doc) ?? found.set(doc, new Map()).get(doc)!;
         for (const path of paths) {
-          const any = anyOne(path, value);
-          const values = new Map([valueAt(value, path) ?? null, ...written.filter((w) => w.value !== undefined && anyOne(w.path, value) === any).map((w) => w.value)].map((v) => [JSON.stringify(v), v]));
+          const any = anyOne(asHeld(value, path), value);
+          const values = new Map([valueAt(value, asHeld(value, path)) ?? null, ...written.filter((w) => w.value !== undefined && anyOne(asHeld(value, w.path), value) === any).map((w) => w.value)].map((v) => [JSON.stringify(v), v]));
           for (const verb of ["add", "replace", "remove"] as const) {
             const said = saying(verb, path);
             if (known.has(said) || verbs.get(said)?.includes(m.name)) continue;
@@ -1225,7 +1225,7 @@ export async function run(
     everywhere?: (member: string, place: string, controls: Control[]) => void;
   } = {},
 ): Promise<Report> {
-  const server = createServer(example, 0);
+  const server = await createServer(example, 0);
   const tapped = await tap(server.port!, example.at);
   const { draw, page, documents, byDocType } = assemble(example);
   const r: Run = {
@@ -1256,7 +1256,7 @@ export async function run(
   try {
     const only = process.env.STORY; // run only the stories whose name contains this
     const told: { story: Story; outcome: Outcome }[] = [];
-    for (const story of stories.stories) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(r, story) });
+    for (const story of toldOf(stories)) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(r, story) });
     // a cast that cannot sign in fails every story, said; there is nowhere to walk, nothing to press
     const unsigned = told.some(({ outcome }) => outcome.failures.some((f) => / could not sign in at /.test(f)));
     if (unsigned) outcomes.push(...told.map(({ outcome }) => outcome));
@@ -1288,11 +1288,11 @@ export async function run(
     }
   } finally {
     hearFailures();
-    server.stop(true);
+    await server.stop(true);
     tapped.close();
   }
   const failed = outcomes.filter((o) => o.failures.length > 0).length;
-  const unproven = (stories.unproven ?? []).map((s) => s.name);
+  const unproven = unprovenOf(stories).map((s) => s.name);
   return { outcomes, passed: outcomes.length - failed, failed, ...(unproven.length > 0 && { unproven }), ...(r.warned.size + r.miswired.size + hidden.length > 0 && { warnings: [...r.warned.values(), ...r.miswired.values(), ...hidden] }), ...(byHandTally && { byHand: byHandTally }) };
 
 }

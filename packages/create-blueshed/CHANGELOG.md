@@ -15,6 +15,27 @@ section up.
 
 ### Breaking
 
+- **The Postgres step opens its store on the data folder** (20 October, root #129; needs dzql's
+  next release): `store.open({ dataDir })`, PGlite in its `pg/` unless `DATABASE_URL` names a
+  server, where the step said `database: process.env.DATABASE_URL || \`${dataDir}/pg\``. dzql's
+  starter says where data lives the same way now (`DATA_PATH`, else `data/`), so the step to the
+  thin client keeps it.
+
+- **The Postgres step's seed is `openStore`'s `prepare`** (20 October, root #119; needs dzql's next
+  release). evolve's `postgres.md`: `openStore({ ..., ws, prepare: async (pool) => { ... } })`, then
+  `store.register(docs)` and `await store.open()`, where it was `await store.open(async () => ...)`:
+  dzql's store opens as a server starts and closes as it stops, the shape the thin-client step
+  keeps. An app on the step moves the same way.
+
+- **The stories are dzql's `Stories` from the start, keyed** (20 October, root #118; needs dzql's
+  next release). `stories.ts` exports `{ cast: {}, stories: { follows: story("..."), ... } }
+  satisfies Stories`, the file dzql's harness reads, so when the app takes the step to the thin
+  client a story gains its body on the same line, under the same key, and no test is renamed. A
+  test is named `${stories.stories.saves.name}`; `tests/stories.test.ts` calls `untold(stories,
+  sources)`. To move across: wrap the record as `stories: { ... }` beside `cast: {}`, end the file
+  `} satisfies Stories;`, and rename each `stories.<key>` in a test to `stories.stories.<key>`. The
+  evolve references add their stories after `stories: {`.
+
 - **paintbrush is create-blueshed's `template/`** (20 October, Peter's decision: the two starters
   follow one pattern). `packages/paintbrush` moved whole, with its history, to
   `packages/create-blueshed/template`: a workspace still (`paintbrush`, private), tested where it
@@ -84,6 +105,27 @@ section up.
   (`src/resources/bento.tsx`) still hands its `row` the row's signal, now render's third argument
   (`list(items, key, (_, _i, item$) => row(item$))`), so no caller changes; evolve's `auth.md`
   takes a person's row apart (`({ id, name }) => tool(name.peek(), …)`).
+
+- **The tests are written against what both clients share** (20 October, root #121; needs dzql's
+  next release). A test of a document holds it through `tests/documents.ts` (dzql's
+  `documentsOf`: here over delta's socket), not `connectWs` and `openDoc`; a test of the page uses
+  the browser (`browser.ts`), where the light page and the one drawn on the server are the same
+  bento HTML. What the light page alone does is in files of its own, `tests/app.test.ts` (routes
+  by the hash, the status it fetches, the page not found) and `tests/message-view.test.ts` (the
+  toast's Not saved, Cmd+Enter, the hash), out of `site.test.ts` and `message.test.ts`. Saved is
+  heard as a status (the toast has `role="status"`, `role="alert"` for a refusal); `refuseWrites`
+  sends each op below the path meant, which any server refuses; the message's last change is in
+  its file before a stopped server is done (`closing.push(... .persisted)`), so the message's
+  restart test changes it through another server meanwhile. evolve's `sqlite.md`, `migrations.md`
+  and `postgres.md` hold their documents through `documents(server)`, and `testing.md` says so.
+- **The thin-client step is the move, not a port** (20 October, roots #118-#121, #127, #129):
+  `references/thin-client.md` is 571 lines where it was 943. What stays as it was: the documents'
+  definitions and paths, the data folder and the rows kept before, `startServer({ port, dev,
+  dataDir })`, `stories.ts` (two stories gain a body on their own line, three change their
+  words), and the tests `site`, `message`, `order`, `kitchen`, `order-move`, `order-pg` and
+  `order-pg-move`. What is rewritten is what draws the page, the store every document is in, and
+  the light page's own tests; `documents.ts` changes one line and `stories.test.ts` gains the
+  harness. No `.env.test`, no `PGLITE_DIR`, no default said twice.
 - **Each of evolve's references says where it is shown working** (20 October, root #114): a line
   starting `Working:`, naming `tests/evolve.ts`, which applies the page to a new app and runs it.
 - **The evolve skill's Postgres page registers documents with signing in as SQLite does**

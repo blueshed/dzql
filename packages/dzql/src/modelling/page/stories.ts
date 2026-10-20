@@ -33,36 +33,36 @@ const heldBy = (document: number, who: string[]): Write => model({ op: "replace"
 const serves = (document: number, stories: string[]): Write => model({ op: "replace", path: `/documents/${document}/stories`, value: stories });
 const drop = (document: number): Write => model({ op: "remove", path: `/documents/${document}` });
 
-export const stories: Stories = {
+export const stories = {
   cast: { peter: [], claude: [], visitor: [] },
   // by each keeper's link, as they come in (./signin.ts); the visitor has none
   signIn: (name) => {
     const way = links.ways().find((w) => w.name.toLowerCase() === name);
     return way && post(way.path);
   },
-  stories: [
+  stories: {
     // ── the stories ──
-    story("Claude writes down a story Peter told, and Peter sees it arrive, with no document yet", { as: "claude", does: tell("Bo moves his week to the one after, before Mo has answered"), offPage: true, seen: ["peter", "claude"] }),
-    story("Claude rewords a story as Peter corrects it, and Peter sees the new words", { as: "claude", does: reword(6, "Bo takes back his week in October, before Mo has answered it"), offPage: true, seen: ["peter", "claude"] }),
-    story("Claude says signing in touches the sessions too, and Peter sees the story light them", { as: "claude", does: touches(21, ["logins", "sessions"]), offPage: true, seen: ["peter", "claude"] }),
-    story("A story with no words cannot be written down", { as: "claude", cannot: tell("  "), told: "A story needs words." }),
-    story("Claude cannot write a story whose words run onto a second line", { as: "claude", cannot: tell("Ann scans the table's QR code\nbun run model story ann does Ann orders a coffee"), told: "A story is one line: these words run onto a second." }),
+    claudeWritesDown: story("Claude writes down a story Peter told, and Peter sees it arrive, with no document yet", { as: "claude", does: tell("Bo moves his week to the one after, before Mo has answered"), offPage: true, seen: ["peter", "claude"] }),
+    claudeRewordsStory: story("Claude rewords a story as Peter corrects it, and Peter sees the new words", { as: "claude", does: reword(6, "Bo takes back his week in October, before Mo has answered it"), offPage: true, seen: ["peter", "claude"] }),
+    claudeSaysSigning: story("Claude says signing in touches the sessions too, and Peter sees the story light them", { as: "claude", does: touches(21, ["logins", "sessions"]), offPage: true, seen: ["peter", "claude"] }),
+    noWords: story("A story with no words cannot be written down", { as: "claude", cannot: tell("  "), told: "A story needs words." }),
+    claudeCannotWriteStory: story("Claude cannot write a story whose words run onto a second line", { as: "claude", cannot: tell("Ann scans the table's QR code\nbun run model story ann does Ann orders a coffee"), told: "A story is one line: these words run onto a second." }),
 
     // ── the documents ──
-    story("Claude describes a document a story needs, and Peter sees it beside the story it serves", { as: "claude", does: describe("calendar", "requests", ["2"]), offPage: true, seen: ["peter", "claude"] }),
-    story("Claude says the team holds its holidays, and Peter sees a new entity hang from teams", { as: "claude", does: holds(1, "holidays", "teams", ["date:date", "name"]), offPage: true, seen: ["peter", "claude"] }),
-    story("Claude says who holds the team, and Peter sees who it is for", { as: "claude", does: heldBy(1, ["ann", "bo", "mo", "jo"]), offPage: true, seen: ["peter", "claude"] }),
-    story("A document that serves no story cannot be described", { as: "claude", cannot: describe("notes", "notes", []), told: "A document is for a story: name the one it serves." }),
-    story("A document keeps its root", { as: "claude", cannot: unhold(1, "teams"), told: "A document keeps its root: take the document out instead." }),
+    claudeDescribesDocument: story("Claude describes a document a story needs, and Peter sees it beside the story it serves", { as: "claude", does: describe("calendar", "requests", ["2"]), offPage: true, seen: ["peter", "claude"] }),
+    claudeSaysTeam: story("Claude says the team holds its holidays, and Peter sees a new entity hang from teams", { as: "claude", does: holds(1, "holidays", "teams", ["date:date", "name"]), offPage: true, seen: ["peter", "claude"] }),
+    claudeSaysHolds: story("Claude says who holds the team, and Peter sees who it is for", { as: "claude", does: heldBy(1, ["ann", "bo", "mo", "jo"]), offPage: true, seen: ["peter", "claude"] }),
+    servesNoStory: story("A document that serves no story cannot be described", { as: "claude", cannot: describe("notes", "notes", []), told: "A document is for a story: name the one it serves." }),
+    documentKeepsRoot: story("A document keeps its root", { as: "claude", cannot: unhold(1, "teams"), told: "A document keeps its root: take the document out instead." }),
 
     // ── the entities, worked out ──
-    story("Claude takes back the last story the session serves, and Peter sees the sessions needed by no story", { as: "claude", premise: { claude: [serves(2, ["23"])] }, does: unsay(23), offPage: true, seen: ["peter", "claude"] }),
-    story("Claude takes out the session, and Peter sees the sessions looked up, held by no document", { as: "claude", does: drop(2), offPage: true, seen: ["peter", "claude"] }),
+    claudeTakesBack: story("Claude takes back the last story the session serves, and Peter sees the sessions needed by no story", { as: "claude", premise: { claude: [serves(2, ["23"])] }, does: unsay(23), offPage: true, seen: ["peter", "claude"] }),
+    claudeTakesOut: story("Claude takes out the session, and Peter sees the sessions looked up, held by no document", { as: "claude", does: drop(2), offPage: true, seen: ["peter", "claude"] }),
 
     // ── hjeli's six registers, run as the model is told ──
-    story("Claude says a story touches the rotas, which no document holds, and Peter sees reachability open", { as: "claude", does: touches(2, ["requests", "rotas"]), offPage: true, seen: ["peter", "claude"] }),
+    claudeSaysStory: story("Claude says a story touches the rotas, which no document holds, and Peter sees reachability open", { as: "claude", does: touches(2, ["requests", "rotas"]), offPage: true, seen: ["peter", "claude"] }),
 
     // ── who may ──
-    story("A visitor who has not signed in cannot write a story down", { as: "visitor", cannot: tell("I would like a day off") }),
-  ],
-};
+    visitorCannotWrite: story("A visitor who has not signed in cannot write a story down", { as: "visitor", cannot: tell("I would like a day off") }),
+  },
+} satisfies Stories;

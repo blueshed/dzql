@@ -9,7 +9,8 @@ register([defineDoc("session:", { root: "sessions", include: [], implied: true, 
 
 export type SessionDocument = { name: string | null; room: string | null; before: number | null };
 
+/** A session as its page reads it: before its row is made (implied), its columns' defaults, none of them, as delta opens it and as it stood. */
 export function read(id: string): SessionDocument {
-  const doc = readDoc<{ sessions?: Partial<SessionDocument> }>(`session:${id}`);
-  return { name: doc?.sessions?.name ?? null, room: doc?.sessions?.room ?? null, before: doc?.sessions?.before ?? null };
+  const { name, room, before } = readDoc<{ sessions: SessionDocument }>(`session:${id}`).sessions;
+  return { name, room, before };
 }

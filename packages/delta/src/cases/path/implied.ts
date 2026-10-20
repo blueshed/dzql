@@ -27,6 +27,17 @@ export function impliedCases(backend: () => PathBackend): void {
       await assertCopiesHold(b, copies);
     });
 
+    test("read as it stood (open_at) before its root row is made, it is what open reads: its id and its columns' defaults, each collection empty; one not implied is not there", async () => {
+      const b = backend();
+      const now = new Date().toISOString();
+      const opened = await b.process.call("open", { doc: "fo-plan:7" });
+      const then = await b.process.call("open_at", { doc: "fo-plan:7", at: now });
+      expect(content(then.result)).toEqual({ weddings: { id: 7, name: "" }, courses: {}, drinks: {} });
+      expect(content(then.result)).toEqual(content(opened.result));
+      expect((await b.process.call("open_at", { doc: "fo-title:7", at: now })).error?.code).toBe(404);
+      expect((await b.process.call("open", { doc: "fo-title:7" })).error?.code).toBe(404); // read, it makes no row
+    });
+
     test("the root its first write makes arrives in a list of those roots, before what the write put under it; the implied documents, which showed it, are told the write as written (the cafe's kitchen)", async () => {
       const b = backend();
       const copies = await openAll(b.process, ["fo-plan:7", "fo-plan:8", "fo-weddings:"]);

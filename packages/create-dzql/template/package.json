@@ -8,8 +8,8 @@
     "bun": ">=1.4.3"
   },
   "scripts": {
-    "dev": "PGLITE_DIR=data/pg bun --hot src/routes.ts --model",
-    "start": "NODE_ENV=production PGLITE_DIR=data/pg bun src/routes.ts",
+    "dev": "bun --hot src/routes.ts --model",
+    "start": "NODE_ENV=production bun src/routes.ts",
     "stop": "delta stop",
     "stories": "ETA_EXAMPLE=./src bun node_modules/dzql/src/modelling/stories-run.ts",
     "cli": "ETA_EXAMPLE=./src bun node_modules/dzql/src/rendering/cli.ts",

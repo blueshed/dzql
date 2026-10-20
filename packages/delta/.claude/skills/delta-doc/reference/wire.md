@@ -28,7 +28,7 @@ a refusal asked as the message itself (`client.send({ action: "open", doc })`, i
 - `undo` / `redo { cursor?, dry?, entry?, change? }` (ledger) → `{ doc, ops, inverse, version,
   entry }`, a conflict, or `null`.
 - `history { doc, cursor?, limit? }` (ledger) → `[{ id, doc, version, ops, inverse, at, undoable, mine }]`.
-- `open_at { doc, at }` → the document as it stood.
+- `open_at { doc, at }` → the document as it stood (an implied one whose root row was not made by then as `open` gives it: its id and its columns' defaults).
 - `close { doc }` → `{ ack: true }`.
 - `call { method, params }` → `{ result }`: `login`, `register`, `authenticate`, `logout`, yours.
 

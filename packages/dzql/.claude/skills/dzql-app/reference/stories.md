@@ -9,14 +9,14 @@ const name = (value: string): Write => ({ doc: "session", ops: [{ op: "replace",
 const room = (value: string): Write => ({ doc: "session", ops: [{ op: "replace", path: "/room", value }] });
 const say = (text: string): Write => ({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: text }] });
 
-export const stories: Stories = {
+export const stories = {
   cast: { ada: [name("Ada"), room("general")], bob: [name("Bob"), room("general")], cy: [name("Cy"), room("kitchen")], eve: [] },
   budget: 4608,
-  stories: [
-    story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", { as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "eve"] }),
-    story("Without a name you cannot enter a room", { as: "eve", cannot: room("general") }),
-  ],
-};
+  stories: {
+    adaSaysHello: story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", { as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "eve"] }),
+    noNameNoRoom: story("Without a name you cannot enter a room", { as: "eve", cannot: room("general") }),
+  },
+} satisfies Stories;
 ```
 
 The shape is `Story` and `Stories` in `src/modelling/stories.ts`; `docs/stories.md` says why.
@@ -26,10 +26,11 @@ Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzq
 (`opensTab`); [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/stories.ts), each story naming its model story
 (`model: n`), the cast in by its links. `bun run stories:all` tells every example's.
 
-A story with no body yet, `story(name)`, goes in `Stories.unproven`: the harness reports it
-unproven, never failed, and a test named from it tells it until it has a body
-(`` test(`${stories.x.name} -- ...`) ``; `untold(stories, sources)` lists any no test names). That is
-how a paintbrush app keeps its stories, so one format grows from there to here.
+Each story is under a key of its own. One with no body yet, `story(name)`, sits among the rest:
+the harness reports it unproven, never failed, and a test named from its key tells it until it
+has a body (`` test(`${stories.stories.x.name} -- ...`) ``; `untold(stories, sources)` lists any
+no test names). That is how a paintbrush app keeps its stories, so one file grows from there to
+here: a story gaining its body is the same line, under the same key.
 
 - Build nothing no story needs, and never write a story to justify what is built. One that
   describes the session's state ("opens the drawer") cannot fail: tell what the person wants.

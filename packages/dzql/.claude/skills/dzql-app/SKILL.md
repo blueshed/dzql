@@ -35,11 +35,13 @@ least that makes the next story pass; `bun run stories` after each.
    `model/` (the definitions, the guards, the migrations), and each story names the model story it
    tells (`model: 6`; `model: false` for the app's own). → [stories](reference/stories.md)
 2. **The store**, `store.ts`: Postgres, through dzql's `openStore({ schema, migrations })` -- PGlite
-   in the process (in `PGLITE_DIR`; in memory for the tests), or a server at `DATABASE_URL`. The
+   in the process (in the data folder's `pg/`: `DATA_PATH`, a Railway volume, else `data/`; in
+   memory for the tests, `DATA_PATH=:memory:`), or a server at `DATABASE_URL`. The
    tables (`defineSchema`: the model's `tables`, and the app's own beside them), the model's
-   migrations, `delta`, `register` for each resource's documents, `open()` to compile them all and
-   seed (the model's guards put on `delta` there, before the listener), and `stories`, the app's
-   `Example.store`, which puts the store back between stories. → [documents](reference/documents.md),
+   migrations, `prepare` to seed it, `delta` (the model's guards put on it as the app loads, before
+   any listener), `register` for each resource's documents; the store is the app's `Example.store`,
+   which `appOf` opens as the server starts (each document compiled) and closes as it stops, and
+   the stories put back between stories. → [documents](reference/documents.md),
    [migrations](reference/migrations.md)
 3. **A document, a folder**, `resources/floor/`: `floor-api.ts` registers its definition, `read()`s
    it for the page, and keeps the pure rules a write follows; `floor.ts` is its **resource**, which

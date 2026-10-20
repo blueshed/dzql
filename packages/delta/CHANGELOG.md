@@ -90,6 +90,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is constrained to `{ id: number }`, as `linkAuth`'s is on the server, where it was
   auth-link/client's `Person`, whose index signature an interface does not meet (TS2344).
   `examples/lists` declares `Person` as an interface, and `auth.md`'s gotcha is gone.
+
+- **`open_at` reads an implied document not made yet as `open` does** (20 October, root #120): its
+  id and its columns' defaults, each included collection empty, where it answered 404. So a page
+  drawn from storage (dzql's stories, which read `open_at`) reads one shape from both, and says a
+  schema's default once. `src/server/sqlite/read.ts` (`loadDocAt`, `impliedDoc`), on SQLite and
+  the JSON file; `src/cases/path/implied.ts` asks it of every backend, dzql's Postgres too. A
+  document not implied, its row not there, is still 404.
+
 - **`install-skills` in development installs railroad's skill from railroad** (20 October): delta's
   own skills are the ones its `package.json` ships (`files`), so the copy of railroad's skill that
   `prepare` puts beside them is no longer taken for delta's, and no longer stays at the version it

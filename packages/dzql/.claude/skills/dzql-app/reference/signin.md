@@ -15,7 +15,7 @@ export const links = signInLinks("cafe", sessions, people);                 // `
 export const app: Example = { …, routes: { "/in/:token": links.route as never } };
 
 // as the server starts: a link per person, where `bun dev` prints
-const server = serve(compose(appOf(app), modelling), { port });
+const server = serve(compose(await appOf(app), modelling), { port });
 console.log(["Signed in by a link:", ...links.say(server.url.origin).map((l) => `  ${l}`)].join("\n"));
 ```
 

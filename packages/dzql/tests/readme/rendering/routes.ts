@@ -27,4 +27,4 @@ export const app: Example = {
 };
 
 // delta's one server: the page at "/", its socket at "/ws", /health; `bun routes.ts`
-if (import.meta.main) await run(() => serve(appOf(app)));
+if (import.meta.main) await run(async () => serve(await appOf(app)));

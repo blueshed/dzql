@@ -27,15 +27,19 @@ sentence alone, `story(name)` from `dzql/modelling/stories`, kept in the app's `
 
 ```ts
 // packages/create-blueshed/template/stories.ts
-saves: story("Saving (the button, or Cmd+Enter or Ctrl+Enter in the box) says Saved once the server has it, and the message is still there after a reload."),
+export const stories = {
+  cast: {},
+  stories: {
+    saves: story("Saving (the button, or Cmd+Enter or Ctrl+Enter in the box) says Saved once the server has it, and the message is still there after a reload."),
 ```
 
-A test named from it makes it true (`` test(`${stories.saves.name} -- ...`) ``), and a test of the
-app fails any story no test tells, so a story is never dropped or renamed away from its test. The
-format is the same one the thin client's harness reads: when the app takes the step to
-`dzql/rendering`, the same story gains a body -- who does what, and who then sees it, where -- and
-the harness tells it against every page, the ones that must not hear of a change included. A story
-with no body yet is reported unproven by the harness, never failed. The rest of this page is that
+A test named from its key makes it true (`` test(`${stories.stories.saves.name} -- ...`) ``), and
+a test of the app fails any story no test tells (`untold(stories, sources)`), so a story is never
+dropped or renamed away from its test. The file is the one the thin client's harness reads
+(`Stories`): when the app takes the step to `dzql/rendering`, the same line gains a body, under the
+same key -- who does what, and who then sees it, where -- and the harness tells it against every
+page, the ones that must not hear of a change included. A story with no body yet is reported
+unproven by the harness, never failed, and its test's name never changes. The rest of this page is that
 second half.
 
 ## A story
@@ -427,11 +431,11 @@ the example's stories for every story, and a story's own stands in place of the 
 Chat's is 4.5 KB:
 
 ```ts
-export const stories: Stories = {
+export const stories = {
   cast: { ... },
   budget: 4608,
-  stories: [
-    story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", {
+  stories: {
+    adaSaysHello: story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", {
       as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "dee", "eve"], budget: 1024,
     }),
 ```

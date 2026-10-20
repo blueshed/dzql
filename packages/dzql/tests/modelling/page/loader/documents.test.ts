@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { post, story, type Stories } from "dzql/modelling/stories";
+import { post, story, toldOf, type Stories } from "dzql/modelling/stories";
+import { keyed } from "../../keyed";
 import { run } from "dzql/modelling/harness";
 import { serverWrite } from "dzql/rendering/documents";
 import type { Example } from "dzql/rendering/example";
@@ -187,26 +188,26 @@ describe("from a run", () => {
   test("what the run cannot say from the stories: a document nobody needs, a write with nothing in front of its author, a document the example lacks, a write that tells nobody", async () => {
     const stories: Stories = {
       cast: chatStories.cast,
-      stories: [
+      stories: keyed([
         story("Ada says something with no room in front of her", { as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hi" }] }, seen: ["ada"] }),
         story("Ada writes to a document nobody keeps", { as: "ada", cannot: { doc: "attic", ops: [{ op: "add", path: "/-", value: 1 }] } }),
         story("The feed writes from no page", { as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "tick" }] }, offPage: true, seen: ["ada"] }),
         story("A story the run never told", { as: "ada", does: { doc: "room", ops: [] }, seen: ["ada"] }),
         story("Ada files a room away", { as: "ada", cannot: { doc: "archive", ops: [{ op: "add", path: "/-", value: 1 }] } }),
         story("Ada says something nobody sees", { as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "shh" }] }, seen: [] }),
-      ],
+      ]),
     };
     const step = (name: string, heard: Trace["heard"]): Trace => ({ story: name, phase: "does", as: "ada", heard, holds: [{ member: "ada", docs: ["told:x", "session:x"] }], ledger: [] });
     const w = watch({ ...chat, resources: [...chat.resources, { docType: "cellar", resolveDoc: () => undefined }] });
     // outside a run no socket is open: a step's controls are kept, and nothing is put to permit
-    w.observe({ ...step(stories.stories[0]!.name, [{ member: "ada", messages: [
+    w.observe({ ...step(toldOf(stories)[0]!.name, [{ member: "ada", messages: [
       { type: "patch", doc: "told" },
       { type: "render", ops: [{ op: "replace", target: "x", html: '<button data-write=\'{"doc":"room","op":"add","path":"/messages/-"}\'>' }] },
       { type: "patch", doc: "room:general", ops: [{ op: "add", path: "/messages/1", value: {} }] } as unknown as Heard, // `Heard` types a render's ops
       { type: "render", html: "<p>" },
     ] }]), phase: "does" });
-    w.observe({ ...step(stories.stories[0]!.name, []), phase: "undo" });
-    w.observe(step(stories.stories[2]!.name, []));
+    w.observe({ ...step(toldOf(stories)[0]!.name, []), phase: "undo" });
+    w.observe(step(toldOf(stories)[2]!.name, []));
     expect(w.controls).toEqual(new Set(["room add /messages/-"]));
     expect(w.allowed.size).toBe(0);
     const r = read(stories, { ...chat, resources: [...chat.resources, { docType: "cellar", resolveDoc: () => undefined }] }, w, ["archive"]);
@@ -238,10 +239,10 @@ describe("a post to a route, read from a run", () => {
     const renaming: Example = { ...leave, routes: { ...leave.routes, "/rename": rename } };
     const stories: Stories = {
       ...told,
-      stories: [
+      stories: keyed([
         story("Mo follows a link that renames the team, and Ann sees the new name", { as: "mo", does: post("/rename", { name: "The workshop" }), offPage: true, seen: ["ann", "mo"] }),
-        ...told.stories.filter((s) => s.name.startsWith("Bo signs in on another phone")),
-      ],
+        ...toldOf(told).filter((s) => s.name.startsWith("Bo signs in on another phone")),
+      ]),
     };
     const w = watch(renaming);
     await run(renaming, stories, w.observe);

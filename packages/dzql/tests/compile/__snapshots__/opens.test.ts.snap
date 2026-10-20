@@ -3725,7 +3725,14 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 exports[`on the seed, every name opens (and opens at a time) as the framework opens it fo-plan:7, open_at 1`] = `
 {
   "at": "2019-06-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -3733,7 +3740,14 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 exports[`on the seed, every name opens (and opens at a time) as the framework opens it fo-plan:7, open_at 2`] = `
 {
   "at": "2021-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -3741,7 +3755,14 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 exports[`on the seed, every name opens (and opens at a time) as the framework opens it fo-plan:7, open_at 3`] = `
 {
   "at": "2999-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
   "name": "fo-plan:7",
 }
 `;
@@ -3764,7 +3785,14 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 exports[`on the seed, every name opens (and opens at a time) as the framework opens it fo-plan:50, open_at 1`] = `
 {
   "at": "2019-06-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 50,
+      "name": "",
+    },
+  },
   "name": "fo-plan:50",
 }
 `;
@@ -3772,7 +3800,14 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 exports[`on the seed, every name opens (and opens at a time) as the framework opens it fo-plan:50, open_at 2`] = `
 {
   "at": "2021-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 50,
+      "name": "",
+    },
+  },
   "name": "fo-plan:50",
 }
 `;
@@ -3780,7 +3815,14 @@ exports[`on the seed, every name opens (and opens at a time) as the framework op
 exports[`on the seed, every name opens (and opens at a time) as the framework opens it fo-plan:50, open_at 3`] = `
 {
   "at": "2999-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 50,
+      "name": "",
+    },
+  },
   "name": "fo-plan:50",
 }
 `;
@@ -9209,7 +9251,14 @@ exports[`after writes of every kind, still fo-plan:50 1`] = `
 exports[`after writes of every kind, still fo-plan:50, open_at 1`] = `
 {
   "at": "2019-06-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 50,
+      "name": "",
+    },
+  },
   "name": "fo-plan:50",
 }
 `;
@@ -9217,7 +9266,14 @@ exports[`after writes of every kind, still fo-plan:50, open_at 1`] = `
 exports[`after writes of every kind, still fo-plan:50, open_at 2`] = `
 {
   "at": "2021-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 50,
+      "name": "",
+    },
+  },
   "name": "fo-plan:50",
 }
 `;
@@ -9225,7 +9281,14 @@ exports[`after writes of every kind, still fo-plan:50, open_at 2`] = `
 exports[`after writes of every kind, still fo-plan:50, open_at 3`] = `
 {
   "at": "2999-01-01T00:00:00Z",
-  "doc": null,
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 50,
+      "name": "",
+    },
+  },
   "name": "fo-plan:50",
 }
 `;
@@ -12776,7 +12839,7 @@ BEGIN
   ELSE
     SELECT to_jsonb(t.*) INTO v_root FROM "fo_weddings" t WHERE t.id = v_id;
     IF v_root IS NULL THEN
-      RETURN NULL;
+      v_doc := jsonb_build_object('weddings', jsonb_build_object('id', v_id) || '{"name":""}'::jsonb) || jsonb_build_object('courses', '{}'::jsonb) || jsonb_build_object('drinks', '{}'::jsonb);
     ELSE
       v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('courses', (SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) FROM "fo_courses" t WHERE t."weddings_id" = v_id)) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) FROM "fo_drinks" t JOIN "fo_courses" p1 ON p1.id = t."courses_id" WHERE p1."weddings_id" = v_id));
     END IF;

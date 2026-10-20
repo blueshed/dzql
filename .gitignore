@@ -26,6 +26,7 @@ packages/create-blueshed/template/data/
 packages/create-blueshed/template/tests/out/
 packages/create-dzql/template/.server.pid
 packages/create-dzql/template/data/
+packages/dzql/examples/*/data/
 packages/create-dzql/template/db.sqlite*
 packages/create-dzql/template/.eta-session*
 

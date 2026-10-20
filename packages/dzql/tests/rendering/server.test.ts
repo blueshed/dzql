@@ -150,11 +150,11 @@ const pageNow = async (ws: WebSocket): Promise<string> => htmlOf((await heard(ws
 const HANDLE = /^[0-9a-f]{16}$/;
 
 describe("createServer, generically (no example from the examples directory involved)", () => {
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
   const example = makeExample("kernel-note-test");
 
-  beforeAll(() => {
-    server = createServer(example, 0);
+  beforeAll(async () => {
+    server = await createServer(example, 0);
   });
 
   afterAll(() => {
@@ -554,7 +554,7 @@ describe("createServer, generically (no example from the examples directory invo
     const store = new Database(":memory:");
     createTables(store, schema);
     registerDocs(guarded.server, store, schema, [defineDoc("note:", { root: "notes", include: [], implied: true })], [], { ledger: true });
-    const app = createServer({ name: "guarded", resources: [{ ...noteResource, shape: undefined }], render: () => "<p>guarded</p>", active: () => true, index, delta: guarded }, 0);
+    const app = await createServer({ name: "guarded", resources: [{ ...noteResource, shape: undefined }], render: () => "<p>guarded</p>", active: () => true, index, delta: guarded }, 0);
     try {
       const ws = await open(app);
       const id = write(ws, "note", [{ op: "replace", path: "/text", value: "forbidden" }]);
@@ -729,7 +729,7 @@ describe("a server is routes to resources: apps composed side by side", () => {
 
   test("two examples on one server, each under its path: its page, its socket, its cookie, its own state", async () => {
     const app = (name: string, at: string): Example => ({ name, at, resources: [], render: () => `<p>${name}</p>`, active: () => true, index, delta: createLocal(), routes: { "/menu": () => new Response(name) } });
-    const [a, b] = [appOf(app("cafe", "")), appOf(app("model", "/model"))];
+    const [a, b] = [await appOf(app("cafe", "")), await appOf(app("model", "/model"))];
     // and delta's own socket, its actions registered as resources: a JSON-RPC call answered on its path
     const rpc = createWs({ path: "/rpc" });
     rpc.on("ping", (msg, _ws, respond) => respond({ result: `pong ${msg.n}` }));
@@ -768,20 +768,40 @@ describe("a server is routes to resources: apps composed side by side", () => {
     expect(() => assemble(ledgered)).toThrow(`ledgered: two resources own "ledger" (the kernel's own)`);
   });
 
-  test("calling it again with the very same example object does not throw", () => {
+  test("a tab moved through a resource that keeps no document (a session with no row) is answered by an echo of nothing, not refused", async () => {
+    const place: Resource = { docType: "place", perSession: true, ledger: false, resolveDoc: (ws) => ws.data.sessionId, permit: (_ws, op) => op.op === "replace" && op.path === "/page" };
+    const failures: string[] = [];
+    const heardFailures = onFailure((what) => failures.push(what));
+    const server = await createServer({ name: "places", resources: [place], render: (_sessionId, address) => `<p class="at">${address}</p>`, active: () => true, index, delta: createLocal(), address: { doc: "place", path: "/page" } }, 0);
+    try {
+      const ws = connect(server, "placed");
+      await opened(ws);
+      await expectMessage(ws, "render");
+      write(ws, "place", [{ op: "replace", path: "/page", value: "attic" }], "go");
+      expect(await heard(ws)).toMatchObject([{ type: "patch", doc: "place", version: 0, ops: [], id: "go" }, { type: "render" }]);
+      expect(pageOf(ws)).toBe('<p class="at">attic</p>');
+      expect(failures).toEqual([]);
+      ws.close();
+    } finally {
+      heardFailures();
+      await server.stop(true);
+    }
+  });
+
+  test("calling it again with the very same example object does not throw", async () => {
     const example = makeExample("reused");
-    const a = createServer(example, 0);
-    const b = createServer(example, 0);
+    const a = await createServer(example, 0);
+    const b = await createServer(example, 0);
     a.stop(true);
     b.stop(true);
   });
 });
 
 describe("one socket, any documents: a document is named whole, and seen because the page read it", () => {
-  let server: ReturnType<typeof createServer>;
+  let server: Awaited<ReturnType<typeof createServer>>;
 
-  beforeAll(() => {
-    server = createServer(makeExample("kernel-month-test"), 0);
+  beforeAll(async () => {
+    server = await createServer(makeExample("kernel-month-test"), 0);
   });
 
   afterAll(() => {

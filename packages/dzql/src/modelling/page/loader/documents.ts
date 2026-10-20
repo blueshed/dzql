@@ -16,7 +16,7 @@ import { existsSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { Example } from "dzql/rendering/example";
 import type { Resource } from "dzql/rendering/resources/resource";
-import { writeOf, type Stories, type Story } from "dzql/modelling/stories";
+import { toldOf, writeOf, type Stories, type Story } from "dzql/modelling/stories";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { controlsOn, run, type Control, type Heard, type Trace } from "dzql/modelling/harness";
 import { allOpenSockets } from "dzql/rendering/resources/audience";
@@ -263,13 +263,14 @@ export function privateEntry(example: Example): (entry: Trace["ledger"][number])
  */
 export function read(stories: Stories, example?: Example, watched?: Watched, defined: string[] = []): Reading {
   const write = writeOf;
+  const told = toldOf(stories);
   const types: Reading["docs"] = example ? example.resources.map((c) => ({ name: c.docType, kind: c.kind ?? "stored" })) : [];
   for (const name of defined) if (!types.some((t) => t.name === name)) types.push({ name, kind: "no resource" });
-  for (const s of stories.stories) {
+  for (const s of told) {
     const w = write(s);
     if (w && !types.some((t) => t.name === typeOf(w.doc))) types.push({ name: typeOf(w.doc), kind: example ? "not defined" : "from the stories" });
   }
-  const actors = [...new Set([...Object.keys(stories.cast), ...stories.stories.map((s) => s.as)])];
+  const actors = [...new Set([...Object.keys(stories.cast), ...told.map((s) => s.as)])];
   const grid: Reading["grid"] = Object.fromEntries(actors.map((a) => [a, Object.fromEntries(types.map((t) => [t.name, blank()]))]));
   const cell = (actor: string, doc: string) => (grid[actor] ??= {})[doc] ??= blank();
   const own = new Set(types.map((t) => t.name));
@@ -279,7 +280,7 @@ export function read(stories: Stories, example?: Example, watched?: Watched, def
 
   const noDocument: Finding[] = [];
   const tellsNobody: Finding[] = [];
-  const rows: StoryRow[] = stories.stories.map((s, i) => {
+  const rows: StoryRow[] = told.map((s, i) => {
     const w = write(s);
     const doc = w && typeOf(w.doc);
     const row: StoryRow = { n: i + 1, name: s.name, as: s.as, kind: kindOf(s), ...(doc && { doc }), changes: [] };
@@ -300,7 +301,7 @@ export function read(stories: Stories, example?: Example, watched?: Watched, def
 
   if (watched) {
     for (const row of rows) {
-      const s = stories.stories[row.n - 1]!;
+      const s = told[row.n - 1]!;
       const step = watched.traces.find((t) => t.story === s.name && t.phase === row.kind);
       if (!step) continue;
       const held = new Map(step.holds.map((h) => [h.member, new Set(h.docs.map(named).filter(Boolean).map((d) => typeOf(d!)))]));
@@ -313,14 +314,14 @@ export function read(stories: Stories, example?: Example, watched?: Watched, def
 
   // written by a story, by the cast as it sets up, or by going somewhere (`goTo`): people's writes all
   const going = stories.goTo ? [stories.goTo("")] : [];
-  const written = new Set([...stories.stories.flatMap((s) => (s.does ? [writeOf(s) ?? []].flat() : [])), ...Object.values(stories.cast).flat(), ...going].map((w) => typeOf(w.doc)));
+  const written = new Set([...told.flatMap((s) => (s.does ? [writeOf(s) ?? []].flat() : [])), ...Object.values(stories.cast).flat(), ...going].map((w) => typeOf(w.doc)));
   const held = (doc: string) => actors.some((a) => grid[a]![doc]!.held > 0);
   const unneeded = watched ? types.filter((t) => !written.has(t.name) && !held(t.name)).map((t) => t.name) : [];
   const readOnly = types.filter((t) => !written.has(t.name) && held(t.name)).map((t) => t.name);
 
   // what permit allows that no story does and no page a member can get to offers, by document and path:
   // an add on a field that permit also lets be replaced is that replace, and goes with it
-  const done = new Set(stories.stories.flatMap((s) => { const w = s.does && writeOf(s); return w ? w.ops.map((op) => `${typeOf(w.doc)} ${op.op} ${shapeOf(op.path)}`) : []; }));
+  const done = new Set(told.flatMap((s) => { const w = s.does && writeOf(s); return w ? w.ops.map((op) => `${typeOf(w.doc)} ${op.op} ${shapeOf(op.path)}`) : []; }));
   const lets = [...(watched?.allowed.values() ?? [])];
   const replaced = new Set(lets.filter((a) => a.op === "replace").map((a) => `${a.doc} ${a.path}`));
   const byPath = new Map<string, Allowed>();

@@ -16,7 +16,7 @@ A Bun website where people share documents. **Documents are how people communica
 
 **Where an app starts.** The message is there to show the pattern; an app starts with its own stories, told on the model's page (`bun run model`, http://localhost:3001/model, the model kept in `model.json`; `bun run model <verb>`), with the `modelling` skill: each story as it is told, the documents it needs and what they hold. When the teller calls every story true, write them into `stories.ts` and build them with `evolve`, the least that makes the next one pass. (The modelling skill's last step names `dzql-app`, the page the server draws; here the page is railroad's, and the next step is `evolve`.)
 
-**What it is for.** `stories.ts` holds the stories the app was asked to make true (`story("...")`, from `dzql/modelling`), each a sentence someone using it could call true or false. When the user asks for something, write it there as stories first (theirs, in their words), then make them true, with tests named from them (`test(\`${stories.saves.name} -- ...\`)`): `tests/stories.test.ts` fails a story no test tells. Earlier stories stay true; a story that changes is changed there, never dropped quietly.
+**What it is for.** `stories.ts` holds the stories the app was asked to make true (`story("...")`, from `dzql/modelling`), each a sentence someone using it could call true or false. When the user asks for something, write it there as stories first (theirs, in their words), then make them true, with tests named from them (`test(\`${stories.stories.saves.name} -- ...\`)`): `tests/stories.test.ts` fails a story no test tells. Earlier stories stay true; a story that changes is changed there, never dropped quietly.
 
 **Where the project is.** `CHANGELOG.md` and `todo.jsonl` are the project's memory between sessions, and they work as a pair: the changelog is where the project has been, the ledger is what is open now. Read both before starting: the open items, and what `## [Unreleased]` holds that no release has yet. As you work they move together, as it happens and not at the end. What you find or leave open goes into `todo.jsonl`. What lands goes under `## [Unreleased]`, breaking changes first, and the item it settles becomes `fixed` with a dated `note` saying so. A change with no entry, or an item marked fixed with no entry behind it, means the record is wrong. `/release` closes the pair: `[Unreleased]` becomes a version, and the settled items leave `todo.jsonl`. Write both with the file tools, never inside a quoted shell argument.
 
@@ -46,9 +46,12 @@ src/
   styles.css           the design, with its rules at the top: the bento's plain look (dzql's bento-plain.css), then the page
   resources/           a folder per resource (<name>-api.ts, <name>.ts, <name>-view.tsx), bento.tsx, toast.ts
 tests/
-  site.test.ts         the status, the page's shell and the entry point
+  site.test.ts         the status, the page's shell and the entry point: what any page of the app does
+  app.test.ts          what this page alone does: where you are is the hash, the status it fetches
   message.test.ts      the message document: refused changes, and in the browser, saving and following
+  message-view.test.ts what this page's drawer alone does: Not saved in a toast, Cmd+Enter
   browser.ts           railroad's browser() (@blueshed/railroad/webview, whose header has the Bun.WebView rules) and refuseWrites
+  documents.ts         a document as the page reads it (dzql's documentsOf): what a test holds, the same when the page moves to the server
   bento.test.ts        the bento drawn by railroad is the HTML dzql's bento.ts draws (bento-page.*), and what it does when pressed
 .railway/railway.ts    the deploy; its rules are at its top
 ```

@@ -77,28 +77,28 @@ export const migrations = [
 The page and its test are as they were. The kitchen and undo are stories of their own:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // The kitchen
   kitchen: story("The kitchen sees every open order: a line added to any order, or changed, reaches it."),
   undo: story("Undo takes back your last change, wherever it shows."),
 ```
 
-Their test holds the documents from a client in the test process:
+Their test holds the documents from the test process, as a page reads them (`tests/documents.ts`):
 
 ```ts
 // tests/kitchen.test.ts
 import { test, expect, afterAll } from "bun:test";
-import { connectWs, openDoc } from "@blueshed/delta/client";
 import type { DeltaOp } from "@blueshed/delta/core";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import type { Line, Order } from "../src/resources/order/order-api";
 import { stories } from "../stories";
+import { documents } from "./documents";
 
 const dataDir = mkdtempSync(`${tmpdir()}/kitchen-`);
 const server = await startServer({ port: 0, dev: false, dataDir });
-const client = connectWs(new URL("/ws", server.url).href);
+const client = await documents(server);
 
 afterAll(async () => {
   client.close();
@@ -106,36 +106,35 @@ afterAll(async () => {
   rmSync(dataDir, { recursive: true, force: true });
 });
 
-const kitchen = openDoc<{ lines: Record<string, Line & { orders_id: number }> }>("kitchen:", client);
-const first = openDoc<Order>("order:1", client);
-const second = openDoc<Order>("order:2", client);
-await Promise.all([kitchen.ready, first.ready, second.ready]);
+const kitchen = await client.open<{ lines: Record<string, Line & { orders_id: number }> }>("kitchen:");
+const first = await client.open<Order>("order:1");
+const second = await client.open<Order>("order:2");
 
-const kitchenLines = () => Object.values(kitchen.data.peek()!.lines).map((l) => [l.orders_id, l.item]);
+const kitchenLines = () => Object.values(kitchen.value().lines).map((l) => [l.orders_id, l.item]);
 
 async function until(done: () => boolean) {
   for (let i = 0; i < 100 && !done(); i++) await Bun.sleep(20);
   expect(done()).toBe(true);
 }
 
-test(`${stories.kitchen.name} -- a line added to either of two orders`, async () => {
+test(`${stories.stories.kitchen.name} -- a line added to either of two orders`, async () => {
   await first.send([{ op: "add", path: "/lines/-", value: { item: 1 } }]);
   await second.send([{ op: "add", path: "/lines/-", value: { item: 2 } }]);
   await until(() => kitchenLines().length === 2);
   expect(kitchenLines()).toEqual([[1, 1], [2, 2]]);
 });
 
-test(`${stories.undo.name} -- this client's last line goes from the kitchen and from its order`, async () => {
-  await client.send({ action: "undo" });
+test(`${stories.stories.undo.name} -- this client's last line goes from the kitchen and from its order`, async () => {
+  await client.undo();
   await until(() => kitchenLines().length === 1);
   expect(kitchenLines()).toEqual([[1, 1]]);
-  expect(second.data.peek()!.lines).toEqual({});
+  expect(second.value().lines).toEqual({});
 });
 
-test(`${stories.kitchen.name} -- a line changed is told as the field that changed, not the row`, async () => {
+test(`${stories.stories.kitchen.name} -- a line changed is told as the field that changed, not the row`, async () => {
   const told: DeltaOp[][] = [];
   const stop = kitchen.onOps((ops) => told.push(ops));
-  const [line] = Object.values(first.data.peek()!.lines);
+  const [line] = Object.values(first.value().lines);
   await first.send([{ op: "replace", path: `/lines/${line!.id}/item`, value: 2 }]);
   await until(() => kitchenLines()[0]![1] === 2);
   stop();
@@ -146,7 +145,7 @@ test(`${stories.kitchen.name} -- a line changed is told as the field that change
 What people ordered before the move is there after it:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // The move
   moved: story("The orders people made are still there after the app moves its documents to the next store."),
 ```
@@ -154,27 +153,26 @@ What people ordered before the move is there after it:
 ```ts
 // tests/order-move.test.ts
 import { test, expect, afterAll } from "bun:test";
-import { connectWs, openDoc } from "@blueshed/delta/client";
 import { importTables } from "@blueshed/delta/json";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import { schema, type Order } from "../src/resources/order/order-api";
 import { stories } from "../stories";
+import { documents } from "./documents";
 
 const dataDir = mkdtempSync(`${tmpdir()}/order-move-`);
 afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
 
-test(`${stories.moved.name} -- from the JSON file to SQLite: order 1, a tea and a cake`, async () => {
+test(`${stories.stories.moved.name} -- from the JSON file to SQLite: order 1, a tea and a cake`, async () => {
   importTables(`${dataDir}/order.json`, schema, {
     tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }], orders: [{ id: 1 }], lines: [{ id: 1, orders_id: 1, item: 1 }, { id: 2, orders_id: 1, item: 2 }] },
   });
   const server = await startServer({ port: 0, dev: false, dataDir });
-  const client = connectWs(new URL("/ws", server.url).href);
+  const client = await documents(server);
   try {
-    const order = openDoc<Order>("order:1", client);
-    await order.ready;
-    expect(Object.values(order.data.peek()!.lines).map((l) => l.item)).toEqual([1, 2]);
+    const order = await client.open<Order>("order:1");
+    expect(Object.values(order.value().lines).map((l) => l.item)).toEqual([1, 2]);
   } finally {
     client.close();
     await server.stop(true);

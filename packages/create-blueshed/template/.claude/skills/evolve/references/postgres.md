@@ -50,12 +50,17 @@ function keptBefore(dataDir: string): Snapshot {
 export async function orderDocs(ws: WsServer, dataDir: string) {
   // the same history as on SQLite makes the tables (a migration's changes are the same on every
   // backend), then delta's own tables and functions; one process owns a PGlite folder
-  const store = await openStore({ schema, database: process.env.DATABASE_URL || `${dataDir}/pg`, migrations: { list: migrations, app: "order", schema }, ws });
-  store.register(docs);
-  // each document compiled; a new database takes the rows kept before, then the documents are served
-  await store.open(async () => {
-    if (!(await store.pool.query("SELECT 1 FROM items")).rowCount) await importTables(store.pool, schema, keptBefore(dataDir));
+  const store = openStore({
+    schema,
+    migrations: { list: migrations, app: "order", schema },
+    ws,
+    // each document compiled; a new database takes the rows kept before, then the documents are served
+    prepare: async (pool) => {
+      if (!(await pool.query("SELECT 1 FROM items")).rowCount) await importTables(pool, schema, keptBefore(dataDir));
+    },
   });
+  store.register(docs);
+  await store.open({ dataDir }); // DATABASE_URL's server, else PGlite in the data folder's pg/
   return store.close; // the listener, then the pool: closed cleanly, the next start opens the folder as it was left
 }
 ```
@@ -68,7 +73,7 @@ closing.push(await orderDocs(ws, dataDir));
 A server stopped and started again carries on where it was:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // Postgres
   carriesOn: story("After the server stops and starts again, an order carries on where it was."),
 ```
@@ -76,12 +81,12 @@ A server stopped and started again carries on where it was:
 ```ts
 // tests/order-pg.test.ts
 import { test, expect, afterAll } from "bun:test";
-import { connectWs, openDoc } from "@blueshed/delta/client";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import type { Order } from "../src/resources/order/order-api";
 import { stories } from "../stories";
+import { documents } from "./documents";
 
 const scratch = mkdtempSync(`${tmpdir()}/order-pg-`);
 const dataDir = `${scratch}/data`; // not there yet, as on a new app's first start
@@ -90,19 +95,18 @@ afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 // A server on the data folder, a line added to order 1, and the server stopped: the ids of its lines
 async function addLine(item: number) {
   const server = await startServer({ port: 0, dev: false, dataDir });
-  const client = connectWs(new URL("/ws", server.url).href);
+  const client = await documents(server);
   try {
-    const order = openDoc<Order>("order:1", client);
-    await order.ready;
+    const order = await client.open<Order>("order:1");
     await order.send([{ op: "add", path: "/lines/-", value: { item } }]);
-    return Object.values(order.data.peek()!.lines).map((l) => l.id);
+    return Object.values(order.value().lines).map((l) => l.id);
   } finally {
     client.close();
     await server.stop(true);
   }
 }
 
-test(`${stories.carriesOn.name} -- started on a data folder not there yet, stopped and started again`, async () => {
+test(`${stories.stories.carriesOn.name} -- started on a data folder not there yet, stopped and started again`, async () => {
   expect(existsSync(dataDir)).toBe(false);
   expect(await addLine(1)).toEqual([1]);
   expect(await addLine(2)).toEqual([1, 2]);
@@ -115,28 +119,27 @@ The orders kept in SQLite come across, as the JSON file's came to SQLite:
 // tests/order-pg-move.test.ts
 import { test, expect, afterAll } from "bun:test";
 import { Database } from "bun:sqlite";
-import { connectWs, openDoc } from "@blueshed/delta/client";
 import { fromFolder, importTables, migrate } from "@blueshed/delta/sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import { schema, type Order } from "../src/resources/order/order-api";
 import { stories } from "../stories";
+import { documents } from "./documents";
 
 const dataDir = mkdtempSync(`${tmpdir()}/order-pg-move-`);
 afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
 
-test(`${stories.moved.name} -- from SQLite to Postgres: order 1, a cake`, async () => {
+test(`${stories.stories.moved.name} -- from SQLite to Postgres: order 1, a cake`, async () => {
   const db = new Database(`${dataDir}/app.db`, { create: true });
   await migrate(db, await fromFolder(`${import.meta.dir}/../src/resources/order/migrations`), { app: "order", schema });
   importTables(db, schema, { tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }], orders: [{ id: 1 }], lines: [{ id: 1, orders_id: 1, item: 2 }] } });
   db.close();
   const server = await startServer({ port: 0, dev: false, dataDir });
-  const client = connectWs(new URL("/ws", server.url).href);
+  const client = await documents(server);
   try {
-    const order = openDoc<Order>("order:1", client);
-    await order.ready;
-    expect(Object.values(order.data.peek()!.lines).map((l) => l.item)).toEqual([2]);
+    const order = await client.open<Order>("order:1");
+    expect(Object.values(order.value().lines).map((l) => l.item)).toEqual([2]);
   } finally {
     client.close();
     await server.stop(true);

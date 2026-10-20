@@ -4,7 +4,7 @@
 // here is proposed; everything is read. A project with no app yet (no index.ts) is read from its
 // stories alone: no run, so nothing of who was told.
 
-import { isPost, writeOf, type Stories, type Story } from "dzql/modelling/stories";
+import { isPost, toldOf, writeOf, type Stories, type Story } from "dzql/modelling/stories";
 import { appIn, storiesIn } from "dzql/rendering/names";
 import { splitPath } from "@blueshed/delta/core";
 import { run } from "dzql/modelling/harness";
@@ -89,7 +89,7 @@ export async function extract(at: string) {
   const shown = example && privateEntry(example);
   const outcome = new Map(report ? report.outcomes.map((o) => [o.name, o.failures]) : []);
 
-  const storyRows = stories.stories.map((s: Story, i) => {
+  const storyRows = toldOf(stories).map((s: Story, i) => {
     const w = writeOf(s);
     const posted = s.does ?? s.cannot;
     const seen = s.seen ?? {};

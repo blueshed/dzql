@@ -5,8 +5,8 @@ say, and run the gate.
 
 ```ts
 // examples/leave/client/app.test.ts (trimmed)
-let server: ReturnType<typeof createServer>;
-beforeAll(() => { server = createServer(example, 0); });
+let server: Awaited<ReturnType<typeof createServer>>;
+beforeAll(async () => { server = await createServer(example, 0); });
 afterAll(() => { server.stop(true); });
 
 test("a drag across days is a draft, its drawer saying what it would mean; asked for, the bar drags to other days", async () => {

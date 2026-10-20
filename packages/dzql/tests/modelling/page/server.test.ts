@@ -319,9 +319,9 @@ describe("the model's rules", () => {
 });
 
 describe("modeling, served", () => {
-  let server: ReturnType<typeof createServer>;
-  beforeAll(() => {
-    server = createServer(example, 0);
+  let server: Awaited<ReturnType<typeof createServer>>;
+  beforeAll(async () => {
+    server = await createServer(example, 0);
   });
   afterAll(() => {
     server.stop(true);

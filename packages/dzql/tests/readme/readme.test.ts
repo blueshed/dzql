@@ -30,7 +30,8 @@ function app(...files: [from: string, to: string][]): string {
 const running: Subprocess[] = [];
 /** A command that serves, started in `cwd` on a free port: the URL its `Listening on` line names. */
 async function serving(cmd: string[], cwd: string, env: Record<string, string> = {}): Promise<URL> {
-  const proc = Bun.spawn(cmd, { cwd, env: { ...process.env, PORT: "0", LOG_LEVEL: "warn", NODE_ENV: "production", ...env }, stdout: "pipe", stderr: "inherit" });
+  const { DATA_PATH: _, ...outside } = process.env; // as a person runs it: its data where it says, not where these tests keep theirs
+  const proc = Bun.spawn(cmd, { cwd, env: { ...outside, PORT: "0", LOG_LEVEL: "warn", NODE_ENV: "production", ...env }, stdout: "pipe", stderr: "inherit" });
   running.push(proc);
   let out = "";
   for await (const chunk of proc.stdout) {

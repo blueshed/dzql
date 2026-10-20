@@ -1,4 +1,4 @@
-import { escapeSegment, splitPath } from "@blueshed/delta/core";
+import { escapeSegment, joinPath, splitPath } from "@blueshed/delta/core";
 
 // The paths in a document, as JSON Pointers, for the stories (src/modelling/harness.ts): every path
 // in one, what is there, and a path with each member of a collection as any one -- what a hidden
@@ -29,6 +29,19 @@ export function valueAt(value: unknown, path: string): unknown {
     value = Array.isArray(value) && key === "-" ? value[0] : (value as Record<string, unknown>)[key];
   }
   return value;
+}
+
+/**
+ * A path as the document holds it, as delta takes one: a single document's root row named by its id
+ * (`/messages/1/text`, through `message:1`, whose root is the row `{ id: 1, text }`) is the root the
+ * document holds (`/messages/text`). Any other path is as it is.
+ */
+export function asHeld(doc: unknown, path: string): string {
+  const keys = keysOf(path);
+  if (!keys || keys.length < 2) return path;
+  const root = valueAt(doc, joinPath(keys[0]!));
+  const byId = typeof root === "object" && root !== null && !Array.isArray(root) && Object.hasOwn(root, "id") && String((root as { id: unknown }).id) === keys[1];
+  return byId ? joinPath(keys[0]!, ...keys.slice(2)) : path;
 }
 
 /** Does a document hold something at a JSON Pointer: each step a key of what is there, an array's by its index? */

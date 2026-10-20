@@ -1,4 +1,6 @@
 import { expect } from "bun:test";
+import { applyOps, type DeltaOp } from "@blueshed/delta/core";
+import type { Local } from "@blueshed/delta/local";
 import { hear, type Heard } from "./resources/render";
 import type { PatchOp, Test, WriteId } from "./json-patch";
 import { cookieNameForUrl } from "./scope";
@@ -7,7 +9,10 @@ import { cookieNameForUrl } from "./scope";
 // it holds once each render is laid on, as the browser keeps it (the harness's `hear`). For what a
 // story cannot say -- two writes racing, a message that is not a write -- in the kernel's tests and
 // an app's own. A persistent queue per socket, not a listener per wait: two messages sent back to
-// back (an echo, then its render) both arrive before a test awaits the second.
+// back (an echo, then its render) both arrive before a test awaits the second. Beside it, the app's
+// documents as its page reads them (`documentsOf`), the same for the light page and the thin one:
+// a test of a document is written once, and the page itself is tested in a browser, where both
+// pages are the bento's HTML.
 
 /** A message from the server; a render also carries `page`, the page held once it is laid on. */
 export type WireMessage = {
@@ -116,3 +121,78 @@ export const pageOf = (ws: WebSocket): string => held.get(ws)!.page;
 
 /** A render's HTML, whether it came as the whole page or as the parts that changed. */
 export const htmlOf = (m: WireMessage): string => m.html ?? (m.ops ?? []).map((o: { html?: string }) => o.html ?? "").join("");
+
+/**
+ * A document a test holds, as a page reads it: its value, kept current from what it is told; a
+ * write to it, answered as delta answers (refused, it rejects with delta's `{ code, message }`),
+ * and resolved once the change is told back, so the value has it; and each change as it is told.
+ */
+export type Holding<T> = { value(): T; send(ops: DeltaOp[]): Promise<any>; onOps(fn: (ops: DeltaOp[]) => void): () => void };
+
+/** A test's client of an app's documents: a document held (`open`), its last write undone (`undo`), and let go (`close`). */
+export type DocumentsClient = { open<T = any>(doc: string): Promise<Holding<T>>; undo(): Promise<any>; close(): void };
+
+/**
+ * A test's client of an app's documents, the same for either page: over delta's socket at a
+ * server's `/ws` (the light page's: give the server), or over the app's documents in this process
+ * (the thin client's: give its store's `delta`, which its page reads). A test written against it
+ * stays as it is when the app moves its page to the server; only what it is given changes.
+ */
+export async function documentsOf(from: { url: URL | string } | Local): Promise<DocumentsClient> {
+  return "url" in from ? overSocket(from.url) : inProcess(from);
+}
+
+/** delta's own client, on the socket a light page opens. */
+async function overSocket(url: URL | string): Promise<DocumentsClient> {
+  const { connectWs, openDoc } = await import("@blueshed/delta/client"); // the light page's: a thin app need not have it
+  const client = connectWs(new URL("/ws", url).href);
+  return {
+    async open<T>(doc: string) {
+      const held = openDoc<T>(doc, client);
+      await held.ready;
+      return { value: () => held.data.peek() as T, send: (ops: DeltaOp[]) => held.send(ops), onOps: (fn: (ops: DeltaOp[]) => void) => held.onOps(fn) };
+    },
+    undo: () => client.send({ action: "undo" }),
+    close: () => client.close(),
+  };
+}
+
+/** The app's documents in this process, as its page reads them: a copy each, kept from delta's stream; the writes on a cursor of the test's own. */
+function inProcess(local: Local): DocumentsClient {
+  const cursor = `test-${crypto.randomUUID()}`;
+  const held = new Map<string, { value: any; v?: number; told: Set<(ops: DeltaOp[]) => void> }>();
+  const unheard = local.onPublish((doc, data) => {
+    const h = held.get(doc);
+    if (!h || !data || data.doc !== doc || !Array.isArray(data.ops) || (data.v !== undefined && h.v !== undefined && data.v <= h.v)) return;
+    applyOps(h.value, data.ops);
+    if (data.v !== undefined) h.v = data.v;
+    for (const fn of h.told) fn(data.ops);
+  });
+  const answer = async (action: string, msg: Record<string, unknown>) => {
+    const { result, error } = await local.call(action, msg);
+    if (error) throw error;
+    return result;
+  };
+  return {
+    async open<T>(doc: string) {
+      const { _v, ...value } = await answer("open", { doc });
+      const h = { value, v: _v === undefined ? undefined : Number(_v), told: new Set<(ops: DeltaOp[]) => void>() };
+      held.set(doc, h);
+      return {
+        value: () => h.value as T,
+        async send(ops: DeltaOp[]) {
+          const result = await answer("delta", { doc, ops, cursor });
+          // told back, as a socket's client is before its send resolves
+          for (let i = 0; i < 400 && result?.version !== undefined && (h.v ?? 0) < result.version; i++) await Bun.sleep(5);
+          return result;
+        },
+        onOps(fn: (ops: DeltaOp[]) => void) {
+          h.told.add(fn);
+          return () => void h.told.delete(fn);
+        },
+      };
+    },
+    undo: () => answer("undo", { cursor }),
+    close: unheard,
+  };
+}

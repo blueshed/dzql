@@ -25,6 +25,51 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **Where data lives is the data folder, one way in both starters** (20 October, root #129).
+  `openStore`'s `open({ dataDir })` keeps PGlite in the folder's `pg/` (`DATABASE_URL` a server
+  in its place, `database` whatever the folder; none, or `:memory:`, in memory), and `appOf(app, {
+  dataDir })` opens it there; `PGLITE_DIR` is no longer read. An app's `startServer` takes
+  `dataDir = process.env.DATA_PATH ?? <app>/data` (a Railway volume when `DATA_PATH` is set),
+  as paintbrush's always has, and a test gives a scratch folder, or says `DATA_PATH=:memory:` in its
+  `.env.test`. Opened by a second server on another folder, a store open on one refuses. To move
+  across: `PGLITE_DIR=data/pg` goes from `dev` and `start`; `startServer` takes `dataDir` and
+  passes it to `appOf`; `.env.test` says `DATA_PATH=:memory:` in place of `PGLITE_DIR=`. The cafe,
+  create-dzql's template and dzql's own `.env.test` follow.
+
+- **A server opens the app's store as it starts and closes it as it stops** (20 October, root
+  #119). `openStore` (`dzql/postgres`) says the store and opens nothing: the database is opened,
+  migrated and its documents compiled and served at `open()`, closed at `close()`, and opened again
+  after. `appOf` and `createServer` (`dzql/rendering/server`) are async: `await appOf(app)` opens
+  `Example.store` when it opens (Postgres's) and the app's `close` closes it once the server has
+  stopped; `createServer`'s `stop` waits for that. Two servers of one app at once hold one store,
+  closed by the second close. So a test runs servers one after another in one process, and under
+  `bun --hot` the last store is closed before the app, run again, opens the next: the ids carry on
+  (1, 2), where a folder opened twice was recovered as after a crash (1, 34;
+  `tests/rendering/store.test.ts`). A listener ended answers nothing, so a store's next listener
+  serves on the same `delta`; a kernel's copy of the documents is let go with its last server. To
+  move across: `serve(appOf(app))` becomes `serve(await appOf(app))`, `createServer(...)` becomes
+  `await createServer(...)` (a test's `beforeAll` async, its server typed
+  `Awaited<ReturnType<typeof createServer>>`), and `run(() => serve(...))` becomes `run(async () =>
+  ...)`; in `store.ts`, `export const store = openStore({ ..., prepare })` (no `await`), where
+  `prepare(pool)` is what `open(prepare)` was (the seed), and `export const { pool, delta, register }
+  = store`; the app gives `store` (not `stories`) as its `Example.store`; the top-level `await
+  open()` goes; a guard goes on `delta` as the module loads, before any listener. `store.pool` is
+  the open store's pool, and rejects while it is closed.
+
+- **The stories are keyed, one form in both starters** (`dzql/modelling/stories`, 20 October,
+  root #118). `Stories.stories` is a record, each story under a key of its own, in the order told:
+  one with a body the harness tells, one with none yet (`story(name)`) a test of the app tells,
+  named from its key. `Stories.unproven` is gone, and `untold(stories, sources)` takes the
+  `Stories` and checks only the stories with no body. So a paintbrush app's stories.ts is the file
+  the harness reads, and a story gaining its body is the same line, under the same key: no test is
+  renamed. `toldOf(stories)` and `unprovenOf(stories)` give the two kinds as lists; `hasBody`
+  tells one from the other. The harness's counts are unchanged (`bun run stories:all`: 24, 14, 25,
+  17, 22 and 14). To move across: `stories: [ story(...), ... ]` becomes `stories: { key:
+  story(...), ... }`, and the file ends `} satisfies Stories;` so a test's `stories.stories.<key>`
+  is checked; each `unproven` entry goes among the rest, under its key; `untold(record, sources)`
+  becomes `untold(stories, sources)`; a list read from `stories.stories` is `toldOf(stories)`.
+  Every example, the model's page and create-dzql's template follow.
+
 - **The starter is create-dzql's template now, not `examples/starter`** (20 October, Peter's
   decision: the two starters follow one pattern). `packages/dzql/examples/starter` is gone; the
   starter and create-dzql's skeleton are one app, `packages/create-dzql/template/`, laid out as a
@@ -242,6 +287,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **A test holds an app's documents the same way for either page** (`dzql/rendering/test-socket`,
+  20 October, root #121): `documentsOf(from)` is a test's client of an app's documents, as its
+  page reads them -- over delta's socket at a server's `/ws` (the light page's: give it the
+  server) or over the app's documents in this process (the thin client's: give it the store's
+  `delta`). `open(doc)` holds one (`value()`, kept current from what it is told; `send(ops)`,
+  answered as delta answers and resolved once its change is told back; `onOps`), `undo()` walks
+  the client's last write back, `close()` lets go. A test of a document written against it stays
+  as it is when the app moves its page to the server; the page itself is tested in a browser,
+  where both pages are the bento's HTML (`tests/rendering/documents-of.test.ts` runs one test both
+  ways). `openStore`'s `prepare` is given the data folder the store opens on, where a new database
+  finds the rows the app kept before.
+
 - **`registerDocs` on Postgres, one call as on SQLite** (`dzql/postgres`, 20 October, root #37):
   `await registerDocs(ws, pool, schema, docs, customDocs, options)` takes what delta's SQLite
   `registerDocs(ws, db, schema, docs, customDocs, options)` takes (`ledger`, `who`, `auth`, `owns`,
@@ -293,6 +350,35 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   for the CLI and the model's page).
 
 ### Fixed
+
+- **A tab moved through a resource that keeps no document is answered, not refused** (20 October,
+  found re-walking the evolve skill's thin-client step): a session with no row (the cookie is the
+  session) that says where a tab may stand moved the tab, then failed reading the version of a
+  document it does not have, so the write was answered `refused` and logged as failed. The echo
+  of nothing now reads the version as held, loaded first: none, 0 (`tests/rendering/server.test.ts`).
+
+- **On Postgres a write that is no list of ops, or holds one that is no op, is 400 in delta's
+  words** (20 October, found re-walking the thin-client step): `ops: "not ops"` was 500 ("ops must
+  be a JSON array") and `[null]` a pointer's error; they are "ops must be an array" and "An op is
+  an object: { op, path, value }", asked before anything else, as SQLite asks them.
+
+- **The stories resolve a path as delta does** (20 October, root #127): delta takes a single
+  document's root row by its id (`/messages/1/text`, through `message:1`) and as the document
+  holds it (`/messages/text`); the harness held a control to the second alone, and warned a page
+  that wrote the first ("message holds nothing at /messages/1/text to replace"), which the light
+  page writes. `asHeld(doc, path)` (`dzql/modelling/harness`) gives a path as the document holds
+  it, and the check of what a control writes and the search for a hidden verb read each path so.
+  So the light page's path carries to the thin client unchanged. A story still says the path its
+  page's control sends (the dzql-app skill's `controls.md`).
+
+- **An implied document not made yet is read as it stood as `open` reads it** (20 October, root
+  #120): the compiled `dzql_open_at__<doc>` answers its id and its columns' defaults, each included
+  collection empty, where it answered null, as delta's SQLite now does (delta's
+  `src/cases/path/implied.ts`, asked of dzql in `tests/delta`). So the stories' fresh render, which
+  reads storage (`open_at`), draws the page a server draws: a page reads `read(doc).<root>` with no
+  `?.` and no default said again in code (`tests/modelling/harness.test.ts`, the note not made
+  yet). The compiled text's snapshots change with it (`RETURN NULL` becomes the implied root in
+  `open_at`). Chat's session reads its row so (`session-api.ts`).
 
 - **A duplicate is refused in delta's words on Postgres** (19 October, the Shed's run 3): a write
   that breaks a unique constraint the schema says answered 409 with Postgres's message; it says

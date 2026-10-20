@@ -3,7 +3,7 @@ import type { Example } from "dzql/rendering/example";
 import { appOf, compose } from "dzql/rendering/server";
 import homepage from "./index.html";
 import { render } from "./page";
-import { delta, open, stories } from "./store";
+import { delta, store } from "./store";
 
 // Starter: the app is its routes and its resources. The server is delta's: `serve` puts these
 // routes and the socket on Bun.serve (with /health and a 404); `run`, at the bottom, is the process
@@ -20,9 +20,6 @@ import { delta, open, stories } from "./store";
 // makes them, `links.route` is the app's "/in/:token", and `startServer` prints `links.say(...)` as
 // it starts (the dzql-app skill's reference/signin.md). Passwords only if a story asks for them.
 
-// every resource has registered its documents (imported above): compile them, and open the listener
-await open();
-
 /** The page and its resources: one per document, and the page they draw. */
 export const app: Example = {
   name: "starter",
@@ -31,16 +28,16 @@ export const app: Example = {
   resources: [],
   render,
   active: () => false, // nobody writes anything yet
-  store: stories, // the stories begin and end each story on the store (./store.ts)
+  store, // opened as a server starts, closed as it stops; the stories begin and end each story on it (./store.ts)
 };
 
-/** The server: on `PORT` (3000), and with `--model` (`bun dev`) the model's page beside the app. */
-export async function startServer({ port = Number(process.env.PORT ?? 3000), model = process.argv.includes("--model") } = {}) {
+/** The server: on `PORT` (3000), its store in the data folder (`DATA_PATH`, a Railway volume, else data/), and with `--model` (`bun dev`) the model's page beside the app. */
+export async function startServer({ port = Number(process.env.PORT ?? 3000), model = process.argv.includes("--model"), dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data` } = {}) {
   // in development (`bun dev`), the model's page beside the app at /model; production never registers it
   const modelling = model && (await (await import("dzql/model")).modelRoute({ port: String(port) }));
   return serve(
     compose(
-      appOf(app), // "/", its socket "/ws", and the documents on it
+      await appOf(app, { dataDir }), // "/", its socket "/ws", and the documents on it: its store opened in the data folder, and closed as the server stops
       // what isn't communication is an HTTP route: { routes: { "/api/<name>": { GET: ... } } }, from its resource
       modelling,
     ),

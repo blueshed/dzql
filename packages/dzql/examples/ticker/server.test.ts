@@ -16,10 +16,10 @@ async function quotes(): Promise<MarketDocument> {
 
 // TICK_MS is read when resources/ticker.ts loads; the test script sets it to 0 (see package.json)
 // so the feed stays quiet and every tick here is the test's own.
-let server: ReturnType<typeof createServer>;
+let server: Awaited<ReturnType<typeof createServer>>;
 
-beforeAll(() => {
-  server = createServer(example, 0);
+beforeAll(async () => {
+  server = await createServer(example, 0);
 });
 
 afterAll(() => {

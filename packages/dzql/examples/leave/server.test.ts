@@ -10,10 +10,10 @@ import { session } from "./resources/session/session";
 import { db } from "./store";
 import { connectCli, runCommand } from "dzql/rendering/cli/commands";
 
-let server: ReturnType<typeof createServer>;
+let server: Awaited<ReturnType<typeof createServer>>;
 
-beforeAll(() => {
-  server = createServer(example, 0);
+beforeAll(async () => {
+  server = await createServer(example, 0);
 });
 
 afterAll(() => {

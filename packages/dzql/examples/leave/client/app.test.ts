@@ -3,10 +3,10 @@ import { press, urlFor, waitFor, webview } from "dzql/rendering/webview";
 import { createServer } from "dzql/rendering/server";
 import { app as example } from "../routes";
 
-let server: ReturnType<typeof createServer>;
+let server: Awaited<ReturnType<typeof createServer>>;
 
-beforeAll(() => {
-  server = createServer(example, 0);
+beforeAll(async () => {
+  server = await createServer(example, 0);
 });
 
 afterAll(() => {
