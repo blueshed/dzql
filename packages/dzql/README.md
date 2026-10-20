@@ -50,7 +50,7 @@ export const app: Example = {
 if (import.meta.main) await run(async () => serve(await appOf(app)));
 ```
 
-with the page it is drawn into, `index.html`:
+with the page it is drawn into, `index.html`, whose one script is the kernel's client:
 
 ```html
 <!doctype html>
@@ -58,15 +58,9 @@ with the page it is drawn into, `index.html`:
   <head><meta charset="utf-8" /><title>Message</title></head>
   <body>
     <main id="app">Connecting&hellip;</main>
-    <script type="module" src="./main.ts"></script>
+    <script type="module" src="dzql/rendering/client/app"></script>
   </body>
 </html>
-```
-
-and its one line of script, `main.ts`, the kernel's client:
-
-```ts
-import "dzql/rendering/client/app";
 ```
 
 ```sh

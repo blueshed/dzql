@@ -176,6 +176,20 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **An app with no applets and no tools has no `main.ts`** (20 October, root #37). Its
+  `index.html` loads the kernel's client itself, `<script type="module"
+  src="dzql/rendering/client/app"></script>` (Bun bundles a package's entry named there, in
+  development and in a build alike); a `main.ts` is kept only to register an app's applets or opt
+  into tools, the client imported last. The cafe's and create-dzql's template's `main.ts` are gone,
+  and the README's rendering app is two files; chat (tools), leave, ticker, wedding and the
+  model's page (applets) keep theirs. The dzql-app skill says it (`applets.md`, `example.md`,
+  `where-an-app-lives.md`). Nothing breaks: an app's `main.ts` that only imports the client may go
+  the same way, or stay.
+- **dzql's browser tests are on one kit, its own** (20 October, root #37): the README's browser
+  test moves from railroad's `browser()` to `dzql/rendering/webview` (Chrome, a host per window, a
+  press as a mouse makes one), as every other browser test of dzql's and its examples' is. railroad
+  stays a dev dependency, for `dzql/rendering/applet` alone, and no package needs another.
+
 - **Typing not yet sent is kept after the caret leaves it** (20 October, root #125). The morph
   kept what a field held only while someone was in it, so a save from another window drew over
   words typed and left in a box. Now a field (an input, a textarea) that differs from what was last

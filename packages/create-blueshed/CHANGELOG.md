@@ -140,6 +140,11 @@ section up.
 
 ### Changed
 
+- **The thin-client step writes no `main.ts`** (20 October, root #37; needs dzql's next release
+  only to match its starter): `src/index.html`'s script is dzql's client itself,
+  `<script type="module" src="dzql/rendering/client/app"></script>`, as `bun create dzql`'s
+  starter has it now; a `main.ts` comes with the first applet.
+
 - **railroad's keyed row is its fields** (20 October, railroad's #6): the template's `rowsOf`
   (`src/resources/bento.tsx`) still hands its `row` the row's signal, now render's third argument
   (`list(items, key, (_, _i, item$) => row(item$))`), so no caller changes; evolve's `auth.md`

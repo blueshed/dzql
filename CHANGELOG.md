@@ -6,6 +6,21 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The last of the code review's changes for Peter (20 October, root #37)
+
+Peter's word (20 October): finish the todo lists. Root #37's last two parts, and the item closed
+with where each of its parts went.
+
+- **An app with no applets and no tools has no `main.ts`** (dzql, create-dzql, create-blueshed):
+  its `index.html` loads `dzql/rendering/client/app` itself. The cafe, create-dzql's template,
+  dzql's README app and evolve's thin-client step have none; the apps with applets, and chat with
+  its tools, keep theirs.
+- **One browser test kit per package, not one for all** (dzql): railroad's `browser()` and dzql's
+  `dzql/rendering/webview` are two kits for two jobs (a page railroad draws, on the system's
+  browser; and Chrome, for the client's coverage, with a person per window and a mouse's press,
+  whose parts dzql's stories by hand ship with), and neither can take the other's without a new
+  requirement. dzql's one test on railroad's kit moves to its own.
+
 ### What still differed between the light page and the thin client, made one (20 October, roots #122-#126, #130)
 
 Peter's word (20 October): what the thin-client step still rewrote because the two clients

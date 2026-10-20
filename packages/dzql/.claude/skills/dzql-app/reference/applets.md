@@ -32,8 +32,11 @@ its writes named in `resources/team/team-view.ts`; and
 (`applets/city-picker-applet.tsx`).
 
 - An applet is not "the view for X": plain `data-write` HTML is the default.
-- Register it in `client/main.ts` before importing `dzql/rendering/client/app`. `client/index.html` has an
-  element with `id="app"`.
+- Register it in `client/main.ts` before importing `dzql/rendering/client/app`, and make `./main.ts`
+  `index.html`'s script. An app with no applets (and no tools, [assistants.md](assistants.md)) has no
+  `main.ts`: its `index.html` loads the kernel's client itself,
+  `<script type="module" src="dzql/rendering/client/app"></script>` (the cafe's). Either way
+  `index.html` has an element with `id="app"`.
 - Neither the morph nor a render in parts goes inside `[data-applet]`: the mount itself may be a
   part (its tag, its props), nothing inside it.
 - Split the drawing (`applets/<name>.ts` or the app's own module: pure, tested directly, run by the
