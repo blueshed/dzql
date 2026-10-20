@@ -1015,6 +1015,29 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.getElementById('text').value`)).toBe("second");
   });
 
+  test("Cmd+Enter or Ctrl+Enter in a textarea sends its form, as Enter does from a field of one line; Enter alone is a new line, and an editing form's textarea is left to the browser", async () => {
+    await using view = await open();
+    const note = `<form id="note" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><textarea id="body" name="text"></textarea></form>${words()}`;
+    await pushRender(view, note);
+    await view.click("#body");
+    await view.type("one");
+    await view.press("Enter");
+    await view.type("two");
+    await Bun.sleep(50);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(0); // a new line: nothing sent
+    await view.press("Enter", { modifiers: ["Meta"] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: "one\ntwo" }] });
+    expect(await view.evaluate<string>(`document.getElementById('body').value`)).toBe(""); // cleared as it sends, as a form is
+    await view.type("three");
+    await view.press("Enter", { modifiers: ["Control"] });
+    expect(await sentAt(view, 2)).toEqual({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: "three" }] });
+
+    await view.click("#words"); // its form says no write of its own: its fields do, as they are left
+    await view.press("Enter", { modifiers: ["Meta"] });
+    await Bun.sleep(50);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(2);
+  });
+
   test("a refused write keeps what is typed after it: its refusal ends the wait, so nobody's echo clears the field", async () => {
     await using view = await open();
     await pushRender(view, SAY);

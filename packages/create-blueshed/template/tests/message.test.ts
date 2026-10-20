@@ -12,7 +12,7 @@ import { stories } from "../stories";
 // The message document: held by a client in this process (documents.ts), and by the page in a
 // real browser (browser.ts). There is no HTTP for it: open it and you are subscribed, send to
 // change it. What is here is what any page of it does, light or drawn on the server, so it stays
-// as it is when the page moves to the server; what the light page alone does is message-view.test.ts.
+// as it is when the page moves to the server: its drawer, its saving and its refusals included.
 
 setDefaultTimeout(30_000); // first browser start can be slow
 
@@ -194,4 +194,14 @@ test(`${stories.stories.restarts.name} -- after the server restarts, the page ha
     await other.click(SAVE);
   });
   await waitFor(`document.querySelector("textarea")?.value === "changed while down!"`);
+});
+
+test(`${stories.stories.saves.name} -- Cmd+Enter, or Ctrl+Enter, in the box saves`, async () => {
+  for (const key of ["Meta", "Control"] as const) {
+    await openMessage();
+    await waitFor(`document.querySelector("textarea")?.value`);
+    await replaceText("textarea", `saved with ${key}+Enter`);
+    await view.press("Enter", { modifiers: [key] });
+    await waitFor(`document.querySelector(".cell[data-key=message] .cell-summary")?.textContent === "saved with ${key}+Enter"`);
+  }
 });

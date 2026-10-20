@@ -303,6 +303,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **Cmd+Enter or Ctrl+Enter in a textarea sends its form** (20 October, root #124): the client
+  submits a `data-write` form from a textarea on either, as a field of one line submits on Enter;
+  Enter alone is a new line, and an editing form's textarea (`data-write-on`, its fields writing)
+  is left to the browser. The light page's message did it with a handler of its own; now a page
+  the server draws does it with none (`tests/rendering/client/app.test.ts`).
+
 - **A test holds an app's documents the same way for either page** (`dzql/rendering/test-socket`,
   20 October, root #121): `documentsOf(from)` is a test's client of an app's documents, as its
   page reads them -- over delta's socket at a server's `/ws` (the light page's: give it the

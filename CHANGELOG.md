@@ -18,6 +18,8 @@ differ, fixed where each differs.
   Undo, which its test presses.
 - **A store's refusal says why** (#123, dzql): any 4xx is told beside the control, in the
   guards' words, the resource's (`refused`), or delta's; the step's message says Not saved again.
+- **Cmd+Enter or Ctrl+Enter sends a form from its textarea** (#124, dzql's client): the `saves`
+  story keeps its words, and the template's `message-view.test.ts` goes.
 
 ### The traps delta's examples found, removed (20 October, delta #88-#91)
 

@@ -4,11 +4,11 @@ When the page should be drawn where the documents are: many people at once, slow
 
 **What stays:** the documents' definitions, their paths and the history of migrations; the rows, in the same data folder (`DATA_PATH`, else `data/`), and the rows kept before; `startServer({ port, dev, dataDir })`, which opens the store as the server starts and closes it as it stops; the HTTP route (`/api/status`); the look; `stories.ts`, each story under its key, a few gaining a body on their own line; and the tests of a document (`documents.ts` says where they are held) and of the page in a browser (both pages are the bento's HTML): `site.test.ts`, `message.test.ts`, `order.test.ts`, `kitchen.test.ts` and the moves'.
 
-**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; `orderDocs` becomes the store every document is in (`store.ts`). And the tests of what the light page alone did (`app.test.ts`, `message-view.test.ts`): the first becomes the thin page's, the second goes.
+**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; `orderDocs` becomes the store every document is in (`store.ts`). And the test of what the light page alone did (`app.test.ts`), which becomes the thin page's.
 
 ```sh
 rm src/app.tsx src/resources/bento.tsx src/resources/toast.ts src/resources/status/status.ts src/resources/status/status-view.tsx src/resources/message/message-view.tsx src/resources/order/order-view.tsx
-rm tests/bento.test.ts tests/bento-page.tsx tests/bento-page.html tests/app.test.ts tests/message-view.test.ts
+rm tests/bento.test.ts tests/bento-page.tsx tests/bento-page.html tests/app.test.ts
 ```
 
 ## The documents, and the store
@@ -452,11 +452,6 @@ follows: story("Anyone who opens the page sees the message, and a change made an
 ```
 
 ```ts
-// stories.ts: in place of saves: story(
-saves: story("Saving (the button) says Saved once the server has it, and the message is still there after a reload."),
-```
-
-```ts
 // stories.ts: in place of health: story(
 health: story("The health check answers ok, and an unknown page opens on the box."),
 ```
@@ -534,7 +529,7 @@ test(`${stories.stories.health.name} -- a page that is not one opens on the box`
 Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md, sqlite.md and postgres.md) and runs its type check and tests (`bun run test:evolve`).
 
 - `bun run stories` says each story; `STORY_BY_HAND=1 bun run stories` does each with the page's own controls, in a browser the size of a phone.
-- **What changed for the people using it**, each by where it is drawn: Saved is said beside the box, not in a toast; Not saved is said beside the box, where it was a toast too; Cmd+Enter does not save (the box saves by its button); typing not yet saved is kept while the caret is in the box; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
+- **What changed for the people using it**, each by where it is drawn: Saved is said beside the box, not in a toast; Not saved is said beside the box, where it was a toast too; typing not yet saved is kept while the caret is in the box; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
 - **The session:** nobody signs in, so the cookie is the session and no row is kept by it (`Example.session` left out). Sign-in by link, a session kept as a row (`sessionRows`), is dzql-app's `signin.md`; delta's `auth-link` ([auth.md](auth.md)) is for a page that is delta's client, not this one.
 - **The store is the server's**, as `orderDocs`'s was: opened as it starts, on its data folder, and closed as it stops, so a test runs servers on folders of its own, and `bun dev`'s reload closes the last store before it opens the next (its ids carry on).
 - From here the app grows with `dzql-app`; the other references here are the light page's. `CLAUDE.md` and `README.md` still describe the light page: say the thin one, as create-dzql's do.
