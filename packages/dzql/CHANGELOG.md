@@ -25,6 +25,20 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **The stories are keyed, one form in both starters** (`dzql/modelling/stories`, 20 October,
+  root #118). `Stories.stories` is a record, each story under a key of its own, in the order told:
+  one with a body the harness tells, one with none yet (`story(name)`) a test of the app tells,
+  named from its key. `Stories.unproven` is gone, and `untold(stories, sources)` takes the
+  `Stories` and checks only the stories with no body. So a paintbrush app's stories.ts is the file
+  the harness reads, and a story gaining its body is the same line, under the same key: no test is
+  renamed. `toldOf(stories)` and `unprovenOf(stories)` give the two kinds as lists; `hasBody`
+  tells one from the other. The harness's counts are unchanged (`bun run stories:all`: 24, 14, 25,
+  17, 22 and 14). To move across: `stories: [ story(...), ... ]` becomes `stories: { key:
+  story(...), ... }`, and the file ends `} satisfies Stories;` so a test's `stories.stories.<key>`
+  is checked; each `unproven` entry goes among the rest, under its key; `untold(record, sources)`
+  becomes `untold(stories, sources)`; a list read from `stories.stories` is `toldOf(stories)`.
+  Every example, the model's page and create-dzql's template follow.
+
 - **The starter is create-dzql's template now, not `examples/starter`** (20 October, Peter's
   decision: the two starters follow one pattern). `packages/dzql/examples/starter` is gone; the
   starter and create-dzql's skeleton are one app, `packages/create-dzql/template/`, laid out as a

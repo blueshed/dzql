@@ -77,7 +77,7 @@ export const migrations = [
 The page and its test are as they were. The kitchen and undo are stories of their own:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // The kitchen
   kitchen: story("The kitchen sees every open order: a line added to any order, or changed, reaches it."),
   undo: story("Undo takes back your last change, wherever it shows."),
@@ -118,21 +118,21 @@ async function until(done: () => boolean) {
   expect(done()).toBe(true);
 }
 
-test(`${stories.kitchen.name} -- a line added to either of two orders`, async () => {
+test(`${stories.stories.kitchen.name} -- a line added to either of two orders`, async () => {
   await first.send([{ op: "add", path: "/lines/-", value: { item: 1 } }]);
   await second.send([{ op: "add", path: "/lines/-", value: { item: 2 } }]);
   await until(() => kitchenLines().length === 2);
   expect(kitchenLines()).toEqual([[1, 1], [2, 2]]);
 });
 
-test(`${stories.undo.name} -- this client's last line goes from the kitchen and from its order`, async () => {
+test(`${stories.stories.undo.name} -- this client's last line goes from the kitchen and from its order`, async () => {
   await client.send({ action: "undo" });
   await until(() => kitchenLines().length === 1);
   expect(kitchenLines()).toEqual([[1, 1]]);
   expect(second.data.peek()!.lines).toEqual({});
 });
 
-test(`${stories.kitchen.name} -- a line changed is told as the field that changed, not the row`, async () => {
+test(`${stories.stories.kitchen.name} -- a line changed is told as the field that changed, not the row`, async () => {
   const told: DeltaOp[][] = [];
   const stop = kitchen.onOps((ops) => told.push(ops));
   const [line] = Object.values(first.data.peek()!.lines);
@@ -146,7 +146,7 @@ test(`${stories.kitchen.name} -- a line changed is told as the field that change
 What people ordered before the move is there after it:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // The move
   moved: story("The orders people made are still there after the app moves its documents to the next store."),
 ```
@@ -165,7 +165,7 @@ import { stories } from "../stories";
 const dataDir = mkdtempSync(`${tmpdir()}/order-move-`);
 afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
 
-test(`${stories.moved.name} -- from the JSON file to SQLite: order 1, a tea and a cake`, async () => {
+test(`${stories.stories.moved.name} -- from the JSON file to SQLite: order 1, a tea and a cake`, async () => {
   importTables(`${dataDir}/order.json`, schema, {
     tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }], orders: [{ id: 1 }], lines: [{ id: 1, orders_id: 1, item: 1 }, { id: 2, orders_id: 1, item: 2 }] },
   });

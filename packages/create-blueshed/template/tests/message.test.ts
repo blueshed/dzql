@@ -83,7 +83,7 @@ test("waiting for the page gives up, saying what it waited for", async () => {
   await expect(waitFor("false", 100)).rejects.toThrow("Timed out waiting for: false");
 });
 
-test(`${stories.follows.name} -- the message is on the box and in its drawer, and a change made anywhere else shows in both`, async () => {
+test(`${stories.stories.follows.name} -- the message is on the box and in its drawer, and a change made anywhere else shows in both`, async () => {
   await open();
   await waitFor(`document.querySelector(".cell[data-key=message] .cell-summary")?.textContent === "Hello"`);
   await openMessage();
@@ -103,7 +103,7 @@ test("the drawer goes as it came: its ×, Escape, or Back, and the box behind is
   }
 });
 
-test(`${stories.saves.name} -- saving says Saved once the server has it, and the message survives a reload`, async () => {
+test(`${stories.stories.saves.name} -- saving says Saved once the server has it, and the message survives a reload`, async () => {
   await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "changed elsewhere"`);
   await replaceText("textarea", "typed in the browser");
@@ -114,7 +114,7 @@ test(`${stories.saves.name} -- saving says Saved once the server has it, and the
   await waitFor(`document.querySelector("textarea")?.value === "typed in the browser"`);
 });
 
-test(`${stories.refused.name} -- a save the server refuses says Not saved`, async () => {
+test(`${stories.stories.refused.name} -- a save the server refuses says Not saved`, async () => {
   await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "typed in the browser"`);
   await refuseWrites();
@@ -122,7 +122,7 @@ test(`${stories.refused.name} -- a save the server refuses says Not saved`, asyn
   await waitFor(`document.querySelector(".toast.show.alert")?.textContent === "Not saved"`);
 });
 
-test(`${stories.saves.name} -- Cmd+Enter, or Ctrl+Enter, in the box saves`, async () => {
+test(`${stories.stories.saves.name} -- Cmd+Enter, or Ctrl+Enter, in the box saves`, async () => {
   for (const key of ["Meta", "Control"] as const) {
     await openMessage();
     await waitFor(`document.querySelector("textarea")?.value`);
@@ -134,7 +134,7 @@ test(`${stories.saves.name} -- Cmd+Enter, or Ctrl+Enter, in the box saves`, asyn
   await waitFor(`document.querySelector("textarea")?.value === "saved with Control+Enter"`);
 });
 
-test(`${stories.follows.name} -- a save shows in another window, and so does that window's save afterwards`, async () => {
+test(`${stories.stories.follows.name} -- a save shows in another window, and so does that window's save afterwards`, async () => {
   await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "saved with Control+Enter"`);
   await withOtherWindow(async (other, waitForOther) => {
@@ -152,7 +152,7 @@ test(`${stories.follows.name} -- a save shows in another window, and so does tha
   });
 });
 
-test(`${stories.refused.name} -- typing that is not saved is not overwritten by another window's save`, async () => {
+test(`${stories.stories.refused.name} -- typing that is not saved is not overwritten by another window's save`, async () => {
   await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "from the first!"`);
   await replaceText("textarea", "half-typed");
@@ -168,7 +168,7 @@ test(`${stories.refused.name} -- typing that is not saved is not overwritten by 
   expect(await view.evaluate<string>(`document.querySelector("textarea").value`)).toBe("half-typed");
 });
 
-test(`${stories.restarts.name} -- after the server restarts, the page has what changed meanwhile and follows again`, async () => {
+test(`${stories.stories.restarts.name} -- after the server restarts, the page has what changed meanwhile and follows again`, async () => {
   await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "from the first!?"`);
 

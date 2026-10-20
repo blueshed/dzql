@@ -59,7 +59,7 @@ A row an `up` adds takes its id from `nextId`, the collection's serial, never fr
 Its story:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // The upgrade
   upgrade: story("Orders made before an upgrade are there after it, a line per item with how many."),
 ```
@@ -113,11 +113,11 @@ async function orderLines() {
   }
 }
 
-test(`${stories.upgrade.name} -- an order kept by version one, started on version two`, async () => {
+test(`${stories.stories.upgrade.name} -- an order kept by version one, started on version two`, async () => {
   expect(await orderLines()).toEqual([[1, 1, 2], [3, 2, 1]]);
 });
 
-test(`${stories.upgrade.name} -- a migration runs once: started again, the order is as it was and nothing is pending`, async () => {
+test(`${stories.stories.upgrade.name} -- a migration runs once: started again, the order is as it was and nothing is pending`, async () => {
   expect(await orderLines()).toEqual([[1, 1, 2], [3, 2, 1]]);
   const db = new Database(`${dataDir}/app.db`);
   const status = await migrationStatus(db, history, { app: "order", schema });

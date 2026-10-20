@@ -68,7 +68,7 @@ closing.push(await orderDocs(ws, dataDir));
 A server stopped and started again carries on where it was:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // Postgres
   carriesOn: story("After the server stops and starts again, an order carries on where it was."),
 ```
@@ -102,7 +102,7 @@ async function addLine(item: number) {
   }
 }
 
-test(`${stories.carriesOn.name} -- started on a data folder not there yet, stopped and started again`, async () => {
+test(`${stories.stories.carriesOn.name} -- started on a data folder not there yet, stopped and started again`, async () => {
   expect(existsSync(dataDir)).toBe(false);
   expect(await addLine(1)).toEqual([1]);
   expect(await addLine(2)).toEqual([1, 2]);
@@ -126,7 +126,7 @@ import { stories } from "../stories";
 const dataDir = mkdtempSync(`${tmpdir()}/order-pg-move-`);
 afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
 
-test(`${stories.moved.name} -- from SQLite to Postgres: order 1, a cake`, async () => {
+test(`${stories.stories.moved.name} -- from SQLite to Postgres: order 1, a cake`, async () => {
   const db = new Database(`${dataDir}/app.db`, { create: true });
   await migrate(db, await fromFolder(`${import.meta.dir}/../src/resources/order/migrations`), { app: "order", schema });
   importTables(db, schema, { tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }], orders: [{ id: 1 }], lines: [{ id: 1, orders_id: 1, item: 2 }] } });

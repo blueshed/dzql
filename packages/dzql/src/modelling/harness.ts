@@ -5,7 +5,7 @@ import { hear, type Heard, type HeardOp } from "../rendering/resources/render";
 // a page as the browser keeps it is rendering's; said here too, as the stories hold pages so
 export { hear, type Heard };
 import { createServer } from "../rendering/server";
-import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
+import { isPost, STORY_KEYS, toldOf, unprovenOf, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
 import { isTest, isVerb, walked, type PatchOp, type WriteId } from "../rendering/json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "../rendering/documents";
 import { onFailure } from "../rendering/failed";
@@ -57,7 +57,7 @@ export type Trace = {
 };
 /** What the stories found that does not fail them: what props cost (`propsCost`), each kind for each applet once, in the first story that sent it; a control the wire refuses, on the page it was first drawn on (`miswritten`); and a permit wider than its stories (`hiddenVerbs`), by the document it is on. */
 export type Warning = { story: string; says: string };
-export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand; /** The stories with no body yet (`Stories.unproven`): a test of the app tells each. */ unproven?: string[] };
+export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand; /** The stories with no body yet (`story(name)`, no body): a test of the app tells each. */ unproven?: string[] };
 
 /** The stories done by hand in a browser (`byHand`, or a story's own `gesture`): how many, how many presses (a button pressed, a form typed into and sent, a drag), how many writes sent as an applet declares them, and how long it took. */
 export type ByHand = { stories: number; presses: number; applets: number; ms: number };
@@ -1165,13 +1165,13 @@ async function refusedBy(r: Run, m: Member, write: Write): Promise<string> {
 async function hiddenVerbs(r: Run): Promise<Warning[]> {
   const found = new Map<string, Map<string, string[]>>(); // document → verb → who may
   // what goTo writes is the URL bar's, anyone's: for each place a story names
-  const places = r.stories.stories.flatMap((s) => [s.from, s.opensTab, ...(s.seen && !Array.isArray(s.seen) ? Object.values(s.seen) : [])]);
+  const places = toldOf(r.stories).flatMap((s) => [s.from, s.opensTab, ...(s.seen && !Array.isArray(s.seen) ? Object.values(s.seen) : [])]);
   const anyone = r.stories.goTo ? ["", ...places].filter((p) => typeof p === "string").map(r.stories.goTo) : [];
   /** Is `n` who is asked about: `name`, or anyone when it names none? */
   const whose = (n: string, name?: string): boolean => name === undefined || n === name;
   /** Each op on `doc` the stories tell `name` (anyone, with none), and each a page of theirs offered. */
   const toldTo = (doc: string, name?: string): { op: string; path: string; value?: unknown; pattern?: true }[] => {
-    const writes = [...anyone, ...Object.entries(r.stories.cast).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...r.stories.stories.flatMap((s) => [...Object.entries(s.premise ?? {}).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...(whose(s.as, name) ? [writeOf(s)] : [])])];
+    const writes = [...anyone, ...Object.entries(r.stories.cast).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...toldOf(r.stories).flatMap((s) => [...Object.entries(s.premise ?? {}).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...(whose(s.as, name) ? [writeOf(s)] : [])])];
     return [...writes.flatMap((w) => (w && sameDoc(w.doc, doc) ? w.ops : [])), ...[...r.met].flatMap(([n, { offered }]) => (whose(n, name) ? [...offered.values()].filter((c) => sameDoc(c.doc, doc)) : []))];
   };
   await r.store.begin();
@@ -1256,7 +1256,7 @@ export async function run(
   try {
     const only = process.env.STORY; // run only the stories whose name contains this
     const told: { story: Story; outcome: Outcome }[] = [];
-    for (const story of stories.stories) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(r, story) });
+    for (const story of toldOf(stories)) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(r, story) });
     // a cast that cannot sign in fails every story, said; there is nowhere to walk, nothing to press
     const unsigned = told.some(({ outcome }) => outcome.failures.some((f) => / could not sign in at /.test(f)));
     if (unsigned) outcomes.push(...told.map(({ outcome }) => outcome));
@@ -1292,7 +1292,7 @@ export async function run(
     tapped.close();
   }
   const failed = outcomes.filter((o) => o.failures.length > 0).length;
-  const unproven = (stories.unproven ?? []).map((s) => s.name);
+  const unproven = unprovenOf(stories).map((s) => s.name);
   return { outcomes, passed: outcomes.length - failed, failed, ...(unproven.length > 0 && { unproven }), ...(r.warned.size + r.miswired.size + hidden.length > 0 && { warnings: [...r.warned.values(), ...r.miswired.values(), ...hidden] }), ...(byHandTally && { byHand: byHandTally }) };
 
 }

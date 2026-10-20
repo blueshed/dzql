@@ -16,7 +16,7 @@ const city = (tz: string): Write => ({ doc: "clock", ops: [{ op: "replace", path
 /** Where someone stands, as one write to the desk (`goTo`, src/modelling/stories.ts). */
 const goTo = goToOn("desk");
 
-export const stories: Stories = {
+export const stories = {
   cast: {
     ann: [watch("ALPH"), watch("BRVO")],
     bo: [watch("BRVO"), goTo("board")], // on his board, where only what he watches moves
@@ -24,30 +24,30 @@ export const stories: Stories = {
     fresh: [goTo("board")], // just arrived: an empty watchlist, the default city
   },
   goTo,
-  stories: [
+  stories: {
     // ── A watchlist is one person's ──
-    story("Ann watches Charlie Metals, and only her board grows", { as: "ann", from: "board?new", does: watch("CHRL"), seen: ["ann"] }),
-    story("Ann, on her board, watches Charlie Metals, and it joins the board in front of her", { as: "ann", from: "board?new", does: watch("CHRL"), seen: { ann: "board" } }),
-    story("Ann drops Alpha, and her board loses a row", { as: "ann", from: "market?confirm=ALPH", does: drop(0), seen: ["ann"] }),
-    story("Ann cannot watch a symbol the market does not quote, and is told so", { as: "ann", from: "board?new", cannot: watch("ZZZZ"), told: "The market does not quote ZZZZ." }),
-    story("Ann cannot watch Alpha twice, and is told it is on her board", { as: "ann", from: "board?new", cannot: watch("ALPH"), told: "ALPH is on your board already." }),
-    story("Ann cannot drop a row she does not have", { as: "ann", cannot: drop(5) }),
+    annWatchesCharlie: story("Ann watches Charlie Metals, and only her board grows", { as: "ann", from: "board?new", does: watch("CHRL"), seen: ["ann"] }),
+    annBoardWatches: story("Ann, on her board, watches Charlie Metals, and it joins the board in front of her", { as: "ann", from: "board?new", does: watch("CHRL"), seen: { ann: "board" } }),
+    annDropsAlpha: story("Ann drops Alpha, and her board loses a row", { as: "ann", from: "market?confirm=ALPH", does: drop(0), seen: ["ann"] }),
+    annCannotWatchSymbol: story("Ann cannot watch a symbol the market does not quote, and is told so", { as: "ann", from: "board?new", cannot: watch("ZZZZ"), told: "The market does not quote ZZZZ." }),
+    annCannotWatchAlpha: story("Ann cannot watch Alpha twice, and is told it is on her board", { as: "ann", from: "board?new", cannot: watch("ALPH"), told: "ALPH is on your board already." }),
+    annCannotDropRow: story("Ann cannot drop a row she does not have", { as: "ann", cannot: drop(5) }),
 
     // ── The market is everyone's, through the applet ──
-    story("Bravo ticks, and every board watching it moves; nobody's page is rendered", { as: "feed", offPage: true, does: tick("BRVO", 65.01), seen: ["ann", "bo"] }),
-    story("Alpha ticks, and Bo, not watching it, notices nothing", { as: "feed", offPage: true, does: tick("ALPH", 190.0), seen: ["ann"] }),
-    story("A tick is never undone: it stays on the ledger and Undo passes over it", { as: "feed", offPage: true, does: tick("BRVO", 63.5), seen: ["ann", "bo"] }),
-    story("Nobody can invent a symbol from the wire", { as: "feed", cannot: tick("ZZZZ", 1) }),
-    story("A price cannot be taken away, only moved", { as: "feed", cannot: { doc: "ticker", ops: [{ op: "remove", path: "/BRVO/price" }] } }),
+    bravoTicksBoard: story("Bravo ticks, and every board watching it moves; nobody's page is rendered", { as: "feed", offPage: true, does: tick("BRVO", 65.01), seen: ["ann", "bo"] }),
+    alphaTicksBo: story("Alpha ticks, and Bo, not watching it, notices nothing", { as: "feed", offPage: true, does: tick("ALPH", 190.0), seen: ["ann"] }),
+    tickNeverUndone: story("A tick is never undone: it stays on the ledger and Undo passes over it", { as: "feed", offPage: true, does: tick("BRVO", 63.5), seen: ["ann", "bo"] }),
+    noInventedSymbol: story("Nobody can invent a symbol from the wire", { as: "feed", cannot: tick("ZZZZ", 1) }),
+    priceStays: story("A price cannot be taken away, only moved", { as: "feed", cannot: { doc: "ticker", ops: [{ op: "remove", path: "/BRVO/price" }] } }),
 
     // ── A clock is one person's, and nothing crosses the wire but the city ──
-    story("Ann sets her clock to Tokyo, and only her clock's face changes", { as: "ann", from: "?clock", does: city("Asia/Tokyo"), seen: ["ann"] }),
-    story("A newcomer's clock shows the default city until they choose", { as: "fresh", from: "?clock", does: city("America/Vancouver"), seen: ["fresh"] }),
-    story("Ann cannot set her clock to a city nobody has", { as: "ann", from: "?clock", cannot: city("Mars/Olympus") }),
+    annSetsClock: story("Ann sets her clock to Tokyo, and only her clock's face changes", { as: "ann", from: "?clock", does: city("Asia/Tokyo"), seen: ["ann"] }),
+    newcomerClockShows: story("A newcomer's clock shows the default city until they choose", { as: "fresh", from: "?clock", does: city("America/Vancouver"), seen: ["fresh"] }),
+    annCannotSetClock: story("Ann cannot set her clock to a city nobody has", { as: "ann", from: "?clock", cannot: city("Mars/Olympus") }),
 
     // ── Where you stand decides what you see ──
-    story("Bravo ticks; Ann, reading her board as a list, and Bo, in the market, each see the row move", { as: "feed", offPage: true, does: tick("BRVO", 66.6), seen: { ann: "board @ reading.board=list", bo: "market" } }),
-    story("Bravo ticks while Ann has its drawer open: her drawer says how it moved, and so does Bo's board", { as: "feed", offPage: true, does: tick("BRVO", 66.7), seen: { ann: "market?symbol=BRVO", bo: "board" } }),
-    story("Nobody can go to a window the desk does not have", { as: "ann", cannot: goTo("attic") }),
-  ],
-};
+    bravoTicksListAndMarket: story("Bravo ticks; Ann, reading her board as a list, and Bo, in the market, each see the row move", { as: "feed", offPage: true, does: tick("BRVO", 66.6), seen: { ann: "board @ reading.board=list", bo: "market" } }),
+    bravoTicksDrawer: story("Bravo ticks while Ann has its drawer open: her drawer says how it moved, and so does Bo's board", { as: "feed", offPage: true, does: tick("BRVO", 66.7), seen: { ann: "market?symbol=BRVO", bo: "board" } }),
+    noSuchWindow: story("Nobody can go to a window the desk does not have", { as: "ann", cannot: goTo("attic") }),
+  },
+} satisfies Stories;

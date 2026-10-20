@@ -21,7 +21,7 @@ if (!(await Bun.file(storiesIn(dir)).exists())) {
 const { stories } = (await import(storiesIn(dir))) as { stories: Stories };
 const example = await appIn(dir);
 if (!example) {
-  console.log(`${at} has ${stories.stories.length} stories and no app yet (no routes.ts): build the least that makes the first one pass -- the dzql-app skill says how.`);
+  console.log(`${at} has ${Object.keys(stories.stories).length} stories and no app yet (no routes.ts): build the least that makes the first one pass -- the dzql-app skill says how.`);
   process.exit(1);
 }
 

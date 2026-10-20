@@ -118,7 +118,7 @@ OrderCell(),
 Its story, and its test, as in [testing.md](testing.md); the page passes it on SQLite and Postgres too:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // The order
   ordering: story("Someone ordering has the catalogue and their order on one page, with its total, and what one window orders shows in another."),
 ```
@@ -149,7 +149,7 @@ const ORDER = `.cell[data-key="your-order"]`;
 const shown = (cell: string) => `[...document.querySelectorAll('${cell} .rows .what')].map((w) => w.textContent.trim()).join(", ")`;
 const total = (amount: string) => `document.querySelector('${ORDER} .row.total .state')?.textContent === "${amount}"`;
 
-test(`${stories.ordering.name} -- two windows order and remove`, async () => {
+test(`${stories.stories.ordering.name} -- two windows order and remove`, async () => {
   await open();
   await waitFor(`${shown(CATALOGUE)} === "Tea, Cake"`); // the catalogue is drawn
   await withOtherWindow(async (other, waitForOther) => {

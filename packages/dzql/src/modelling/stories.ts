@@ -174,8 +174,8 @@ export type Told = {
 export type Story = { name: string } & Told;
 
 /**
- * A story with no body yet: its sentence, which a test of the app tells (named from it) until the
- * harness can. The harness reports it unproven, never failed.
+ * A story with no body yet: its sentence, which a test of the app tells (named from its key) until
+ * the harness can. The harness reports it unproven, never failed.
  */
 export type Unproven = { name: string; as?: undefined };
 
@@ -201,10 +201,23 @@ export type Stories = {
   goTo?: (address: string) => Write;
   /** The most bytes any story may hand any one member's page, as a story's own `budget` says it; a story with its own is held to that instead. */
   budget?: number;
-  stories: Story[];
-  /** The stories with no body yet, which tests of the app tell until the harness can: said unproven, never failed. */
-  unproven?: Unproven[];
+  /**
+   * The stories, each under a key of its own, in the order told. One with a body (`story(name,
+   * body)`) the harness tells; one with none yet (`story(name)`) a test of the app tells, named
+   * from its key (`test(\`${stories.stories.saves.name} -- ...\`)`), until it gains one: the same
+   * line, under the same key, so no test's name changes. The harness says it unproven, never failed.
+   */
+  stories: Record<string, Story | Unproven>;
 };
+
+/** Does this story have a body the harness tells: anything beside its sentence? */
+export const hasBody = (s: Story | Unproven): s is Story => Object.keys(s).some((key) => key !== "name");
+
+/** The stories the harness tells: each with a body, in the order told. */
+export const toldOf = (stories: Stories): Story[] => Object.values(stories.stories).filter(hasBody);
+
+/** The stories with no body yet, which tests of the app tell until the harness can. */
+export const unprovenOf = (stories: Stories): Unproven[] => Object.values(stories.stories).filter((s) => !hasBody(s));
 
 /**
  * The write that puts a person at an address, for `Stories.goTo`: the page's address as `doc`'s
@@ -230,12 +243,12 @@ export function story(name: string, body?: Told): Story | Unproven {
 }
 
 /**
- * The stories no test tells: each one's key in `named` that no source names as `.<key>` (a test
- * takes its name from its story: `test(stories.saves.name, ...)`). For an app whose stories are
- * told by its own tests, so a story cannot be dropped or renamed away from its test unseen.
+ * The stories no test tells: each with no body yet whose key no source names as `.<key>` (a test
+ * takes its name from its story: `test(stories.stories.saves.name, ...)`). One with a body is the
+ * harness's to tell. So a story cannot be dropped or renamed away from its test unseen.
  */
-export function untold(named: Record<string, { name: string }>, sources: string[]): string[] {
-  return Object.entries(named).filter(([key]) => !sources.some((s) => new RegExp(`\\.${key}\\b`).test(s))).map(([, s]) => s.name);
+export function untold(stories: Stories, sources: string[]): string[] {
+  return Object.entries(stories.stories).filter(([key, s]) => !hasBody(s) && !sources.some((src) => new RegExp(`\\.${key}\\b`).test(src))).map(([, s]) => s.name);
 }
 
 /** A story's write on the wire: its `does` or its `cannot`; none for a post, or a tab opening or closing. */

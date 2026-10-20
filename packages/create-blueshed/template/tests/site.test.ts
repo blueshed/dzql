@@ -64,7 +64,7 @@ async function spawnServer(cmd: string[], env: Record<string, string> = {}) {
 
 // --- The routes (each resource's are in its own test file) ---
 
-test(`${stories.volume.name} -- GET /api/status answers what the server knows, but not where its data is`, async () => {
+test(`${stories.stories.volume.name} -- GET /api/status answers what the server knows, but not where its data is`, async () => {
   const status = await (await api("/api/status")).json();
   expect(status).toEqual({ persistent: false, uptime: expect.any(Number), bun: Bun.version });
 
@@ -76,7 +76,7 @@ test(`${stories.volume.name} -- GET /api/status answers what the server knows, b
   }
 });
 
-test(`${stories.health.name} -- healthcheck answers ok`, async () => {
+test(`${stories.stories.health.name} -- healthcheck answers ok`, async () => {
   expect(await (await api("/health")).text()).toBe("ok");
 });
 
@@ -107,7 +107,7 @@ test("the status line is shown", async () => {
   expect(await view.evaluate<string>(`document.querySelector("#status .help").textContent`)).toContain("ephemeral");
 });
 
-test(`${stories.volume.name} -- with DATA_PATH set, the status line says the data is on a mounted volume`, async () => {
+test(`${stories.stories.volume.name} -- with DATA_PATH set, the status line says the data is on a mounted volume`, async () => {
   process.env.DATA_PATH = dataDir; // what a Railway volume sets
   try {
     await open();
@@ -128,7 +128,7 @@ test("a status that cannot be loaded says so", async () => {
   await waitFor(`document.body.textContent.includes("The status could not be loaded.")`);
 });
 
-test(`${stories.health.name} -- a page that is not found links home`, async () => {
+test(`${stories.stories.health.name} -- a page that is not found links home`, async () => {
   await open();
   await view.evaluate(`location.hash = "#/nowhere"`);
   await waitFor(`document.body.textContent.includes("Page not found!")`);

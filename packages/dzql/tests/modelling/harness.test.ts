@@ -15,7 +15,8 @@ import type { Example } from "../../src/rendering/example";
 import { size } from "../../src/modelling/costs";
 import { anyOne, controlsOn, goesTo, hear, holding, holds, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, writesOn, type Outcome, type Report, type Trace, type Wire } from "../../src/modelling/harness";
 import { comparable, diff, drawParts, part, splitTag } from "../../src/rendering/parts";
-import { post, story, untold, type Stories, type Story } from "../../src/modelling/stories";
+import { post, story, toldOf, untold, type Stories, type Story } from "../../src/modelling/stories";
+import { keyed } from "./keyed";
 import { serverWrite } from "../../src/rendering/documents";
 import { refuse, tell, toldAt } from "../../src/rendering/refusal";
 
@@ -36,7 +37,7 @@ const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, p
 /** What the types refuse, as a story file that is not type-checked says it. */
 const misshapen = (story: object) => story as Story;
 /** Every failure of `told`, told among `of`'s cast (chat's, unless it says). */
-const failuresOf = async (broken: Example, told: Story[], of: Stories = stories): Promise<string[]> => (await run(broken, { ...of, stories: told })).outcomes.flatMap((o) => o.failures);
+const failuresOf = async (broken: Example, told: Story[], of: Stories = stories): Promise<string[]> => (await run(broken, { ...of, stories: keyed(told)})).outcomes.flatMap((o) => o.failures);
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
 // cast's setup shared by all. What each story finds is the example's business (a failing story is
@@ -44,7 +45,7 @@ const failuresOf = async (broken: Example, told: Story[], of: Stories = stories)
 // stories, by name, is run in src/by-hand.test.ts, by hand too.
 describe("stories harness", () => {
   describe("a story's cost on the wire", () => {
-    const pick = (start: string) => stories.stories.find((s) => s.name.startsWith(start))!;
+    const pick = (start: string) => toldOf(stories).find((s) => s.name.startsWith(start))!;
     const [hello, take, close] = [{ ...pick("Ada says hello"), budget: undefined }, pick("Nobody can take"), pick("Bob closes his tab")]; // hello's own budget aside: each test says its own
     /** What a budget says of each page handed more than it, on each step of a story: its write (or refusal, or tab closing), then its undo, then its redo. */
     const failing = (o: Outcome, whose: string, budget: number, step = "write") =>
@@ -54,7 +55,7 @@ describe("stories harness", () => {
 
     test("an observer is told each write as the wire carried it: who heard what, and what the ledger took; and each member's page is handed what the story's own step sent it, as the page takes it and as it crossed the wire, beside the write's own size, with its biggest part named", async () => {
       const traces: Trace[] = [];
-      const report = await run(example, { cast: stories.cast, stories: [hello, take, close] }, (t) => traces.push(t));
+      const report = await run(example, { cast: stories.cast, stories: keyed([hello, take, close]) }, (t) => traces.push(t));
       expect(report.failed).toBe(0);
       expect(traces.map((t) => `${t.story.slice(0, 14)}|${t.phase}|${t.as}`)).toEqual([
         "Ada says hello|does|ada",
@@ -107,7 +108,7 @@ describe("stories harness", () => {
       const report = await run(example, {
         cast: stories.cast,
         budget: 64, // the example's: less than a message
-        stories: [hello, { ...hello, name: "Ada says hello, within its own budget", budget: 100_000 }, { ...close, budget: 1 }],
+        stories: keyed([hello, { ...hello, name: "Ada says hello, within its own budget", budget: 100_000 }, { ...close, budget: 1 }]),
       });
       const [over, within, closed] = report.outcomes as [Outcome, Outcome, Outcome];
       expect(over.failures).toEqual(failing(over, "example's", 64));
@@ -118,7 +119,7 @@ describe("stories harness", () => {
     }, 30000);
 
     test("an undo is held to the budget as the write is: Dee's attic, taken back, hands her more than it did", async () => {
-      const report = await run(example, { cast: stories.cast, budget: 4096, stories: [pick("Dee names a room nobody has made")] });
+      const report = await run(example, { cast: stories.cast, budget: 4096, stories: keyed([pick("Dee names a room nobody has made")]) });
       const [attic] = report.outcomes as [Outcome];
       expect(attic.wire!.handed.every((h) => h.bytes <= 4096)).toBe(true); // the write is within it
       expect(attic.failures).toEqual(failing(attic, "example's", 4096));
@@ -128,15 +129,15 @@ describe("stories harness", () => {
     }, 30000);
 
     test("a budget is a whole number of bytes: any other, a story's or the example's, is said, and the story is not run", async () => {
-      const report = await run(example, { cast: stories.cast, stories: [{ ...hello, budget: "2 KB" as unknown as number }, { ...take, budget: 0 }] });
+      const report = await run(example, { cast: stories.cast, stories: keyed([{ ...hello, budget: "2 KB" as unknown as number }, { ...take, budget: 0 }]) });
       expect(report.outcomes.map((o) => o.failures)).toEqual([['a budget is a whole number of bytes: this one is "2 KB"'], ["a budget is a whole number of bytes: this one is 0"]]);
       expect(report.outcomes.map((o) => o.wire)).toEqual([undefined, undefined]);
-      const byExample = await run(example, { cast: stories.cast, budget: 1.5, stories: [hello, { ...close, budget: 4096 }] });
+      const byExample = await run(example, { cast: stories.cast, budget: 1.5, stories: keyed([hello, { ...close, budget: 4096 }]) });
       expect(byExample.outcomes.map((o) => o.failures)).toEqual([["the example's budget is a whole number of bytes: this one is 1.5"], []]); // a story's own stands in its place
     }, 30000);
 
     test("a story with no body yet is unproven, never failed: the harness tells the others and names it, and the report counts it", async () => {
-      const report = await run(example, { ...stories, stories: stories.stories.slice(0, 1), unproven: [story("Ada pins a message, and everyone in the room sees it pinned")] });
+      const report = await run(example, { ...stories, stories: { ...keyed(toldOf(stories).slice(0, 1)), pins: story("Ada pins a message, and everyone in the room sees it pinned") } });
       expect(report).toMatchObject({ passed: 1, failed: 0, unproven: ["Ada pins a message, and everyone in the room sees it pinned"] });
       const lines: string[] = [];
       const log = spyOn(console, "log").mockImplementation((line: string) => void lines.push(line));
@@ -149,10 +150,10 @@ describe("stories harness", () => {
     }, 30000);
 
     test("untold names each story no test source names as .<key>: a story cannot be renamed or dropped away from its test unseen", () => {
-      const named = { saves: story("Saving says Saved"), follows: story("A change elsewhere shows here") };
-      expect(untold(named, ["test(stories.saves.name, () => {})"])).toEqual(["A change elsewhere shows here"]);
-      expect(untold(named, ["test(stories.saves.name, ...)", "test(stories.follows.name, ...)"])).toEqual([]);
-      expect(untold(named, ["stories.savesAll"])).toEqual(["Saving says Saved", "A change elsewhere shows here"]);
+      const named: Stories = { cast: {}, stories: { saves: story("Saving says Saved"), follows: story("A change elsewhere shows here"), hello: toldOf(stories)[0]! } };
+      expect(untold(named, ["test(stories.stories.saves.name, () => {})"])).toEqual(["A change elsewhere shows here"]);
+      expect(untold(named, ["test(stories.stories.saves.name, ...)", "test(stories.stories.follows.name, ...)"])).toEqual([]);
+      expect(untold(named, ["stories.stories.savesAll"])).toEqual(["Saving says Saved", "A change elsewhere shows here"]); // one with a body is the harness's to tell
     });
 
     test("printed with `wire`, under each story: the write's size once, then each member handed anything, the bytes, as they crossed the wire, and the biggest part, and what its undo and redo handed them; or that nobody was", () => {
@@ -231,14 +232,14 @@ describe("stories harness", () => {
     process.env.STORY_DIFF = "1"; // the excerpt under a failure is for the builder; make sure it prints
     const report = await run(example, {
       cast: stories.cast,
-      stories: [
+      stories: keyed([
         { name: "a ghost speaks", as: "ghost", does: { doc: "room", ops: [] }, seen: {} },
         { name: "Ada says hello and Eve, who is nowhere, sees it", as: "ada", does: say("hi"), seen: { eve: "" }, untold: ["cy"] },
         // a refusal that is false: Ada may speak, so her page changes, and the excerpt says where
         { name: "Ada cannot say hello", as: "ada", cannot: say("hi") },
         // a refusal told as saying why, where chat's says nothing
         { name: "Eve, with no name, is told she needs one", as: "eve", cannot: enter("general"), told: "You need a name first." },
-      ],
+      ]),
     });
     delete process.env.STORY_DIFF;
     expect(report.failed).toBe(4);
@@ -252,7 +253,7 @@ describe("stories harness", () => {
     const [hi, general] = [say("hi"), enter("general")];
     const report = await run(example, {
       cast: stories.cast,
-      stories: [
+      stories: keyed([
         misshapen({ name: "Bob says hi and closes his tab", as: "bob", does: hi, closesTab: true, seen: ["ada"] }),
         misshapen({ name: "Eve cannot go into general, and closes her tab", as: "eve", cannot: general, closesTab: true, seen: ["ada"] }),
         misshapen({ name: "Bob closes his tab from general", as: "bob", closesTab: true, from: "general", seen: ["ada"] }),
@@ -262,7 +263,7 @@ describe("stories harness", () => {
         misshapen({ name: "Eve cannot go into general, and Ada sees nothing", as: "eve", cannot: general, seen: ["ada"], untold: ["ada"] }),
         misshapen({ name: "Ada says hi, told something, by an old name", as: "ada", does: hi, seen: ["ada", "bob"], told: "hi", unseen: ["cy"] }),
         { name: "Ada says hi, with nothing left undefined counted, telling the model's story 3", as: "ada", does: hi, from: undefined, seen: ["ada", "bob"], untold: ["cy"], model: 3 },
-      ],
+      ]),
     });
     expect(report.outcomes.map((o) => o.failures)).toEqual([
       ["a story is one of does, cannot, closesTab or opensTab, and this one has does and closesTab"],
@@ -280,7 +281,7 @@ describe("stories harness", () => {
   test("a story names everyone who sees its change: someone left out whose page changes fails it, by name", async () => {
     const report = await run(example, {
       cast: stories.cast,
-      stories: [{ name: "Ada says hello, and only Ada sees it", as: "ada", does: say("hello"), seen: ["ada"] }],
+      stories: keyed([{ name: "Ada says hello, and only Ada sees it", as: "ada", does: say("hello"), seen: ["ada"] }]),
     });
     expect(report.outcomes[0]!.failures.map((f) => f.split("\n")[0])).toEqual(["bob noticed, and should not have"]);
   }, 30000);
@@ -288,14 +289,14 @@ describe("stories harness", () => {
   test("a story is done from the author's page: no control for it fails, so does a write that lands nothing, and so does a button offered that is always refused", async () => {
     const report = await run(example, {
       cast: stories.cast,
-      stories: [
+      stories: keyed([
         // Dee is choosing a room: nowhere on her page to say anything, and nothing to say it in
         { name: "Dee speaks before she is in a room", as: "dee", does: say("hi"), seen: ["dee"] },
         // the form is there; a blank name is refused, so nothing lands
         { name: "Dee enters a room with no name", as: "dee", does: enter("  "), seen: ["dee"] },
         // a button on Dee's page sends exactly this: a story that calls it refused says so
         { name: "Dee cannot go into general", as: "dee", cannot: enter("general") },
-      ],
+      ]),
     });
     const first = (i: number) => report.outcomes[i]!.failures.map((f) => f.split("\n")[0]);
     expect(first(0)).toContain("dee has no control on their page for add /messages/- on room");
@@ -309,13 +310,13 @@ describe("stories harness", () => {
     const [hello, general] = [say("hello"), enter("general")];
     const report = await run(example, {
       cast: stories.cast,
-      stories: [
+      stories: keyed([
         { name: "Cy, back in general, sees Ada say hello", as: "ada", premise: { cy: [general] }, does: hello, seen: ["ada", "bob", "cy"], untold: ["dee", "eve"] },
         { name: "Cy, in the kitchen again, is told nothing of it", as: "ada", does: hello, seen: ["ada", "bob"], untold: ["cy"] },
         { name: "Eve, with no name, is in general first", as: "ada", premise: { eve: [general] }, does: hello, seen: ["ada", "bob"] },
         { name: "A ghost is in general first", as: "ada", premise: { ghost: [general] }, does: hello, seen: ["ada", "bob"] },
         { name: "Dee goes into general twice", as: "ada", premise: { dee: [general, general] }, does: hello, seen: ["ada", "bob", "dee"] },
-      ],
+      ]),
     });
     expect(report.outcomes.map((o) => o.failures)).toEqual([
       [],
@@ -329,11 +330,11 @@ describe("stories harness", () => {
   test("a tab closing is a story: who is still looking must see it, the author cannot, and a close that changes nothing is said", async () => {
     const report = await run(example, {
       cast: stories.cast,
-      stories: [
+      stories: keyed([
         // the kitchen empties, and leaves Dee's list of rooms; Cy is not there to see it
         { name: "Cy closes her tab, and sees the kitchen go", as: "cy", closesTab: true, seen: ["cy", "dee"] },
         { name: "Eve closes her tab before she has a name", as: "eve", closesTab: true, seen: [] },
-      ],
+      ]),
     });
     expect(report.outcomes.map((o) => o.failures)).toEqual([["cy closed their tab: they are not there to see it"], ["nothing landed: closing eve's tab changed nothing"]]);
   }, 30000);
@@ -342,11 +343,11 @@ describe("stories harness", () => {
     const { example: leave, stories: told } = await load("leave");
     const report = await run(leave, {
       ...told,
-      stories: [
+      stories: keyed([
         { name: "Ann opens a link to the list", as: "ann", opensTab: "list", seen: [] },
         { name: "Ann opens a link to a month there is none of", as: "ann", opensTab: "2026-13", seen: [] }, // refused: the tab stands at the page alone
         { name: "Ann opens a link to the list, and says the tab she had sees it", as: "ann", opensTab: "list", seen: ["ann"] }, // it does not: it stays where it was
-      ],
+      ]),
     });
     expect(report.outcomes.map((o) => o.failures.map((f) => f.split(":")[0]))).toEqual([[], ['ann\'s tab, opened at "2026-13", stands at ""'], ["ann did not see it"]]);
     expect(report.outcomes[0]!.wire).toMatchObject({ opens: true, handed: [] }); // nobody already looking was handed anything
@@ -410,8 +411,8 @@ describe("stories harness", () => {
 
   test("a cast signs in through the example's own sign-in route; one that cannot is said, not run as a visitor", async () => {
     const { example: leave, stories: told } = await load("leave");
-    const first = told.stories.slice(0, 1); // signed in, it passes with the rest of leave's (below, under October's clock)
-    const wrong = { ...told, stories: first, signIn: (name: string) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: "not-it" } }) };
+    const first = toldOf(told).slice(0, 1); // signed in, it passes with the rest of leave's (below, under October's clock)
+    const wrong = { ...told, stories: keyed(first), signIn: (name: string) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: "not-it" } }) };
     // each story fails, saying so, and the run goes no further (cafe-e's feedback: it was a stack trace)
     const report = await run(leave, wrong);
     expect(report.outcomes.map((o) => o.failures)).toEqual([["ann could not sign in at /login: 303"]]);
@@ -436,8 +437,8 @@ describe("stories harness", () => {
       const traces: Trace[] = [];
       const report = await run(leave, {
         ...told,
-        stories: [
-          ...told.stories.filter((s) => s.name.startsWith("Bo signs in on another phone") || s.name.startsWith("Someone types Bo's email")),
+        stories: keyed([
+          ...toldOf(told).filter((s) => s.name.startsWith("Bo signs in on another phone") || s.name.startsWith("Someone types Bo's email")),
           { name: "Mo follows a link that renames the team, and everyone in it sees the new name", as: "mo", does: rename, offPage: true, seen: ["ann", "bo", "mo"], untold: ["visitor"] },
           { name: "Mo renames the team, and nobody is said to see it", as: "mo", does: rename, offPage: true, seen: ["mo"] },
           { name: "The visitor signs in with the wrong password", as: "visitor", does: post("/login", { email: "bo@leave.example", password: "not-it" }), seen: ["visitor"] },
@@ -445,7 +446,7 @@ describe("stories harness", () => {
           { name: "Bo cannot sign in, but does", as: "visitor", cannot: post("/login", { email: "bo@leave.example", password: "bo-password" }) },
           { name: "Bo is told something else", as: "visitor", cannot: post("/login", { email: "bo@leave.example", password: "not-it" }), told: "Try again." },
           { name: "Nobody gets in while it is closed", as: "visitor", cannot: post("/closed"), told: "Closed for the holidays." },
-        ],
+        ]),
       }, (t) => traces.push(t));
       expect(report.outcomes.map((o) => o.failures.map((f) => f.split("\n")[0]))).toEqual([
         [],
@@ -471,11 +472,11 @@ describe("stories harness", () => {
       const { example: leave, stories: told } = await load("leave");
       const report = await run(leave, {
         ...among(told, "visitor"),
-        stories: [
+        stories: keyed([
           misshapen({ name: "Bo signs in, undone", as: "visitor", does: post("/login"), seen: ["visitor"], undone: "Undone." }),
           misshapen({ name: "Bo signs in, by a press", as: "visitor", does: post("/login"), seen: ["visitor"], gesture: { press: "button" } }),
           misshapen({ name: "Bo signs in nowhere", as: "visitor", cannot: { path: "login", form: { n: 1 } } }),
-        ],
+        ]),
       });
       const shape = "a post takes no undone, redone or gesture: a route writes as the server, and its form is posted as it is drawn";
       expect(report.outcomes.map((o) => o.failures)).toEqual([
@@ -522,18 +523,18 @@ describe("stories harness", () => {
 
   test("a story from a modal is done in the modal: the page behind it, inert, offers nothing", async () => {
     const { example: ticker, stories: told } = await load("ticker");
-    const report = await run(ticker, { ...told, stories: [{ name: "Ann, asked about Alpha, opens Bravo's drawer behind the question", as: "ann", from: "market?confirm=ALPH", does: desk("market?symbol=BRVO"), seen: ["ann"] }] });
+    const report = await run(ticker, { ...told, stories: keyed([{ name: "Ann, asked about Alpha, opens Bravo's drawer behind the question", as: "ann", from: "market?confirm=ALPH", does: desk("market?symbol=BRVO"), seen: ["ann"] }]) });
     expect(report.outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /page on desk"]);
   }, 30000);
 
   test("a story stands where it stands whatever the day: leave's, under October's clock, where the month they name is this one", async () => {
     const { example: leave, stories: told } = await load("leave");
     // a story from each month the stories name: this one, the next, and the one after
-    const months = told.stories.filter((s) => ["Ann cannot move Bo's week", "Ann cannot approve her own day off", "Ann cannot move days Mo has already approved"].includes(s.name));
+    const months = toldOf(told).filter((s) => ["Ann cannot move Bo's week", "Ann cannot approve her own day off", "Ann cannot move days Mo has already approved"].includes(s.name));
     expect(months.map((s) => s.from)).toEqual(["2026-11?request=2", "2026-10", "2026-12?request=3"]);
     setSystemTime(new Date("2026-10-15T12:00:00Z"));
     try {
-      const report = await run(leave, { ...among(told, "ann"), stories: months });
+      const report = await run(leave, { ...among(told, "ann"), stories: keyed(months)});
       expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
     } finally {
       setSystemTime();
@@ -542,28 +543,28 @@ describe("stories harness", () => {
 
   test("an applet on a document offers only what its mount says it writes: a drawer that lost its picker fails the story, though the clock's face reads the same document", async () => {
     const { example: ticker, stories: told } = await load("ticker");
-    const tokyo = told.stories.filter((s) => s.name.startsWith("Ann sets her clock to Tokyo"));
-    expect((await run(ticker, { ...told, stories: tokyo })).outcomes[0]!.failures).toEqual([]);
+    const tokyo = toldOf(told).filter((s) => s.name.startsWith("Ann sets her clock to Tokyo"));
+    expect((await run(ticker, { ...told, stories: keyed(tokyo)})).outcomes[0]!.failures).toEqual([]);
     const pickerless: Example = { ...ticker, render: (sessionId, address) => ticker.render(sessionId, address).replace(/<div id="city"[^]*?<\/datalist><\/div>/, "") };
-    expect((await run(pickerless, { ...told, stories: tokyo })).outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /tz on clock"]);
+    expect((await run(pickerless, { ...told, stories: keyed(tokyo)})).outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /tz on clock"]);
   }, 30000);
 
   test("an applet offers only what its mount says it writes: a drawer that lost its control fails its story, whatever applet is beside it", async () => {
     const { example: leave, stories: told } = await load("leave");
     const approve = write("team", "replace", "/requests/1/status", "approved");
     const lost: Example = { ...leave, render: (sessionId, address) => leave.render(sessionId, address).replace(approve, "") };
-    const report = await run(lost, { ...among(told, "mo"), stories: told.stories.filter((s) => s.name.startsWith("Mo approves")) });
+    const report = await run(lost, { ...among(told, "mo"), stories: keyed(toldOf(told).filter((s) => s.name.startsWith("Mo approves")))});
     expect(report.outcomes.flatMap((o) => o.failures)).toContain("mo has no control on their page for replace /requests/1/status on team");
   }, 30000);
 
   test("after the deadline the Okafors are offered nothing to answer or choose with: live answer buttons fail the refusal, and a choice the menu cannot make has no control", async () => {
     const { example: wedding, stories: told } = await load("wedding");
-    const closed = told.stories.find((s) => s.name.startsWith("Once the deadline"))!;
+    const closed = toldOf(told).find((s) => s.name.startsWith("Once the deadline"))!;
     const maybe = write("household", "replace", "/answer", "maybe");
     const live: Example = { ...wedding, render: (sessionId, address) => wedding.render(sessionId, address).replace(`${maybe} disabled`, maybe) };
-    expect((await run(live, { ...told, stories: [closed] })).outcomes[0]!.failures).toEqual(["okafors's page offers this, and it is refused without a word: a control that always fails"]);
+    expect((await run(live, { ...told, stories: keyed([closed]) })).outcomes[0]!.failures).toEqual(["okafors's page offers this, and it is refused without a word: a control that always fails"]);
     const bass = { name: "After the deadline, Femi picks the sea bass", as: "okafors", premise: closed.premise, from: "list?guest=2", does: { doc: "household", ops: [{ op: "replace" as const, path: "/guests/2/choices/2/dish", value: 5 }] }, seen: { okafors: "list" } };
-    const failures = (await run(wedding, { ...told, stories: [bass] })).outcomes[0]!.failures;
+    const failures = (await run(wedding, { ...told, stories: keyed([bass]) })).outcomes[0]!.failures;
     expect(failures).toContain("okafors has no control on their page for replace /guests/2/choices/2/dish on household");
   }, 30000);
 
@@ -586,7 +587,7 @@ describe("stories harness", () => {
 
     const { example: leave, stories: told } = await load("leave");
     const stale: Example = { ...leave, render: (sessionId, address) => leave.render(sessionId, address).replace(/data-writes='[^']*'/, `data-writes='{"doc":"team","path":"/draft"}'`) };
-    const report = await run(stale, { ...among(told, "ann"), stories: told.stories.filter((s) => s.name.startsWith("Ann drags across") || s.name.startsWith("Ann cannot move Bo's week")) });
+    const report = await run(stale, { ...among(told, "ann"), stories: keyed(toldOf(told).filter((s) => s.name.startsWith("Ann drags across") || s.name.startsWith("Ann cannot move Bo's week")))});
     expect(report.outcomes.map((o) => o.failures.filter((f) => f.startsWith("applet declaration")))).toEqual([
       ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],
       ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],
@@ -594,7 +595,7 @@ describe("stories harness", () => {
   }, 30000);
 
   // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.
-  const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
+  const only = (prefix: string): Story[] => toldOf(stories).filter((s) => s.name.startsWith(prefix));
   const withRoom = (f: (room: Resource) => Resource): Example => ({ ...example, resources: example.resources.map((c) => (c.docType === "room" ? f(c) : c)) });
 
   test("someone the story says is untold, told of the document all the same, fails it: a page that reads what it does not show", async () => {
@@ -630,7 +631,7 @@ describe("stories harness", () => {
     const { example: ticker } = await load("ticker");
     // the ticker's own story, told here: Ann's desk says she is on her board
     const watch = { doc: "watchlist", ops: [{ op: "add" as const, path: "/symbols/-", value: "CHRL" }] };
-    const watches = { cast: { ann: [desk("board")] }, goTo: desk, stories: [{ name: "Ann, on her board, watches Charlie Metals", as: "ann", from: "board?new", does: watch, seen: { ann: "board" } }] };
+    const watches = { cast: { ann: [desk("board")] }, goTo: desk, stories: keyed([{ name: "Ann, on her board, watches Charlie Metals", as: "ann", from: "board?new", does: watch, seen: { ann: "board" } }]) };
     expect((await run(ticker, watches)).failed).toBe(0);
     // The market's row is lost when Ann watches: her open page keeps the market, the tables do not.
     // (Not her desk, the row she writes: delta reads back each row it writes, and a row it cannot
@@ -675,12 +676,12 @@ describe("stories harness", () => {
     }));
     const report = await run(saying, {
       ...stories,
-      stories: [
+      stories: keyed([
         { name: "Ada says hi", as: "ada", does: say("hi"), seen: ["ada", "bob"] },
         { name: "Ada cannot take a message back, told one thing", as: "ada", cannot: takeBack, told: "Nobody takes a message back." },
         { name: "Ada cannot take a message back, told why, where her page does not say it", as: "ada", cannot: takeBack, told: "Messages are kept." },
         { name: "Ada cannot say hello", as: "ada", cannot: say("hello") },
-      ],
+      ]),
     });
     const first = (i: number) => report.outcomes[i]!.failures.map((f) => f.split("\n")[0]);
     expect(first(0)).toContain('nothing landed: ada\'s write was refused by room\'s permit: "Not now."');
@@ -722,13 +723,13 @@ describe("stories harness", () => {
   test("what a write, its undo and its redo say to their author is theirs: the pages are compared without it, and a story says what Undo says", async () => {
     const report = await run(saying(), {
       ...stories,
-      stories: [
+      stories: keyed([
         hello("Ada says hello"),
         hello("Ada says hello, and Undo says it took it back", "Undone: “hello”."),
         hello("Ada says hello, and Undo says something else", "Undone: hi."),
         // what the premise's write said is the premise's: the refusal after it says nothing
         { ...only("Nobody can take")[0]!, premise: { ada: [say("first")] } },
-      ],
+      ]),
     });
     expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], ['after undo, ada was not told "Undone: hi.": they were told "Undone: “hello”."'], []]);
   }, 30000);
@@ -749,7 +750,7 @@ describe("stories harness", () => {
   describe("what an author is told stands in for nothing, says its own words, and is of its own moment", async () => {
     const { example: wedding, stories: vows } = await load("wedding");
     const visit = await import("../../examples/wedding/resources/session/session-api");
-    const named = (start: string): Story => vows.stories.find((s) => s.name.startsWith(start))!;
+    const named = (start: string): Story => toldOf(vows).find((s) => s.name.startsWith(start))!;
     const withHousehold = (f: (household: Resource) => Partial<Resource>, from: Example = wedding): Example => ({ ...from, resources: from.resources.map((c) => (c.docType === "household" ? { ...c, ...f(c) } : c)) });
     const maybe = named("The Okafors say maybe");
 
@@ -793,7 +794,7 @@ describe("stories harness", () => {
 
     test("a story says what the redo says too: its words, said and shown, or no redo to say them", async () => {
       const redoing = (name: string, redone: string) => ({ ...maybe, name, redone }) as Story;
-      const report = await run(wedding, { ...vows, stories: [redoing(maybe.name, "Redone: your answer."), redoing("…and Redo says something else", "Redone: nothing.")] });
+      const report = await run(wedding, { ...vows, stories: keyed([redoing(maybe.name, "Redone: your answer."), redoing("…and Redo says something else", "Redone: nothing.")]) });
       expect(report.outcomes.map((o) => o.failures)).toEqual([[], ['after redo, okafors was not told "Redone: nothing.": they were told "Redone: your answer."']]);
       // chat's Eve: the undo takes her name back, and with it her tab's right to redo
       const eve = { ...only("Eve gives her name")[0]!, redone: "Redone: Eve." } as Story;
@@ -823,27 +824,27 @@ describe("stories harness", () => {
     const { example: ticker, stories: told } = await load("ticker");
     const deskButton = (page: string) => write("desk", "replace", "/page", page);
     const without = (...controls: string[]): Example => ({ ...ticker, render: (sessionId, address) => controls.reduce((html, c) => html.replaceAll(c, ""), ticker.render(sessionId, address)) });
-    const named = (prefix: string): Story[] => told.stories.filter((s) => s.name.startsWith(prefix));
+    const named = (prefix: string): Story[] => toldOf(told).filter((s) => s.name.startsWith(prefix));
 
     test("everywhere: after the stories, every place each of the cast can get to from where it starts, with what each page there offers", async () => {
       const offered = new Map<string, string[]>();
-      await run(ticker, { ...told, stories: [] }, undefined, { everywhere: (member, place, controls) => member === "ann" && offered.set(place, controls.map((c) => `${c.op} ${c.path}`)) });
+      await run(ticker, { ...told, stories: keyed([]) }, undefined, { everywhere: (member, place, controls) => member === "ann" && offered.set(place, controls.map((c) => `${c.op} ${c.path}`)) });
       expect(offered.get("board?new")).toContain("add /symbols/-"); // no story stood there: a control leads there, and what it offers is known
       // a place no control leads to is not walked
       const walked: string[] = [];
-      await run(without(deskButton("board?new")), { ...told, stories: [] }, undefined, { everywhere: (member, place) => member === "ann" && walked.push(place) });
+      await run(without(deskButton("board?new")), { ...told, stories: keyed([]) }, undefined, { everywhere: (member, place) => member === "ann" && walked.push(place) });
       expect(walked).not.toContain("board?new");
       expect(walked.length).toBeGreaterThan(0);
     }, 30000);
 
     test("a story whose from no page offers a way to fails by name, though the harness can put its author there", async () => {
-      const report = await run(without(deskButton("board?new")), { ...told, stories: named("Ann watches Charlie Metals, and only her board grows") });
+      const report = await run(without(deskButton("board?new")), { ...told, stories: keyed(named("Ann watches Charlie Metals, and only her board grows"))});
       expect(report.outcomes[0]!.failures).toEqual(['no control leads ann to "board?new", where the story has them act']);
-      expect((await run(ticker, { ...told, stories: named("Ann watches Charlie Metals, and only her board grows") })).failed).toBe(0);
+      expect((await run(ticker, { ...told, stories: keyed(named("Ann watches Charlie Metals, and only her board grows"))})).failed).toBe(0);
     }, 30000);
 
     test("so does a place a seen puts someone, and what a place holds after \" @ \" must be sent from the page there", async () => {
-      const report = await run(without(deskButton("market?symbol=BRVO"), write("desk", "replace", "/reading/board", "list")), { ...told, stories: named("Bravo ticks") });
+      const report = await run(without(deskButton("market?symbol=BRVO"), write("desk", "replace", "/reading/board", "list")), { ...told, stories: keyed(named("Bravo ticks"))});
       expect(report.outcomes.map((o) => o.failures)).toEqual([
         [],
         ['no control leads ann to "board @ reading.board=list", where the story has them see it: nothing on their page at "board" sends replace /reading/board'],
@@ -854,8 +855,8 @@ describe("stories harness", () => {
     test("a place named with \" @ \" is stood on, so what its page sends is asked, though no other place is wanted past it", async () => {
       // told alone, Ann's board is only the end of her way from where the cast left her
       const alone = named("Bravo ticks; Ann, reading her board as a list");
-      expect((await run(ticker, { ...told, stories: alone })).outcomes[0]!.failures).toEqual([]);
-      expect((await run(without(write("desk", "replace", "/reading/board", "list")), { ...told, stories: alone })).outcomes[0]!.failures).toEqual([
+      expect((await run(ticker, { ...told, stories: keyed(alone)})).outcomes[0]!.failures).toEqual([]);
+      expect((await run(without(write("desk", "replace", "/reading/board", "list")), { ...told, stories: keyed(alone)})).outcomes[0]!.failures).toEqual([
         'no control leads ann to "board @ reading.board=list", where the story has them see it: nothing on their page at "board" sends replace /reading/board',
       ]);
     }, 30000);
@@ -863,8 +864,8 @@ describe("stories harness", () => {
     test("a way through a place no story stands on is walked, and one a page never offers is not a way at all", async () => {
       // Ann stands only where the cast put her; the way to Alpha's modal is through the market and Alpha's drawer
       const drops = named("Ann drops Alpha");
-      expect((await run(ticker, { ...told, stories: drops })).outcomes[0]!.failures).toEqual([]);
-      expect((await run(without(deskButton("market")), { ...told, stories: drops })).outcomes[0]!.failures).toEqual(['no control leads ann to "market?confirm=ALPH", where the story has them act']);
+      expect((await run(ticker, { ...told, stories: keyed(drops)})).outcomes[0]!.failures).toEqual([]);
+      expect((await run(without(deskButton("market")), { ...told, stories: keyed(drops)})).outcomes[0]!.failures).toEqual(['no control leads ann to "market?confirm=ALPH", where the story has them act']);
     }, 30000);
   });
 
@@ -875,12 +876,12 @@ describe("stories harness", () => {
     const letBen: Story = { name: "The couple let Ben bring one more, and he may name them himself", as: "couple", from: "?family=2", does: { doc: "board", ops: [{ op: "replace", path: "/households/2/plus_ones", value: 1 }] }, seen: { couple: "?family=2", ben: "", benToo: "" } };
     const unreached = ['no control leads ben to "?new=guests", where the story has them act'];
     for (const order of [[plus], [letBen, plus], [plus, letBen]]) {
-      const report = await run(wedding, { ...told, stories: order });
+      const report = await run(wedding, { ...told, stories: keyed(order) });
       expect(report.outcomes.find((o) => o.name === plus.name)!.failures).toEqual(unreached);
     }
     // and its own premise is where it starts: given the plus-one, Ben can open the plus
     const given = { ...plus, name: "Ben, given a plus-one, can open the plus", premise: { couple: [{ doc: "board", ops: [{ op: "replace" as const, path: "/households/2/plus_ones", value: 1 }] }] } };
-    expect((await run(wedding, { ...told, stories: [given] })).outcomes[0]!.failures.filter((f) => f.startsWith("no control leads"))).toEqual([]);
+    expect((await run(wedding, { ...told, stories: keyed([given]) })).outcomes[0]!.failures.filter((f) => f.startsWith("no control leads"))).toEqual([]);
   }, 60000);
 
   test("a control goes where goTo makes exactly its write: a button's own value, or the one an applet names; nothing that takes any value goes anywhere", () => {
@@ -965,8 +966,8 @@ describe("propsCost: what a render sends in props, which the harness says and do
 
   test("a run says each cost once for each applet, in the first story that sent it, and the report prints it after the stories", async () => {
     const { example: ticker, stories: told } = await load("ticker");
-    const ticks = told.stories.filter((s) => s.name.startsWith("Bravo ticks while Ann has its drawer open"));
-    const report = await run(ticker, { ...told, stories: [...ticks, ...ticks] });
+    const ticks = toldOf(told).filter((s) => s.name.startsWith("Bravo ticks while Ann has its drawer open"));
+    const report = await run(ticker, { ...told, stories: keyed([...ticks, ...ticks]) });
     expect(report.failed).toBe(0);
     const props = report.warnings!.filter((w) => w.says.includes("props")); // what a write no story tells finds is another test's
     // told twice, said once: the board and the clock sent again as the cast stands where the story says, the spark with the drawer each tick
@@ -1211,7 +1212,7 @@ describe("hear, after a render in parts: the page as a fresh render draws it, wh
 // purpose: a story that puts its change where nobody reads it, writes each check refuses, and
 // controls the wire would refuse without a word.
 describe("a failure that says why", () => {
-  const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
+  const only = (prefix: string): Story[] => toldOf(stories).filter((s) => s.name.startsWith(prefix));
   const withOwner = (docType: string, f: (c: Resource) => Resource): Example => ({ ...example, resources: example.resources.map((c) => (c.docType === docType ? f(c) : c)) });
   const refusing = (reason: string): never => {
     throw refuse(reason);
@@ -1236,7 +1237,7 @@ describe("a failure that says why", () => {
     const told = (name: string, as: string, does: { doc: string; ops: PatchOp[] }): Story => ({ name, as, does, seen: [as] });
     const report = await run(saying, {
       ...stories,
-      stories: [
+      stories: keyed([
         told("Ada says hi", "ada", say("hi")),
         told("Ada says nothing", "ada", say("nothing")),
         told("Ada speaks at length", "ada", say("at length")),
@@ -1244,7 +1245,7 @@ describe("a failure that says why", () => {
         told("Ada goes into general, where she is", "ada", enter("general")),
         told("Ada says who is here", "ada", { doc: "here:general", ops: [{ op: "add", path: "/people/ada", value: "Ada" }] }),
         told("Dee speaks in general from the list of rooms", "dee", { doc: "room:general", ops: [{ op: "add", path: "/messages/-", value: "hi" }] }),
-      ],
+      ]),
     });
     const refused = report.outcomes.map((o) => o.failures.find((f) => f.startsWith("nothing landed")));
     expect(refused).toEqual([
@@ -1279,7 +1280,7 @@ describe("a failure that says why", () => {
           ].join(""),
         ),
     };
-    const report = await run(careless, { ...stories, stories: only("Bob closes his tab") });
+    const report = await run(careless, { ...stories, stories: keyed(only("Bob closes his tab"))});
     expect(report.warnings!.filter((w) => w.story.startsWith("a control the wire refuses")).map((w) => `${w.story} | ${w.says}`)).toEqual([
       `a control the wire refuses, on ada's page | button[data-value='"psst"'], add /messages/- on room:kitchen: the page did not read room:kitchen`,
       `a control the wire refuses, on ada's page | button[data-value='"general"'], replace room on session: room is not a JSON Pointer`,
@@ -1317,7 +1318,7 @@ test("bun run stories never opens the app's own database: DB_PATH is set before 
   const dir = mkdtempSync(`${tmpdir()}/stories-run-`);
   try {
     mkdirSync(`${dir}/src`);
-    writeFileSync(`${dir}/src/stories.ts`, "export const stories = { cast: {}, stories: [] };\n");
+    writeFileSync(`${dir}/src/stories.ts`, "export const stories = { cast: {}, stories: {} };\n");
     const env: Record<string, string | undefined> = { ...process.env, ETA_EXAMPLE: "./src" };
     delete env.DB_PATH;
     const p = Bun.spawn(["bun", `${import.meta.dir}/../../src/modelling/stories-run.ts`], { cwd: dir, env, stdout: "pipe", stderr: "pipe" });

@@ -5,7 +5,7 @@ Test what a person sees and clicks: a change in one window reaching another, and
 The stories come first, in `stories.ts`; each test is named from the one it tells:
 
 ```ts
-// stories.ts: after export const stories = {
+// stories.ts: after stories: {
   // Notes
   notesFollow: story("A note added in one window shows in every other, and so does its removal."),
   notesKept: story("A note is still there after a reload."),
@@ -45,7 +45,7 @@ async function addNote(text: string) {
   await view.click("dialog .tool.add");
 }
 
-test(`${stories.notesFollow.name} -- added in one window, removed in the other`, async () => {
+test(`${stories.stories.notesFollow.name} -- added in one window, removed in the other`, async () => {
   await open();
   await waitFor(`document.querySelector('${NOTES}')`);
   await withOtherWindow(async (other, waitForOther) => {
@@ -62,7 +62,7 @@ test(`${stories.notesFollow.name} -- added in one window, removed in the other`,
   });
 });
 
-test(`${stories.notesKept.name} -- added, then the page reloaded`, async () => {
+test(`${stories.stories.notesKept.name} -- added, then the page reloaded`, async () => {
   await open();
   await waitFor(`document.querySelector('${NOTES}')`);
   await addNote("kept");
@@ -72,7 +72,7 @@ test(`${stories.notesKept.name} -- added, then the page reloaded`, async () => {
   await waitFor(`${shown} === "kept"`);
 });
 
-test(`${stories.notesRefused.name} -- the server refuses every write`, async () => {
+test(`${stories.stories.notesRefused.name} -- the server refuses every write`, async () => {
   await open();
   await waitFor(`document.querySelector('${NOTES}')`);
   await refuseWrites();
@@ -84,7 +84,7 @@ test(`${stories.notesRefused.name} -- the server refuses every write`, async () 
 
 Working: `tests/evolve.ts` makes a new app from this template, applies this page (after document.md) and runs its type check and tests (`bun run test:evolve`).
 
-- `tests/stories.test.ts` fails a story no test names (`stories.<key>.name`), so a story cannot be dropped or renamed away from its test.
+- `tests/stories.test.ts` fails a story no test names (`stories.stories.<key>.name`), so a story cannot be dropped or renamed away from its test.
 - The page helpers are railroad's (`@blueshed/railroad/webview`): `open`, `waitFor`, `replaceText`, `failFetch`, `withOtherWindow`; `tests/browser.ts` adds `refuseWrites` (the server refuses what the page sends).
 - The Bun.WebView rules are at the top of railroad's `webview.ts` (`node_modules/@blueshed/railroad/webview.ts`): follow them exactly.
 - Every server in a test gets a scratch data folder (`mkdtempSync`), never the project's `data/`.

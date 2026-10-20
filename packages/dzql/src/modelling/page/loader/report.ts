@@ -11,7 +11,7 @@
 // nothing in front of them and nothing written. A row of the visitor's own document (`session`) is
 // made by the visit, not a story: precondition closure's row tier does not ask a story to add it.
 
-import { writeOf, type Stories } from "dzql/modelling/stories";
+import { toldOf, writeOf, type Stories } from "dzql/modelling/stories";
 import type { Gap, Model } from "./model/grammar";
 import { actorClosure, authorizationClosure, preconditionClosure, referentialClosure } from "./model/predicates";
 import { fromStories, locate, entityOf, noticing, type Note, type Reading } from "./from-stories";
@@ -55,7 +55,7 @@ export function judge(stories: Stories): { reading: Reading; report: Report } {
   const moves = new Map<string, number>();
   const refusals = new Map<string, number>();
 
-  for (const s of stories.stories) {
+  for (const s of toldOf(stories)) {
     const w = writeOf(s);
     for (const op of (s.cannot && w?.ops) || []) {
       const entity = entityOf(locate(w!.doc, op.path).chain);
@@ -85,12 +85,12 @@ export function judge(stories: Stories): { reading: Reading; report: Report } {
     .map(([field, v]) => ({ field, values: [...v].sort(), moves: moves.get(field)! }))
     .sort((a, b) => a.field.localeCompare(b.field));
 
-  const count = (kind: "does" | "cannot" | "closesTab" | "opensTab") => stories.stories.filter((s) => s[kind] !== undefined).length;
+  const count = (kind: "does" | "cannot" | "closesTab" | "opensTab") => toldOf(stories).filter((s) => s[kind] !== undefined).length;
   return {
     reading,
     report: {
       counts: {
-        stories: stories.stories.length,
+        stories: toldOf(stories).length,
         does: count("does"),
         cannot: count("cannot"),
         closesTab: count("closesTab"),

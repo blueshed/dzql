@@ -15,6 +15,15 @@ section up.
 
 ### Breaking
 
+- **The stories are dzql's `Stories` from the start, keyed** (20 October, root #118; needs dzql's
+  next release). `stories.ts` exports `{ cast: {}, stories: { follows: story("..."), ... } }
+  satisfies Stories`, the file dzql's harness reads, so when the app takes the step to the thin
+  client a story gains its body on the same line, under the same key, and no test is renamed. A
+  test is named `${stories.stories.saves.name}`; `tests/stories.test.ts` calls `untold(stories,
+  sources)`. To move across: wrap the record as `stories: { ... }` beside `cast: {}`, end the file
+  `} satisfies Stories;`, and rename each `stories.<key>` in a test to `stories.stories.<key>`. The
+  evolve references add their stories after `stories: {`.
+
 - **paintbrush is create-blueshed's `template/`** (20 October, Peter's decision: the two starters
   follow one pattern). `packages/paintbrush` moved whole, with its history, to
   `packages/create-blueshed/template`: a workspace still (`paintbrush`, private), tested where it

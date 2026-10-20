@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { story, type Stories } from "dzql/modelling/stories";
+import { story, toldOf, type Stories } from "dzql/modelling/stories";
+import { keyed } from "../../keyed";
 import { entityOf, fromStories, locate, noticing, pascal, readOp, singular } from "../../../../src/modelling/page/loader/from-stories";
 import { format, judge } from "../../../../src/modelling/page/loader/report";
 import { extract, rulesIn } from "../../../../src/modelling/page/loader/extract";
@@ -65,7 +66,7 @@ const w = (doc: string, op: "add" | "replace" | "remove", path: string, value?: 
 const market: Stories = {
   cast: { seller: [], buyer: [], other: [] },
   goTo: (address) => ({ doc: "session", ops: [{ op: "replace", path: "/page", value: address }] }),
-  stories: [
+  stories: keyed([
     story("the seller lists a stall", { as: "seller", does: w("stall", "add", "/-", { name: "Fish", note: undefined, id: 9 }), seen: { seller: "" } }),
     story("the seller names the stall again", { as: "seller", does: w("stall", "replace", "/1/note", "fresh"), seen: { seller: "stall/1", buyer: "market" } }),
     story("the seller adds a lot", { as: "seller", does: w("stall", "add", "/1/lots/-", { stall_id: 1, fish_id: 3, bin_id: 2, price: 4 }), seen: ["seller", "ghost"], untold: ["nobody"] }),
@@ -79,7 +80,7 @@ const market: Stories = {
     story("the buyer cannot rename a stall", { as: "buyer", cannot: w("stall", "replace", "/1/name", "Mine") }),
     story("the buyer changes a sign nobody adds", { as: "buyer", does: w("sign", "replace", "/1/text", "Open"), seen: { other: "" } }),
     story("the other closes their tab", { as: "other", closesTab: true, seen: ["seller"] }),
-  ],
+  ]),
 };
 
 describe("fromStories", () => {
@@ -122,11 +123,11 @@ describe("fromStories", () => {
   test("two documents of one type (Japan, ask:1, and the picnic, ask:2) are one entity, named by the type", () => {
     const plans: Stories = {
       cast: { peter: [] },
-      stories: [
+      stories: keyed([
         story("Peter asks for yen in Japan", { as: "peter", does: w("ask:1", "add", "/asks/-", { words: "Get yen" }), seen: ["peter"] }),
         story("Peter asks for a blanket at the picnic", { as: "peter", does: w("ask:2", "add", "/asks/-", { words: "Bring a blanket" }), seen: ["peter"] }),
         story("Peter renames the picnic", { as: "peter", does: w("ask:2", "replace", "/words", "A picnic"), seen: ["peter"] }),
-      ],
+      ]),
     };
     const { model, collections } = fromStories(plans);
     expect(model.entities.map((e) => e.name)).toEqual(["AskAsk", "Ask"]);
@@ -134,7 +135,7 @@ describe("fromStories", () => {
     expect(locate("ask:1", "/asks/2/answers/-")).toEqual({ chain: ["ask", "asks", "answers"], row: true });
   });
   test("an example without `goTo` has no session to leave out", () => {
-    expect(fromStories({ cast: { a: [] }, stories: [] }).session).toBeUndefined();
+    expect(fromStories({ cast: { a: [] }, stories: keyed([]) }).session).toBeUndefined();
   });
 });
 
@@ -195,7 +196,7 @@ describe("the examples", () => {
   test("every example's stories read, and hjeli's predicates judge them", async () => {
     for await (const file of new Bun.Glob("*/stories.ts").scan(`${import.meta.dir}/../..`)) {
       const { stories } = (await import(`../../${file}`)) as { stories: Stories };
-      expect(judge(stories).report.counts.stories).toBe(stories.stories.length);
+      expect(judge(stories).report.counts.stories).toBe(toldOf(stories).length);
     }
   });
 });
@@ -229,7 +230,7 @@ registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
 
   test("chat: every story placed on its tables and run, a tab closing among them; its permits are code", async () => {
     const facts = await extract("chat");
-    expect(facts.harness!.passed + facts.harness!.failed).toBe(chat.stories.length);
+    expect(facts.harness!.passed + facts.harness!.failed).toBe(toldOf(chat).length);
     expect(facts.documents.map((d) => `${d.name}: ${d.kind}`)).toEqual(["room: stored", "session: stored", "here: memory", "lobby: memory"]); // in the order of its resources' folders
     expect(facts.permits).toEqual([]);
     const say = facts.stories.find((s) => s.name.startsWith("Ada says hello"))!;

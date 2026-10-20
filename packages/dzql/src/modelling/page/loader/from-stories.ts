@@ -20,7 +20,7 @@
 // No example knowledge: the one document left out is the session's, found by asking the example's
 // own `goTo()` where it writes.
 
-import { writeOf, type Stories, type Story, type Write } from "dzql/modelling/stories";
+import { toldOf, writeOf, type Stories, type Story, type Write } from "dzql/modelling/stories";
 import { isTest, type PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { typeOf as docType } from "./documents";
@@ -131,14 +131,14 @@ export function fromStories(stories: Stories): Reading {
     });
 
   const members = new Set(Object.keys(stories.cast));
-  for (const s of stories.stories) {
+  for (const s of toldOf(stories)) {
     if (!members.has(s.as)) {
       notes.push({ kind: "uncast-author", where: s.name, detail: `"${s.as}" tells a story but is not in the cast` });
       members.add(s.as);
     }
   }
 
-  for (const s of stories.stories) {
+  for (const s of toldOf(stories)) {
     const w = s.does && writeOf(s);
     if (!w) {
       modelStories.push({ actor: s.as, action: s.name, writes: [], opens: [] });
