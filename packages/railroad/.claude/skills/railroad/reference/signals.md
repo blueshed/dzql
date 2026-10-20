@@ -18,7 +18,7 @@ count.peek();                                      // read, no tracking
 untrack(() => count.get());                        // the same, as a function
 
 const filter = signal({ color: "all", done: false });
-filter.patch({ color: "blue" });                   // shallow merge; throws on arrays
+filter.update((f) => ({ ...f, color: "blue" }));  // a new object: one field changed
 
 const todos = signal([{ id: 1, text: "Buy milk" }]);
 todos.mutate((arr) => arr.push({ id: 2, text: "Walk dog" }));  // structuredClone, mutate, notify

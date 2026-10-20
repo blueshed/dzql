@@ -47,22 +47,6 @@ describe("signal", () => {
     expect(s.get().x).toBe(99);
   });
 
-  test("patch merges shallow fields", () => {
-    const s = signal({ name: "a", color: "red", size: 10 });
-    s.patch({ color: "blue" });
-    expect(s.get()).toEqual({ name: "a", color: "blue", size: 10 });
-  });
-
-  test("patch notifies subscribers", () => {
-    const s = signal({ x: 1, y: 2 });
-    let runs = 0;
-    effect(() => { s.get(); runs++; });
-    expect(runs).toBe(1);
-    s.patch({ y: 99 });
-    expect(runs).toBe(2);
-    expect(s.get()).toEqual({ x: 1, y: 99 });
-  });
-
   test("does not notify if value unchanged", () => {
     const s = signal(1);
     let runs = 0;
@@ -141,29 +125,6 @@ describe("Signal.touch", () => {
     s.peek().items.push(3);
     s.touch();
     expect(runs).toBe(1);
-  });
-});
-
-describe("Signal.patch(): object signals only, typed keys", () => {
-  test("patch on an array throws instead of corrupting to an index-keyed object", () => {
-    const rows = signal([{ id: 1 }, { id: 2 }]);
-    expect(() => (rows as any).patch({ id: 3 })).toThrow(/array/i);
-    expect(Array.isArray(rows.peek())).toBe(true); // value untouched
-  });
-
-  test("patch on an object signal still shallow-merges", () => {
-    const filter = signal({ color: "all", done: false });
-    filter.patch({ color: "blue" });
-    expect(filter.peek()).toEqual({ color: "blue", done: false });
-  });
-
-  // Checked by `bun run check` (tsc over this file): the @ts-expect-error must find its error.
-  test(".patch() takes only the signal's own keys", () => {
-    const filter = signal({ color: "all", done: false });
-    // @ts-expect-error -- "colr" is not a key of the value (it compiled before)
-    filter.patch({ colr: "blue" });
-    filter.patch({ color: "blue" });
-    expect(filter.peek().color).toBe("blue");
   });
 });
 
@@ -831,7 +792,7 @@ describe("Signal.map", () => {
   test("updates when source changes", () => {
     const s = signal({ name: "Alice", age: 30 });
     const name = s.map((v) => v.name);
-    s.patch({ name: "Bob" });
+    s.update((v) => ({ ...v, name: "Bob" }));
     expect(name.get()).toBe("Bob");
   });
 
@@ -1066,5 +1027,25 @@ describe("a second copy of railroad says so when it loads", () => {
     expect(msg).toContain(dir); // the new copy
     expect(msg).toContain(first.href); // the first
     expect(msg).toContain("Local development across repos");
+  });
+});
+
+describe("scoped(): a custom root, from the package's entry", () => {
+  test("what it makes is disposed by its disposer, and a throw closes the scope", async () => {
+    const { scoped: root, signal: sig, effect: eff, hasActiveDisposeScope: open } = await import("../src/index");
+    const s = sig(1);
+    let runs = 0;
+    const { value, dispose } = root(() => {
+      eff(() => { s.get(); runs++; });
+      return "made";
+    });
+    expect(value).toBe("made");
+    s.set(2);
+    expect(runs).toBe(2);
+    dispose();
+    s.set(3);
+    expect(runs).toBe(2); // disposed with its root
+    expect(() => root(() => { throw new Error("boom"); })).toThrow("boom");
+    expect(open()).toBe(false); // the throw closed it
   });
 });

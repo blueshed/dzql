@@ -6,6 +6,16 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ## [Unreleased]
 
+### Breaking
+
+- **`Signal.patch()` is gone** (20 October, root #37): nothing used it. For an object signal,
+  `s.update((v) => ({ ...v, ...partial }))` says the same, and an array was never patchable.
+- **A custom root is `scoped(build)`** (20 October, root #37): it gives `{ value, dispose }`, its
+  scope closed on every path, a throw included. `pushDisposeScope` and `popDisposeScope` leave the
+  package's entry (they stay inside it, where a pair left open is not the app's to make):
+  `pushDisposeScope(); try { x = build(); } finally { dispose = popDisposeScope(); }` is
+  `const { value: x, dispose } = scoped(build)`.
+
 ### Changed
 
 - **The README installs the skills one way** (20 October): `bunx @blueshed/delta install-skills`,

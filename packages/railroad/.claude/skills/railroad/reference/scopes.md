@@ -33,5 +33,5 @@ A scope is opened by a component (`createElement`), a `routes()` handler, a `whe
 - An event handler is not a scope: an effect made in `onclick` leaks. Derive in the component body.
 - `when()` or `list()` made outside any scope leaks, and warns in development.
 - `route()` (singular) opens no scope; at module level it lives for the app, which is allowed.
-- A custom root brackets itself: `pushDisposeScope()` … build … `const dispose = popDisposeScope()`. Pop on every path (`try/finally`), never across an `await`. `trackDispose(fn)` registers a cleanup; `hasActiveDisposeScope()` says whether one is open.
+- A custom root is `const { value, dispose } = scoped(() => build())`: what `build` makes is in a scope of its own, closed on every path, a throw included. It is synchronous: never across an `await`. `trackDispose(fn)` registers a cleanup; `hasActiveDisposeScope()` says whether one is open.
 - After an `await` there is no scope: that is why async components resolve to a thunk ([async](async.md)).

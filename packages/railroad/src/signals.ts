@@ -40,7 +40,6 @@
  *   .set(value)               — write (notifies if changed; configurable via `equals`)
  *   .update(fn)               — set via transform: s.update(v => v + 1)
  *   .mutate(fn)               — structuredClone, mutate in place, fire listeners
- *   .patch(partial)           — shallow merge for object signals
  *   .peek()                   — read without tracking
  *   .map(fn)                  — derive a ReadonlySignal: s.map(v => v.name)
  *   .touch()                  — fire listeners without replacing the ref
@@ -518,20 +517,6 @@ export class Signal<T> implements ReadonlySignal<T> {
     this.touch();
   }
 
-  patch(partial: Partial<T>): void {
-    // Spreading an array into `{ ... }` yields a plain object keyed by index —
-    // silently corrupt data that surfaces far from the call site. Refuse loudly
-    // instead; arrays update via .set() / .update() / .mutate().
-    if (Array.isArray(this.value)) {
-      throw new Error(
-        "[railroad/signals] .patch() shallow-merges OBJECT signals — on an " +
-          "array it would spread indices into a plain object. Use .set(), " +
-          ".update(), or .mutate() for array signals.",
-      );
-    }
-    this.set({ ...this.value, ...partial } as T);
-  }
-
   peek(): T {
     if (activeFlush && this.level >= activeFlush.floor) freshen(activeFlush, this);
     return this.value;
@@ -688,9 +673,10 @@ export function popDisposeScope(): Dispose {
 }
 
 /**
- * @internal -- jsx.ts, routes.ts: run `fn` under a dispose scope of its own,
- * popped on every path. Returns what it made and the scope's disposer; a throw
- * disposes what it made before the throw and rethrows.
+ * Run `fn` under a dispose scope of its own, popped on every path: a custom
+ * root (and how jsx.ts and routes.ts make theirs). Returns what it made and the
+ * scope's disposer; a throw disposes what it made before the throw and rethrows.
+ * Synchronous: what is made after an `await` in `fn` is in no scope.
  */
 export function scoped<T>(fn: () => T): { value: T; dispose: Dispose } {
   pushDisposeScope();

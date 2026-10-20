@@ -1,10 +1,11 @@
 // Railroad — Signals, JSX, Routes, shared DI and a logger
 
 export { Signal, signal, computed, effect, batch, untrack } from "./signals";
-// Dispose-scope primitives — for advanced cases that mount UI outside a
-// component/route/mount(). trackDispose registers a cleanup in the current
-// scope; push/pop bracket a manual scope. App code rarely needs these.
-export { trackDispose, pushDisposeScope, popDisposeScope, hasActiveDisposeScope } from "./signals";
+// Dispose scopes — for advanced cases that mount UI outside a component/route/
+// mount(). scoped(build) runs build under a scope of its own, closed on every
+// path, and gives back what it made and the disposer; trackDispose registers a
+// cleanup in the current scope. App code rarely needs these.
+export { scoped, trackDispose, hasActiveDisposeScope } from "./signals";
 export type { Dispose, ReadonlySignal, SignalOptions } from "./signals";
 
 export {

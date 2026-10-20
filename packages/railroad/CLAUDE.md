@@ -63,7 +63,7 @@ so after a dependency change run `bun install` and commit `bun.lock`.
 
   | File (`src/`) | Exports | Depends on |
   |---|---|---|
-  | `signals.ts` | `signal` `computed` `effect` `batch` `untrack` `Signal` `trackDispose` `pushDisposeScope` `popDisposeScope` `hasActiveDisposeScope` (and `assertOwnSignal`, `untrackRender`, `scoped`, `warn`, internal: for `jsx.ts` and `routes.ts`) | — |
+  | `signals.ts` | `signal` `computed` `effect` `batch` `untrack` `Signal` `trackDispose` `scoped` `hasActiveDisposeScope` (and `pushDisposeScope`, `popDisposeScope`, `assertOwnSignal`, `untrackRender`, `warn`, internal: for `jsx.ts` and `routes.ts`) | — |
   | `jsx.ts` | `createElement` `Fragment` `when` `list` `mount`, the `JSX` types (on `createElement`, not global; and `adoptIntoSvg`, `renderThunk`, internal: for `routes.ts`) | signals |
   | `routes.ts` | `routes` `route` `navigate` `matchRoute` | signals, jsx (SVG adoption only; loads without a DOM) |
   | `shared.ts` | `key` `provide` `inject` `tryInject` `clearProviders` | — |
