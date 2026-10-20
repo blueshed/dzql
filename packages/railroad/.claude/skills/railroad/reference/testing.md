@@ -1,7 +1,7 @@
 # Testing
 
 ```tsx
-// counter.test.tsx: bunfig.toml preloads happy-dom ([test] preload = ["./happy-dom.setup.ts"])
+// counter.test.tsx: happy-dom preloaded, as below
 import { test, expect } from "bun:test";
 import { signal, mount, routes, navigate } from "@blueshed/railroad";
 
@@ -28,6 +28,20 @@ test("navigate() needs no tick", () => {
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 GlobalRegistrator.register();
 ```
+
+```sh
+bun add -d @types/bun @happy-dom/global-registrator   # bun:test's types, and the DOM
+```
+
+```toml
+# bunfig.toml: preloaded by every bun test
+[test]
+preload = ["./happy-dom.setup.ts"]
+```
+
+Where `bunfig.toml` cannot be written, put the preload in package.json's `test` script,
+`"test": "bun test --preload ./happy-dom.setup.ts"`, and run it with `bun run test`. A bare
+`bun test` then has no DOM: `document is not defined`.
 
 Working: [examples/jobs/tests/jobs.test.tsx](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/tests/jobs.test.tsx),
 which mounts each test under a scope of its own, asserts straight after a click, waits a macrotask
