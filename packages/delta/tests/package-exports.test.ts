@@ -116,6 +116,11 @@ describe("package exports", () => {
     for (const name of ["defineSchema", "defineDoc", "defineCustomDoc"] as const) expect([name, json[name]]).toEqual([name, sqlite[name]]);
   });
 
+  test('"./client" gives a page the ledger\'s actions beside call and openDoc: undo, redo, history (#91)', async () => {
+    const client = await import("../src/client/client");
+    for (const name of ["connectWs", "openDoc", "call", "undo", "redo", "history"] as const) expect([name, typeof client[name]]).toEqual([name, "function"]);
+  });
+
   test('"./testing" gives the pointer and walk vectors, and the package ships them as data', async () => {
     const { pointerVectors, walkVectors } = await import("../src/testing");
     expect(pointerVectors).toEqual(await Bun.file(join(repoRoot, "src/pointer-vectors.json")).json());

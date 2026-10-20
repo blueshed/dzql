@@ -55,9 +55,9 @@ const me = await call<Person | null>("me");          // null: nobody: show "Who 
   instead of a password. Tests: `await auth.signInAs(id)` is a cookie header. None of these
   answers in production.
 - **Sign out:** `signOut()` ends the session and reloads the page.
-- **Outside a browser `connectWs` sends no cookie.** A script or test signed in by link opens
-  Bun's own `WebSocket` with a `cookie` header and speaks the wire (`signedIn` in
-  `tests/helpers/examples.ts`).
+- **A script or test is signed in by its headers**: `connectWs(url, { headers: { cookie } })`
+  sends them on every connect (Bun), then `openDoc` and `call` as a page does; a browser sends
+  its own cookies and ignores them (`signedIn` in `tests/helpers/examples.ts`).
 
 ## Gotchas
 

@@ -13,9 +13,10 @@ await local.call("delta", { doc: "room:a", ops: [{ op: "add", path: "/messages/m
 Every message is JSON, `{ id?, action, ...rest }`; the answer mirrors the `id` as
 `{ id, result }` or `{ id, error: { code, message } }` (codes: `paths.md`).
 
-Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/resources/lists/lists.ts), undo and redo sent as
-messages of their own (`{ action: "undo" }`, `resources/lists/lists.ts`); its tests speak the
-rest on the wire, signed in by a cookie (`signedIn` in `tests/helpers/examples.ts`).
+Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), whose tests are a script on
+the wire: `connectWs` signed in by a cookie (`headers`, `signedIn` in `tests/helpers/examples.ts`),
+a refusal asked as the message itself (`client.send({ action: "open", doc })`, its code 401 or
+404), undo and redo as messages of their own (`undo()` and `redo()` in `./client`).
 
 ## Client to server
 

@@ -1,21 +1,16 @@
 /**
  * One person's browser on examples/lists (tests/examples.test.ts): the page in happy-dom, its
- * app.tsx over Bun's own WebSocket to the server on PORT, carrying COOKIE on the upgrade as a
- * browser carries its session (run from examples/lists, so Bun takes railroad's JSX from its
- * tsconfig). Once signed in it prints `me <name>` and `lists <titles>`; then it does STEPS (a JSON
+ * app.tsx over happy-dom's own WebSocket to the server on PORT, which carries the site's cookies
+ * on the upgrade as a browser does: COOKIE, the session, is in its jar (run from examples/lists,
+ * so Bun takes railroad's JSX from its tsconfig). Once signed in it prints `me <name>` and `lists <titles>`; then it does STEPS (a JSON
  * list) in turn on the list titled LIST -- ["add", item], ["see", item] (until it shows),
  * ["undo"] -- and exits once that list shows END (items, comma-separated), printing
  * `list <items>`, or fails after 15 s at any wait (a cold start beside every package's tests can take five).
  */
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
-const Native = globalThis.WebSocket;
 GlobalRegistrator.register({ url: `http://localhost:${process.env.PORT}/` });
-globalThis.WebSocket = class extends Native {
-  constructor(url: string | URL) {
-    super(url, { headers: { cookie: process.env.COOKIE ?? "" } } as any);
-  }
-} as typeof WebSocket;
+document.cookie = process.env.COOKIE ?? "";   // the session a sign-in set
 
 const page = new URL("../../examples/lists/", import.meta.url);
 const html = await Bun.file(new URL("index.html", page)).text();

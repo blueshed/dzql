@@ -4,11 +4,14 @@
  * touch the network.
  */
 import { describe, test, expect, afterEach } from "bun:test";
-import { connectWs, openDoc, call, WS, type Doc, type WsClient } from "../src/client/client";
+import { connectWs, openDoc, call, history, redo, undo, WS, type Doc, type WsClient } from "../src/client/client";
 import { provide, clearProviders, signal } from "@blueshed/railroad";
 import type { DeltaOp } from "../src/core";
 import { Database } from "bun:sqlite";
 import { createWs } from "../src/server/server";
+import { upgradeWithAuth, wireAuth } from "../src/server/auth";
+import { linkAuth, sqliteLinkStore } from "../src/server/auth-link";
+import { waitFor } from "../src/testing";
 import { createTables, defineDoc, defineSchema, registerDocs } from "../src/server/sqlite";
 
 // `connectWs` resolves URLs against `location` — shim it for Bun.
@@ -800,6 +803,70 @@ describe("send(ops, { inverse: true }) resolves with the ops as applied: the id 
     await asksForTheId(await serve((ws) => registerDocs(ws, db, schema, [venue])));
   });
 
+  // #91: a page reached undo and redo only by the raw wire, its answer cast to a type of its own
+  test("undo, redo and history, typed by their answers: the walk, a conflict, or null (#91)", async () => {
+    const db = new Database(":memory:");
+    createTables(db, schema);
+    const url = await serve((ws) => registerDocs(ws, db, schema, [venue], [], { ledger: true }));
+    const [ann, bo] = [connectWs(url, { backoff: 10 }), connectWs(url, { backoff: 10 })];
+    try {
+      const [atAnn, atBo] = [openDoc<any>("venue:1", ann), openDoc<any>("venue:1", bo)];
+      await Promise.all([atAnn.ready, atBo.ready]);
+      expect(await undo(ann)).toBeNull();   // nothing to walk
+
+      await atAnn.send([{ op: "add", path: "/rooms/-", value: { name: "attic" } }]);
+      const walked = await undo(ann);
+      if (!walked || walked.conflict) throw new Error(`not walked: ${JSON.stringify(walked)}`);
+      const removed: DeltaOp[] = walked.ops;   // typed: the ops it applied
+      expect([walked.doc, removed]).toEqual(["venue:1", [{ op: "remove", path: "/rooms/1" }]]);
+      expect(typeof walked.version).toBe("number");
+      expect((await redo(ann))!.ops[0]).toMatchObject({ op: "add", path: "/rooms/1" });
+
+      // Bo renames Ann's room: her undo would remove a row he has changed since
+      await atBo.send([{ op: "replace", path: "/rooms/1/name", value: "loft" }]);
+      const refused = await undo(ann);
+      expect(refused?.conflict).toEqual(["/rooms/1"]);
+      await waitFor(() => atAnn.data.peek().rooms[1]?.name === "loft");
+
+      const entries = await history("venue:1", bo);   // newest first, each saying whether it is Bo's
+      expect(entries.map((e) => e.mine)).toEqual([false, true, false, false, false]);
+      expect(entries[1]!.ops).toEqual([{ op: "replace", path: "/rooms/1", value: expect.objectContaining({ name: "loft" }) }]);   // the ledger keeps whole rows
+      await expect(history("venue:9", bo)).resolves.toEqual([]);
+    } finally {
+      ann.close();
+      bo.close();
+    }
+  });
+});
+
+// #89: connectWs sent no cookie outside a browser, so a script signed in by link spoke the wire by hand
+describe("connectWs headers: a script signed in as a page is", () => {
+  test("headers ride on every connect where the runtime takes them (Bun): signed in, and again after a drop", async () => {
+    const people = [{ id: 1, name: "Ann" }];
+    const auth = linkAuth({ store: sqliteLinkStore(new Database(":memory:")), personOf: (id) => people.find((p) => p.id === id) ?? null, people: () => people, dev: true });
+    const ws = createWs();
+    wireAuth(ws, auth);
+    server = Bun.serve({ port: 0, routes: { "/ws": upgradeWithAuth(ws, auth) }, websocket: ws.websocket });
+    ws.setServer(server);
+    const url = `ws://localhost:${server.port}/ws`;
+    const cookie = await auth.signInAs(1);
+    const ann = connectWs(url, { headers: { cookie }, backoff: 10 });
+    const nobody = connectWs(url, { backoff: 10 });
+    try {
+      expect(await call("me", {}, ann)).toEqual({ id: 1, name: "Ann" });
+      expect(await call("me", {}, nobody)).toBeNull();
+      // a reconnect is a new socket: it carries them again
+      (server as any).stop(true);
+      await waitFor(() => !ann.connected.peek());
+      server = Bun.serve({ port: Number(new URL(url).port), routes: { "/ws": upgradeWithAuth(ws, auth) }, websocket: ws.websocket });
+      ws.setServer(server);
+      await waitFor(() => ann.connected.peek(), { timeout: 5000 });
+      expect(await call("me", {}, ann)).toEqual({ id: 1, name: "Ann" });
+    } finally {
+      ann.close();
+      nobody.close();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

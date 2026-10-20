@@ -6,16 +6,23 @@
  * Every change is one `send`; the echo draws it, here and on every page holding the list. Undo
  * is the ledger's: it walks back your last change, and leaves anyone else's.
  */
+import { redo, undo, type Walk } from "@blueshed/delta/client";
 import { joinPath, type DeltaOp } from "@blueshed/delta/core";
 import { computed, list, signal, type JSX, type ReadonlySignal } from "@blueshed/railroad";
 import type { Person } from "../people/people-api";
 import { openPeople } from "../people/people";
 import type { Item, Member } from "./lists-api";
-import { openList, openMine, redo, undo, type Walk } from "./lists";
+import { openList, openMine } from "./lists";
 
 /** What the last undo or redo said, when it did not do what was asked. */
 const said = signal("");
 
+/**
+ * Undo or redo this page's last change, wherever it shows: the ledger walks back what this person
+ * wrote on this socket (the cursor), never what anyone else wrote. The change comes back through
+ * the documents, as every write's does; the answer says what it did: the walk, a conflict (someone
+ * has changed it since), or null (nothing to walk).
+ */
 async function walk(step: () => Promise<Walk>, none: string): Promise<void> {
   const done = await step();
   said.set(done === null ? none : done.conflict ? "Someone has changed that since: it stays as they left it." : "");

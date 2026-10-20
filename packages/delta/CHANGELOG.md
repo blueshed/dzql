@@ -48,6 +48,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   version, ops } }`, or `{ error }`, 404 or 400, nothing changed). Before, only a `createLocal()`
   caller could write one, so a server on `createWs()` registered it on a tee of the socket and a
   local caller; `examples/lobby` and `kinds.md` did, and now write with `here.write(...)`.
+- **A script signs in as a page does: `ConnectOptions.headers`** (20 October, #89): headers sent on
+  every connect's upgrade where the runtime takes them (Bun), ignored in a browser, which sends
+  its own cookies: `connectWs(url, { headers: { cookie } })`, then `openDoc` and `call`. Before,
+  `connectWs` opened `new WebSocket(url)` with nothing, so a Bun client of a link sign-in app was
+  nobody: delta's tests spoke the wire by hand on Bun's own WebSocket (`signedIn` in
+  `tests/helpers/examples.ts`, now `connectWs` with the cookie), and the lists browser helper
+  swapped `globalThis.WebSocket` for one that added the cookie (now happy-dom's own, which sends
+  the page's cookie jar as a browser does). `auth.md`'s gotcha is gone. (`headers`, not a
+  `cookie` option: an `authorization` rides the same way.)
+- **`undo`, `redo` and `history` in `./client`, typed by their answers** (20 October, #91):
+  `undo(client?)` and `redo(client?)` answer a `Walk` (`Walked`, a `WalkConflict` with its
+  `conflict` paths, or null), `history(doc, client?)` a `HistoryEntry[]`. A page sent
+  `inject(WS).send({ action: "undo" })` and cast the answer; `examples/lists` dropped its own
+  `Walk` type and its `undo` and `redo`, and `ledger.md` teaches these.
 - **Two examples, the skill's worked answers** (20 October, root #116): every rule delta-doc
   teaches about undo, sign-in, migrations and the kinds is shown working in an app the tests run,
   and the reference page links it.

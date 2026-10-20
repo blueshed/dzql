@@ -131,8 +131,9 @@ exact version, or the setup stops reading it).
 
 - `src/core.ts`: `applyOps`, `DeltaOp`, `splitPath`, `joinPath`, `escapeSegment`,
   `changedFields` (no dependencies).
-- `src/client/`: `client.ts` (reconnecting socket with `onConnect`, reactive `openDoc`,
-  version-gap resync, `send` after its echo), `dom-ops.ts` (`applyOpsToCollection`). It
+- `src/client/`: `client.ts` (reconnecting socket with `onConnect` and `headers`, reactive
+  `openDoc`, version-gap resync, `send` after its echo, the ledger's `undo` / `redo` / `history`),
+  `dom-ops.ts` (`applyOpsToCollection`). It
   imports railroad's subpaths, never the root barrel.
 - `src/server/server.ts`: `createWs`, `registerMethod`, `WsServer`.
 - `src/server/serve.ts` (`./serve`): the one server. `serve` (an app's routes and resources, the

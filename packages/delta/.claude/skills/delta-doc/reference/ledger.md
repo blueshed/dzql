@@ -15,14 +15,22 @@ Message shapes: `wire.md`. Every write is recorded in its own transaction: ops, 
 version, **who** (for the audit) and the **cursor** (what undo walks). SQLite keeps
 `delta_ledger`.
 
-From a page, undo is an action on its socket: `inject(WS).send({ action: "undo" })` (and
-`"redo"`); the answer says what it did, and the change itself arrives through the documents, as
-every write's does.
+From a page, `undo`, `redo` and `history` in `@blueshed/delta/client` (through `WS`, or the
+client given): the change itself arrives through the documents, as every write's does, and the
+answer says what it did.
+
+```ts
+import { history, redo, undo, type Walk } from "@blueshed/delta/client";
+const done: Walk = await undo();          // Walked | WalkConflict | null
+if (done === null) say("Nothing of yours to undo.");
+else if (done.conflict) say("Someone has changed that since.");   // nothing changed
+const entries = await history("room:a");  // HistoryEntry[], newest first, each with `mine`
+```
 
 Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), two people signed in on one
 list, each undoing their own, and an undo with the other's change in the way refused:
 `{ ledger: true, who }` in `resources/lists/lists-api.ts`, the cursor's `clientId` in `app.tsx`,
-`undo` and `redo` in `resources/lists/lists.ts`, Undo and Redo in `resources/lists/lists-view.tsx`.
+Undo and Redo (`undo`, `redo`, `Walk`) in `resources/lists/lists-view.tsx`.
 
 ## The cursor
 

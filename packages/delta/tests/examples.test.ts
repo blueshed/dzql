@@ -16,7 +16,8 @@ import { Database } from "bun:sqlite";
 import { rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { call, connectWs, openDoc, type DeltaOp } from "../src/client/client";
+import { call, connectWs, history, openDoc, undo, redo, type DeltaError, type DeltaOp, type Doc, type WsClient } from "../src/client/client";
+import { joinPath } from "../src/core";
 import { createLocal } from "../src/server/local";
 import { defineDoc, defineSchema, importTables, migrate, migrationStatus, registerDocs } from "../src/server/sqlite";
 import { waitFor } from "../src/testing";
@@ -99,16 +100,20 @@ describe("lists", () => {
     return { server, site: site!, as };
   }
   const titles = (doc: any) => Object.values<any>(doc.items).map((i) => i.title);
+  /** A document `who` opens, as a page opens it, once it has its first answer. */
+  const opened = async (name: string, who: WsClient): Promise<Doc<any>> => { const doc = openDoc<any>(name, who); await doc.ready; return doc; };
+  /** The code a request is refused with (a page's `openDoc` would wait for one it may open). */
+  const refused = (asked: Promise<unknown>) => asked.then(() => 0, (err: DeltaError) => err.code);
 
   test("sign-in by link, and who may open what: nobody until signed in; people: for all; a list for its members alone", async () => {
     const db = database();
     const { server, site, as } = await listsOn(db);
-    const sockets: { close(): void }[] = [];
-    const socket = async (cookie?: string) => { const s = await signedIn(site, cookie); sockets.push(s); return s; };
+    const sockets: WsClient[] = [];
+    const socket = (cookie?: string) => { const s = signedIn(site, cookie); sockets.push(s); return s; };
     try {
-      const nobody = await socket();
-      expect((await nobody.ask({ action: "open", doc: "people:" })).error.code).toBe(401);
-      expect((await nobody.ask({ action: "call", method: "me" })).result).toBeNull();
+      const nobody = socket();
+      expect(await refused(nobody.send({ action: "open", doc: "people:" }))).toBe(401);
+      expect(await call("me", {}, nobody)).toBeNull();
 
       // Ann's link, from the command the README gives; its tap signs her in, once
       const cli = Bun.spawnSync(["bun", join(import.meta.dir, "../src/cli.ts"), "link", db, "1", "--origin", site]);
@@ -116,30 +121,30 @@ describe("lists", () => {
       const tap = (t: string) => fetch(`${site}/api/in/${t}`, { method: "POST", headers: { origin: site } });
       const tapped = await tap(token!);
       expect(tapped.status).toBe(200);
-      const ann = await socket(cookieOf(tapped));
-      expect((await ann.ask({ action: "call", method: "me" })).result).toEqual({ id: 1, name: "Ann" });
+      const ann = socket(cookieOf(tapped));
+      expect(await call("me", {}, ann)).toEqual({ id: 1, name: "Ann" });
       expect((await tap(token!)).status).toBe(400);   // used once
 
       // a link Ann makes for Bo signs Bo in
-      const { url } = (await ann.ask({ action: "call", method: "link", params: { person: 2 } })).result;
-      const bo = await socket(cookieOf(await tap(url.split("#/in/")[1])));
-      expect((await bo.ask({ action: "call", method: "me" })).result).toEqual({ id: 2, name: "Bo" });
+      const { url } = await call<{ url: string }>("link", { person: 2 }, ann);
+      const bo = socket(cookieOf(await tap(url.split("#/in/")[1]!)));
+      expect(await call("me", {}, bo)).toEqual({ id: 2, name: "Bo" });
 
       // people: is shared, for anyone signed in
-      const cy = await socket(await as(3));
-      expect(Object.values<any>((await cy.ask({ action: "open", doc: "people:" })).result.people).map((p) => p.name).sort()).toEqual(["Ann", "Bo", "Cy"]);
+      const cy = socket(await as(3));
+      expect(Object.values<any>((await opened("people:", cy)).data.get().people).map((p) => p.name).sort()).toEqual(["Ann", "Bo", "Cy"]);
 
       // the lists each is on, theirs alone (owns: @person)
-      const on = async (who: typeof ann, me: number) => Object.values<any>((await who.ask({ action: "open", doc: `mine:${me}` })).result.members).map((m) => m.lists_id);
+      const on = async (who: WsClient, me: number) => Object.values<any>((await opened(`mine:${me}`, who)).data.get().members).map((m) => m.lists_id);
       expect(await on(ann, 1)).toEqual([1, 2]);
       expect(await on(bo, 2)).toEqual([1]);
-      expect((await bo.ask({ action: "open", doc: "mine:1" })).error.code).toBe(404);
+      expect(await refused(bo.send({ action: "open", doc: "mine:1" }))).toBe(404);
 
       // a list for its members (owns: @id->members[lists_id=$].person): not there for anyone else, to read or write
-      expect((await bo.ask({ action: "open", doc: "list:1" })).result.lists.title).toBe("Shopping");
-      expect((await cy.ask({ action: "open", doc: "list:1" })).error.code).toBe(404);
-      expect((await cy.ask({ action: "delta", doc: "list:1", ops: [{ op: "add", path: "/items/-", value: { title: "Cy's" } }] })).error.code).toBe(404);
-      expect((await cy.ask({ action: "open", doc: "list:3" })).result.lists.title).toBe("Books");
+      expect((await opened("list:1", bo)).data.get().lists.title).toBe("Shopping");
+      expect(await refused(cy.send({ action: "open", doc: "list:1" }))).toBe(404);
+      expect(await refused(cy.send({ action: "delta", doc: "list:1", ops: [{ op: "add", path: "/items/-", value: { title: "Cy's" } }] }))).toBe(404);
+      expect((await opened("list:3", cy)).data.get().lists.title).toBe("Books");
     } finally {
       for (const s of sockets) s.close();
       await stop(server);
@@ -173,30 +178,29 @@ describe("lists", () => {
   test("undo beside someone else, on the wire: each walks back their own; one with Bo's change in the way is refused, and changes nothing", async () => {
     const db = database();
     const { server, site, as } = await listsOn(db);
-    const [ann, bo] = [await signedIn(site, await as(1)), await signedIn(site, await as(2))];
+    const [ann, bo] = [signedIn(site, await as(1)), signedIn(site, await as(2))];
     try {
-      const open = async (who: typeof ann) => (await who.ask({ action: "open", doc: "list:1" })).result;
-      const write = async (who: typeof ann, op: DeltaOp) => (await who.ask({ action: "delta", doc: "list:1", ops: [op] })).result;
-      const added = async (who: typeof ann, title: string) => Number((await write(who, { op: "add", path: "/items/-", value: { title } })).ops[0].path.split("/")[2]);
-      await open(ann);
-      await open(bo);
+      const [atAnn, atBo] = [await opened("list:1", ann), await opened("list:1", bo)];
+      const added = async (at: Doc<any>, title: string) => Number((await at.send([{ op: "add", path: "/items/-", value: { title } }], { inverse: true })).ops[0].path.split("/")[2]);
+      const shows = (at: Doc<any>, ...items: string[]) => waitFor(() => titles(at.data.get()).join() === items.join());
 
-      const milk = await added(ann, "milk");
-      await added(bo, "eggs");
-      expect((await ann.ask({ action: "undo" })).result.ops).toEqual([{ op: "remove", path: `/items/${milk}` }]);
-      expect(titles(await open(bo))).toEqual(["eggs"]);
-      expect((await ann.ask({ action: "redo" })).result.ops[0]).toMatchObject({ op: "add", path: `/items/${milk}` });   // back under its id
-      expect(titles(await open(bo))).toEqual(["milk", "eggs"]);
+      const milk = await added(atAnn, "milk");
+      await added(atBo, "eggs");
+      expect((await undo(ann))!.ops).toEqual([{ op: "remove", path: `/items/${milk}` }]);
+      await shows(atBo, "eggs");
+      expect((await redo(ann))!.ops[0]).toMatchObject({ op: "add", path: `/items/${milk}` });   // back under its id
+      await shows(atBo, "milk", "eggs");
 
       // Ann adds bread, Bo ticks it: Ann's undo would remove a row Bo has changed since
-      const bread = await added(ann, "bread");
-      await write(bo, { op: "replace", path: `/items/${bread}/done`, value: true });
-      const refused = (await ann.ask({ action: "undo" })).result;
-      expect(refused).toMatchObject({ doc: "list:1", ops: [], conflict: [`/items/${bread}`] });
-      expect((await open(ann)).items[bread]).toMatchObject({ title: "bread", done: true });
+      const bread = await added(atAnn, "bread");
+      await atBo.send([{ op: "replace", path: joinPath("items", bread, "done"), value: true }]);
+      await waitFor(() => atAnn.data.get().items[bread].done === true);
+      expect(await undo(ann)).toMatchObject({ doc: "list:1", ops: [], conflict: [`/items/${bread}`] });
+      expect(atAnn.data.get().items[bread]).toMatchObject({ title: "bread", done: true });
       // Bo's undo is his own: his tick
-      expect((await bo.ask({ action: "undo" })).result.ops).toEqual([{ op: "replace", path: `/items/${bread}`, value: expect.objectContaining({ title: "bread", done: false }) }]);
-      expect(titles(await open(ann))).toEqual(["milk", "eggs", "bread"]);
+      expect((await undo(bo))!.ops).toEqual([{ op: "replace", path: `/items/${bread}`, value: expect.objectContaining({ title: "bread", done: false }) }]);
+      await waitFor(() => atAnn.data.get().items[bread].done === false);
+      expect(titles(atAnn.data.get())).toEqual(["milk", "eggs", "bread"]);
     } finally {
       ann.close();
       bo.close();
@@ -231,20 +235,21 @@ describe("lists", () => {
     old.close();
 
     const { server, site, as } = await listsOn(db);
-    const ann = await signedIn(site, await as(1));
+    const ann = signedIn(site, await as(1));
     try {
       // every row, its words under their new name
-      const list = (await ann.ask({ action: "open", doc: "list:1" })).result;
+      const doc = await opened("list:1", ann);
+      const list = doc.data.get();
       expect(Object.values<any>(list.items).map(({ id, title, done }) => ({ id, title, done }))).toEqual([
         { id: 1, title: "milk", done: true }, { id: 2, title: "eggs", done: false }, { id: 3, title: "bread", done: false },
       ]);
       expect(Object.values<any>(list.items).some((i) => "text" in i)).toBe(false);
       // the write before the migration is history, and not undoable: its paths name what has moved
-      const [bread] = (await ann.ask({ action: "history", doc: "list:1" })).result;
+      const [bread] = await history("list:1", ann);
       expect(bread).toMatchObject({ undoable: false, ops: [{ op: "add", path: "/items/3" }] });
       // and a write after it is
-      await ann.ask({ action: "delta", doc: "list:1", ops: [{ op: "add", path: "/items/-", value: { title: "tea" } }] });
-      expect((await ann.ask({ action: "undo" })).result.ops).toEqual([{ op: "remove", path: "/items/4" }]);
+      await doc.send([{ op: "add", path: "/items/-", value: { title: "tea" } }]);
+      expect((await undo(ann))!.ops).toEqual([{ op: "remove", path: "/items/4" }]);
     } finally {
       ann.close();
       await stop(server);

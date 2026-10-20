@@ -6,7 +6,7 @@
 import { expect } from "bun:test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { connectWs, openDoc, type DeltaOp } from "../../src/client/client";
+import { connectWs, openDoc, type DeltaOp, type WsClient } from "../../src/client/client";
 import { waitFor } from "../../src/testing";
 
 (globalThis as any).location ??= { href: "http://localhost/", protocol: "http:" };
@@ -112,22 +112,6 @@ export function browserOn(example: string, helper: string, env: Record<string, s
 /** The session a response's `Set-Cookie` begins, as a `cookie` header sends it back. */
 export const cookieOf = (res: Response): string => res.headers.get("set-cookie")!.split(";")[0]!;
 
-/**
- * A socket to `site`'s `/ws` carrying `cookie`, as a browser sends it on the upgrade (connectWs
- * cannot: delta's todo.jsonl), speaking the wire by hand: what each request answers, and what it
- * was told unasked.
- */
-export async function signedIn(site: string, cookie = "") {
-  const sock = new WebSocket(`${site.replace("http", "ws")}/ws`, { headers: cookie ? { cookie } : {} } as any);
-  await new Promise((ok, no) => ((sock.onopen = ok), (sock.onerror = no)));
-  let n = 0;
-  const waiting = new Map<number, (msg: any) => void>();
-  const told: { doc: string; ops?: DeltaOp[]; error?: unknown }[] = [];
-  sock.onmessage = (e) => {
-    const msg = JSON.parse(String(e.data));
-    if (msg.id === undefined) told.push(msg);
-    else waiting.get(msg.id)?.(msg);
-  };
-  const ask = (msg: object) => new Promise<any>((answer) => (waiting.set(++n, answer), sock.send(JSON.stringify({ id: n, ...msg }))));
-  return { ask, told, close: () => sock.close() };
-}
+/** `site`'s socket as a page has it, carrying `cookie` on every upgrade as a browser carries its session: nobody without one. */
+export const signedIn = (site: string, cookie?: string): WsClient =>
+  connectWs(`${site}/ws`, { backoff: 10, ...(cookie ? { headers: { cookie } } : {}) });

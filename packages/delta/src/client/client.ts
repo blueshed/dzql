@@ -5,6 +5,7 @@
  *   - connectWs()  — reconnecting WebSocket with request/response and notifications
  *   - openDoc()    — open a persisted document as a reactive signal
  *   - call()       — invoke a stateless RPC method
+ *   - undo(), redo(), history() — the ledger's actions, typed by their answers
  *
  * Usage:
  *   import { connectWs, openDoc, call, WS } from "@blueshed/delta/client";
@@ -92,14 +93,20 @@ function freshen(doc: any, ops: DeltaOp[]): void {
 // Reconnecting WebSocket
 // ---------------------------------------------------------------------------
 
-function reconnectingWebSocket(url: string, first = 500): WebSocket {
+/**
+ * Bun's WebSocket takes headers (`new WebSocket(url, { headers })`); a browser's takes only
+ * protocols there, and sends its own cookies, so there they are left out.
+ */
+const takesHeaders = typeof (globalThis as any).Bun !== "undefined";
+
+function reconnectingWebSocket(url: string, first = 500, headers?: Record<string, string>): WebSocket {
   let ws!: WebSocket;
   const proxy = new EventTarget();
   let backoff = first;
   let closed = false;
 
   function connect() {
-    ws = new WebSocket(url);
+    ws = headers && takesHeaders ? new WebSocket(url, { headers } as any) : new WebSocket(url);
     ws.addEventListener("open", () => {
       backoff = first;
       proxy.dispatchEvent(new Event("open"));
@@ -257,6 +264,12 @@ export interface ConnectOptions {
   onConnect?: (client: WsClient) => unknown;
   /** The first wait before a reconnect, in ms, doubled at each failed try up to 30 s. Default 500 (tests pass a few). */
   backoff?: number;
+  /**
+   * Headers sent on every connect's upgrade, where the runtime takes them (Bun): a script or test
+   * signed in as a page is, by its session cookie (`{ cookie }`) or an `authorization`. Ignored
+   * in a browser, which sends the site's cookies itself.
+   */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -283,7 +296,7 @@ export function connectWs(
   const url = socketUrl(wsPath);
   if (opts?.clientId) url.searchParams.set("clientId", opts.clientId);
   const connected = signal(false);
-  const ws = reconnectingWebSocket(url.href, opts?.backoff);
+  const ws = reconnectingWebSocket(url.href, opts?.backoff, opts?.headers);
   const pending = new Map<
     number,
     { resolve: (v: any) => void; reject: (e: any) => void }
@@ -793,4 +806,62 @@ export function openDoc<T>(name: string, client?: WsClient): Doc<T> {
 export function call<T>(method: string, params?: any, client?: WsClient): Promise<T> {
   const c = client ?? inject(WS);
   return c.send({ action: "call", method, params });
+}
+
+// ---------------------------------------------------------------------------
+// The ledger: undo, redo, history (a backend registered with `ledger: true`)
+// ---------------------------------------------------------------------------
+
+/** A walk that changed `doc`: the ops it applied (as the document shows them), their inverse, the version it made and its entry. */
+export interface Walked {
+  doc: string;
+  ops: DeltaOp[];
+  inverse: DeltaOp[];
+  version: number;
+  entry?: number;
+  conflict?: undefined;
+}
+
+/** A walk refused: someone has changed these paths since, so nothing changed (recorded as walked, so the next goes on to the one before). */
+export interface WalkConflict {
+  doc: string;
+  ops: [];
+  inverse: [];
+  version: number;
+  entry?: number;
+  conflict: string[];
+}
+
+/** What an undo or redo answers: the walk, a conflict, or null (nothing to walk). */
+export type Walk = Walked | WalkConflict | null;
+
+/** One write on a document's ledger, newest first; `mine` says whether this socket's cursor wrote it, never who did. */
+export interface HistoryEntry {
+  id: number;
+  doc: string;
+  version: number;
+  ops: DeltaOp[];
+  inverse: DeltaOp[];
+  at: number;
+  undoable: boolean;
+  mine: boolean;
+}
+
+/**
+ * Undo this socket's last change, wherever it shows: the ledger walks back what its cursor wrote
+ * (the connection's `clientId`, and signed in, the person), never anyone else's. The change
+ * itself arrives through the documents, as every write's does; the answer says what it did.
+ */
+export function undo(client?: WsClient): Promise<Walk> {
+  return (client ?? inject(WS)).send({ action: "undo" });
+}
+
+/** Redo what the last undo took back; a fresh write ends redo. Answered as `undo` is. */
+export function redo(client?: WsClient): Promise<Walk> {
+  return (client ?? inject(WS)).send({ action: "redo" });
+}
+
+/** A document's recent history (the newest 50), to whoever may open it. */
+export function history(doc: string, client?: WsClient): Promise<HistoryEntry[]> {
+  return (client ?? inject(WS)).send({ action: "history", doc });
 }

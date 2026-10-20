@@ -33,8 +33,8 @@ resources/people/
   migrations/          the people table's history
 resources/lists/
   lists-api.ts         list:<id> and mine:<person>, who owns each, on the ledger; three lists on a new database
-  lists.ts             the handles, and undo and redo
-  lists-view.tsx       Undo and Redo, and each list you are on
+  lists.ts             the handles
+  lists-view.tsx       Undo and Redo (delta's undo and redo), and each list you are on
   migrations/          the lists' history: 001-lists, then 002-title, a rename
 ```
 
@@ -76,8 +76,9 @@ serve({ ws, routes: { ...auth.routes, [ws.path]: upgradeWithAuth(ws, auth), "/":
 // app.tsx: who the socket is on every connect; its clientId, with the person, the cursor undo walks
 provide(WS, connectWs("/ws", { clientId: crypto.randomUUID(), onConnect: whoAmI }));
 
-// lists.ts: undo is an action on the socket; its answer comes back through the documents
-export const undo = () => inject(WS).send({ action: "undo" }) as Promise<Walk>;
+// lists-view.tsx: undo is the ledger's; its change comes back through the documents, and it answers
+// the walk, a conflict (someone has changed it since) or null (nothing to walk)
+const done = await undo();   // import { undo, redo, type Walk } from "@blueshed/delta/client"
 ```
 
 ## The upgrade: a rename that keeps every row
