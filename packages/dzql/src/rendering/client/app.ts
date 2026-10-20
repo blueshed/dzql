@@ -623,6 +623,15 @@ app.addEventListener("submit", (event) => {
   form.reset();
 });
 
+// Cmd+Enter or Ctrl+Enter in a textarea sends its form, as Enter does from a field of one line:
+// Enter alone there is a new line.
+app.addEventListener("keydown", (event) => {
+  const form = event.target instanceof HTMLTextAreaElement ? event.target.form : null;
+  if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey) || !form?.dataset.write) return;
+  event.preventDefault();
+  form.requestSubmit();
+});
+
 app.addEventListener("click", (event) => {
   const target = (event.target as Element).closest<HTMLElement>("[data-write]");
   // A form writes on submit, and a field's data-write names its path for an editing form (below):

@@ -54,4 +54,4 @@ Each leads with its example: code and tests, proven by applying them to a new ap
 - [references/http.md](references/http.md): HTTP routes, and files in S3
 - [references/build.md](references/build.md): a production build (optional)
 
-A block's first line names its file: `// src/x.ts` is the whole file; `// src/x.ts: after <text>` (or `before`, `in place of`) goes at the first line holding that text, at its indent. A `sh` block's `bun add` and `rm` lines are run.
+A block's first line names its file: `// src/x.ts` is the whole file; `// src/x.ts: after <text>` (or `before`, `in place of`) goes at the first line holding that text, at its indent; `// CLAUDE.md: under its heading` is the whole file but its first line, the heading that names the app. A block that holds a fence of its own is fenced by four backticks. A `sh` block's `bun add` and `rm` lines are run.

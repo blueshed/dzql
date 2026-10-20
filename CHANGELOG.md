@@ -6,6 +6,28 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### What still differed between the light page and the thin client, made one (20 October, roots #122-#126, #130)
+
+Peter's word (20 October): what the thin-client step still rewrote because the two clients
+differ, fixed where each differs.
+
+- **The kitchen has a view** (#122, create-blueshed): `sqlite.md` gives the light page the cook's
+  cell, with its story and test, so the step carries it as a part and the harness tells it.
+- **Undo and Redo only when asked** (#126, breaking in dzql): dzql's `bento({ undo: true })`, as
+  railroad's `bento({ undo, redo })`; the examples ask, and `sqlite.md` gives the light page its
+  Undo, which its test presses.
+- **A store's refusal says why** (#123, dzql): any 4xx is told beside the control, in the
+  guards' words, the resource's (`refused`), or delta's; the step's message says Not saved again.
+- **Cmd+Enter or Ctrl+Enter sends a form from its textarea** (#124, dzql's client): the `saves`
+  story keeps its words, and the template's `message-view.test.ts` goes.
+- **Typing not yet sent is kept, the caret gone or not** (#125, dzql's morph): the `refused` story
+  keeps its second half through the step.
+- **The step leaves an app as `bun create dzql` makes one** (#130): create-dzql's CLAUDE.md and
+  README, word for word under the app's heading (`scripts/docs.ts` holds them equal), `bun dev`
+  with the model's page, and `openStore` taking several schemas. Every story keeps its words
+  through the step but `health` (an unknown page opens on the box), and the step writes no test
+  of the message's.
+
 ### The traps delta's examples found, removed (20 October, delta #88-#91)
 
 - What root #116's examples had to work around is now delta's API (Peter's word: "ok - let's do

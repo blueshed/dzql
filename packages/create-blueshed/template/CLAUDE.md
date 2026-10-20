@@ -49,7 +49,6 @@ tests/
   site.test.ts         the status, the page's shell and the entry point: what any page of the app does
   app.test.ts          what this page alone does: where you are is the hash, the status it fetches
   message.test.ts      the message document: refused changes, and in the browser, saving and following
-  message-view.test.ts what this page's drawer alone does: Not saved in a toast, Cmd+Enter
   browser.ts           railroad's browser() (@blueshed/railroad/webview, whose header has the Bun.WebView rules) and refuseWrites
   documents.ts         a document as the page reads it (dzql's documentsOf): what a test holds, the same when the page moves to the server
   bento.test.ts        the bento drawn by railroad is the HTML dzql's bento.ts draws (bento-page.*), and what it does when pressed

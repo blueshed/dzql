@@ -75,6 +75,45 @@ section up.
 
 ### Added
 
+- **The thin-client step leaves the app as `bun create dzql` makes one** (20 October, root #130;
+  needs dzql's next release, whose `openStore` takes several schemas): its `CLAUDE.md` and
+  `README.md` become create-dzql's, word for word, under the app's own heading (a block `//
+  CLAUDE.md: under its heading`, fenced by four backticks; `tests/evolve.ts` applies both forms,
+  and the skill's grammar says them), so the app's docs say the thin page and the `dzql-app`
+  skill it grows with; `scripts/docs.ts` holds the two to create-dzql's. `bun dev` serves the
+  model's page beside the app (`--model`), as create-dzql's does, and `store.ts` gives
+  `openStore` the two schemas, no longer spreading their `.tables`. The step is 620 lines, 72 of
+  them create-dzql's two files, fenced; the rest is 548, where it was 571.
+- **The kitchen has a view: the cook's cell** (20 October, root #122). evolve's `sqlite.md`, which
+  adds the kitchen document, gives the light page a cell for it: each open order and what is on
+  it (`KitchenCell`, `kitchen` in `order.ts`, the `Kitchen` type in `order-api.ts`), its story
+  the cook's ("The cook sees each open order: ..."), and a test of it in the browser
+  (`tests/kitchen.test.ts`). So the thin-client step carries the kitchen across as a part like any
+  other (`kitchenCell`, a `kitchen` resource), and dzql's harness tells its story. A document is
+  what someone needs in front of them: one no page draws was the gap. An app past `sqlite.md`
+  takes the same blocks.
+- **Undo and Redo are on the light page once undo is** (20 October, root #126). `sqlite.md` gives
+  `bento()` the page's Undo and Redo (`undo()` and `redo()` from `@blueshed/delta/client`), since
+  the undo story needs a control a person presses; its test presses Undo. Both bentos now draw
+  them only when asked (dzql's `bento({ undo: true })`, which the thin-client step says), so the
+  page keeps its tools as it moves; `tests/bento-page.tsx` holds the two equal for a box with
+  none, open and closed.
+- **A refusal says Not saved on the thin client too** (20 October, root #123; needs dzql's next
+  release, whose kernel tells a store's 4xx with words): the thin-client step's message resource
+  says `refused: "Not saved"`, so the `refused` story keeps the light page's words. The template's
+  `refuseWrites` (`tests/browser.ts`) makes a refusal the store makes on either page (each value
+  one no schema takes; an op without one, a path below), and the refusal's test is in
+  `message.test.ts`, both pages', as is "where you are is the URL" (it ends `?message`), so the
+  step writes no `message-view.test.ts`.
+- **Cmd+Enter saves on the thin client too** (20 October, root #124; needs dzql's next release,
+  whose client submits a `data-write` form on Cmd/Ctrl+Enter from a textarea): the `saves` story
+  keeps its words through the thin-client step, and its Cmd+Enter test is in `message.test.ts`,
+  both pages'. `tests/message-view.test.ts` goes: all it held is both pages' now.
+- **Typing not yet saved is kept on the thin client too, the caret gone or not** (20 October, root
+  #125; needs dzql's next release, whose morph keeps a field that differs from what was drawn into
+  it): the `refused` story keeps its second half through the thin-client step, and its test in
+  `message.test.ts` leaves the box before another window saves, then waits for the save to reach
+  the box.
 - **The evolve skill's last step: the page drawn on the server** (20 October, root #73):
   `references/thin-client.md`, applied after two-documents, sqlite and postgres by
   `tests/evolve.ts`, moves the order app to dzql's thin client in the shape `bun create dzql`

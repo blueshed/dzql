@@ -1,10 +1,10 @@
 # Starter
 
-An app made by `bun create dzql`: [dzql](https://github.com/blueshed/dzql/tree/main/packages/dzql)
+An app in the shape `bun create dzql` makes: [dzql](https://github.com/blueshed/dzql/tree/main/packages/dzql)
 draws every page on the server and tells each one what changed, and
 [delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents and serves
 it, in Postgres: PGlite in the process, in the data folder (`DATA_PATH`, else `data/`), until
-`DATABASE_URL` names a server. It begins as nothing but its page, waiting for its first story.
+`DATABASE_URL` names a server. A new one begins as nothing but its page, waiting for its first story.
 
 ```sh
 bun dev          # http://localhost:3000, and the model's page at /model, where the stories are told first

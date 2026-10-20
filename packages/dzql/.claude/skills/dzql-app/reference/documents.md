@@ -45,6 +45,8 @@ ref's surrogate (`orderOf`, `resources/floor/floor-api.ts`);
   then a missing table (delta's `createTables`), then a missing column (`migrateSchema`). That is all a new table or column needs. A field renamed or
   dropped, or data moved, is a migration: [migrations.md](migrations.md). Never delete a database
   to change its shape: people keep real data in it.
+- `openStore({ schema })` takes one schema, or several (`[order.schema, message.schema]`: each
+  resource's own, in its `-api.ts`), kept as one; a table two of them declare is refused.
 - A row that names a row of another document (a **ref**, `dish: menu:/items`, kept as `dish_id`)
   keeps its **surrogate** beside the key when a story can remove what it names: what it shows of
   it, copied as it is written (`dish_name`, `dish_price`). Show the named row while it stands, and

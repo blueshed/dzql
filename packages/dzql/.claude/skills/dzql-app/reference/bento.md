@@ -5,7 +5,7 @@ address that says where a person is. How a page is sent is [page.md](page.md).
 
 ```ts
 // examples/leave/surfaces.ts
-export const surfaces = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
+export const surfaces = bento({ icon, session: "session", undo: true, leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
 
 // examples/leave/page.ts (trimmed): each resource's part of the page, composed
 
@@ -20,7 +20,9 @@ export function render(sessionId: string, page: string): string { // page: where
 ```
 
 `docs/bento/README.md` says what a page is for: where am I, what can I do. `bento()` (`src/rendering/bento.ts`)
-binds the app's icons, its session's docType and the last tool, once. These are defaults, not rules.
+binds the app's icons, its session's docType and the page's tools, once: Undo and Redo only when
+asked (`undo: true`, for documents on the ledger), as railroad's bento draws them only when given
+them, and leaving (`leave`) last. These are defaults, not rules.
 
 Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/page.ts), a collection with its drawers and modals at an
 address (`page.ts`, `surfaces.ts`), a write moving the writer's tab (`resources/team/team.ts`);

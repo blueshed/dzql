@@ -25,6 +25,14 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **Undo and Redo are drawn only when the page asks for them** (20 October, root #126). dzql's
+  `bento({ icon, session, undo, leave })` draws the page's tools it is given, as railroad's
+  `bento({ undo, redo, leave })` always has: `undo: true` draws Undo and Redo (writes to the
+  ledger), `leave` the way out, and with neither, `pageTools()` is `""` and a box has no tools
+  beside its trail. So a page keeps its tools as it moves from the light client to the thin one.
+  To move across: an app whose documents are on the ledger says `undo: true` in its `surfaces.ts`.
+  The five examples do, and their stories pass at the same counts.
+
 - **Where data lives is the data folder, one way in both starters** (20 October, root #129).
   `openStore`'s `open({ dataDir })` keeps PGlite in the folder's `pg/` (`DATABASE_URL` a server
   in its place, `database` whatever the folder; none, or `:memory:`, in memory), and `appOf(app, {
@@ -168,6 +176,21 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **Typing not yet sent is kept after the caret leaves it** (20 October, root #125). The morph
+  kept what a field held only while someone was in it, so a save from another window drew over
+  words typed and left in a box. Now a field (an input, a textarea) that differs from what was last
+  drawn into it keeps what it holds, in it or not, until it is sent and drawn, or typed back to
+  what was drawn; one that holds what was drawn follows the page, as before. The light page's
+  drawer always did (`tests/rendering/client/app.test.ts`). Nothing to move across.
+
+- **A write the store refuses says why, whatever refused it** (20 October, root #123). The kernel
+  told a store's 403 and 401 and refused the rest without a word, so a value the schema does not
+  take (400) was handed back with nothing beside the control. Now any 4xx is a refusal with words,
+  drawn by `toldAt` like any other: the guards' (403, 401) as before; any other in the resource's
+  own, `refused` on the `Resource` (`refused: "Not saved"`), else delta's ("text must be a
+  string"). The wire is unchanged (`WIRE` stays 4): a `refused` answer carries a reason more
+  often. Nothing to move across; a page that draws `toldAt` beside its control shows the words.
+
 - **The ticker's city picker takes its row apart** (20 October, railroad's #6): a keyed `list()`
   row is its fields now, so `examples/ticker/applets/city-picker-applet.tsx` reads `({ tz, label },
   i$)` in place of `z$.peek().tz` and `z$.map((z) => z.label)`.
@@ -286,6 +309,22 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   instant it names, and a time no story says is a time (`valueOf`, `says`).
 
 ### Added
+
+- **`openStore` takes several schemas** (20 October, root #130): `openStore({ schema: [order.schema,
+  message.schema] })`, each resource's own, kept as one, where an app spread their `.tables` into
+  one; a table two of them declare is refused as the store is said
+  (`tests/delta-pg/app-store-pglite.test.ts`). One schema is taken as before.
+- **create-dzql's CLAUDE.md and README say what is true of any app in its shape** (20 October, root
+  #130): "An app in the shape `bun create dzql` makes", "a new one begins as nothing but its
+  page", a test's data in a scratch folder or in memory, the schema one or each resource's. The
+  evolve skill's thin-client step carries both word for word, and `scripts/docs.ts` holds the two
+  equal.
+
+- **Cmd+Enter or Ctrl+Enter in a textarea sends its form** (20 October, root #124): the client
+  submits a `data-write` form from a textarea on either, as a field of one line submits on Enter;
+  Enter alone is a new line, and an editing form's textarea (`data-write-on`, its fields writing)
+  is left to the browser. The light page's message did it with a handler of its own; now a page
+  the server draws does it with none (`tests/rendering/client/app.test.ts`).
 
 - **A test holds an app's documents the same way for either page** (`dzql/rendering/test-socket`,
   20 October, root #121): `documentsOf(from)` is a test's client of an app's documents, as its

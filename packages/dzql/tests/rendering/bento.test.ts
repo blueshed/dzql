@@ -8,7 +8,7 @@ import fixture from "./bento.test.html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out
 const icon = (name: string, size = 16): string => `<i data-icon="${name}" data-size="${size}"></i>`;
-const b = bento({ icon, session: "desk", leave: { text: "Leave", icon: "door", path: "/code" } });
+const b = bento({ icon, session: "desk", undo: true, leave: { text: "Leave", icon: "door", path: "/code" } });
 const open = write("desk", "replace", "/open", "board");
 
 describe("html", () => {
@@ -75,15 +75,22 @@ describe("the surfaces", () => {
     expect(b.tool("Gifts", { icon: "search", iconOnly: true, expanded: true, write: "" })).toContain('class="tool" aria-label="Gifts" aria-expanded="true">');
   });
 
-  test("the page's tools are undo, redo and leaving; without a leave there are only the two", () => {
+  test("the page's tools are those asked for: undo and redo, and leaving; asked for none, there are none", () => {
     const out = b.pageTools("across");
     expect(out).toContain('class="stack page-tools across"');
     expect(out).toContain(`{"doc":"ledger","op":"remove","path":"/latest"}`);
     expect(out).toContain(`{"doc":"ledger","op":"add","path":"/latest"}`);
     expect(out).toContain(`class="tool quiet" aria-label="Leave" data-write='{"doc":"desk","op":"remove","path":"/code"}'><i data-icon="door"`);
-    const plain = bento({ icon, session: "desk" }).pageTools();
-    expect(plain).toContain('class="stack page-tools"');
-    expect(plain).not.toContain("quiet");
+    const undoing = bento({ icon, session: "desk", undo: true }).pageTools();
+    expect(undoing).toContain('class="stack page-tools"');
+    expect(undoing).not.toContain("quiet");
+    const leaving = bento({ icon, session: "desk", leave: { text: "Leave", icon: "door", path: "/code" } }).pageTools();
+    expect(leaving).not.toContain("ledger");
+    expect(leaving).toContain('aria-label="Leave"');
+    // the default, as railroad's bento's: no Undo, no Redo, nothing to leave, and a box with no tools beside its trail
+    const plain = bento({ icon, session: "desk" });
+    expect(plain.pageTools()).toBe("");
+    expect(plain.boxPage([{ label: "The desk" }], [], [plain.cell({ name: "Alpha" })])).not.toContain("page-tools");
   });
 
   test("the reading switch writes the session's /reading/<key>, the current one checked (a radio is checked, not pressed); the plus writes /new", () => {

@@ -32,8 +32,8 @@ import { openDatabase } from "./pglite";
 import { storyStore } from "./story-store";
 
 export type StoreOptions = {
-  /** The app's tables: the model's (`model/types.ts`'s `tables`), and its own beside them. */
-  schema: Schema;
+  /** The app's tables: the model's (`model/types.ts`'s `tables`), and its own beside them; or several schemas, each a resource's, kept as one. */
+  schema: Schema | Schema[];
   /** Where it is kept, whatever folder it is opened on: a Postgres URL, or a PGlite folder. Without it, DATABASE_URL, else the data folder's `pg/`, else in memory. */
   database?: string;
   /** The migrations, run first: a folder (`dir`, run when it is there; the model's `model/migrations`) or a `list`. `app` names them in `delta_migrations`; `schema` is theirs (the model's), so the run knows a new database from one before them, and fences only their ledger entries. */
@@ -46,10 +46,24 @@ export type StoreOptions = {
   prepare?: (pool: Pool, where: { dataDir?: string }) => void | Promise<void>;
 };
 
+/** Several schemas as one: each table once, so two resources never both declare one. */
+function oneSchema(schemas: Schema | Schema[]): Schema {
+  if (!Array.isArray(schemas)) return schemas;
+  const tables: Schema["tables"] = {};
+  for (const { tables: each } of schemas) {
+    for (const [key, table] of Object.entries(each)) {
+      if (key in tables) throw new Error(`Two schemas both declare the table ${key}: a table is one resource's, and another's document reads it`);
+      tables[key] = table;
+    }
+  }
+  return { tables };
+}
+
 /** Why the store cannot be used: it is not open. */
 const notOpen = () => new Error("The store is not open: a server opens it as it starts (appOf), and closes it as it stops");
 
-export function openStore({ schema, database, migrations, ws, namespace, prepare }: StoreOptions) {
+export function openStore({ schema: schemas, database, migrations, ws, namespace, prepare }: StoreOptions) {
+  const schema = oneSchema(schemas);
   /** The documents, in delta, in this process: one for the store's life, each open's listener on it. */
   const delta = createLocal();
   const registered: DocDef[] = [];

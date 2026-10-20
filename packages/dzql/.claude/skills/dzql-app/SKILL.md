@@ -56,7 +56,7 @@ least that makes the next story pass; `bun run stories` after each.
    → [bento](reference/bento.md#where-you-are-the-address)
 5. **The page**, `page.ts` and each `<name>-view.ts`: a **box** of **cells** (`boxPage`), a list
    `rows()` of `row()`s, a deed a `tool()`, a drawer or a modal over it, a refusal drawn where it
-   happened (`toldAt`). `surfaces.ts` makes the bento once (`bento({ icon, session, leave })`);
+   happened (`toldAt`). `surfaces.ts` makes the bento once (`bento({ icon, session, undo, leave })`: Undo and Redo only when asked);
    `icons.ts` is lucide. → [page](reference/page.md), [bento](reference/bento.md),
    [controls](reference/controls.md); reference data, [derive](reference/derive.md)
 6. **The routes**, `routes.ts`: the app (its `Example`: resources, page, who is active, the

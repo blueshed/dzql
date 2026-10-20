@@ -28,7 +28,9 @@ export interface BentoOptions<I extends string> {
   icon(name: I | BentoIcon, size?: number): string;
   /** The docType the page's state is written to, the session: chat's and the wedding's `session`, the ticker's `desk`. Where a tab goes is written there too, and moves the tab (`Example.address`). */
   session: string;
-  /** Leaving, the last of the page's tools, set apart by a rule: removes `path` from the session. Without one (the ticker: nobody signed in) there is only undo and redo. */
+  /** Undo and Redo among the page's tools, writes to the ledger: for an app whose documents are on it. Without it, none, as railroad's bento draws none unless it is given them. */
+  undo?: boolean;
+  /** Leaving, the last of the page's tools, set apart by a rule: removes `path` from the session. Without one (the ticker: nobody signed in), nobody leaves. */
   leave?: { text: string; icon: NoInfer<I> | BentoIcon; path: string };
 }
 
@@ -261,7 +263,7 @@ export function layers(page: string, drawer: string, modal: string): string {
 }
 
 /** The surfaces, bound to an example's icons and its session document. */
-export function bento<I extends string>({ icon, session: trayDoc, leave }: BentoOptions<I>) {
+export function bento<I extends string>({ icon, session: trayDoc, undo, leave }: BentoOptions<I>) {
   // ───────────────────────────── where am I ─────────────────────────────
 
   /** The trail from the root to the ground you stand on. The last is where you are; each earlier crumb with a `back` is a way back. */
@@ -287,12 +289,13 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return `<button type="${o.submit ? "submit" : "button"}" class="tool${o.kind ? ` ${o.kind}` : ""}${o.className ? ` ${o.className}` : ""}"${label ? ` aria-label="${esc(label)}"` : ""}${pressed}${expanded}${o.disabled ? " disabled" : ""}${o.write}>${o.icon ? icon(o.icon) : ""}${word}</button>`;
   }
 
-  /** The page's own tools -- undo and redo, writes to the ledger, the kernel's own document, and leaving -- one stack, at the bottom right of the window, or across beside the trail on the box. */
+  /** The page's own tools -- undo and redo, writes to the ledger, the kernel's own document, and leaving -- those asked for, one stack, at the bottom right of the window, or across beside the trail on the box; none, nothing. */
   function pageTools(lay: "down" | "across" = "down"): string {
+    if (!undo && !leave) return "";
     return join(
       `<div class="stack page-tools${lay === "across" ? " across" : ""}" aria-label="Tools">`,
-      tool("Undo", { icon: "undo", write: walk("undo"), iconOnly: true }),
-      tool("Redo", { icon: "redo", write: walk("redo"), iconOnly: true }),
+      undo && tool("Undo", { icon: "undo", write: walk("undo"), iconOnly: true }),
+      undo && tool("Redo", { icon: "redo", write: walk("redo"), iconOnly: true }),
       leave && tool(leave.text, { icon: leave.icon, kind: "quiet", write: write(trayDoc, "remove", leave.path), iconOnly: true }),
       "</div>",
     );

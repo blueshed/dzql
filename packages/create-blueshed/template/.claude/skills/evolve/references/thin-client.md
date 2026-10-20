@@ -4,11 +4,11 @@ When the page should be drawn where the documents are: many people at once, slow
 
 **What stays:** the documents' definitions, their paths and the history of migrations; the rows, in the same data folder (`DATA_PATH`, else `data/`), and the rows kept before; `startServer({ port, dev, dataDir })`, which opens the store as the server starts and closes it as it stops; the HTTP route (`/api/status`); the look; `stories.ts`, each story under its key, a few gaining a body on their own line; and the tests of a document (`documents.ts` says where they are held) and of the page in a browser (both pages are the bento's HTML): `site.test.ts`, `message.test.ts`, `order.test.ts`, `kitchen.test.ts` and the moves'.
 
-**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; `orderDocs` becomes the store every document is in (`store.ts`). And the tests of what the light page alone did (`app.test.ts`, `message-view.test.ts`), which become the thin page's.
+**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; `orderDocs` becomes the store every document is in (`store.ts`). The test of what the light page alone did (`app.test.ts`) becomes the thin page's, and `CLAUDE.md` and `README.md` become create-dzql's.
 
 ```sh
 rm src/app.tsx src/resources/bento.tsx src/resources/toast.ts src/resources/status/status.ts src/resources/status/status-view.tsx src/resources/message/message-view.tsx src/resources/order/order-view.tsx
-rm tests/bento.test.ts tests/bento-page.tsx tests/bento-page.html tests/app.test.ts tests/message-view.test.ts
+rm tests/bento.test.ts tests/bento-page.tsx tests/bento-page.html tests/app.test.ts
 ```
 
 ## The documents, and the store
@@ -25,6 +25,8 @@ export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
 export type Catalogue = { items: Record<string, Item> };
 export type Order = { lines: Record<string, Line> };
+/** What `kitchen:` holds: every order, and every line, each naming its order. */
+export type Kitchen = { orders: Record<string, { id: number }>; lines: Record<string, Line & { orders_id: number }> };
 
 export const schema = defineSchema({
   items: { columns: { name: "text", price: "real" } },
@@ -47,6 +49,12 @@ export const items = (): Item[] => byId(read<Catalogue>("catalogue:").items);
 
 /** Order `id`'s lines, as the page reads them. */
 export const lines = (id: string): Line[] => byId(read<Order>(`order:${id}`).lines);
+
+/** Each open order, as the cook's cell reads them: its id, and the items on it. */
+export function openOrders(): { id: number; items: number[] }[] {
+  const { orders, lines } = read<Kitchen>("kitchen:");
+  return byId(orders).map((o) => ({ id: o.id, items: byId(lines).filter((l) => l.orders_id === o.id).map((l) => l.item) })).filter((o) => o.items.length > 0);
+}
 ```
 
 ```ts
@@ -102,7 +110,7 @@ function keptBefore(dataDir = ""): [Schema, Snapshot][] {
 }
 
 export const store = openStore({
-  schema: { tables: { ...order.schema.tables, ...message.schema.tables } },
+  schema: [order.schema, message.schema], // each resource's, kept as one
   migrations: { list: migrations, app: "order", schema: order.schema },
   // each document compiled; a new database takes the rows kept before, then the documents are served
   prepare: async (pool, { dataDir }) => {
@@ -146,7 +154,7 @@ import type { Resource } from "dzql/rendering/resources/resource";
 import { tell } from "dzql/rendering/refusal";
 
 // The message's resource: anyone may change its text, and is told Saved once it has landed. What
-// the schema does not take (a text that is not text), delta refuses.
+// the schema does not take (a text that is not text), delta refuses, told as the light page told it.
 
 /** The path a save writes, as the light page wrote it: the one message's text, its row by its id. */
 export const TEXT = "/messages/1/text";
@@ -156,6 +164,7 @@ export const message: Resource = {
   ledger: false, // no undo, as on the JSON file
   resolveDoc: () => "1",
   permit: (_ws, op) => op.op === "replace" && op.path === TEXT,
+  refused: "Not saved", // in place of delta's words
   afterWrite: (ws) => tell(ws.data.sessionId, { doc: "message", path: TEXT, said: "Saved" }),
 };
 ```
@@ -164,12 +173,17 @@ export const message: Resource = {
 // src/resources/order/order.ts
 import type { Resource } from "dzql/rendering/resources/resource";
 
-// The catalogue, read by everyone and written by nobody; and the order, which everyone adds a line
-// to, or takes one off. Everyone is on order 1, as the light page was. The kitchen is read by no
-// page yet: its document is served, and a page that reads it is told.
+// The catalogue, read by everyone and written by nobody; the order, which everyone adds a line
+// to, or takes one off (everyone is on order 1, as the light page was); and the kitchen, every
+// open order, read by the cook's cell and written by nobody.
 
 export const catalogue: Resource = {
   docType: "catalogue",
+  resolveDoc: () => "",
+};
+
+export const kitchen: Resource = {
+  docType: "kitchen",
   resolveDoc: () => "",
 };
 
@@ -205,7 +219,7 @@ import { bento } from "dzql/rendering/bento";
 import { icon } from "./icons";
 
 /** The bento's surfaces, drawn with the app's marks, where a tab stands written to the session. */
-export const surfaces = bento({ icon, session: "session" });
+export const surfaces = bento({ icon, session: "session", undo: true }); // Undo and Redo: the order is on the ledger
 ```
 
 ```ts
@@ -246,7 +260,7 @@ export function messageDrawer(sessionId: string): string {
 import { rows } from "dzql/rendering/bento";
 import { write } from "dzql/rendering/html";
 import { surfaces } from "../../surfaces";
-import { items, lines, type Item } from "./order-api";
+import { items, lines, openOrders, type Item } from "./order-api";
 
 const { cell, row, tool } = surfaces;
 const money = (n: number) => n.toFixed(2);
@@ -255,6 +269,13 @@ const money = (n: number) => n.toFixed(2);
 export function catalogueCell() {
   const add = (i: Item) => tool("Add", { icon: "plus", label: `Add ${i.name}`, write: write("order", "add", "/lines/-", { item: i.id }) });
   return cell({ name: "Catalogue", span: 2, body: rows(items().map((i) => row({ id: `i${i.id}`, what: i.name, state: money(i.price), act: add(i) })), "Nothing to order yet.", "catalogue-rows") });
+}
+
+/** The kitchen on the box, the cook's: each open order, and what is on it. */
+export function kitchenCell() {
+  const all = items();
+  const named = (ids: number[]) => ids.map((id) => all.find((i) => i.id === id)?.name ?? "").join(", ");
+  return cell({ name: "Kitchen", body: rows(openOrders().map((o) => row({ id: `k${o.id}`, what: `Order ${o.id}`, note: named(o.items) })), "No open orders.", "kitchen-rows") });
 }
 
 /** The order on the box: each line named and priced from the catalogue, × to take it off, and the total. */
@@ -291,7 +312,7 @@ export function statusCell() {
 import { layers, parseAddress } from "dzql/rendering/bento";
 import { surfaces } from "./surfaces";
 import { messageCell, messageDrawer } from "./resources/message/message-view";
-import { catalogueCell, orderCell } from "./resources/order/order-view";
+import { catalogueCell, kitchenCell, orderCell } from "./resources/order/order-view";
 import { statusCell } from "./resources/status/status-view";
 
 // The page, drawn by the server for a session where one of its tabs stands (its address, the tab's
@@ -305,7 +326,7 @@ const name = (await Bun.file(`${import.meta.dir}/index.html`).text()).match(/<ti
 
 export function render(sessionId: string, page: string): string {
   const at = parseAddress(page);
-  const cells = [messageCell(at), statusCell(), catalogueCell(), orderCell()];
+  const cells = [messageCell(at), statusCell(), catalogueCell(), orderCell(), kitchenCell()];
   const drawer = at.what === "message" ? messageDrawer(sessionId) : "";
   return site(page, layers(boxPage([{ label: name }], [], cells, undefined, { actions: [] }), drawer, ""));
 }
@@ -343,7 +364,7 @@ import { render } from "./page";
 import { store } from "./store";
 import { session } from "./resources/session/session";
 import { message } from "./resources/message/message";
-import { catalogue, order } from "./resources/order/order";
+import { catalogue, kitchen, order } from "./resources/order/order";
 import { statusApi } from "./resources/status/status-api";
 
 // The app is its routes and its resources. The server is delta's: `serve` puts these routes and
@@ -357,7 +378,7 @@ export const app: Example = {
   index: homepage,
   delta: store.delta,
   store, // opened as a server starts, closed as it stops; the stories begin and end each story on it
-  resources: [session, message, catalogue, order],
+  resources: [session, message, catalogue, order, kitchen],
   render,
   active: () => true, // nobody signs in: anyone may write
   address: { doc: "session", path: "/page" }, // a tab's URL is where it stands: the session says where it may (./resources/session/session.ts)
@@ -367,13 +388,17 @@ export async function startServer({
   port = undefined as number | undefined,
   dev = undefined as boolean | undefined,
   dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data`,
+  model = process.argv.includes("--model"),
 } = {}) {
   const status = statusApi();
+  // in development (`bun dev`), the model's page beside the app at /model; production never registers it
+  const modelling = model && (await (await import("dzql/model")).modelRoute());
   return serve(
     compose(
       await appOf(app, { dataDir }), // "/", every other path a screen, the socket "/ws", and the documents on it
       // What isn't communication is an HTTP route (see src/resources/)
       { routes: { "/api/status": { GET: status.get } } },
+      modelling,
     ),
     { port, dev },
   );
@@ -383,7 +408,12 @@ export async function startServer({
 if (import.meta.main) await run(startServer);
 ```
 
-`bun run stories` tells the stories, and `bun install` brings the `dzql-app` skill, which the app grows with from here:
+`bun dev` serves the model's page beside the app, `bun run stories` tells the stories, and `bun install` brings the `dzql-app` skill, which the app grows with from here:
+
+```json
+// package.json: in place of "dev": "bun --hot src/routes.ts",
+"dev": "bun --hot src/routes.ts --model",
+```
 
 ```json
 // package.json: after "model": "dzql model",
@@ -395,9 +425,85 @@ if (import.meta.main) await run(startServer);
 "prepare": "delta install-skills --skip bun-route"
 ```
 
+The app is now one `bun create dzql` makes, and says so: its `CLAUDE.md` and `README.md` are create-dzql's, under its own name:
+
+````md
+// CLAUDE.md: under its heading
+An app on dzql: stories first, then the documents a person needs in front of them to act, then
+the page the server draws from them. The skills say how, and `bun install` puts them in
+`.claude/skills` (`delta install-skills`):
+
+- **modelling**: while someone tells you the stories, there to answer: the model's page
+  (`bun dev` serves it at `localhost:3000/model` beside the app, and prints a sign-in link for
+  each keeper; `bun run model login <link>`, then `bun run model <verb>`).
+- **dzql-app**: building or changing the app in `src/`: stories, documents, resources, the page.
+  `node_modules/dzql/examples/cafe/` is an app built from its model, laid out as this one is: its
+  README walks the path from the model to the app.
+- **delta-doc**: the documents themselves: schema, storage, the ledger. **railroad**: an applet drawn with it.
+
+## The shape
+
+An app is routes and resources on both sides of the socket, joined by documents; entities (the
+collections of delta's `defineSchema`) are behind them, on the server. Here the server draws every
+page, so the routes and resources are the server's:
+
+- `src/routes.ts` is the server: the app (its page, its socket, its resources) composed with any
+  HTTP route and, in development, the model's page at `/model`, on delta's one server (`serve`,
+  `run`). `bun dev` and `bun start` run it; never a `Bun.serve` of the app's own.
+- `src/store.ts` is where the documents are kept: Postgres, through dzql's `openStore` -- PGlite in
+  the process, in the data folder's `pg/` (`DATA_PATH`, a Railway volume, else `data/`; for a
+  test, a scratch folder of its own, or memory: `DATA_PATH=:memory:` in `.env.test`), or a server
+  at `DATABASE_URL`. The server opens it as it starts and closes it as it stops (`appOf(app, {
+  dataDir })`). Its schema (one, or each resource's: `openStore({ schema: [...] })`) takes the
+  model's `tables` once `dzql model` has made `model/`, and the app's own beside them.
+- `src/resources/<name>/` is one document: `<name>-api.ts` its document, registered with the store
+  (`register`); `<name>.ts` its resource (who may write it, what a write becomes), listed in the app's
+  `resources`; `<name>-view.ts` its part of the page, drawn by `src/page.ts`.
+- An applet is the only client resource.
+- People sign in by a link each, printed as the server starts (`signInLinks`, from
+  `dzql/rendering/links`), and sign out by the bento's `leave`: no email and no password unless a
+  story asks for them.
+
+## Working here
+
+- Start every feature with its story in `stories.ts`, watch `bun run stories` fail, build the
+  least that makes it pass. A story with no body yet (`story(name)`) is unproven until it has one.
+- The gate before a commit: `bun check`, `bun test`, `bun run stories`.
+- Never edit dzql or delta in `node_modules`; move to a later one by bumping it in `package.json`.
+````
+
+````md
+// README.md: under its heading
+An app in the shape `bun create dzql` makes: [dzql](https://github.com/blueshed/dzql/tree/main/packages/dzql)
+draws every page on the server and tells each one what changed, and
+[delta](https://github.com/blueshed/dzql/tree/main/packages/delta) keeps the documents and serves
+it, in Postgres: PGlite in the process, in the data folder (`DATA_PATH`, else `data/`), until
+`DATABASE_URL` names a server. A new one begins as nothing but its page, waiting for its first story.
+
+```sh
+bun dev          # http://localhost:3000, and the model's page at /model, where the stories are told first
+bun test         # the page is served and drawn, and every story passes
+bun run stories  # each story in stories.ts, told against the app
+bun run model    # the model's page alone, http://localhost:3001/model
+bun run stop     # a server started in the background
+```
+
+## How it grows
+
+- **Stories first.** `stories.ts` says who does what and who then sees it, each a sentence a
+  customer could call true or false. Tell one, watch it fail, build the least that makes it pass.
+- **Routes and resources.** `src/routes.ts` is the server: the app's page and socket, any HTTP
+  route, and in development the model's page, on delta's one server (`@blueshed/delta/serve`: the
+  page, the socket, `/health`), never a `Bun.serve` of its own. Each document is a resource in
+  `src/resources/<name>/`: its document (`<name>-api.ts`), its rules (`<name>.ts`) and its part of
+  the page (`<name>-view.ts`). The first story says which document a person needs in front of them
+  to act.
+- **The page** is `src/page.ts`, drawn by the server from each resource's view.
+````
+
 ## The stories
 
-A story people do on the page gains its body on its own line, under its key: who does it, from where, and who then sees it (dzql-app's `stories.md`). The harness tells it against the page the server draws, then undoes and redoes it. One it cannot tell (a restart, a move, what no page shows or no control sends) stays a sentence, told by its tests as before. Three change their words with what the page now does:
+A story people do on the page gains its body on its own line, under its key: who does it, from where, and who then sees it (dzql-app's `stories.md`). The harness tells it against the page the server draws, then undoes and redoes it. One it cannot tell (a restart, a move, what no page shows or no control sends) stays a sentence, told by its tests as before. Each keeps its words, but one: an unknown page opens on the box (`health`).
 
 ```ts
 // stories.ts: in place of import { story, type Stories } from "dzql/modelling/stories";
@@ -421,18 +527,13 @@ ordering: story("Someone ordering has the catalogue and their order on one page,
 ```
 
 ```ts
+// stories.ts: in place of kitchen: story(
+kitchen: story("The cook sees each open order: a line added to any order, or changed, reaches the kitchen.", { as: "bob", does: add(2), seen: ["ann", "bob"] }),
+```
+
+```ts
 // stories.ts: in place of follows: story(
 follows: story("Anyone who opens the page sees the message, and a change made anywhere else shows in it, with nothing to reload.", { as: "ann", from: "?message", does: save("Hi"), seen: { ann: "?message", bob: "" } }),
-```
-
-```ts
-// stories.ts: in place of saves: story(
-saves: story("Saving (the button) says Saved once the server has it, and the message is still there after a reload."),
-```
-
-```ts
-// stories.ts: in place of refused: story(
-refused: story("A save the server refuses is handed back, and typing not yet saved is never overwritten by another window's save."),
 ```
 
 ```ts
@@ -510,63 +611,10 @@ test(`${stories.stories.health.name} -- a page that is not one opens on the box`
 });
 ```
 
-```ts
-// tests/message-view.test.ts
-import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { startServer } from "../src/routes";
-import { browser } from "./browser";
-import { documents } from "./documents";
-import { stories } from "../stories";
-
-// What this page's message drawer alone does, drawn on the server: where it stands is the URL, and
-// a save refused is handed back to the box. What any page of the message does is message.test.ts.
-
-setDefaultTimeout(30_000);
-
-const dataDir = mkdtempSync(`${tmpdir()}/message-view-`);
-const server = await startServer({ port: 0, dev: false, dataDir });
-const { view, open, waitFor, replaceText, refuseWrites, close } = browser(() => server.url);
-
-afterAll(async () => {
-  close();
-  await server.stop(true);
-  rmSync(dataDir, { recursive: true, force: true });
-});
-
-const CELL = `.cell[data-key="message"] .cell-name`;
-
-/** The page, with the message's drawer opened as a person opens it: a tap on the cell. */
-async function openMessage() {
-  await open();
-  await waitFor(`document.querySelector(${JSON.stringify(CELL)})`);
-  await view.click(CELL);
-  await waitFor(`document.querySelector("textarea")`);
-}
-
-test("where you are is the URL: the drawer open is ?message, so a reload or a link opens it again", async () => {
-  await openMessage();
-  await waitFor(`location.search === "?message"`);
-});
-
-test(`${stories.stories.refused.name} -- a save the server refuses is handed back to the box, and the message stays as it was`, async () => {
-  await openMessage();
-  await replaceText("textarea", "not to be kept");
-  await refuseWrites();
-  await view.click(".drawer .tool.add");
-  await waitFor(`document.querySelector("textarea")?.value === "not to be kept"`);
-  const client = await documents(server);
-  expect((await client.open("message:1")).value()).toEqual({ messages: { id: 1, text: "Hello" } });
-  client.close();
-});
-```
-
 Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md, sqlite.md and postgres.md) and runs its type check and tests (`bun run test:evolve`).
 
 - `bun run stories` says each story; `STORY_BY_HAND=1 bun run stories` does each with the page's own controls, in a browser the size of a phone.
-- **What changed for the people using it**, each by where it is drawn: Saved is said beside the box, not in a toast; a refusal delta makes is handed back to the box without a word, where the toast said Not saved; Cmd+Enter does not save (the box saves by its button); typing not yet saved is kept while the caret is in the box; the page has Undo and Redo (the server's box always draws them); an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
+- **What changed for the people using it**, each by where it is drawn: Saved and Not saved are said beside the box, not in a toast; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
 - **The session:** nobody signs in, so the cookie is the session and no row is kept by it (`Example.session` left out). Sign-in by link, a session kept as a row (`sessionRows`), is dzql-app's `signin.md`; delta's `auth-link` ([auth.md](auth.md)) is for a page that is delta's client, not this one.
-- **The kitchen** is read by no page: the socket serves only what a page reads, so its test holds it from the test's process (`documents.ts`). A cook's cell would make it a story the harness tells.
 - **The store is the server's**, as `orderDocs`'s was: opened as it starts, on its data folder, and closed as it stops, so a test runs servers on folders of its own, and `bun dev`'s reload closes the last store before it opens the next (its ids carry on).
-- From here the app grows with `dzql-app`; the other references here are the light page's. `CLAUDE.md` and `README.md` still describe the light page: say the thin one, as create-dzql's do.
+- From here the app grows with `dzql-app`, as its `CLAUDE.md` says; the other references here are the light page's.

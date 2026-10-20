@@ -22,6 +22,8 @@ export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
 export type Catalogue = { items: Record<string, Item> };
 export type Order = { lines: Record<string, Line> };
+/** What `kitchen:` holds: every order, and every line, each naming its order. */
+export type Kitchen = { orders: Record<string, { id: number }>; lines: Record<string, Line & { orders_id: number }> };
 
 export const schema = defineSchema({
   items: { columns: { name: "text", price: "real" } },
