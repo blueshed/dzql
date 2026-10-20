@@ -5,6 +5,8 @@ import { createLocal } from "../src/server/local";
 import { createWs, type ActionHandler, type WsServer } from "../src/server/server";
 import { connectWs } from "../src/client/client";
 import { setLogLevel } from "../src/server/logger";
+import { upgradeWithAuth } from "../src/server/auth";
+import { mockClient, sendAndAwait } from "../src/cases/support";
 import { createTables, defineDoc, defineSchema, registerDocs } from "../src/server/sqlite";
 
 const schema = defineSchema({
@@ -209,6 +211,31 @@ describe("the cursor, over a socket", () => {
   });
 });
 
+describe("the cursor, signed in through the upgrade", () => {
+  test("is the person's: another person with the same clientId and the same key walks none of it; the person, from another browser, walks their own", async () => {
+    const db = new Database(":memory:");
+    createTables(db, schema);
+    const ws = createWs();
+    const auth = { onUpgrade: (req: Request) => req.headers.get("x-who"), gate: (c: any) => c.data.identity ?? { error: "Sign in first" } };
+    registerDocs(ws, db, schema, [room], [], { ledger: true, auth, shared: true });
+    const upgrade = upgradeWithAuth(ws, auth);
+    const connect = async (who: string, cookie?: string) => {
+      let given: any;
+      await upgrade(new Request("http://localhost/ws?clientId=tab-1", { headers: { "x-who": who, ...(cookie && { cookie }) } }), { upgrade: (_r: Request, o: any) => ((given = o), true) });
+      const sock = mockClient(given.data);
+      ws.websocket.open(sock);
+      return { sock, cookie: given.headers?.["Set-Cookie"]?.split(";")[0] ?? cookie };
+    };
+    const alice = await connect("alice");
+    await sendAndAwait(ws, alice.sock, { action: "open", doc: "room:a" });
+    await sendAndAwait(ws, alice.sock, { action: "delta", doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { text: "alice" } }] });
+    const mallory = await connect("mallory", alice.cookie);   // her id and her browser's key: not her
+    expect((await sendAndAwait(ws, mallory.sock, { action: "undo" })).result).toBeNull();
+    const elsewhere = await connect("alice");                  // alice, on another browser, naming her id
+    expect((await sendAndAwait(ws, elsewhere.sock, { action: "undo" })).result).toMatchObject({ ops: [{ op: "remove", path: "/messages/m1" }] });
+  });
+});
+
 describe("a client that chooses its clientId keeps its cursor across reconnects", () => {
   setLogLevel("silent");
   (globalThis as any).location ??= { href: "http://localhost/", protocol: "http:" };
@@ -223,19 +250,25 @@ describe("a client that chooses its clientId keeps its cursor across reconnects"
     return { server, url: `ws://localhost:${server.port}/ws` };
   }
 
+  // the same browser: its cursor key (the delta_cursor cookie a browser keeps) on every connect
+  const browser = { cookie: "delta_cursor=one-browser-of-ada" };
+
   async function writeThenLeave(url: string, clientId: string) {
-    const tab = connectWs(url, { clientId });
+    const tab = connectWs(url, { clientId, headers: browser });
     await tab.send({ action: "open", doc: "room:a" });
     await tab.send({ action: "delta", doc: "room:a", ops: [{ op: "add", path: "/messages/m1", value: { text: "hi" } }] });
     tab.close();
   }
 
-  test("written, disconnected, connected again with the same id: undo takes the write back", async () => {
+  test("written, disconnected, connected again with the same id from the same browser: undo takes the write back", async () => {
     const { server, url } = await serve();
     try {
       await writeThenLeave(url, "tab-7");
       await Bun.sleep(50);   // the server has seen the close
-      const again = connectWs(url, { clientId: "tab-7" });
+      const other = connectWs(url, { clientId: "tab-7" });   // another browser that learned the id
+      expect(await other.send({ action: "undo" })).toBeNull();
+      other.close();
+      const again = connectWs(url, { clientId: "tab-7", headers: browser });
       expect(await again.send({ action: "undo" })).toMatchObject({ doc: "room:a", ops: [{ op: "remove", path: "/messages/m1" }] });
       again.close();
     } finally {

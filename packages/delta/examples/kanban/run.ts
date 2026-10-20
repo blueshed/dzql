@@ -14,7 +14,7 @@
 import { connectWs, openDoc } from "@blueshed/delta/client";
 import type { DeltaOp } from "@blueshed/delta/core";
 import { startServer } from "./routes";
-import { DB_PATH, type BoardDoc } from "./resources/board/board-api";
+import type { BoardDoc } from "./resources/board/board-api";
 
 function hr(title: string) {
   console.log(`\n── ${title} ${"─".repeat(Math.max(2, 72 - title.length))}`);
@@ -27,7 +27,7 @@ function show(label: string, value: unknown) {
 async function main() {
   const srv = startServer({ port: 0, dev: false });   // any free port
   const wsUrl = `ws://localhost:${srv.port}/ws`;
-  console.log(`delta server up on ${wsUrl}  (DB: ${DB_PATH})`);
+  console.log(`delta server up on ${wsUrl}  (the board in memory)`);
 
   // Two independent WS clients — each gets its own reconnecting socket and
   // its own `openDoc` state (the skill's reference/testing.md, "Driving the

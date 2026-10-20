@@ -48,6 +48,7 @@ export * from "./cases/permissions";
 export * from "./cases/isolation";
 export * from "./cases/law";
 export * from "./cases/writes";
+export * from "./cases/cursor";
 export * from "./cases/link-store";
 export * from "./cases/migrations";
 export * from "./cases/upgrades";

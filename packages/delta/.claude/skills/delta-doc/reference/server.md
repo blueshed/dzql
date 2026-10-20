@@ -9,13 +9,14 @@ import { run, serve } from "@blueshed/delta/serve";
 import { roomApi } from "./resources/room/room-api";
 
 const ws = createWs();
-roomApi(ws);   // the room's document, on the socket
+const room = roomApi(ws);   // the room's document, on the socket
 
-await run(() => serve({ ws, routes: { "/": index } }, { port: 3100 }));   // Bun bundles the HTML and its TS
+await run(() => serve({ ws, routes: { "/": index }, close: [room.close] }, { port: 3100 }));   // Bun bundles the HTML and its TS
 ```
 
 A resource's `<name>-api.ts` registers its document on the `ws` it is given (`registerDocs`), or
-answers an HTTP route; what it opens that must be closed (a database) goes in `serve`'s `close`.
+answers an HTTP route; what it opens that must be closed goes in `serve`'s `close` (`registerDocs`'
+`close`: the file's last save, or the database).
 
 `serve(app, { port, dev })` (`src/server/serve.ts`, `@blueshed/delta/serve`) is Bun.serve with the socket on its path (told the
 server, so a change reaches every page), `/health`, a 404, and the app's `close` list run when it stops. `run(start)` is the

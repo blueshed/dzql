@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- **A socket's cursor is bound to a key the server mints, never to the `clientId` alone** (21
+  October, the delta-doc evals' round 3, finding 4). Signed out, a socket's cursor was its
+  `clientId`, which a client chooses and sends in the URL: a socket that named another's id, once
+  its holder had left (or as it closed), had its cursor and could undo its writes, and an app that
+  shows the id (the lobby's `people/<clientId>`) told everyone. Now the upgrade (`createWs`'s, and
+  `upgradeWithAuth`) gives each socket a key, the `delta_cursor` cookie it sent back, else one
+  minted and set on the upgrade's answer (HttpOnly, SameSite=Strict, on the socket's path; never in
+  the URL; `socketUpgrade` in `./server`), and the cursor is the id with that key
+  (`socketCursor`); signed in it is still the person with the id. A browser keeps the cookie and
+  sends it on every connect and reload, so its undo goes on as before; `connectWs` outside a
+  browser sends a key of its own on each connect; a socket that names another's id without their
+  key or sign-in has a cursor of its own, empty. The connection's address (`sendTo`) is handed on
+  at a close only to a socket with the same key. `cursorCases` (`src/cases/cursor.ts`, in
+  `./testing`) asks it of SQLite and the JSON file, and of dzql's Postgres, whose listener takes it
+  from `socketCursor` unchanged; it fails on the code before. **To move across**: nothing for a
+  page. Undo history written signed out over a socket before this is not walked after it (its
+  cursor was the bare id). A script or test that connects again with a new `connectWs` and the
+  same `clientId`, to undo what an earlier one wrote, gives both the same
+  `headers: { cookie: "delta_cursor=<16 to 128 of A-Z a-z 0-9 _ ->" }`.
+
 - **`./testing`'s unique-constraint app is a library, and `default: "now"` is a timestamptz's
   alone** (20 October, root #138). `shedApp` is `libraryApp`: its documents `case-library:` and
   `case-reader:` (were `case-shed:`, `case-member:`), its tables `case_books`, `case_readers`
@@ -100,6 +120,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it when you like.
 
 ### Added
+
+- **`registerDocs` returns `close()`, the same on the JSON file and SQLite** (21 October, the
+  delta-doc evals' round 3, finding 1). A test awaits it, and `serve`'s `close` takes it: the JSON
+  file's waits for its last save (and rejects if it failed), then lets the file go; SQLite's closes
+  the database it was given. The recipe's `roomApi` returns it, its `routes.ts` gives it to
+  `serve`, and its test awaits it after the server stops, so the test stays as it is when the
+  room moves to SQLite (`recipe.md`, `backends.md`, `server.md`). Run 1 had changed `roomApi` to
+  return the `Database` to close it, and its test then failed on the JSON file.
+- **`CaseApp.ledger`** (`./testing`): a case's app on the ledger; a `CaseBackend` passes it to
+  its registration (`cursorCases` asks for it).
 
 - **A time only the server sets: `default: "now"`** (20 October, root #138). A `timestamptz`
   column with `default: "now"` takes the server's time where a write leaves it out, as the row is
@@ -265,6 +295,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   here keeps are saved as they were.
 
 ### Changed
+
+- **The delta-doc skill, from its evals' round 3** (21 October). `ledger.md`, *The walk*: the
+  guard is per field, not per row; another field of the same row written since does not stop an
+  undo (run 2 had told its user otherwise; `planWalk` sets back only the entry's fields, and
+  `walkVectors` asks it). *The cursor* says what binds it, and that the id is not a secret. Scenario
+  2 of `evals/delta-doc.json` asks a session to say the guard truly; a fourth scenario, a notice
+  board only admins post to, each notice timed by the server, asks for `accept` given who writes,
+  `default: "now"` with the rule refusing a client's time, and `owns`.
+- **`examples/kanban` runs on `:memory:` alone** (finding 3). `KANBAN_DB` is gone: it kept the
+  board in a file whose tables came from `createTables`, against the skill's rule, and each run
+  deleted and re-seeded its rows. A board kept in a file takes its tables from its migrations, as
+  `examples/lists` does (the README says so).
 
 - **The delta-doc skill says one rule for tables** (20 October, from two rounds of its evals, root
   #113): an app's tables are its migrations (`migrate`, each written by `delta migrations make`);

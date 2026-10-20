@@ -506,6 +506,10 @@ export function registerDocs<I = unknown>(
   }, { owned: false, gatesCustom: false }));
 
   return {
+    /** Close the database, once the server has stopped (a test's last step; `serve`'s `close`). The JSON file's waits for its last save first. */
+    async close(): Promise<void> {
+      db.close();
+    },
     /**
      * Drop a doc's cached copy; the next open, write or fan-out that needs it
      * reads it again from the tables (`reloadEvicted`). Its subscribers stay

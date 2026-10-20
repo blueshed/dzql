@@ -35,10 +35,14 @@ Undo and Redo (`undo`, `redo`, `Walk`) in `resources/lists/lists-view.tsx`.
 ## The cursor
 
 - In-process (`createLocal`, `data.local`): the caller names it, e.g. a session id.
-- Over a socket: the connection's `clientId` (a `cursor` on the message is ignored); signed
-  in, the person and the `clientId` together. **A browser undoes only its own writes.**
-- `connectWs(url, { clientId })` keeps the cursor across reconnects. Without sign-in, anyone
-  who learns a chosen id can walk it: treat it as a secret.
+- Over a socket: the connection's `clientId` (a `cursor` on the message is ignored), bound to
+  the person signed in, or else to a key the server mints on the upgrade (the `delta_cursor`
+  cookie: HttpOnly, never in the URL). **A browser undoes only its own writes.**
+- `connectWs(url, { clientId })` keeps the cursor across reconnects (outside a browser, it sends
+  a key of its own on each). The id is not a secret: a socket that names another's, without
+  their sign-in or key, has a cursor of its own.
+- To keep it across a reload, keep the id per tab (`sessionStorage`). A duplicated tab copies it,
+  and shares the cursor.
 
 ## The walk
 
@@ -47,6 +51,8 @@ Undo and Redo (`undo`, `redo`, `Walk`) in `resources/lists/lists-view.tsx`.
 - **The guard**: a walk sets back only what its entry changed, where the document still holds
   what it left. A field written since by anyone is a **conflict**: nothing changes and the
   answer has `conflict: [paths]`. Do not force the old values with your own replaces.
+- The guard is per field, not per row: another field of the same row, written since, does not
+  stop the walk. It stays as written, and the entry's fields are set back.
 - A conflicting walk is recorded as walked (an empty entry), so the next undo goes on to the
   one before. `null` means nothing to walk.
 - Each row is walked once by its net change; a single root is one row whichever path named it.

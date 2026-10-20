@@ -189,6 +189,26 @@ export function refuseOrigin(req: Request, origins?: readonly string[] | "*"): R
   return new Response("Origin not allowed", { status: 403 });
 }
 
+/** The cookie a socket's cursor key rides on: minted by the server, never in the URL, never read by a page. */
+export const CURSOR_COOKIE = "delta_cursor";
+const KEY = /^[A-Za-z0-9_-]{16,128}$/;
+
+/**
+ * What a socket is upgraded with: its `clientId` (the URL's `?clientId=`, else a new one), and the
+ * key its cursor is bound to (`socketCursor`): the `delta_cursor` cookie it sent, else one minted
+ * here and set on the upgrade's answer (HttpOnly, on the socket's path). A browser sends it back on
+ * every connect; a socket that names another's `clientId` without its key has a cursor of its own.
+ */
+export function socketUpgrade(req: Request): { data: { clientId: string; cursorKey: string }; headers?: Record<string, string> } {
+  const url = new URL(req.url);
+  const clientId = url.searchParams.get("clientId") ?? crypto.randomUUID();
+  const sent = req.headers.get("cookie")?.split(";").map((c) => c.trim()).find((c) => c.startsWith(`${CURSOR_COOKIE}=`))?.slice(CURSOR_COOKIE.length + 1);
+  if (sent && KEY.test(sent)) return { data: { clientId, cursorKey: sent } };
+  const cursorKey = crypto.randomUUID();
+  const secure = url.protocol === "https:" || url.protocol === "wss:" ? "; Secure" : "";
+  return { data: { clientId, cursorKey }, headers: { "Set-Cookie": `${CURSOR_COOKIE}=${cursorKey}; Path=${url.pathname}; HttpOnly; SameSite=Strict${secure}` } };
+}
+
 /** `origins` as `URL.origin` spells them, so the check compares like with like; a list entry that is not a URL throws. */
 function allowedOrigins(origins: WsOptions["origins"]): readonly string[] | "*" | undefined {
   if (origins === undefined || origins === "*") return origins;
@@ -242,8 +262,7 @@ export function createWs(opts?: WsOptions): WsServer {
   function upgrade(req: Request, server: any) {
     const refused = refuseOrigin(req, origins);
     if (refused) return refused;
-    const clientId = new URL(req.url).searchParams.get("clientId") ?? crypto.randomUUID();
-    if (server.upgrade(req, { data: { clientId } })) return undefined;
+    if (server.upgrade(req, socketUpgrade(req))) return undefined;
     return new Response("WebSocket upgrade failed", { status: 400 });
   }
 
@@ -364,8 +383,8 @@ export function createWs(opts?: WsOptions): WsServer {
 
   /**
    * `id`'s holder has closed: the first socket still open that chose it, and
-   * is who the holder was (both signed out, or the same person), takes it --
-   * address and cursor. One closing is passed over (its close has not run
+   * is who the holder was (both signed out, or the same person) with its
+   * cursor key (the same browser), takes it -- address and cursor. One closing is passed over (its close has not run
    * yet: Bun's CLOSING, or one `refuseHeld` is closing), and so is another
    * person: never their `sendTo` address.
    */
@@ -376,7 +395,7 @@ export function createWs(opts?: WsOptions): WsServer {
     for (const next of queue) {
       queue.delete(next);
       if (next.readyState !== 1 || gone.has(next)) continue;
-      if (JSON.stringify(next.data?.identity) !== who) continue;
+      if (JSON.stringify(next.data?.identity) !== who || next.data?.cursorKey !== holder.data?.cursorKey) continue;
       clients.delete(next.data.clientId);
       next.data.clientId = id;
       delete next.data.chosenId;
@@ -439,11 +458,13 @@ export function createWs(opts?: WsOptions): WsServer {
         // the old connection is gone/closing, preserving sendTo and its cursor
         // across reconnects -- and one that came while the old was still open
         // (a drop the server had not noticed) is given the id when it closes.
+        // The cursor is never the id alone: it is bound to the person or to the
+        // key the upgrade gave (`socketUpgrade`), so naming an id claims no undo.
         let clientId = ws.data.clientId;
         const existing = clientId ? clients.get(clientId) : undefined;
         if (!clientId || (existing && existing !== ws && existing.readyState === 1)) {
           if (clientId) {
-            ws.data.chosenId = clientId;   // signed in, its cursor already (`socketCursor`): the person is in it
+            ws.data.chosenId = clientId;   // its cursor already (`socketCursor`): the person, or the key, is in it
             if (!waiting.has(clientId)) waiting.set(clientId, new Set());
             waiting.get(clientId)!.add(ws);
           }

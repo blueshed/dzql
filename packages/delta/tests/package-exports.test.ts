@@ -137,7 +137,7 @@ describe("package exports", () => {
       "migrationCases", "schemaContractCases", "upgradeCases",
       "drive", "onSqlite", "onJson", "lawSeeds", "lawSteps",
       "ownsCases", "permissionCases", "assertDocIsolation",
-      "errorCodeCases", "refusalCases", "refusals", "shelvesApp", "createRowCases", "writeScopeCases", "uniqueCases", "acceptCases", "ruledApp", "serverTimeCases", "stampedApp", "libraryApp", "roomsApp", "tenantsApp", "membershipsApp",
+      "errorCodeCases", "refusalCases", "refusals", "shelvesApp", "createRowCases", "writeScopeCases", "uniqueCases", "acceptCases", "ruledApp", "serverTimeCases", "stampedApp", "cursorCases", "ledgerRoomsApp", "libraryApp", "roomsApp", "tenantsApp", "membershipsApp",
     ]) {
       expect([name, typeof (testing as any)[name]]).not.toEqual([name, "undefined"]);
     }

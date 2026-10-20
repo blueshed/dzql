@@ -19,7 +19,7 @@
  *   wireAuth(ws, auth);
  *   registerDocs(ws, db, schema, docs, [], { auth, owns });
  */
-import { refuseOrigin, type WsServer } from "./server";
+import { refuseOrigin, socketUpgrade, type WsServer } from "./server";
 
 // ---------------------------------------------------------------------------
 // Contract
@@ -166,9 +166,8 @@ export function upgradeWithAuth<I>(
         identity = null;
       }
     }
-    const clientId =
-      new URL(req.url).searchParams.get("clientId") ?? crypto.randomUUID();
-    if (server.upgrade(req, { data: { clientId, identity } })) return undefined;
+    const { data, headers } = socketUpgrade(req);
+    if (server.upgrade(req, { data: { ...data, identity }, headers })) return undefined;
     return new Response("WebSocket upgrade failed", { status: 400 });
   };
 }

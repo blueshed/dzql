@@ -1,7 +1,7 @@
 # Backends: where documents are kept
 
 Moving the recipe's chat from the JSON file to SQLite changes `room-api.ts`, and `routes.ts`
-awaits `roomApi` (`await roomApi(ws)`). The tables are the room's history of migrations. First,
+awaits `roomApi` (`const room = await roomApi(ws)`). The tables are the room's history of migrations. First,
 on `room-api.ts` as it stands, `bunx @blueshed/delta migrations make resources/room/room-api.ts
 --dir resources/room/migrations --name room` writes the first (every table) and the folder's
 `index.ts` (`migrations.md`). Then `room-api.ts` takes them:
@@ -19,7 +19,7 @@ export async function roomApi(ws: WsServer, dir = ".") {
   const db = new Database(`${dir}/chat.db`);
   await migrate(db, migrations, { app: "room", schema });   // the history makes the tables
   if (!db.query("SELECT 1 FROM rooms").get()) importTables(db, schema, exportTables(`${dir}/chat.json`, schema));   // once, into empty tables
-  return registerDocs(ws, db, schema, docs);
+  return registerDocs(ws, db, schema, docs);   // its close() closes db
 }
 ```
 
@@ -41,6 +41,8 @@ migrations and its rows carried with `exportTables` and `importTables`, by its e
 
 The two table backends take one schema and one set of `defineDoc`s; `./json` and `./sqlite` each
 export `defineSchema`, `defineDoc`, `defineCustomDoc`, so moving on changes the import path.
+Each `registerDocs` returns `close()`, which a test awaits and `serve`'s `close` takes: the JSON
+file's waits for its last save, SQLite's closes the database.
 
 ## Moving on
 
