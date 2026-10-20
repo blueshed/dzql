@@ -1,4 +1,4 @@
-# {{name}}
+# Starter
 
 An app made by `bun create dzql`: [dzql](https://github.com/blueshed/dzql/tree/main/packages/dzql)
 draws every page on the server and tells each one what changed, and

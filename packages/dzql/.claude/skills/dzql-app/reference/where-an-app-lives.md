@@ -4,7 +4,7 @@ How a project is made and laid out, how it moves to a later dzql, and the seams 
 before touching the kernel.
 
 ```sh
-bun create dzql my-app   # the app is src/, begun as dzql's examples/starter
+bun create dzql my-app   # the app is a copy of create-dzql's template/, the starter
 cd my-app
 bun install              # also installs the skills: dzql-app, modelling, delta-doc
 bun dev                  # the app, and the model's page at /model, where the stories are told first
@@ -15,7 +15,7 @@ bun test                 # bun run stories and bun run cli work on src/ too
 
 ```
 stories.ts    what the app was asked to make true, each told by a test
-src/          the app (begun as dzql's examples/starter):
+src/          the app (begun as the starter, create-dzql's template/, laid out as this is):
   routes.ts                 the server: the app, its HTTP routes, the model's page in development
   store.ts                  where the documents are kept (PGlite, or a server at DATABASE_URL)
   page.ts                   the page, each resource's part in its place

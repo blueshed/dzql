@@ -30,7 +30,7 @@ test("setup turns the template into an app", async () => {
   });
   // delta, as bun install leaves it: setup runs its install-skills, which finds railroad's skills beside it
   mkdirSync(join(root, "node_modules/@blueshed"), { recursive: true });
-  symlinkSync(join(import.meta.dir, "../../delta"), join(root, "node_modules/@blueshed/delta"));
+  symlinkSync(join(import.meta.dir, "../../../delta"), join(root, "node_modules/@blueshed/delta")); // the workspace's, packages/delta
   mkdirSync(join(root, "node_modules/.bin"));
   symlinkSync("../@blueshed/delta/src/cli.ts", join(root, "node_modules/.bin/delta")); // its bin, as bun install links it
   try {
@@ -40,8 +40,8 @@ test("setup turns the template into an app", async () => {
     expect(await Bun.file(join(root, ".gitignore")).text()).toBe("data/\n"); // npm's way round: the template's gitignore, dotted
     expect(existsSync(join(root, "gitignore"))).toBe(false);
     expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("## [Unreleased]");
-    // the template's version, so the app knows which of the template's changes it has
-    expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("- Started from [paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush) 0.5.0. To bring this app up to date,");
+    // create-blueshed's version (cli.ts writes it in), so the app knows which of the template's changes it has
+    expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("- Started from [create-blueshed](https://github.com/blueshed/dzql/tree/main/packages/create-blueshed) 0.5.0. To bring this app up to date,");
     // what is about the template goes: this script and its test, the skill's test
     for (const path of ["create/setup.ts", "tests/setup.test.ts", "tests/evolve.ts"]) {
       expect(await Bun.file(join(root, path)).exists()).toBe(false);

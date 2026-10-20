@@ -117,7 +117,7 @@ a worker with no DOM and no JSX.
   documents and syncs them over one WebSocket. `openDoc("name").data` is a
   railroad signal, so a document drops straight into JSX, `when()` and
   `list()`.
-- **[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)** is a starting
+- **[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/create-blueshed/template)** is a starting
   website whose pages railroad draws. `bun create blueshed my-app` makes one
   (Bun 1.4).
 - **[dzql's rendering](https://github.com/blueshed/dzql/tree/main/packages/dzql)**

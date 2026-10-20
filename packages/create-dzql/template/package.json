@@ -1,5 +1,5 @@
 {
-  "name": "{{name}}",
+  "name": "dzql-starter",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,8 +17,7 @@
     "model:load": "LOG_LEVEL=warn bun node_modules/dzql/src/modelling/page/loader/load.ts ./src",
     "model:check": "LOG_LEVEL=warn bun node_modules/dzql/src/modelling/page/loader/check.ts ./src",
     "typecheck": "bun check",
-    "test": "bun test",
-    "prepare": "delta install-skills"
+    "test": "bun test"
   },
   "dependencies": {
     "@blueshed/delta": "^1.2.0",

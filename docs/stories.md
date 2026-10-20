@@ -26,7 +26,7 @@ The stories grow with the app, from light to performance. In a paintbrush protot
 sentence alone, `story(name)` from `dzql/modelling/stories`, kept in the app's `stories.ts`:
 
 ```ts
-// packages/paintbrush/stories.ts
+// packages/create-blueshed/template/stories.ts
 saves: story("Saving (the button, or Cmd+Enter or Ctrl+Enter in the box) says Saved once the server has it, and the message is still there after a reload."),
 ```
 

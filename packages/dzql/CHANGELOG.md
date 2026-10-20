@@ -25,6 +25,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **The starter is create-dzql's template now, not `examples/starter`** (20 October, Peter's
+  decision: the two starters follow one pattern). `packages/dzql/examples/starter` is gone; the
+  starter and create-dzql's skeleton are one app, `packages/create-dzql/template/`, laid out as a
+  new app is: `stories.ts` at its root, `src/` (`routes.ts`, `store.ts`, `page.ts`, `icons.ts`,
+  `index.html`, `main.ts`, `styles.css`), `tests/routes.test.ts`, beside its package.json
+  (`dzql-starter`, a workspace), tsconfig, README and CLAUDE.md. Its styles import
+  `dzql/rendering/bento-plain.css` by name, as an app's do. `ETA_EXAMPLE=starter` names nothing
+  now: the starter's stories run in create-dzql's tests (the template's own `bun test`, and a new
+  app's), not in `bun run stories:all`, and its tests leave `bun run test:coverage`. To move
+  across: read the starter at its new path; `bun create dzql` makes the same app as before. The
+  dzql-app skill's `where-an-app-lives.md`, `CLAUDE.md` and `tests/readme/exports.test.ts` (which
+  now reads both starters, their templates too) follow it.
+
 - **Each tab has its own screen, and a page has a real URL** (20 October, #53, #57, Peter's yes):
   where you are is the tab's, not the session's. `Example.render(sessionId)` is
   `render(sessionId, address)`: the address of the tab being drawn (`list?request=3`, "" for the

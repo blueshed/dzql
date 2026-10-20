@@ -1,10 +1,14 @@
 # CLAUDE.md
 
-The bluetools monorepo: railroad, delta, dzql (modelling, rendering and the Postgres step), create-dzql, paintbrush (the starting website) and create-blueshed (`bun create blueshed`, which copies paintbrush) as Bun workspaces under
-`packages/`. railroad, delta, dzql and paintbrush each have their own CLAUDE.md, CHANGELOG.md and
-todo.jsonl, read when working in it; it is the authority for that package's contracts, gate and docs
-(dzql's paths are written from this root). The two starters have none: create-dzql is dzql's (released
-with it, one version) and create-blueshed paintbrush's (a copy of it). This file is only what is shared.
+The bluetools monorepo: railroad, delta, dzql (modelling, rendering and the Postgres step) and the
+two starters, create-dzql (`bun create dzql`) and create-blueshed (`bun create blueshed`), as Bun
+workspaces under `packages/`. Each starter holds its template, `template/`: the whole app a new one
+is copied from, a workspace too (create-blueshed's is paintbrush, the starting website; create-dzql's
+the starter). railroad, delta and dzql each have their own CLAUDE.md, CHANGELOG.md and todo.jsonl,
+read when working in it; it is the authority for that package's contracts, gate and docs (dzql's
+paths are written from this root). create-dzql is dzql's (released with it, one version, one
+changelog). create-blueshed keeps its CHANGELOG.md, and its template, paintbrush, the CLAUDE.md and
+todo.jsonl (the CLAUDE.md is a new app's too, its template notes marked). This file is only what is shared.
 
 ## What each document is for
 
@@ -33,9 +37,8 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
 |---|---|---|---|
 | `packages/railroad` | nothing | `bun run test:railroad` | `bun run test:railroad:slow`: the consumer type checks, the browser |
 | `packages/delta` | railroad | `bun run test:delta` | `bun run test:delta:slow`: every law seed |
-| `packages/dzql`, `packages/create-dzql` | delta, railroad | `bun run test:dzql`, `bun run test:create-dzql` | `bun run test:dzql:slow`: Postgres in Docker, the rendering in a browser, the stories, the costs |
-| `packages/paintbrush` | delta, railroad, dzql (`dzql/modelling`'s `story`) | `bun run test:paintbrush` | `bun run test:paintbrush:slow`: the evolve skill applied |
-| `packages/create-blueshed` | paintbrush (it packs a copy) | `bun run test:create-blueshed` | none |
+| `packages/dzql`, `packages/create-dzql` (its `template/`, the starter) | delta, railroad | `bun run test:dzql`, `bun run test:create-dzql` (the template's type check and tests, then a new app made and started) | `bun run test:dzql:slow`: Postgres in Docker, the rendering in a browser, the stories, the costs |
+| `packages/create-blueshed` (its `template/`, paintbrush) | delta, railroad, dzql (the template's: `dzql/modelling`'s `story`) | `bun run test:create-blueshed` (its own, then the template's) | `bun run test:create-blueshed:slow`: the evolve skill applied |
 
 - `bun install` runs at the root: one `bun.lock`, committed; CI installs with `--frozen-lockfile`.
   A sibling's version range resolves to its folder, so a change in railroad is what delta and dzql
@@ -53,8 +56,9 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
   which every workflow reads (`.github/actions/setup`).
   In every package `bun run test` is its fast tier; `test:slow` its slow one; dzql's Postgres suite
   in Docker is `test:pg`.
-  A package that packs a sibling's folder (`prepack`: create-blueshed copies paintbrush) runs
-  when that sibling changes.
+  A starter's template is part of its create package to `affected`: a file changed in either runs
+  the package, whose tiers run the template's, and the template's dependencies are the package's
+  (a change in dzql runs both starters).
 - **What is going on** is `CHANGELOG.md` (what changed, across packages) and `todo.jsonl` (what is
   open across them) here, and each package's own pair beside its code: the changelog is where it
   has been, the ledger what is open now. Read both before starting, and keep them current together,
@@ -82,7 +86,10 @@ Every package is laid out one way, so one is read like another:
 ```
 
 A command is `src/cli.ts` (dzql's, three files, `src/cli/`); a starter's is `cli.ts`, beside the
-`template/` it copies. An app, as `bun create blueshed` and `bun create dzql` make it, is
+`template/` it copies: the whole app a new one is, laid out as one, a workspace of its own
+(`paintbrush`, `dzql-starter`) tested where it lives and published as it is. What a new app never
+gets (what running the template makes, and what is about the template alone) is left out twice, by
+the package's `files` as it packs and by `cli.ts` as it copies, each from one list. An app, as `bun create blueshed` and `bun create dzql` make it, is
 `stories.ts`, `src/routes.ts`, `src/resources/<name>/` and `tests/`. Each package's CLAUDE.md says
 only what is its own.
 
@@ -104,8 +111,9 @@ change nothing there (no fix pushed to a tag, no tag moved or pushed again) unti
 
 `/publish` (`.claude/commands/publish.md`, a row per package: its gate, its end-to-end check, the
 skills it stamps): one round, the packages named, a tag `<package>@x.y.z` each, which `.github/workflows/publish.yml` publishes to npm. Only when Peter
-asks. Each package keeps its own version (create-dzql dzql's); railroad, delta, dzql and paintbrush
-their `CHANGELOG.md` (`## [Unreleased]` written as work lands) and `todo.jsonl`.
+asks. Each package keeps its own version (create-dzql dzql's; a template none: it is its starter's);
+railroad, delta, dzql and create-blueshed their `CHANGELOG.md` (`## [Unreleased]` written as work
+lands), and railroad, delta, dzql and create-blueshed's template their `todo.jsonl`.
 
 ## Working here
 

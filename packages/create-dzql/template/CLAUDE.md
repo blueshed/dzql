@@ -1,4 +1,4 @@
-# {{name}}
+# Starter
 
 An app on dzql: stories first, then the documents a person needs in front of them to act, then
 the page the server draws from them. The skills say how, and `bun install` puts them in

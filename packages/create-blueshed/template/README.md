@@ -68,6 +68,6 @@ Ask for something, and Claude writes it into `stories.ts` as `story(...)`, then 
 
 ## Starting from it
 
-`bun create` runs `create/setup.ts` after installing. Your app gets its own name, a fresh ledger and changelog, the skills (its own `evolve`, and those its packages ship: [CLAUDE.md](CLAUDE.md) says which), and a first commit. What is about the template stays behind: its logo, ledger and changelog, the setup script, its own tests and the skill's evaluations. The app's changelog starts by naming the paintbrush version it came from: to bring an app up to date, read this changelog from that version on, and carry across what applies.
+`bun create` runs `create/setup.ts` after installing. Your app gets its own name, a fresh ledger and changelog, the skills (its own `evolve`, and those its packages ship: [CLAUDE.md](CLAUDE.md) says which), and a first commit. What is about the template stays behind: its logo and ledger, the setup script, its own tests and the skill's evaluations. The app's changelog starts by naming the create-blueshed version it came from: to bring an app up to date, read [create-blueshed's changelog](../CHANGELOG.md) from that version on, and carry across what applies.
 
 MIT

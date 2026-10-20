@@ -20,7 +20,7 @@ test("every dzql path the examples, skills and docs name is exported", async () 
   const said = new Map<string, string>();
   const where = [
     [root, "{examples,src,tests/readme,.claude}/**/*.{ts,tsx,md,css}"],
-    [join(root, ".."), "{paintbrush,create-dzql}/**/*.{ts,tsx,md}"],
+    [join(root, ".."), "{create-blueshed,create-dzql}/**/*.{ts,tsx,md,css}"], // the starters, their templates too
     [join(root, "..", ".."), "{README.md,docs/**/*.md}"],
   ] as const;
   for (const [dir, pattern] of where)

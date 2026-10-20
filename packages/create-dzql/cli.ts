@@ -1,21 +1,20 @@
 #!/usr/bin/env bun
 /**
- * `bun create dzql my-app`: eta's starter on dzql. The app is `src/`, begun as dzql's
- * `examples/starter` (its routes and its page, no stories yet, no resources yet), served by delta's
- * one server from its own `routes.ts`. Copies `template/` (the app's package.json, tsconfig, README), then the
- * starter into `src/`, puts the app's name in, and says what to run.
- *
- * The starter is dzql's own, copied in when this package is packed (`prepack`, as `starter/`); run
- * from the repository it is read where it lives, so the two never differ. Then, as create-blueshed
- * does: `bun install` (which installs the skills), and the app's first commit.
+ * `bun create dzql my-app`: eta's starter on dzql. The app is `template/`, beside this file: a whole
+ * working app laid out as a new one is (its stories at the root, `src/` its routes, page and store,
+ * no resources yet, `tests/`), a workspace of blueshed/dzql tested where it lives, and published as
+ * it is. This copies it, but for what running it makes (package.json's `files` leaves the same out
+ * of the tarball, and this reads it there), names the app, gives it its skills on every install, a
+ * changelog and a ledger, and says what to run. Then, as create-blueshed does: `bun install` (which
+ * installs the skills), and the app's first commit.
  *
  *   --no-install   copy only: then `bun install` in the new folder
  *   --no-git       no repository (none is made without git, or inside a repository already)
  *   --local        (or BLUESHED_LOCAL=1) railroad, delta and dzql from the blueshed/dzql checkout this
  *                  runs from, not npm: for trying the packages as they are, before a release
  */
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { cpSync, existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 
 const args = process.argv.slice(2);
 const name = args.find((a) => !a.startsWith("-")) ?? "my-dzql-app";
@@ -29,34 +28,31 @@ if (existsSync(dest)) {
   console.error(`Error: "${name}" already exists`);
   process.exit(1);
 }
-const packed = join(import.meta.dir, "starter");
-const starter = existsSync(packed) ? packed : join(import.meta.dir, "../dzql/examples/starter");
+const template = join(import.meta.dir, "template");
+const own = JSON.parse(readFileSync(join(import.meta.dir, "package.json"), "utf8")) as { version: string; files: string[] };
+// what running the template makes (its node_modules, its data), never a new app's: as `files` leaves it out of the tarball
+const left = own.files.filter((f) => f.startsWith("!template/")).map((f) => new Bun.Glob(f.slice("!template/".length)));
 
 console.log(`Creating ${name}...`);
-cpSync(join(import.meta.dir, "template"), dest, { recursive: true });
-cpSync(starter, join(dest, "src"), { recursive: true });
-
-// a dzql app is laid out as a paintbrush app is: its stories at the root, its tests in tests/
-renameSync(join(dest, "src/stories.ts"), join(dest, "stories.ts"));
-mkdirSync(join(dest, "tests"));
-const test = readFileSync(join(dest, "src/routes.test.ts"), "utf8").replace('from "./stories"', 'from "../stories"').replace('from "./routes"', 'from "../src/routes"');
-writeFileSync(join(dest, "tests/routes.test.ts"), test);
-rmSync(join(dest, "src/routes.test.ts"));
+cpSync(template, dest, { recursive: true, filter: (src) => !left.some((glob) => glob.match(relative(template, src))) });
 
 // the project's memory, as a paintbrush app starts with: where it has been, and what is open
-const version = JSON.parse(readFileSync(join(import.meta.dir, "package.json"), "utf8")).version;
-writeFileSync(join(dest, "CHANGELOG.md"), `# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).\n\n## [Unreleased]\n\n- Started from create-dzql ${version}.\n`);
+writeFileSync(join(dest, "CHANGELOG.md"), `# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).\n\n## [Unreleased]\n\n- Started from create-dzql ${own.version}.\n`);
 writeFileSync(join(dest, "todo.jsonl"), "");
 
 // npm leaves dotfiles of a package behind: they travel without their dot
 renameSync(join(dest, "gitignore"), join(dest, ".gitignore"));
 renameSync(join(dest, "env.test"), join(dest, ".env.test"));
 
-// The starter's look imports the kernel's bento by a path inside dzql; in an app it is by name
-const styles = join(dest, "src/styles.css");
-writeFileSync(styles, readFileSync(styles, "utf8").replace(/@import "[^"]*src\/rendering\/(bento(?:-plain)?\.css)";/, '@import "dzql/rendering/$1";'));
+// The app's package.json, as paintbrush's setup writes one: its name, and the skills its packages
+// ship, again on every install (`prepare`; the template has none, or installing the workspace would write them into it)
+const pkgFile = join(dest, "package.json");
+const pkg = JSON.parse(readFileSync(pkgFile, "utf8"));
+pkg.name = name;
+pkg.scripts.prepare = "delta install-skills";
+writeFileSync(pkgFile, JSON.stringify(pkg, null, 2) + "\n");
 
-// The app's name in place of {{name}}, and of the starter's own, in every file
+// The app's name in place of the starter's own, in every file
 const title = name.replace(/(^|-)(\w)/g, (_, dash: string, c: string) => (dash ? " " : "") + c.toUpperCase());
 const named = (dir: string): void => {
   for (const entry of readdirSync(dir)) {
@@ -64,7 +60,7 @@ const named = (dir: string): void => {
     if (statSync(path).isDirectory()) named(path);
     else {
       const text = readFileSync(path, "utf8");
-      const next = text.replaceAll("{{name}}", name).replaceAll("Starter", title).replace('name: "starter"', `name: "${name}"`);
+      const next = text.replaceAll("Starter", title).replace('name: "starter"', `name: "${name}"`);
       if (next !== text) writeFileSync(path, next);
     }
   }
@@ -80,8 +76,6 @@ if (flags.has("--local") || process.env.BLUESHED_LOCAL) {
     console.error("Error: --local runs from a blueshed/dzql checkout (packages/create-dzql), beside railroad, delta and dzql");
     process.exit(1);
   }
-  const pkgFile = join(dest, "package.json");
-  const pkg = JSON.parse(readFileSync(pkgFile, "utf8"));
   const overrides: Record<string, string> = {};
   for (const [dep, dir] of Object.entries(local)) {
     overrides[dep] = `file:${join(packages, dir)}`;

@@ -4,8 +4,8 @@
 // after `bun install`; it makes the first commit.
 //
 // It turns the template into an app. What is about developing the template goes (its
-// ledger and changelog, this script, the template's own tests, the evolve skill's test with its
-// script and CI step; its logo and evals/ were never copied, UNCOPIED); the app starts with a
+// ledger, this script, the template's own tests, the evolve skill's test with its script and CI
+// step; its logo and evals/ were never copied, UNCOPIED); the app starts with a
 // fresh ledger, changelog and README; its name replaces "Paintbrush"; and the skills its packages ship are copied into
 // .claude/skills (delta's install-skills, below), so a session starts knowing how railroad's JSX
 // behaves, how a document is kept and changed, and how stories are told.
@@ -25,10 +25,10 @@ export const NAMED = [
 
 // What a new app never gets a copy of: what running the template makes, and what is about the
 // template alone and setup does not need (its logo, the evolve skill's evaluations). create-blueshed
-// leaves them out as it copies (cli.ts) and as it packs (pack.ts).
+// leaves them out as it copies (cli.ts), and its package.json's `files` as it packs (a test holds the two to this list).
 export const UNCOPIED = ["node_modules", "data", "tests/out", ".server.pid", "logo.png", "evals"];
 
-/** The template copied to a new app's folder, as create-blueshed copies it and packs it (the evolve skill's test makes its apps with create-blueshed): all of it but UNCOPIED. */
+/** The template copied to a new app's folder, as create-blueshed copies it (the evolve skill's test makes its apps with create-blueshed): all of it but UNCOPIED. */
 export function copyTemplate(from: string, to: string): void {
   const copied = (src: string) => !UNCOPIED.some((path) => src === join(from, path) || src.startsWith(`${join(from, path)}/`));
   cpSync(from, to, { recursive: true, filter: copied });
@@ -38,7 +38,7 @@ export function copyTemplate(from: string, to: string): void {
 export const SKILLS = "delta install-skills --skip bun-route,dzql-app";
 
 // What is about the template, not the app, that setup needs as it runs: copied, then deleted (a folder whole)
-export const DELETED = ["todo.jsonl", "CHANGELOG.md", "create", "tests/setup.test.ts", "tests/evolve.ts"];
+export const DELETED = ["todo.jsonl", "create", "tests/setup.test.ts", "tests/evolve.ts"];
 
 
 // The template's own clone is the one place this must never run: it deletes things
@@ -59,7 +59,7 @@ function commitEverything(root: string) {
 }
 
 export async function setup(root: string) {
-  if (isTemplateClone(root)) throw new Error(`${root} is a clone of the paintbrush template: setup would delete its ledger and changelog`);
+  if (isTemplateClone(root)) throw new Error(`${root} is a clone of the paintbrush template: setup would delete its ledger`);
 
   const name = root.split("/").pop() || "my-app";
   console.log(`Setting up ${name}...`);
@@ -69,8 +69,9 @@ export async function setup(root: string) {
   for (const path of DELETED) {
     rmSync(join(root, path), { recursive: true, force: true });
   }
-  // The template's version goes in the changelog, so the app knows which of the template's changes
-  // it has. The app's own version starts at 0.0.0, so its first `/release minor` makes 0.1.0.
+  // create-blueshed's version (cli.ts writes it in as it copies; the template has none of its own)
+  // goes in the changelog, so the app knows which of the template's changes it has. The app's own
+  // version starts at 0.0.0, so its first `/release minor` makes 0.1.0.
   // The app's package.json: its name, its own version, and only the app's scripts. The template's
   // fast and slow tiers are the monorepo's (its slow one is the evolve skill's test, which goes);
   // an app's `bun test` is its whole proof.
@@ -134,7 +135,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-- Started from [paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)${from ? ` ${from}. To bring this app up to date, read [its changelog](https://github.com/blueshed/dzql/blob/main/packages/paintbrush/CHANGELOG.md) from that version on` : ""}.
+- Started from [create-blueshed](https://github.com/blueshed/dzql/tree/main/packages/create-blueshed)${from ? ` ${from}. To bring this app up to date, read [its changelog](https://github.com/blueshed/dzql/blob/main/packages/create-blueshed/CHANGELOG.md) from that version on` : ""}.
 `;
 
 export const readme = (name: string) => `# ${name}

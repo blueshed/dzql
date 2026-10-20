@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `bun scripts/ranges.ts`: every range a package (or create-dzql's template) gives a sibling
+ * `bun scripts/ranges.ts`: every range a package (or a starter's template) gives a sibling
  * includes the sibling's version in this workspace. A range that no longer does resolves the
  * sibling from npm, an older release, and tests run against that (create-dzql's `dzql ^0.13.0`
  * did, after dzql 0.14.0). `bun run affected` runs it, beside the docs check.
@@ -20,9 +20,11 @@ const root = join(import.meta.dir, "..");
 const files = readdirSync(join(root, "packages")).map((dir) => `packages/${dir}/package.json`).filter((f) => existsSync(join(root, f)));
 const read = (f: string) => JSON.parse(readFileSync(join(root, f), "utf8"));
 const versions = new Map<string, string>(files.map((f) => [read(f).name, read(f).version]));
+// each starter's template, an app a new one is copied from: its ranges and its Bun are held too
+const templates = readdirSync(join(root, "packages")).map((dir) => `packages/${dir}/template/package.json`).filter((f) => existsSync(join(root, f)));
 
 const wrong: string[] = [];
-for (const f of [...files, "packages/create-dzql/template/package.json"]) {
+for (const f of [...files, ...templates]) {
   const json = read(f);
   for (const field of ["dependencies", "devDependencies", "peerDependencies"])
     for (const [name, range] of Object.entries((json[field] ?? {}) as Record<string, string>)) {
@@ -34,7 +36,7 @@ for (const f of [...files, "packages/create-dzql/template/package.json"]) {
 const bun = /^bun@(\d+\.\d+\.\d+)$/.exec(read("package.json").packageManager ?? "")?.[1];
 if (!bun) wrong.push(`package.json: packageManager must be bun@<an exact version>`);
 else
-  for (const f of ["package.json", ...files, "packages/create-dzql/template/package.json"]) {
+  for (const f of ["package.json", ...files, ...templates]) {
     const json = read(f);
     const said: [string, string | undefined, string][] = [
       ["@types/bun", json.devDependencies?.["@types/bun"], `^${bun}`],

@@ -2,6 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { UNCOPIED } from "../template/create/setup";
 
 const parent = mkdtempSync(join(tmpdir(), "create-blueshed-"));
 afterAll(() => rmSync(parent, { recursive: true, force: true }));
@@ -25,6 +26,7 @@ test("without --local the app's packages are npm's, what a new app never gets is
   const pkg = require(join(parent, "plain/package.json"));
   expect(pkg.overrides).toBeUndefined();
   expect(pkg.dependencies["@blueshed/delta"]).toStartWith("^");
+  expect(pkg.version).toBe(require("../package.json").version); // the template's version is this package's: setup's changelog names it
   for (const never of ["logo.png", "evals", "node_modules"]) expect(existsSync(join(parent, "plain", never))).toBe(false); // UNCOPIED: never copied
   expect(existsSync(join(parent, "plain/create/setup.ts"))).toBe(true); // DELETED by setup, which needs it first
   const again = Bun.spawnSync([process.execPath, cli, "plain", "--no-install"], { cwd: parent, stderr: "pipe" });
@@ -32,8 +34,15 @@ test("without --local the app's packages are npm's, what a new app never gets is
   expect(again.stderr.toString()).toContain('"plain" already exists');
 });
 
+// The tarball leaves out what a new app never gets, as the copy does: package.json's `files`
+// negates each path of the template's UNCOPIED
+test("what is packed is what is copied: files leaves out each of UNCOPIED", () => {
+  const { files } = require("../package.json") as { files: string[] };
+  expect(files.filter((f) => f.startsWith("!template/")).map((f) => f.slice("!template/".length)).sort()).toEqual([...UNCOPIED].sort());
+});
+
 // The front door: an app as bun create makes one, its packages the workspace's own (the root's
-// node_modules, linked in, as create-dzql's test does), then paintbrush's setup
+// node_modules, linked in, as create-dzql's test does), then the template's setup
 test("bun create blueshed gives an app that says what it offers, with the model's page and its skill", async () => {
   const made = Bun.spawnSync([process.execPath, cli, "door", "--no-install", "--no-git"], { cwd: parent, stdout: "pipe", stderr: "pipe" });
   expect(made.exitCode).toBe(0);

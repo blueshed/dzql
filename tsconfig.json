@@ -1,5 +1,5 @@
 {
-  "//": "What every package compiles with (bun check, TypeScript 7), and the root's own scripts/. A package's own tsconfig.json extends this and says only what is its own: its JSX, its files (its `include` replaces this one's). paintbrush's and create-dzql's template stand alone, since a new app leaves this repository.",
+  "//": "What every package compiles with (bun check, TypeScript 7), and the root's own scripts/. A package's own tsconfig.json extends this and says only what is its own: its JSX, its files (its `include` replaces this one's). The two starters' templates stand alone, since a new app leaves this repository.",
   "compilerOptions": {
     "lib": [
       "ESNext",

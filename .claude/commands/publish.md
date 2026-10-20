@@ -23,8 +23,8 @@ Released in this order, a sibling before what depends on it.
 |---|---|---|---|---|---|
 | `railroad` | `@blueshed/railroad` | `test:fast`, `test:slow` | -- | `railroad`, `bun-route` | |
 | `delta` | `@blueshed/delta` | `test:fast`, `test:slow` | -- | `delta-doc` | |
-| `dzql` | `dzql` and `create-dzql`, one version | `test:fast`, `test:slow` (Docker; port 5433 free) | `cd packages/create-dzql && bun run test:fast`: a new app from the local template, the workspace's packages linked in, type-checks, passes its own tests at 100% (its stories on PGlite) and starts | `modelling`, `dzql-app` | the template's `dzql` is `^<new>` |
-| `create-blueshed` | `create-blueshed` | `test:fast`, `test:slow` (paintbrush's: the evolve skill applied) | -- | -- | it packs `packages/paintbrush` (`prepack`): paintbrush, never published itself, takes the same level -- its `version` bumped and its changelog promoted -- since an app made from it records "Started from paintbrush <version>" |
+| `dzql` | `dzql` and `create-dzql`, one version | `test:fast`, `test:slow` (Docker; port 5433 free) | `cd packages/create-dzql && bun run test:fast`: the template, the starter, type-checks and passes its tests where it lives; then a new app made from it, the workspace's packages linked in, type-checks, passes its own tests at 100% (its stories on PGlite) and starts | `modelling`, `dzql-app` | the template's `dzql` is `^<new>` |
+| `create-blueshed` | `create-blueshed` | `test:fast` (its own, then its template's), `test:slow` (the template's: the evolve skill applied) | -- | -- | its `template/` is paintbrush, published inside it as it is, with no version of its own: an app made from it records "Started from create-blueshed <version>". `bun pm pack --dry-run` (or `npm pack --dry-run`, which `publish.yml` runs) lists nothing a new app never gets (`files` leaves out the template's `UNCOPIED`) |
 
 ## 1. Preflight, once
 
@@ -32,8 +32,8 @@ Released in this order, a sibling before what depends on it.
    `origin/main` (`git fetch --quiet origin main`, then `git rev-list --count HEAD..origin/main`
    is `0`).
 2. `bun install --frozen-lockfile` at the root.
-3. Each package named has something under `## [Unreleased]` in its CHANGELOG (create-blueshed's is
-   paintbrush's); one that has nothing stops the round.
+3. Each package named has something under `## [Unreleased]` in its CHANGELOG (create-dzql's is
+   dzql's); one that has nothing stops the round.
 4. Each skill a package named ships, changed since its last recorded run (`git log` of
    `.claude/skills/<skill>/` against the newest `evals/runs/*-<skill>.md`), has been run again and
    the run recorded, every line held or the miss said in the CHANGELOG. One that has not stops the
@@ -62,10 +62,10 @@ The root's `todo.jsonl` (what is open across packages) is settled the same way, 
 
 A sibling's range moves up to the version just made when it no longer includes it. Run `bun
 scripts/ranges.ts` at the root: it names every range in the workspace (a package's dependencies,
-dev dependencies and peers, and create-dzql's template) that leaves out its sibling's version now,
+dev dependencies and peers, and each starter's template) that leaves out its sibling's version now,
 and each it names moves to `^<new version>` (a peer widened rather than narrowed: an app on the older
 sibling still installs). Each move is a line under the dependent's new version in its CHANGELOG
-(under `[Unreleased]` for paintbrush when create-blueshed is not in the round). Then `bun install`
+(under `[Unreleased]` for a starter not in the round whose template's range moved). Then `bun install`
 at the root, so `bun.lock` names the new versions, and `bun run affected` on the bumped tree, which
 runs `ranges.ts` again.
 
