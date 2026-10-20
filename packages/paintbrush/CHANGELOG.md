@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **The evolve and Shed evaluations expect the JSON file** (20 October): a shared document from the
+  start is `registerDocs` from `@blueshed/delta/json` with a schema, as the template's message is;
+  delta no longer has the free-form document they named.
+
 - **What a new app never gets is said once** (20 October): `UNCOPIED` in `create/setup.ts`
   (what running the template makes, its logo, the evolve skill's evaluations), read by
   create-blueshed as it copies the template and as it packs it, so the tarball no longer carries

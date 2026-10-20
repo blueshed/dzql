@@ -1,10 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createLocal } from "../src/server/local";
 import { registerMemory, registerSource, registerStatic } from "../src/server/kinds";
-import { dropClientSubscriptions, registerDoc } from "../src/server/server";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dropClientSubscriptions } from "../src/server/server";
 import { setLogLevel } from "../src/server/logger";
 import {
   assertCopiesHold, openAll, write, type PathBackend,
@@ -217,13 +214,13 @@ describe("source: the truth is outside", () => {
 });
 
 /**
- * The law for the documents with no tables -- a memory document and
- * the free-form document (`registerDoc`): a copy, with everything it was told
- * applied, equals a fresh open after every kind of write either takes: an add,
- * one the server names (`/-`), a field and a row replaced, a remove. Neither
- * keeps a ledger, so there is no walk to ask; nor a schema, so no cascade or move.
+ * The law for a document with no tables -- a memory document: a copy, with
+ * everything it was told applied, equals a fresh open after every kind of
+ * write it takes: an add, one the server names (`/-`), a field and a row
+ * replaced, a remove. It keeps no ledger, so there is no walk to ask; nor a
+ * schema, so no cascade or move.
  */
-describe("the law for a memory document and the free-form document", () => {
+describe("the law for a memory document", () => {
   const writes = [
     [{ op: "add", path: "/people/p2", value: { name: "Bo", age: 3 } }],
     [{ op: "add", path: "/people/-", value: { name: "Cy" } }],
@@ -245,19 +242,5 @@ describe("the law for a memory document and the free-form document", () => {
     const copies = await openAll(b.process, ["here:a", "here:b"]);
     for (const ops of writes) await write(b.process, "here:a", ops);
     await assertCopiesHold(b, copies);
-  });
-
-  test("the free-form document", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "delta-law-"));
-    try {
-      const local = createLocal();
-      await registerDoc(local.server, "free", { file: join(dir, "free.json"), empty: empty() });
-      const b = asked(local);
-      const copies = await openAll(b.process, ["free"]);
-      for (const ops of writes) await write(b.process, "free", ops);
-      await assertCopiesHold(b, copies);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
   });
 });

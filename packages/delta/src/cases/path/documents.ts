@@ -349,7 +349,7 @@ export function documentCases(backend: () => PathBackend): void {
       await assertCopiesHold(b, copies);
     });
 
-    test("a replace of a row is the row, as RFC 6902 says and the free-form document does: a field its value leaves out takes its default -- null where nullable -- a required one left out is refused (400), and where the row hangs stays; at /<coll>/<id>, the root's /<root>, and the root by its id", async () => {
+    test("a replace of a row is the row, as RFC 6902 says: a field its value leaves out takes its default -- null where nullable -- a required one left out is refused (400), and where the row hangs stays; at /<coll>/<id>, the root's /<root>, and the root by its id", async () => {
       const b = backend();
       const copies = await openAll(b.process, ["fo-board:1", "fo-household:1"]);
       const code = async (doc: string, ops: unknown[]) => (await b.process.call("delta", { doc, ops })).error?.code;

@@ -1,7 +1,7 @@
 /**
  * railroad ↔ delta integration — the full loop, end to end:
  *
- *   Bun.serve (createWs + registerDoc, JSON-file backend)
+ *   Bun.serve (createWs + the JSON file's registerDocs)
  *     ⇅ real WebSocket
  *   connectWs + openDoc (railroad signals)
  *     ⇅ mount / when / list (railroad real-DOM JSX runtime, happy-dom)
@@ -29,22 +29,28 @@ import {
   provide, clearProviders, setLogLevel as railroadLogLevel, hasActiveDisposeScope,
 } from "@blueshed/railroad";
 import { connectWs, openDoc, WS, type Doc, type WsClient } from "../src/client/client";
-import { createWs, registerDoc, type DocHandle } from "../src/server/server";
+import { createWs } from "../src/server/server";
+import { defineDoc, defineSchema, registerDocs } from "../src/server/json";
 import { setLogLevel as serverLogLevel } from "../src/server/logger";
-import { unlinkSync } from "fs";
+import { mockClient, sendAndAwait } from "../src/testing";
+import type { DeltaOp } from "../src/core";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 railroadLogLevel("silent");
 serverLogLevel("silent");
 
 interface Card { id: number; title: string }
-interface BoardDoc { cards: Record<string, Card> }
+interface BoardDoc { boards: { id: number; name: string | null }; cards: Record<string, Card> }
 
-const tmpFiles: string[] = [];
-function tmpFile(tag: string): string {
-  const f = `/tmp/delta-railroad-it-${tag}-${Date.now()}.json`;
-  tmpFiles.push(f);
-  return f;
-}
+// A board and its cards, kept in a JSON file: each test has a board of its own.
+const schema = defineSchema({
+  boards: { columns: { name: "text?" }, temporal: false },
+  cards: { parent: "boards", columns: { title: "text" }, temporal: false },
+});
+const board = defineDoc("board:", { root: "boards", include: ["cards"], implied: true });
+const dir = mkdtempSync(join(tmpdir(), "delta-railroad-it-"));
 
 async function until(cond: () => boolean, ms = 3000): Promise<void> {
   const start = Date.now();
@@ -57,12 +63,18 @@ async function until(cond: () => boolean, ms = 3000): Promise<void> {
 // --- one real server + one real client for the whole suite -----------------
 
 const wsrv = createWs();
-const handles = new Map<string, DocHandle<BoardDoc>>();
-for (const name of ["it:board", "it:dedupe", "it:scope", "it:late", "it:batch"]) {
-  handles.set(name, await registerDoc<BoardDoc>(wsrv, name, {
-    file: tmpFile(name.replace(":", "-")),
-    empty: { cards: {} },
-  }));
+registerDocs(wsrv, join(dir, "boards.json"), schema, [board]);
+
+/** `doc` as the server has it, opened by someone else. */
+async function served(doc: string): Promise<BoardDoc> {
+  return (await sendAndAwait(wsrv, mockClient(), { action: "open", doc })).result;
+}
+
+/** Someone else writes `ops` to `doc` (opening it first, as a writer does): the server's side of the loop. */
+async function elsewhere(doc: string, ops: DeltaOp[]): Promise<void> {
+  const other = mockClient();
+  await sendAndAwait(wsrv, other, { action: "open", doc });
+  expect((await sendAndAwait(wsrv, other, { action: "delta", doc, ops })).error).toBeUndefined();
 }
 
 const server = Bun.serve({
@@ -83,7 +95,7 @@ afterAll(async () => {
   await until(() => !client.connected.peek());
   server.stop(true);
   clearProviders();
-  for (const f of tmpFiles) { try { unlinkSync(f); } catch {} }
+  rmSync(dir, { recursive: true, force: true });
   GlobalRegistrator.unregister();
 });
 
@@ -91,8 +103,7 @@ afterAll(async () => {
 
 describe("railroad ↔ delta", () => {
   test("full loop: open → render → add / FIELD-LEVEL edit / remove → DOM", async () => {
-    const handle = handles.get("it:board")!;
-    const doc: Doc<BoardDoc> = openDoc("it:board", client);
+    const doc: Doc<BoardDoc> = openDoc("board:1", client);
 
     const root = document.createElement("div");
     document.body.appendChild(root);
@@ -114,23 +125,23 @@ describe("railroad ↔ delta", () => {
     await doc.ready;
     await until(() => !root.textContent?.includes("loading"));
 
-    // Server-driven add renders a row.
-    handle.applyAndBroadcast([{ op: "add", path: "/cards/5", value: { id: 5, title: "first" } }]);
+    // Someone else's add renders a row.
+    await elsewhere("board:1", [{ op: "add", path: "/cards/5", value: { title: "first" } }]);
     await until(() => root.textContent === "first");
 
     // THE headline seam: a field-level op, told as the field. The client gives
     // the row it lands in a fresh reference, and keyed list() sees it under
     // its DEFAULT equality — the row's DOM updates.
-    handle.applyAndBroadcast([{ op: "replace", path: "/cards/5/title", value: "edited" }]);
+    await elsewhere("board:1", [{ op: "replace", path: "/cards/5/title", value: "edited" }]);
     await until(() => root.textContent === "edited");
 
     // Client round trip: send an op, the echo broadcast renders it.
-    await doc.send([{ op: "add", path: "/cards/9", value: { id: 9, title: "nine" } }]);
+    await doc.send([{ op: "add", path: "/cards/9", value: { title: "nine" } }]);
     await until(() => root.textContent === "editednine");
-    expect(handle.getDoc().cards["9"]!.title).toBe("nine");
+    expect((await served("board:1")).cards["9"]!.title).toBe("nine");
 
     // Removal tears the row out.
-    handle.applyAndBroadcast([{ op: "remove", path: "/cards/5" }]);
+    await elsewhere("board:1", [{ op: "remove", path: "/cards/5" }]);
     await until(() => root.textContent === "nine");
 
     dispose();
@@ -139,8 +150,7 @@ describe("railroad ↔ delta", () => {
   });
 
   test("one flush per broadcast: an effect reading data + dataVersion runs once", async () => {
-    const handle = handles.get("it:batch")!;
-    const doc: Doc<BoardDoc> = openDoc("it:batch", client);
+    const doc: Doc<BoardDoc> = openDoc("board:2", client);
     await doc.ready;
 
     let runs = 0;
@@ -151,7 +161,7 @@ describe("railroad ↔ delta", () => {
     });
     expect(runs).toBe(1);
 
-    handle.applyAndBroadcast([{ op: "add", path: "/cards/1", value: { id: 1, title: "x" } }]);
+    await elsewhere("board:2", [{ op: "add", path: "/cards/-", value: { title: "x" } }]);
     await until(() => runs >= 2);
     // batch() coalesces the dataVersion.set + data.touch pair — without it
     // this effect would run twice per broadcast (runs === 3).
@@ -162,32 +172,32 @@ describe("railroad ↔ delta", () => {
   });
 
   test("openDoc dedupes by name; close() unregisters at refcount zero", async () => {
-    const d1: Doc<BoardDoc> = openDoc("it:dedupe", client);
-    const d2: Doc<BoardDoc> = openDoc("it:dedupe", client);
+    const d1: Doc<BoardDoc> = openDoc("board:3", client);
+    const d2: Doc<BoardDoc> = openDoc("board:3", client);
 
     // Same underlying entry — the same signals, not a second dead copy.
     expect(d2.data).toBe(d1.data);
-    expect(client._docs.has("it:dedupe")).toBe(true);
+    expect(client._docs.has("board:3")).toBe(true);
 
     d1.close();
     d1.close(); // per-handle idempotent
-    expect(client._docs.has("it:dedupe")).toBe(true); // d2 still live
+    expect(client._docs.has("board:3")).toBe(true); // d2 still live
 
     d2.close();
-    expect(client._docs.has("it:dedupe")).toBe(false);
+    expect(client._docs.has("board:3")).toBe(false);
   });
 
   test("a doc opened inside a railroad scope closes on scope teardown", async () => {
     const root = document.createElement("div");
     document.body.appendChild(root);
     const dispose = mount(root, () => {
-      openDoc("it:scope", client);
+      openDoc("board:4", client);
       return document.createElement("span");
     });
-    expect(client._docs.has("it:scope")).toBe(true);
+    expect(client._docs.has("board:4")).toBe(true);
 
     dispose();
-    expect(client._docs.has("it:scope")).toBe(false);
+    expect(client._docs.has("board:4")).toBe(false);
     root.remove();
   });
 
@@ -211,14 +221,14 @@ describe("railroad ↔ delta", () => {
 
   test("late provide(WS): a parked doc self-heals on first send()", async () => {
     clearProviders();
-    const doc: Doc<BoardDoc> = openDoc("it:late"); // no client, WS not provided
+    const doc: Doc<BoardDoc> = openDoc("board:5"); // no client, WS not provided
     await new Promise((r) => queueMicrotask(() => r(undefined))); // deferred registration finds nothing
 
     provide(WS, client);
-    await doc.send([{ op: "add", path: "/cards/7", value: { id: 7, title: "late" } }]);
+    await doc.send([{ op: "add", path: "/cards/-", value: { title: "late" } }]);
 
     await doc.ready; // register-on-send opened the doc
-    await until(() => doc.data.peek()?.cards["7"]?.title === "late");
+    await until(() => Object.values(doc.data.peek()?.cards ?? {}).some((c) => c.title === "late"));
     doc.close();
     clearProviders();
   });

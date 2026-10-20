@@ -57,5 +57,5 @@ version, **who** (for the audit) and the **cursor** (what undo walks). SQLite ke
 - With `auth`, undo and redo pass the gate and `owns` of the entry's document.
 - An empty write records nothing. The ledger does not carry to the next backend.
 - **Without a ledger**, `inverse: true` on a `delta` answers `{ ack, ops, inverse }` on SQLite
-  (`inverseOf` in `./sqlite`); on the free-form document, the ops as applied only.
+  (`inverseOf` in `./sqlite`); on a memory document, the ops as applied only.
   A row made and removed in one write has no inverse.

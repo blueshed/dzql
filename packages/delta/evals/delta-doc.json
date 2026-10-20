@@ -7,7 +7,7 @@
     "files": [],
     "expected_behavior": [
       "One defineSchema (items with parent: \"lists\") and one defineDoc(\"list:\", { root: \"lists\", include: [\"items\"], ... }), used unchanged by both steps",
-      "The JSON step registers with registerDocs(ws, file, schema, docs) from @blueshed/delta/json, not registerDoc from @blueshed/delta/server and not a hand-written file store",
+      "The JSON step registers with registerDocs(ws, file, schema, docs) from @blueshed/delta/json, not a hand-written file store",
       "The SQLite step changes only the server's wiring: createTables(db, schema), then registerDocs(ws, db, schema, docs) from @blueshed/delta/sqlite; the schema, the document and the client are the same files",
       "Carries the data with exportTables from @blueshed/delta/json and importTables from @blueshed/delta/sqlite, not by copying rows by hand",
       "The client uses connectWs and openDoc from @blueshed/delta/client and installs @blueshed/railroad beside delta",

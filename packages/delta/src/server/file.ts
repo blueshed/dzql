@@ -1,6 +1,5 @@
 /**
- * How the free-form document (`registerDoc`) and the JSON file (`./json`)
- * keep their file. @internal
+ * How the JSON file (`./json`) keeps its file. @internal
  *
  * A save is whole or not at all: it goes to a temp file beside the real one
  * (through a symlink, beside what it points at), given the file's mode,
