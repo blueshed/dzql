@@ -92,7 +92,7 @@ export type Example = {
    * the server stops, so a store is open only while a server holds it, and the next start (a
    * test's next server, `bun --hot` running the app again) opens it afresh.
    */
-  store?: StoryStore & { open?(): Promise<void>; close?(): Promise<void> };
+  store?: StoryStore & { open?(where: { dataDir?: string }): Promise<void>; close?(): Promise<void> };
 };
 
 /** A store as the stories see it: each story begun and ended on it, and its ledger read. */

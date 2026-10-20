@@ -50,10 +50,10 @@ export const app: Example = {
   store, // opened as a server starts and closed as it stops; the stories begin and end each story on it (Postgres, ./store.ts)
 };
 
-/** The server: on `PORT` (3000), and with `--model` (`bun dev`) the model's page beside the app. */
-export async function startServer({ port = Number(process.env.PORT ?? 3000), model = process.argv.includes("--model") } = {}) {
+/** The server: on `PORT` (3000), its store in the data folder (`DATA_PATH`, else ./data), and with `--model` (`bun dev`) the model's page beside the app. */
+export async function startServer({ port = Number(process.env.PORT ?? 3000), model = process.argv.includes("--model"), dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/data` } = {}) {
   const modelling = model && (await (await import("dzql/model")).modelRoute({ port: String(port), file: `${import.meta.dir}/model.json`, out: `${import.meta.dir}/model` }));
-  const server = serve(compose(await appOf(app), modelling), { port });
+  const server = serve(compose(await appOf(app, { dataDir }), modelling), { port });
   console.log(["The staff, signed in by a link:", ...links.say(server.url.origin).map((l) => `  ${l}`)].join("\n"));
   return server;
 }

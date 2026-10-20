@@ -1,7 +1,8 @@
 import { afterAll, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { createServer } from "dzql/rendering/server";
+import { serve } from "@blueshed/delta/serve";
+import { appOf, createServer } from "dzql/rendering/server";
 import { heard, open, pageOf, write } from "dzql/rendering/test-socket";
 import { app, store } from "./store.test.app";
 
@@ -37,10 +38,26 @@ test("a server opens the app's store as it starts and closes it as it stops; the
   }
 });
 
+test("servers on data folders of their own, one after another in one process: each folder keeps its own notes; two at once share one folder or are refused", async () => {
+  const on = async (dataDir: string) => serve(await appOf(app, { dataDir }), { port: 0, dev: false });
+  const [first, second] = [`${scratch}/first`, `${scratch}/second`]; // not there yet, as on a new app's first start
+  for (const [dataDir, then] of [[first, [1]], [second, [1]], [first, [1, 2]]] as const) {
+    const server = await on(dataDir);
+    expect(await added(server)).toEqual([...then]);
+    await server.stop(true);
+  }
+  const held = await on(first);
+  await expect(appOf(app, { dataDir: second })).rejects.toThrow(`The store is open on ${first}/pg: a second server cannot open it on ${second}/pg`);
+  const again = await on(first); // the same folder: the same store, held twice
+  await again.stop(true);
+  expect(await added(held)).toEqual([1, 2, 3]);
+  await held.stop(true);
+});
+
 test("bun --hot: the last store is closed before the app, run again, opens the next, so its ids carry on, 1 then 2", async () => {
   const fixture = `${import.meta.dir}/store.test.app.ts`;
   const proc = Bun.spawn([process.execPath, "--hot", fixture], {
-    env: { ...process.env, PORT: "0", PID_FILE: `${scratch}/.server.pid`, PGLITE_DIR: `${scratch}/pg`, DATABASE_URL: "" },
+    env: { ...process.env, PORT: "0", PID_FILE: `${scratch}/.server.pid`, DATA_PATH: scratch, DATABASE_URL: "" },
     stdout: "pipe",
     stderr: "pipe",
   });

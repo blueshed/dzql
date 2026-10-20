@@ -25,4 +25,4 @@ export const app: Example = {
   active: () => true,
 };
 
-if (import.meta.main) await run(async () => serve(await appOf(app)));
+if (import.meta.main) await run(async () => serve(await appOf(app, { dataDir: process.env.DATA_PATH })));

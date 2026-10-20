@@ -224,11 +224,11 @@ export type DzqlApp = App & { websocket: Bun.WebSocketHandler<ConnectionData>; s
  * An example as routes and resources, never a server of its own: its page at `Example.at` (the
  * root, unless it says a path), every screen under it, its routes, and its socket at `<at>/ws`, all
  * in a scope of its own. `compose` puts several on one server; delta's `serve` serves them. Its
- * store is opened first (`Example.store`, one that opens: Postgres's), and closed once the server
- * stops, after what the app drew: a store is open only while a server holds it.
+ * store is opened first (`Example.store`, one that opens: Postgres's), on the data folder it is given (`dataDir`: none, in memory),
+ * and closed once the server stops, after what the app drew: a store is open only while a server holds it.
  */
-export async function appOf(example: Example): Promise<DzqlApp> {
-  await example.store?.open?.();
+export async function appOf(example: Example, { dataDir }: { dataDir?: string } = {}): Promise<DzqlApp> {
+  await example.store?.open?.({ dataDir });
   // one example served twice (a test's two servers) is one app: one scope, its sockets all told
   const held = scopes.get(example) ?? scopes.set(example, { app: served(example.at ?? ""), apps: 0 }).get(example)!;
   held.apps++;

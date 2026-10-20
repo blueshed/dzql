@@ -25,6 +25,17 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **Where data lives is the data folder, one way in both starters** (20 October, root #129).
+  `openStore`'s `open({ dataDir })` keeps PGlite in the folder's `pg/` (`DATABASE_URL` a server
+  in its place, `database` whatever the folder; none, or `:memory:`, in memory), and `appOf(app, {
+  dataDir })` opens it there; `PGLITE_DIR` is no longer read. An app's `startServer` takes
+  `dataDir = process.env.DATA_PATH ?? <app>/data` (a Railway volume when `DATA_PATH` is set),
+  as paintbrush's always has, and a test gives a scratch folder, or says `DATA_PATH=:memory:` in its
+  `.env.test`. Opened by a second server on another folder, a store open on one refuses. To move
+  across: `PGLITE_DIR=data/pg` goes from `dev` and `start`; `startServer` takes `dataDir` and
+  passes it to `appOf`; `.env.test` says `DATA_PATH=:memory:` in place of `PGLITE_DIR=`. The cafe,
+  create-dzql's template and dzql's own `.env.test` follow.
+
 - **A server opens the app's store as it starts and closes it as it stops** (20 October, root
   #119). `openStore` (`dzql/postgres`) says the store and opens nothing: the database is opened,
   migrated and its documents compiled and served at `open()`, closed at `close()`, and opened again

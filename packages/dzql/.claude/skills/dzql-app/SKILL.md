@@ -35,7 +35,8 @@ least that makes the next story pass; `bun run stories` after each.
    `model/` (the definitions, the guards, the migrations), and each story names the model story it
    tells (`model: 6`; `model: false` for the app's own). → [stories](reference/stories.md)
 2. **The store**, `store.ts`: Postgres, through dzql's `openStore({ schema, migrations })` -- PGlite
-   in the process (in `PGLITE_DIR`; in memory for the tests), or a server at `DATABASE_URL`. The
+   in the process (in the data folder's `pg/`: `DATA_PATH`, a Railway volume, else `data/`; in
+   memory for the tests, `DATA_PATH=:memory:`), or a server at `DATABASE_URL`. The
    tables (`defineSchema`: the model's `tables`, and the app's own beside them), the model's
    migrations, `prepare` to seed it, `delta` (the model's guards put on it as the app loads, before
    any listener), `register` for each resource's documents; the store is the app's `Example.store`,

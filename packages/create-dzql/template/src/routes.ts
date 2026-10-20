@@ -31,13 +31,13 @@ export const app: Example = {
   store, // opened as a server starts, closed as it stops; the stories begin and end each story on it (./store.ts)
 };
 
-/** The server: on `PORT` (3000), and with `--model` (`bun dev`) the model's page beside the app. */
-export async function startServer({ port = Number(process.env.PORT ?? 3000), model = process.argv.includes("--model") } = {}) {
+/** The server: on `PORT` (3000), its store in the data folder (`DATA_PATH`, a Railway volume, else data/), and with `--model` (`bun dev`) the model's page beside the app. */
+export async function startServer({ port = Number(process.env.PORT ?? 3000), model = process.argv.includes("--model"), dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data` } = {}) {
   // in development (`bun dev`), the model's page beside the app at /model; production never registers it
   const modelling = model && (await (await import("dzql/model")).modelRoute({ port: String(port) }));
   return serve(
     compose(
-      await appOf(app), // "/", its socket "/ws", and the documents on it: its store opened, and closed as the server stops
+      await appOf(app, { dataDir }), // "/", its socket "/ws", and the documents on it: its store opened in the data folder, and closed as the server stops
       // what isn't communication is an HTTP route: { routes: { "/api/<name>": { GET: ... } } }, from its resource
       modelling,
     ),

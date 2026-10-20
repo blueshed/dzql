@@ -5,8 +5,10 @@
  * (`Example.store`: dzql's `appOf` does both), so a test runs servers one after another in one
  * process, and `bun --hot` closes the last store before the next opens it.
  *
- * `open()`: a server at DATABASE_URL, else PGlite in this process, kept in PGLITE_DIR (in memory
- * without one: the tests and the stories), or the `database` it is given; in `public`, or the
+ * `open({ dataDir })`: a server at DATABASE_URL, else PGlite in this process, kept in the app's data
+ * folder, in its `pg/` (`DATA_PATH`, a Railway volume, else the app's `data/`: the server says
+ * which), or in memory with none (`:memory:`, as the tests say: the stories, a test's server); or the
+ * `database` it is given, whatever the folder. In `public`, or the
  * Postgres schema it is given (`namespace`), so several apps share one database, each with its own
  * tables, ledger and change channel. The migrations run first (a folder, when it is there, or a
  * list); then the framework; then every registered document is compiled from its definitions,
@@ -32,7 +34,7 @@ import { storyStore } from "./story-store";
 export type StoreOptions = {
   /** The app's tables: the model's (`model/types.ts`'s `tables`), and its own beside them. */
   schema: Schema;
-  /** Where it is kept: a Postgres URL, or a PGlite folder. Without it, DATABASE_URL, else PGLITE_DIR, else in memory. */
+  /** Where it is kept, whatever folder it is opened on: a Postgres URL, or a PGlite folder. Without it, DATABASE_URL, else the data folder's `pg/`, else in memory. */
   database?: string;
   /** The migrations, run first: a folder (`dir`, run when it is there; the model's `model/migrations`) or a `list`. `app` names them in `delta_migrations`; `schema` is theirs (the model's), so the run knows a new database from one before them, and fences only their ledger entries. */
   migrations?: { app?: string; schema?: Schema } & ({ dir: string } | { list: Migration[] });
@@ -56,6 +58,8 @@ export function openStore({ schema, database, migrations, ws, namespace, prepare
   let open: { pool: Pool; listener: Awaited<ReturnType<typeof serveDocs>>; stories: ReturnType<typeof storyStore> } | undefined;
   /** How many servers hold it open. */
   let holders = 0;
+  /** Where the open store is kept: a URL, a folder, or none (in memory). */
+  let opened: string | undefined;
   /** Opens and closes, one after another, so a close not yet done is done before the next open. */
   let turn: Promise<void> = Promise.resolve();
   const inTurn = (step: () => Promise<void>): Promise<void> => {
@@ -86,12 +90,16 @@ export function openStore({ schema, database, migrations, ws, namespace, prepare
       registered.push(...docs);
       if (!ledger) offLedger.push(...docs.map((d) => d.prefix));
     },
-    /** The database opened, migrated and every registered document compiled and served: as a server starts. */
-    open: (): Promise<void> =>
+    /** The database opened, migrated and every registered document compiled and served: as a server starts, on its data folder (none, or `:memory:`: in memory). */
+    open: ({ dataDir }: { dataDir?: string } = {}): Promise<void> =>
       inTurn(async () => {
+        const where = database ?? (process.env.DATABASE_URL || (dataDir && dataDir !== ":memory:" ? `${dataDir}/pg` : undefined));
+        // a second server of the app holds the same store: on the same database, or not at all
+        if (holders > 0 && where !== opened) throw new Error(`The store is open on ${opened ?? "memory"}: a second server cannot open it on ${where ?? "memory"}`);
         if (holders++ > 0) return;
+        opened = where;
         try {
-          const db: Pool = await openDatabase(database ?? (process.env.DATABASE_URL || process.env.PGLITE_DIR || undefined), { namespace });
+          const db: Pool = await openDatabase(where, { namespace });
           try {
             if (namespace !== undefined) await ensureNamespace(db, namespace); // the migrations run in it
             const history = !migrations ? undefined : "list" in migrations ? migrations.list : existsSync(migrations.dir) ? await fromFolder(migrations.dir) : undefined;

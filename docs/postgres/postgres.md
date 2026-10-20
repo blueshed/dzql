@@ -15,10 +15,10 @@ import { openStore } from "dzql/postgres";
 import { schema, docs } from "./schema";
 
 const ws = createWs();
-// DATABASE_URL's server, else PGlite in PGLITE_DIR (in memory without it), or `database`: a URL or a folder
+// DATABASE_URL's server, else PGlite in the data folder's pg/ (in memory without one), or `database`: a URL or a folder
 const store = openStore({ schema, migrations: { dir: "migrations", app: "board", schema }, ws }); // said: nothing opened yet
 store.register(docs);
-await store.open();   // as the server starts: the tables, each document compiled, then served on the socket
+await store.open({ dataDir: process.env.DATA_PATH });   // as the server starts: the tables, each document compiled, then served on the socket
 // delta's one server: the socket on its path, and on shutdown the listener (it holds a pool client for LISTEN), then the pool
 serve({ routes: { "/": index }, ws, close: [store.close] });
 ```

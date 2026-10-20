@@ -15,6 +15,12 @@ section up.
 
 ### Breaking
 
+- **The Postgres step opens its store on the data folder** (20 October, root #129; needs dzql's
+  next release): `store.open({ dataDir })`, PGlite in its `pg/` unless `DATABASE_URL` names a
+  server, where the step said `database: process.env.DATABASE_URL || \`${dataDir}/pg\``. dzql's
+  starter says where data lives the same way now (`DATA_PATH`, else `data/`), so the step to the
+  thin client keeps it.
+
 - **The Postgres step's seed is `openStore`'s `prepare`** (20 October, root #119; needs dzql's next
   release). evolve's `postgres.md`: `openStore({ ..., ws, prepare: async (pool) => { ... } })`, then
   `store.register(docs)` and `await store.open()`, where it was `await store.open(async () => ...)`:

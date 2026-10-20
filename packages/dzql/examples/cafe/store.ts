@@ -5,8 +5,9 @@ import { guards } from "./model/guards";
 
 // The cafe's store: Postgres, its documents compiled from the model's definitions (dzql/postgres).
 // On a Postgres server when DATABASE_URL says one; else PGlite, Postgres in this process, kept in
-// PGLITE_DIR (in memory without one: the tests, the stories). What the model made (./model/, by
-// `dzql model` from ./model.json) comes first, by its own migrations; then what the app keeps beside
+// the data folder's pg/ (DATA_PATH, else ./data; in memory for the tests and the stories). What the
+// model made (./model/, by `dzql model` from ./model.json) comes first, by its own migrations; then
+// what the app keeps beside
 // it -- who the staff are, and what a visit holds beyond the table a customer scanned (who signed
 // in, the cookie's hash; where they are is each tab's own) -- made by the compiled SQL, which adds a missing table or
 // column (dzql's `openStore`). Each resource registers its documents (`register`, in
