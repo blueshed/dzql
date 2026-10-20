@@ -1,6 +1,6 @@
 # Schema
 
-`examples/kanban/schema.ts`: three tables in a parent chain, and the one document over them.
+`examples/kanban/resources/board/board-api.ts`: three tables in a parent chain, and the one document over them.
 
 ```ts
 import { defineSchema, defineDoc } from "@blueshed/delta/sqlite";   // or ./json

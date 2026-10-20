@@ -56,6 +56,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The kanban example is routes and resources** (20 October, Peter's word: every app is routes
+  and resources, joined by documents, as paintbrush is). `examples/kanban/` is `routes.ts` (the
+  page and the socket given to `serve`; run, it is the server, by `run`), the page (`index.html`,
+  `index.css`, `app.tsx`) and `resources/board/`: `board-api.ts` (the tables, `board:` and the
+  seeded board, registered by `boardApi(ws)`), `board.ts` (the `openDoc` handle) and
+  `board-view.tsx`. `serve.ts`, `server.ts` and `setup.ts` are folded into `routes.ts` and
+  `board-api.ts`: one way to run the server, `bun examples/kanban/routes.ts`. `run.ts`, the two
+  clients in the terminal, starts the same server.
+
 - **The recipe's client is railroad's** (20 October, root #30): `client.tsx` draws the room with
   `list()` over `doc.data`, as the recipe's first line says the client needs, in place of raw DOM
   and `applyOpsToCollection`; a `tsconfig.json` says the JSX. `tests/recipe.test.ts` runs it as

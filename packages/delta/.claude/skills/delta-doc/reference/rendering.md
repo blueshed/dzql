@@ -1,21 +1,25 @@
 # Rendering a document
 
-With railroad's JSX, from `examples/kanban/client.tsx`: derive the rows, render them keyed.
+With railroad's JSX, from `examples/kanban/` (`app.tsx` and `resources/board/`): the handle opens
+the document, the view derives the rows and renders them keyed, the page provides the socket.
 
 ```tsx
-provide(WS, connectWs("/ws"));
-const doc = openDoc<BoardDoc>("board:1");
+// board.ts
+export const board = openDoc<BoardDoc>("board:1");
 
-function BoardView(): JSX.Element {
-  const columns$ = doc.data.map((d): Column[] =>
+// board-view.tsx
+export function BoardView(): JSX.Element {
+  const columns$ = board.data.map((d): Column[] =>
     d ? Object.values(d.kanban_columns).sort((a, b) => a.position - b.position) : []);
   return <div class="columns">
     {list<Column>(columns$, (c: Column) => c.id, (c$) => <ColumnView column$={c$} />)}
   </div>;
 }
 
-const App = () => when(doc.data, () => <BoardView />, () => <div>connecting…</div>);
-document.getElementById("root")!.append(<App />);
+// app.tsx
+provide(WS, connectWs("/ws"));
+mount(document.getElementById("root")!, () =>
+  when(board.data, () => <BoardView />, () => <div class="pending">connecting…</div>));
 ```
 
 Without JSX, the recipe's `applyOpsToCollection` (`recipe.md`; `DomCollection` in
