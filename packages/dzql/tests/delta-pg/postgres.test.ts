@@ -16,7 +16,6 @@ import {
   defineDoc,
   defineSchema,
   generateSql,
-  loadDocAt,
   pruneOpsLog,
   type DocType,
 } from "../../src/postgres";
@@ -324,13 +323,13 @@ describe("createDocListener (end-to-end WS flow)", () => {
 // ---------------------------------------------------------------------------
 
 describe("snapshots + pruneOpsLog", () => {
-  test("loadDocAt accepts a Date and queries the framework", async () => {
+  test("a list read as it stood (openAt) reads as it is where the table keeps no history", async () => {
     const type = docTypeFromDef(defineDoc("items:", { root: "items", include: [] }), pool);
     await type.apply({}, "items:", [
       { op: "add", path: "/items/-", value: { name: "t1" } },
     ]);
     // a list, and `items` keeps no history: read as it is, as on SQLite (#74)
-    const doc = await loadDocAt(pool, "items:", new Date());
+    const doc = await type.openAt!({}, "items:", new Date().toISOString());
     expect(Object.values(doc.items).map((r: any) => r.name)).toEqual(["t1"]);
   });
 
@@ -388,7 +387,7 @@ describe("fail-fast on config errors", () => {
 describe("scope DSL operators", () => {
   async function resolve(prefix: string, docName: string) {
     const { rows } = await pool.query(
-      `SELECT _delta_resolve_scope(d, $1) AS r FROM _delta_docs d WHERE prefix = $2`,
+      `SELECT _delta_resolve_scope(_delta_find_doc($2), $1) AS r`,
       [docName, prefix],
     );
     return rows[0].r as { where: string; mode: string; values: Record<string, unknown>; at: string | null };
@@ -483,10 +482,10 @@ describe("scope DSL operators", () => {
     ]);
 
     // Current state sees the update; snapshotAt sees the original.
-    const current = await loadDocAt(pool, `t:${id}`, new Date().toISOString());
+    const current = await type.openAt!({}, `t:${id}`, new Date().toISOString());
     expect(current?.items_t?.name).toBe("updated");
 
-    const historical = await loadDocAt(pool, `t:${id}`, snapshotAt);
+    const historical = await type.openAt!({}, `t:${id}`, snapshotAt);
     expect(historical?.items_t?.name).toBe("original");
   });
 

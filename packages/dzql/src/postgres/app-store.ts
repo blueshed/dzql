@@ -17,8 +17,7 @@ import type { DocDef, Migration, Schema } from "@blueshed/delta/backend";
 import type { WsServer } from "@blueshed/delta/server";
 import { applyFramework, applySql, ensureNamespace } from "./bootstrap";
 import { generateSql } from "./codegen";
-import { createDocListener } from "./listener";
-import { docTypeFromDef } from "./registry";
+import { serveDocs } from "./register";
 import { fromFolder, migrate } from "./migrate";
 import { openDatabase } from "./pglite";
 import { storyStore } from "./story-store";
@@ -47,7 +46,7 @@ export async function openStore({ schema, database, migrations, ws, namespace }:
   const delta = createLocal();
   const registered: DocDef[] = [];
   const offLedger: string[] = [];
-  let listener: Awaited<ReturnType<typeof createDocListener>> | undefined;
+  let listener: Awaited<ReturnType<typeof serveDocs>> | undefined;
 
   return {
     pool,
@@ -65,7 +64,7 @@ export async function openStore({ schema, database, migrations, ws, namespace }:
     async open(prepare?: () => void | Promise<void>): Promise<void> {
       await applySql(pool, generateSql(schema, registered), { namespace });
       await prepare?.();
-      listener = await createDocListener(ws ?? delta.server, pool, { types: registered.map((def) => docTypeFromDef(def, pool)), ledger: { except: offLedger }, schema, namespace });
+      listener = await serveDocs(ws ?? delta.server, pool, schema, registered, [], { ledger: { except: offLedger }, namespace });
     },
     /** The listener ended (it holds a client for LISTEN), then the pool: a PGlite folder is left as it was, for the next start. */
     async close(): Promise<void> {

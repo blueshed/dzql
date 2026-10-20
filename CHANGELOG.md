@@ -12,6 +12,9 @@ what is open across them. Newest first.
   `openStore` and its steps; each app's changes on a channel of its own. dzql's CHANGELOG has the detail.
 - **Row-level security derived from the documents' paths** (dzql #19, breaking for an app whose
   role RLS holds): the backstop beneath the compiled reads and writes, which run as the caller.
+- **One `registerDocs` call on Postgres, as on SQLite** (#37, its Postgres part): dzql's
+  `registerDocs(ws, pool, schema, docs, customDocs, options)`; the pre-0.11.0 leftovers in
+  `src/postgres` removed (breaking: `loadDocAt`). The evolve skill's Postgres page teaches it.
 
 ### The Bun, the hook and the root's statements, said once (20 October)
 

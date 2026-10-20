@@ -6,8 +6,9 @@
  * Output includes:
  *   - CREATE SEQUENCE / CREATE TABLE (+ current_* view for temporal tables)
  *   - Helper indexes
- *   - INSERT INTO _delta_collections (columns_def, parent, temporal, cascade_on)
- *   - INSERT INTO _delta_docs       (prefix, root_collection, include, scope)
+ *   - INSERT INTO _delta_collections (columns_def, parent, temporal, cascade_on), which a listener
+ *     given no schema shows by
+ *   - each document and collection compiled (src/compile/), and each table's row-level security
  *
  * Everything is idempotent (CREATE … IF NOT EXISTS, ON CONFLICT DO UPDATE),
  * so the same file can be re-applied to a live database after a schema change.
@@ -84,37 +85,7 @@ export function generateSql(
   }
   lines.push("");
 
-  // Doc definitions. `implied` is written when a document is implied (and
-  // then for each, so one that stops being implied is reset), and `held` when
-  // one names its columns: SQL for an app with neither needs no
-  // framework SQL newer than it.
-  lines.push("-- Doc definitions");
-  const implied = docs.some((d) => d.implied);
-  const held = docs.some((d) => d.columns);
   for (const doc of docs) assertScopeKeys(doc, schema);   // its scope's keys and the columns it names are its collections' columns
-  for (const doc of docs) {
-    // Build a proper Postgres text[] array literal: each element is wrapped in
-    // double quotes with embedded `"` and `\` backslash-escaped, so a comma or
-    // quote inside a collection key can't corrupt the array.
-    const include = doc.include.length
-      ? lit(
-          `{${doc.include
-            .map((e) => `"${e.replace(/(["\\])/g, "\\$1")}"`)
-            .join(",")}}`,
-        )
-      : "'{}'";
-    const scope = lit(JSON.stringify(doc.scope));
-    lines.push(
-      `INSERT INTO _delta_docs (prefix, root_collection, include, scope${implied ? ", implied" : ""}${held ? ", held" : ""})`,
-    );
-    lines.push(
-      `  VALUES (${lit(doc.prefix)}, ${lit(doc.root)}, ${include}, ${scope}${implied ? `, ${!!doc.implied}` : ""}${held ? `, ${lit(JSON.stringify(doc.columns ?? {}))}` : ""})`,
-    );
-    lines.push(
-      `  ON CONFLICT (prefix) DO UPDATE SET root_collection = EXCLUDED.root_collection, include = EXCLUDED.include, scope = EXCLUDED.scope${implied ? ", implied = EXCLUDED.implied" : ""}${held ? ", held = EXCLUDED.held" : ""};`,
-    );
-  }
-  lines.push("");
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
   lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs), "", compilePolicies(schema, docs));

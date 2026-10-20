@@ -25,26 +25,28 @@ serve({ routes: { "/": index }, ws, close: [store.close] });
 
 Without `ws`, the documents are served in the process (`store.delta`), as dzql's thin client reads
 them. `open(prepare)` runs `prepare` between the tables made and the documents served: a seed, a
-guard put in front. The steps it takes are below, for a database something else sets up; their
-options are `createDocListener` and `docTypeFromDef` in `packages/dzql/src/postgres/listener.ts` and
-`registry.ts`, and `openStore` in `app-store.ts`. Signing in: delta-doc's `auth.md` (on Postgres,
+guard put in front. The steps it takes are below, for a database something else sets up; the
+documents' step is one call, `registerDocs(ws, pool, schema, docs, customDocs, options)`, which
+takes what delta's SQLite `registerDocs` takes (`ledger`, `who`, `auth`, `owns`, `shared`; and
+`namespace`), awaited: an app moving from SQLite changes its import. Its options are in
+`packages/dzql/src/postgres/register.ts`, `openStore`'s in `app-store.ts`. Signing in: delta-doc's `auth.md` (on Postgres,
 `postgresLinkStore` from `dzql/auth-link`); who may open what: below, and `rls.md`.
 
 ## Setting up the database
 
 - **Programmatic**: `applyFramework(pool)`, `applyAuthJwtSchema(pool)` (if `jwtAuth`), then
-  `applySql(pool, generateSql(schema, docs))`.
+  `registerDocs(ws, pool, schema, docs, customDocs, { auth, ledger: true })`, which applies
+  `generateSql(schema, docs)` and serves the documents.
 - **Vendored** (a migration tool or `docker-entrypoint-initdb.d` owns the database):
   `bunx dzql init init_db --with-auth` copies `001a–001g` (and `002-users.sql`);
   `bunx dzql sql ./types.ts --out init_db/003-tables.sql` writes your tables. The SQL
   is yours, in git; only the SQL is vendored, the TypeScript is imported.
 - **The history makes the tables**: `migrate(pool, await fromFolder("migrations"), { app, schema })`
-  first, then `applyFramework` and `applySql(pool, generateSql(…))`. The same migrations as on
+  first, then `applyFramework` and `registerDocs`. The same migrations as on
   SQLite (`delta migrations make` writes them from the definitions): a new database runs them from
   the first; one made the older way, holding their tables, adopts them. A change the definitions
-  make is the next migration (delta-doc's `migrations.md`). Give the listener your
-  `schema` (`createDocListener(ws, pool, { types, schema })`): it sends and writes the columns
-  it declares, so two versions on one database each see their own.
+  make is the next migration (delta-doc's `migrations.md`). The listener sends and writes the
+  columns your `schema` declares, so two versions on one database each see their own.
 - **After upgrading dzql**, run `init <dir> --upgrade` (it keeps `.bak`s and says what changed)
   or `applyFramework` again. Never edit `001*` by hand: it is the stored-function contract.
 - Mount `init_db/` at `/docker-entrypoint-initdb.d`: Postgres applies it alphabetically on the

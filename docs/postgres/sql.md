@@ -45,7 +45,8 @@ functions you call stay these:
   the fan-out (`_delta_holders`, names only), and a named add (an id the writer chose), judged by
   the session's role's privileges on the table (`_delta_serial_new` / `_delta_serial_past`,
   `packages/dzql/src/compile/lookups.ts`). Each pins the path it was applied with, `pg_temp` last.
-- Never edit `001*`, nor `_delta_collections` / `_delta_docs` by hand: `generateSql` fills them.
+- Never edit `001*`, nor `_delta_collections` by hand: `generateSql` fills it. `_delta_docs` is a
+  row type now (`_delta_find_doc`'s, compiled): nothing fills or reads its table.
 - Tables need `seq_<table>` sequences: `generateSql` makes them; do not hand-write tables.
-- Framework SQL older than the listener works, with a warning: re-apply it (`applyFramework`
-  or `dzql init --upgrade`).
+- Framework SQL older than the listener is not read around: re-apply it (`applyFramework`
+  or `dzql init --upgrade`) after every upgrade, then `generateSql`, which calls it.

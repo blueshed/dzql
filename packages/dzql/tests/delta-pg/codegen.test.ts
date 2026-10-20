@@ -45,10 +45,9 @@ describe("generateSql", () => {
     expect(sql).toContain("INSERT INTO _delta_collections");
     expect(sql).toContain("'todos'");
 
-    // Doc registration
-    expect(sql).toContain("INSERT INTO _delta_docs");
-    expect(sql).toContain("'todos:'");
-    expect(sql).toMatch(/INSERT INTO _delta_docs[\s\S]+?"owner_id":":id"/);
+    // The document, compiled into its lookup (_delta_find_doc); no row of _delta_docs, which nothing reads
+    expect(sql).not.toContain("INSERT INTO _delta_docs");
+    expect(sql).toMatch(/starts_with\(p_doc_name, 'todos:'\)[^\n]+"owner_id":":id"/);
   });
 
   test("adds current_* view and valid_from/valid_to for temporal tables", () => {
@@ -118,7 +117,7 @@ describe("generateSql", () => {
     expect(sql).not.toContain("'O'Brien'");
   });
 
-  test("include is emitted as a valid quoted text[] array literal", () => {
+  test("include is written into the compiled lookup as JSON", () => {
     const schema = defineSchema({
       posts: { columns: { body: "text" }, temporal: false },
       comments: { columns: { body: "text" }, parent: "posts", temporal: false },
@@ -127,28 +126,24 @@ describe("generateSql", () => {
       defineDoc("post:", { root: "posts", include: ["comments"] }),
     ];
     const sql = generateSql(schema, docs);
-    // Each element double-quoted inside the braces: '{"comments"}'.
-    expect(sql).toContain(`'{"comments"}'`);
+    expect(sql).toContain(`"include":["comments"]`);
   });
 
-  test("an implied doc is registered as implied (todo #34); SQL with none names no implied column, so it runs on older framework SQL", () => {
+  test("an implied doc is compiled as implied (todo #34)", () => {
     const schema = defineSchema({ rooms: { columns: { topic: "text?" } } });
     const room = defineDoc("room:", { root: "rooms", include: [], implied: true });
     const lobby = defineDoc("lobby:", { root: "rooms", include: [] });
     const both = generateSql(schema, [room, lobby]);
-    expect(both).toContain("INSERT INTO _delta_docs (prefix, root_collection, include, scope, implied)\n  VALUES ('room:', 'rooms', '{}', '{}', true)");
-    expect(both).toContain("VALUES ('lobby:', 'rooms', '{}', '{}', false)");
-    expect(both).toContain("implied = EXCLUDED.implied;");
-    // the compiled lookup's row names it as a JSON key, which a table without the column ignores
-    expect(generateSql(schema, [lobby])).not.toMatch(/INSERT INTO _delta_docs \([^)]*implied|implied = EXCLUDED/);
+    expect(both).toMatch(/starts_with\(p_doc_name, 'room:'\)[^\n]+"implied":true/);
+    expect(both).toMatch(/starts_with\(p_doc_name, 'lobby:'\)[^\n]+"implied":false/);
   });
 
-  test("empty include is an empty array literal", () => {
+  test("empty include is an empty array", () => {
     const sql = generateSql(
       defineSchema({ x: { columns: { a: "text" }, temporal: false } }),
       [defineDoc("x:", { root: "x", include: [] })],
     );
-    expect(sql).toContain("'{}'");
+    expect(sql).toContain(`"include":[]`);
   });
 
   test("the header names the module it came from, how to make it again, and no date: the same definitions make the same file", () => {
@@ -163,10 +158,10 @@ describe("generateSql", () => {
 describe("a document's columns (todo #70)", () => {
   const schema = defineSchema({ trips: { columns: { name: "text" } }, legs: { parent: "trips", columns: { day: "integer", notes: "text?" } } });
 
-  test("are written to _delta_docs.held, and only when a document names some", () => {
+  test("are compiled into the document's lookup as held, and none where a document names none", () => {
     const slim = defineDoc("trip-map:", { root: "trips", include: ["legs"], columns: { legs: ["day"] } });
-    expect(generateSql(schema, [slim])).toContain(`'{"legs":["day"]}'`);
-    expect(generateSql(schema, [defineDoc("trip:", { root: "trips", include: ["legs"] })])).not.toMatch(/INSERT INTO _delta_docs \([^)]*held/);
+    expect(generateSql(schema, [slim])).toContain(`"held":{"legs":["day"]}`);
+    expect(generateSql(schema, [defineDoc("trip:", { root: "trips", include: ["legs"] })])).toContain(`"held":{}`);
   });
 
   test("name only collections it holds, and only columns they have", () => {

@@ -25,6 +25,20 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **`loadDocAt` is gone from `dzql/postgres`** (20 October, root #37): it read `delta_open_at` with
+  no identity, beside the listener's `open_at`, which asks `owns` and reads as the person. To move:
+  `open_at` on the socket (`{ action: "open_at", doc, at }`, or `local.call("open_at", { doc, at })`),
+  or a type's `openAt` (`docTypeFromDef(def, pool).openAt({}, name, at)`), or in SQL
+  `delta_open_at_as(user, name, at)`.
+- **Framework SQL older than 0.11.0 is no longer read around** (root #37): the listener read the
+  log with `delta_fetch_ops` where `_delta_fetch_log` was missing, and walked with 0.10.0's
+  five-argument `delta_walk`; neither is reachable since 0.11.0 bade every database re-apply
+  `001*` (and `generateSql` now calls 001b's `_delta_govern`). Re-apply the framework, then
+  `generateSql`, after upgrading, as `docs/postgres/postgres.md` says.
+- **`generateSql` no longer writes rows into `_delta_docs`** (root #37): nothing has read them since
+  0.11.0 (`_delta_find_doc` is compiled); the table stays, for its row type. A query of your own
+  that read it: ask `_delta_find_doc(name)`.
+
 - **Row-level security, derived from the documents' paths, is the backstop beneath them** (20
   October, #19). `generateSql` gives each table every document holding it says by a path (`owns`
   as a string) RLS enabled and forced, and one policy, `dzql_owns`, whose `dzql_may__<collection>`
@@ -126,6 +140,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   instant it names, and a time no story says is a time (`valueOf`, `says`).
 
 ### Added
+
+- **`registerDocs` on Postgres, one call as on SQLite** (`dzql/postgres`, 20 October, root #37):
+  `await registerDocs(ws, pool, schema, docs, customDocs, options)` takes what delta's SQLite
+  `registerDocs(ws, db, schema, docs, customDocs, options)` takes (`ledger`, `who`, `auth`, `owns`,
+  `shared`; and `namespace`), compiles the documents into the database (`generateSql`) and serves
+  them with one listener, refusing as SQLite does, by its name. An app moving from SQLite changes
+  its import, in place of `applySql(generateSql(…))` and a `docTypeFromDef` for each document in a
+  `createDocListener`, which stay, as its steps. `openStore` serves its documents through it.
+  `tests/delta-pg/register-docs-pglite.test.ts`: delta's permission cases through it.
 
 - **Several apps on one Postgres database, a schema each** (20 October, #29): `namespace` on
   `openStore`, `openDatabase` (`dzql/pglite`), `applyFramework`, `applySql` and
