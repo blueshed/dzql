@@ -42,6 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The case suite asks a schema's refusal in its words** (20 October, root #132): `refusalCases`
+  (`./testing`, `src/cases/writes.ts`, beside `errorCodeCases`) asks every backend each of
+  `refusals` -- a path that is no pointer, an empty one, a collection the schema or the document
+  has not, a whole collection, an add of the root, a value that is no object, an unknown field, a
+  row's id as a field, a required field left out, a remove or add of a field, a row id past 2^53 -
+  1, a value of each column type not given, a null where none is taken, a parent key null or no
+  id -- on `shelvesApp`, and expects `{ code: 400, message }`, the whole sentence SQLite says (the
+  op's path, then why). The codes agreed before; the words did not, and nothing asked them.
+  SQLite and the JSON file answer it as they were; dzql's Postgres now does too.
+
 - **A socket server writes its own memory document** (20 October, #88): `registerMemory` returns
   `write(name, ops)` beside `peek` and `forget`, applied, versioned and told to every holder as a
   `delta` from this process is, and answered as one is (`MemoryAnswer`: `{ result: { ack,
@@ -112,6 +122,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **An implied document's empty root is said once** (20 October, #92): `impliedDoc`
+  (`src/server/sqlite/read.ts`) is the row an implied document opens with before its first write,
+  for `open` (`load`), `open_at`, the write path's telling and a rootless walk alike; `sqlite.ts`'s
+  own `emptyDoc` is gone, and its column defaults are `leftOut`'s, as an add's are. Nothing a
+  client sees changes; the case suite passes unchanged.
+
 - **A keyed `list()` row is its fields** (20 October, railroad's #6): railroad hands a keyed row
   as a signal per field, its own signal third. The examples take their rows apart (lists'
   `lists-view.tsx` and `people-view.tsx`, lobby's `here-view.tsx`), kanban hands `row$` on whole
@@ -122,12 +138,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   #114): a line starting `Working:`, linking an example on GitHub (kanban, sites-bbox, lists, lobby,
   the create-blueshed template, dzql's), or for `recipe.md`, `tests/recipe.test.ts`. kanban's
   `board-view.tsx` builds its paths with `joinPath`, as `writes.md` (which quotes it) and
-- **An implied document's empty root is said once** (20 October, #92): `impliedDoc`
-  (`src/server/sqlite/read.ts`) is the row an implied document opens with before its first write,
-  for `open` (`load`), `open_at`, the write path's telling and a rootless walk alike; `sqlite.ts`'s
-  own `emptyDoc` is gone, and its column defaults are `leftOut`'s, as an add's are. Nothing a
-  client sees changes; the case suite passes unchanged.
-
   `paths.md` say, not with a template.
 - **The kanban example is routes and resources** (20 October, Peter's word: every app is routes
   and resources, joined by documents, as paintbrush is). `examples/kanban/` is `routes.ts` (the

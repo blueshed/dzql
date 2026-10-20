@@ -7,6 +7,7 @@
  * tables, so a backend is asked only what a client could see.
  *
  *   errorCodeCases(standUp);
+ *   refusalCases(standUp);
  *   createRowCases(standUp);
  *   writeScopeCases(standUp);
  *   uniqueCases(standUp);
@@ -74,6 +75,91 @@ export function errorCodeCases(backend: CaseBackend): void {
         expect(r.error?.code).toBe(code);
         const now = await fresh(up.ws, "case-room:1");
         expect(Object.values(now.case_messages)).toEqual([{ id: 7, case_rooms_id: 1, text: "hi" }]);
+      });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// A shelf and its jars: a schema's refusals, in delta's words
+// ---------------------------------------------------------------------------
+
+/** A shelf of each column type, its jars under it, and tags no shelf document includes: what a schema refuses. */
+export const shelvesApp: CaseApp = {
+  schema: defineSchema({
+    case_shelves: {
+      columns: { label: "text", rank: "integer", width: "real", open: "boolean", checked: "timestamptz", data: "json", note: "text?" },
+      temporal: false,
+    },
+    case_jars: { columns: { name: "text" }, parent: { collection: "case_shelves", fk: "case_shelves_id" }, temporal: false },
+    case_tags: { columns: { name: "text" }, temporal: false },
+  }),
+  docs: [defineDoc("case-shelf:", { root: "case_shelves", include: ["case_jars"] })],
+  seed: {
+    tables: {
+      case_shelves: [{ id: 1, label: "top", rank: 1, width: 1.5, open: true, checked: "2026-01-01T00:00:00.000Z", data: {}, note: null }],
+      case_jars: [{ id: 1, case_shelves_id: 1, name: "jam" }],
+      case_tags: [],
+    },
+  },
+};
+
+const LEFT_OUT = "(give it a value, or declare a default or make it nullable in the schema)";
+const PAST = "is past 2^53 - 1, which no number holds exactly -- add to /case_jars/- and read the id from the echo";
+
+/** What a schema refuses, each in the same words on every backend: the op's path, then why (400); a path that is no pointer, why alone (the write's grammar, asked before any op). */
+export const refusals: Record<string, { ops: unknown[]; message: string }> = {
+  "a path without a leading slash": { ops: [{ op: "remove", path: "case_jars" }], message: `Invalid JSON Pointer "case_jars": a path starts with "/" ("" is the whole document)` },
+  "a ~ not escaped": { ops: [{ op: "replace", path: "/case_jars/1/~x", value: "x" }], message: `Invalid JSON Pointer "/case_jars/1/~x": "~" is written "~0" and "/" is written "~1"` },
+  "an empty path": { ops: [{ op: "remove", path: "/" }], message: "/: Empty path" },
+  "a collection the schema has not": { ops: [{ op: "add", path: "/case_other/-", value: {} }], message: "/case_other/-: Unknown collection: case_other" },
+  "a collection the document does not include": { ops: [{ op: "add", path: "/case_tags/-", value: { name: "x" } }], message: "/case_tags/-: Unknown collection: case_tags" },
+  "a whole collection": { ops: [{ op: "remove", path: "/case_jars" }], message: "/case_jars: Whole-collection ops are not supported: remove /case_jars" },
+  "an add of the root": { ops: [{ op: "add", path: "/case_shelves", value: { label: "x" } }], message: "/case_shelves: Root supports replace only" },
+  "the root replaced by no object": { ops: [{ op: "replace", path: "/case_shelves", value: 5 }], message: "/case_shelves: Replace value must be an object" },
+  "a row added as no object": { ops: [{ op: "add", path: "/case_jars/-", value: "x" }], message: "/case_jars/-: Add value must be an object" },
+  "a row replaced by no object": { ops: [{ op: "replace", path: "/case_jars/1", value: [] }], message: "/case_jars/1: Replace value must be an object" },
+  "an unknown field of a row added": { ops: [{ op: "add", path: "/case_jars/-", value: { name: "x", nope: 1 } }], message: "/case_jars/-: Unknown field: nope" },
+  "an unknown field of a row replaced": { ops: [{ op: "replace", path: "/case_jars/1", value: { name: "x", nope: 1 } }], message: "/case_jars/1: Unknown field: nope" },
+  "an unknown field": { ops: [{ op: "replace", path: "/case_jars/1/nope", value: "x" }], message: "/case_jars/1/nope: Unknown field: nope" },
+  "an unknown field of the root": { ops: [{ op: "replace", path: "/case_shelves/nope", value: "x" }], message: "/case_shelves/nope: Unknown field: nope" },
+  "a field named after Object.prototype": { ops: [{ op: "replace", path: "/case_jars/1/toString", value: "x" }], message: "/case_jars/1/toString: Unknown field: toString" },
+  "a row's id as a field": { ops: [{ op: "replace", path: "/case_jars/1/id", value: 2 }], message: "/case_jars/1/id: Unknown field: id" },
+  "a required field left out of an add": { ops: [{ op: "add", path: "/case_jars/-", value: {} }], message: `/case_jars/-: Required field missing: name ${LEFT_OUT}` },
+  "a required field left out of a row replaced": { ops: [{ op: "replace", path: "/case_jars/1", value: {} }], message: `/case_jars/1: Required field missing: name ${LEFT_OUT}` },
+  "a remove of a field": { ops: [{ op: "remove", path: "/case_jars/1/name" }], message: "/case_jars/1/name: Invalid op: remove /case_jars/1/name" },
+  "an add of a field": { ops: [{ op: "add", path: "/case_jars/1/name", value: "x" }], message: "/case_jars/1/name: Invalid op: add /case_jars/1/name" },
+  "a path past a field": { ops: [{ op: "replace", path: "/case_jars/1/name/x", value: "x" }], message: "/case_jars/1/name/x: Invalid op: replace /case_jars/1/name/x" },
+  "a row id past 2^53 - 1": { ops: [{ op: "replace", path: "/case_jars/9007199254740993/name", value: "x" }], message: `/case_jars/9007199254740993/name: Row id 9007199254740993 ${PAST}` },
+  "a string not given": { ops: [{ op: "replace", path: "/case_shelves/label", value: 5 }], message: "/case_shelves/label: label must be a string" },
+  "an integer not given": { ops: [{ op: "replace", path: "/case_shelves/rank", value: 1.5 }], message: "/case_shelves/rank: rank must be an integer" },
+  "a number not given": { ops: [{ op: "replace", path: "/case_shelves/width", value: "wide" }], message: "/case_shelves/width: width must be a number" },
+  "a boolean not given": { ops: [{ op: "replace", path: "/case_shelves/open", value: "yes" }], message: "/case_shelves/open: open must be a boolean" },
+  "a time not given": { ops: [{ op: "replace", path: "/case_shelves/checked", value: "soon" }], message: "/case_shelves/checked: checked must be an ISO-8601 time" },
+  "a field of a row added, of the wrong type": { ops: [{ op: "add", path: "/case_jars/-", value: { name: 5 } }], message: "/case_jars/-/name: name must be a string" },
+  "a field of a row replaced, of the wrong type": { ops: [{ op: "replace", path: "/case_jars/1", value: { name: true } }], message: "/case_jars/1/name: name must be a string" },
+  "a null where none is taken": { ops: [{ op: "replace", path: "/case_shelves/label", value: null }], message: "/case_shelves/label: label cannot be null" },
+  "a null json where none is taken": { ops: [{ op: "replace", path: "/case_shelves/data", value: null }], message: "/case_shelves/data: data cannot be null" },
+  "a parent key set to null": { ops: [{ op: "replace", path: "/case_jars/1/case_shelves_id", value: null }], message: "/case_jars/1/case_shelves_id: case_shelves_id cannot be null" },
+  "a parent key that is no id": { ops: [{ op: "replace", path: "/case_jars/1/case_shelves_id", value: 1.5 }], message: "/case_jars/1/case_shelves_id: case_shelves_id must be an id: an integer, or text" },
+};
+
+/** A schema's refusal, in the same words on every backend: every one of `refusals`, 400, the whole sentence, and nothing changed by any. */
+export function refusalCases(backend: CaseBackend): void {
+  describe("a schema's refusal, in delta's words", () => {
+    let up: Awaited<ReturnType<CaseBackend>>;
+    beforeAll(async () => { up = await backend(shelvesApp); });
+    afterAll(async () => { await up.end(); });
+
+    for (const [name, { ops, message }] of Object.entries(refusals)) {
+      test(name, async () => {
+        const c = mockClient();
+        await sendAndAwait(up.ws, c, { action: "open", doc: "case-shelf:1" });
+        const r = await sendAndAwait(up.ws, c, { action: "delta", doc: "case-shelf:1", ops });
+        expect(r.error).toEqual({ code: 400, message });
+        const now = await fresh(up.ws, "case-shelf:1");
+        expect(Object.values(now.case_jars)).toEqual([{ id: 1, case_shelves_id: 1, name: "jam" }]);
+        expect(now.case_shelves.label).toBe("top");
       });
     }
   });

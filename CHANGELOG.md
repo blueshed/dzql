@@ -6,6 +6,14 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### A schema's refusal in one set of words on every backend (20 October, root #132, delta #92)
+
+- dzql's Postgres words each schema refusal as delta's SQLite does (the op's path, then why), and
+  delta's case suite asks the words, not only the code (`refusalCases`). The template's
+  `message.test.ts` (create-blueshed) still matches part of the words, which a session not editing
+  the template will make the whole sentence (#133). delta's implied document says its empty root
+  once (`impliedDoc`). dzql's and delta's CHANGELOGs have the detail.
+
 ### The traps delta's examples found, removed (20 October, delta #88-#91)
 
 - What root #116's examples had to work around is now delta's API (Peter's word: "ok - let's do

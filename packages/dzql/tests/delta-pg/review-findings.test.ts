@@ -258,8 +258,7 @@ describe("M3: delta_apply collection scoping", () => {
       ops: [{ op: "add", path: "/sites/-", value: { name: "x", lat: 1, lng: 2 } }],
     });
     expect(res.result).toBeUndefined();
-    expect(res.error).toBeDefined();
-    expect(res.error.message).toContain("not part of doc");
+    expect(res.error).toEqual({ code: 400, message: "/sites/-: Unknown collection: sites" });   // as SQLite says it
   });
 });
 

@@ -168,6 +168,25 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **A schema's refusal is worded as delta's SQLite words it** (20 October, root #132): the op's
+  path, then why, in delta's case. Postgres said `text must be a string`, `invalid op: remove
+  /messages/1/text`, `Unknown field: other (not a column of messages)`, `unknown collection:
+  other`, `op collection "x" is not part of doc ...`, `a row value for x must be an object`, and a
+  null into a column that takes none was the database's `violates not-null constraint`; it now says
+  `/messages/1/text: text must be a string`, `/messages/1/text: Invalid op: remove
+  /messages/1/text`, `/messages/1/other: Unknown field: other`, `/other: Unknown collection:
+  other`, `/x/-: Add value must be an object`, `/messages/1/text: text cannot be null`, and an
+  empty path, a whole collection and an add of a single document's root are refused as SQLite
+  refuses them (`Empty path`, `Whole-collection ops are not supported: ...`, `Root supports replace
+  only`); a field of a row's value after the field's path, several of one kind joined by `; `. The
+  codes are as they were (400). The checks take the op's path (`_delta_assert_fields`,
+  `_delta_assert_fields_declared`, `_delta_whole` and `_delta_row_id` gain it; their first forms
+  are dropped as the framework is applied), and `compileColumns` writes the compiled checks in the
+  same words (snapshot updated). delta's `refusalCases` asks each, on PGlite and the server
+  (`tests/delta/writes.test.ts`); the tests that matched part of the old words match the whole
+  sentence. `validateOps` (`dzql/postgres`) says a row's id as a field, a row id past 2^53 - 1 and
+  a parent key that is no id as `delta_apply` now does.
+
 - **The ticker's city picker takes its row apart** (20 October, railroad's #6): a keyed `list()`
   row is its fields now, so `examples/ticker/applets/city-picker-applet.tsx` reads `({ tz, label },
   i$)` in place of `z$.peek().tz` and `z$.map((z) => z.label)`.

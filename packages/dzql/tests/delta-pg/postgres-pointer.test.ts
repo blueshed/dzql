@@ -85,9 +85,9 @@ describe("delta_apply on the wire", () => {
     expect(r.error.message).toContain("add to /items/- and read the id from the echo");
   });
 
-  test("//items is not /items: the empty first segment is a collection nobody has", async () => {
+  test("//items is not /items: the empty first segment names no collection, in SQLite's words", async () => {
     const r = await delta([{ op: "add", path: "//items/-", value: { name: "x" } }]);
-    expect(r.error.message).toContain("unknown collection");
+    expect(r.error).toEqual({ code: 400, message: "//items/-: Empty path" });
     expect(Number((await pool.query("SELECT count(*) AS n FROM items")).rows[0].n)).toBe(0);
   });
 });
