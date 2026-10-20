@@ -13,12 +13,11 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 
 ## Order of work
 
-1. Set up: tsconfig, an HTML route, `mount()` or `routes()`. Pages, server entries and `Bun.WebView` tests: the `bun-route` skill.
+1. Set up: tsconfig, an HTML route, `mount()` or `routes()` (pages and browser tests: `bun-route`).
 2. State as signals; derive with `.map()` or `computed()`.
 3. Components bind signals in JSX; `when()` and `list()` for what appears and repeats.
-4. Client routes with `routes()`: each draws a resource, a handle that opens a document and its view.
-5. Server data: `@blueshed/delta`, or your own patch stream.
-6. Prove it with tests.
+4. Client routes with `routes()`: each draws a resource, its document's handle and view.
+5. Server data: `@blueshed/delta`, or your own patch stream. Then tests.
 
 ## What bites
 
@@ -27,7 +26,7 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 3. A keyed `list()` row is its fields, each a signal: `({ name }) => <li>{name}</li>`. Keys unique and stable. → when-list
 4. An array that changes needs `list()`; a plain `.map()` is for a static array. → when-list
 5. `when()` rebuilds only when truthiness flips: read the value through `v$`. A route runs again when its params change, so `({ id }) => …` is right; a layout is `{ keyed: false, handler }`. → when-list, routes
-6. Effects, `when()` and `list()` are disposed only inside a scope (component, route handler, branch, row, `mount()`). Each effect run owns what its body makes, so what must outlive a run is made outside it (one kept warns). An event handler is not a scope. → scopes
+6. Effects, `when()` and `list()` are disposed only inside a scope (component, route handler, branch, row, `mount()`); an event handler is not one. An effect run owns what its body makes: what must outlive it is made outside. → scopes
 7. Handlers are lowercase functions: `onclick={() => …}`, never `onClick`, a call, or a Signal. `oninput` per keystroke; `onchange` on commit. → jsx
 8. Data that comes later is a signal: `when(resolved(promise), (r$) => …, () => <p>wait</p>)` in a synchronous component; never `await` first. `effect(async …)` is an error. → async
 9. Rows changed one at a time (a feed) are a `collection(key)`: it replaces the row it changes, so `list()` updates that row alone, and `at(id)` follows one. Never change a row in place. → realtime
@@ -37,8 +36,7 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 ## Invariants
 
 - No React: no hooks, lifecycle methods, classes, or `react` imports. Railroad is its own JSX runtime, chosen by `jsxImportSource`.
-- No external bundler: Bun's HTML imports and `bun build` are the pipeline.
-- No global `JSX`: `import type { JSX } from "@blueshed/railroad"`.
+- No external bundler: Bun's HTML imports and `bun build`. No global `JSX`: `import type { JSX } from "@blueshed/railroad"`.
 - Warnings are development-only (a production build drops them); throws are not.
 - `doc.data` from delta is read-only: change a document with `doc.send(ops)`.
 

@@ -112,6 +112,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The server's logger is railroad's again, line for line** (20 October): `loggedRequest` is
+  generic over the route handler (railroad #11), so a Bun route keeps its typed `req.params`.
+
 - **A keyed `list()` row is its fields** (20 October, railroad's #6): railroad hands a keyed row
   as a signal per field, its own signal third. The examples take their rows apart (lists'
   `lists-view.tsx` and `people-view.tsx`, lobby's `here-view.tsx`), kanban hands `row$` on whole

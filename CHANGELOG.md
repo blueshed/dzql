@@ -6,6 +6,13 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### railroad's last workarounds (20 October, railroad #7-#11)
+
+- Data that comes later is `when(resolved(promise), ...)`; a route runs again when its params
+  change (`{ keyed: false }` for a layout; breaking); a computed read after its effect run is
+  disposed warns; `mount(target, render, { before })`; `loggedRequest` keeps a route's typed
+  params, and delta's logger copy follows it.
+
 ### What still differed between the light page and the thin client, made one (20 October, roots #122-#126, #130)
 
 Peter's word (20 October): what the thin-client step still rewrote because the two clients
