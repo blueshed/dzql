@@ -6,6 +6,13 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### A skill is tested as code is (20 October)
+
+- **Every shipped skill has its evaluations**: `evals/<skill>.json` beside it, a few scenarios each
+  aimed at a trap; `scripts/docs.ts` fails the gate on a skill without. dzql's two (modelling,
+  dzql-app) have theirs now, three scenarios each. A run is recorded (`evals/runs/`), and
+  `/publish` stops on a skill changed since its last run (root #113).
+
 ### delta keeps three stores and its kinds (20 October, #37, delta's part)
 
 - **The free-form document is gone** (`registerDoc`, breaking): a document is kept in the JSON

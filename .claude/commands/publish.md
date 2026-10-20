@@ -34,6 +34,10 @@ Released in this order, a sibling before what depends on it.
 2. `bun install --frozen-lockfile` at the root.
 3. Each package named has something under `## [Unreleased]` in its CHANGELOG (create-blueshed's is
    paintbrush's); one that has nothing stops the round.
+4. Each skill a package named ships, changed since its last recorded run (`git log` of
+   `.claude/skills/<skill>/` against the newest `evals/runs/*-<skill>.md`), has been run again and
+   the run recorded, every line held or the miss said in the CHANGELOG. One that has not stops the
+   round: say which, and that running them is Peter's to start (they spend sessions).
 
 ## 2. Each package, in the table's order
 

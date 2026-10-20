@@ -77,7 +77,7 @@ Every package is laid out one way, so one is read like another:
   src/        what ships: each public entry a file named in package.json's exports (files: src)
   tests/      what proves it, in folders after src/'s where there are many
   examples/   what runs, each with its README; src/ never imports them
-  evals/      the skills' evaluations, where a package has them
+  evals/      each shipped skill's evaluations (<skill>.json), and runs/, each run recorded
   .claude/skills/<name>/   the manual
 ```
 
@@ -85,6 +85,14 @@ A command is `src/cli.ts` (dzql's, three files, `src/cli/`); a starter's is `cli
 `template/` it copies. An app, as `bun create blueshed` and `bun create dzql` make it, is
 `stories.ts`, `src/routes.ts`, `src/resources/<name>/` and `tests/`. Each package's CLAUDE.md says
 only what is its own.
+
+**A skill is tested as code is.** Code by its tests, deterministic, on every change; a skill by
+its evaluations: a fresh session given only the skill, its work checked against what each
+scenario expects. Every skill a package ships has them, `evals/<skill>.json`, a few scenarios
+each aimed at a trap the skill exists to prevent (`scripts/docs.ts` fails the gate on a skill
+without). The answer is a rate, not a pass, so a run is recorded (`evals/runs/<date>-<skill>.md`:
+the model, each scenario's lines held or not) and a change is measured against the last. They run
+when a skill changes in substance, and before its package is released (`/publish`).
 
 ## Releasing
 

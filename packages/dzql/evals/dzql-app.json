@@ -1,0 +1,49 @@
+[
+  {
+    "skills": [
+      "dzql-app"
+    ],
+    "query": "Add a front desk to this app: the team sees today's visitors, and the receptionist signs a visitor in by name. Someone who isn't the receptionist can't sign visitors in.",
+    "files": [
+      "a project made with bun create dzql"
+    ],
+    "expected_behavior": [
+      "Writes the stories first in stories.ts, the refusal as a cannot story with its words, and runs bun run stories to see them fail before building",
+      "Makes src/resources/visitors/ with visitors-api.ts (its schema, document and read), visitors.ts (its Resource: permit, shape) and visitors-view.ts (its part of the page), listed in the app's resources",
+      "A write names the document and a JSON Pointer path (add /visitors/-), never a verb or a function; shape makes the row, and a refusal is refuse() in the story's words",
+      "Draws the page with the bento: a list is rows() of row()s, a new visitor is the plus and addModal, never a form or input on the page that displays",
+      "Icons by name through the app's icons.ts (lucide), never another set or inline SVG",
+      "bun run stories passes every story, and bun test passes at 100% coverage"
+    ]
+  },
+  {
+    "skills": [
+      "dzql-app"
+    ],
+    "query": "Our leave app: a manager gets an email with a link to a request. Opening the link should open that request's drawer in a new tab, and the tab they already had open on the calendar must stay where it is.",
+    "files": [
+      "dzql's examples/leave, as a project"
+    ],
+    "expected_behavior": [
+      "Where a tab stands is the tab's: render(sessionId, address) draws from the address it is given (site(address, ...)), never from a page kept on the session",
+      "The link is the drawer's own address as a URL (list?request=<id>); opening it puts that tab alone there (Example.address routes it), with no server code of its own for the link",
+      "What follows a write moves only the writer's tab, with moveTab(ws, address) from dzql/rendering/tabs, never a serverWrite of the session's page",
+      "Proves it with an opensTab story: the manager's new tab stands on the drawer and the tab they had stays put (the story fails before the change)"
+    ]
+  },
+  {
+    "skills": [
+      "dzql-app"
+    ],
+    "query": "Add undo and redo to the front desk, so the receptionist can take back signing someone in, and someone else's change is never undone by mine.",
+    "files": [
+      "a project made with bun create dzql, with a visitors resource"
+    ],
+    "expected_behavior": [
+      "Writes no undo stack, history table or inverse of its own: undo is delta's ledger, along the session's cursor, on a document registered on the ledger",
+      "The page offers undo and redo by the bento's own controls and marks (undo, redo), the kernel's walk, not a button that writes a computed inverse",
+      "Shapes nothing for an undo: undo and redo are delta's inverses, and a resource follows them only in afterWalk if something must follow",
+      "Relies on the stories, which already undo every does-story and check the page comes back; adds a story only where a walk is refused (another's change in the way) and says so"
+    ]
+  }
+]

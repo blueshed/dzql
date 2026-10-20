@@ -1,0 +1,51 @@
+[
+  {
+    "skills": [
+      "modelling"
+    ],
+    "query": "I want an app for my bakery's pre-orders. Customers order loaves for a day ahead; I see each day's list and say when an order is baked; a customer can't order for a day once I've closed it. Take the stories down with me on the model's page and tell me what's missing. Don't build anything yet.",
+    "files": [],
+    "expected_behavior": [
+      "Starts the model's page (dzql model, or bun dev with the model beside the app), hands the teller their own sign-in link at once, and signs the CLI in with its own link (login <link>), never as the teller",
+      "Writes each story as the teller said it, who tells it and whether they do it or are refused, one change at a time with the teller watching, never a wall of commands",
+      "Writes the refusal as a cannot story (a customer cannot order for a closed day), not as a note or a validation rule in code",
+      "Names each document for what a person needs in front of them (the customer's order, the baker's day), in one word, not for a table",
+      "Says the state the closing rule needs as a field on the row it is about (a day's closed), set by a story, not worked out in code",
+      "Reads the checks after each change, closes a gap with one sensible answer itself and says so in a line, and asks the teller only what could go either way",
+      "Writes no code in src/: what is made is the model, then dzql model's types.ts, guards.ts, migrations and model.test.ts once the checks are closed"
+    ]
+  },
+  {
+    "skills": [
+      "modelling"
+    ],
+    "query": "On our café's model page: the cook puts dishes on the menu and takes them off; a customer orders a dish onto their bill. When the cook takes a dish off, bills that already have it must still say what was ordered and what it cost. Add what's needed.",
+    "files": [
+      "model.json, a café model with a menu (items: name, price) and a bill document, as dzql's examples/cafe/model.json starts"
+    ],
+    "expected_behavior": [
+      "The order names its dish by a ref (dish:menu:/items, kept as dish_id), not by copying the dish's id into a plain integer field",
+      "Keeps the dish's surrogate beside the ref, what the bill shows of it copied as the order is written: dish_name and dish_price (the check's ref-surrogate advice closed)",
+      "Does not give the order a time to read the menu as it stood: the copy is what shows once the dish is gone, the menu's row while it stands",
+      "Whoever holds the bill holds the menu too (the reachability check's unseen-ref closed by adding them to the menu's holders)",
+      "Answers the follow-on coverage question itself where it has one sensible answer (may a customer change the menu? no: a cannot story), saying so in a line"
+    ]
+  },
+  {
+    "skills": [
+      "modelling",
+      "dzql-app"
+    ],
+    "query": "The leave model is done: every check is closed and I've read each story and they're all true. Now build it.",
+    "files": [
+      "model.json, a team's leave model with every check closed"
+    ],
+    "expected_behavior": [
+      "Stops modelling: runs dzql model check (or dzql model) so model/types.ts, guards.ts, migrations and model.test.ts are made, and does not write or reword stories on the model's page",
+      "Builds with the dzql-app skill, stories first: the app's stories.ts names each model story it tells (model: <n>), watched failing before the code that makes it pass",
+      "Lays the app out as routes and resources: src/routes.ts, and a folder per document, resources/<name>/ with <name>-api.ts, <name>.ts and <name>-view.ts",
+      "Puts the model's guards in front of the store, so a write no story says is refused in the story's own words",
+      "Reads the app back against the model (model:check --against-page) and closes every gap it names"
+    ]
+  }
+]

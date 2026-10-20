@@ -3,7 +3,10 @@
  * `bun scripts/docs.ts`: what people and Claude read is held to the code. In every live Markdown file
  * (not a CHANGELOG, not history, not an eval's run): each relative link resolves; each
  * `packages/...` path it names exists; and in a package's skills, CLAUDE.md and README, each `src/`,
- * `examples/`, `tests/` or `scripts/` path it names exists in that package. `bun run affected` runs it.
+ * `examples/`, `tests/` or `scripts/` path it names exists in that package. And every skill a
+ * package ships (`.claude/skills/<name>/SKILL.md`, in git) has its evaluations beside it
+ * (`evals/<name>.json`): a skill is tested by a fresh session led by it, as code is by its tests.
+ * `bun run affected` runs it.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";
@@ -31,9 +34,15 @@ for (const file of files) {
     if (!existsSync(at) && !project) wrong.push(`${file}: names ${path}, which is not there`);
   }
 }
+// a shipped skill, its evaluations: a vendored copy (delta's railroad, git-ignored) is its own package's
+const skills = (await $`git ls-files packages/*/.claude/skills/*/SKILL.md`.cwd(root).quiet().text()).split("\n").filter(Boolean);
+for (const skill of skills) {
+  const [, pkg, name] = /^packages\/([^/]+)\/\.claude\/skills\/([^/]+)\//.exec(skill)!;
+  if (!existsSync(join(root, "packages", pkg!, "evals", `${name}.json`))) wrong.push(`packages/${pkg}: ships the ${name} skill with no evaluations (evals/${name}.json)`);
+}
 if (wrong.length) {
   console.error(wrong.join("\n"));
   console.error(`\n${wrong.length} place${wrong.length === 1 ? "" : "s"} where the docs and the code disagree`);
   process.exit(1);
 }
-console.log(`docs: ${files.length} files, every link and path there`);
+console.log(`docs: ${files.length} files, every link and path there; ${skills.length} skills, each with its evaluations`);
