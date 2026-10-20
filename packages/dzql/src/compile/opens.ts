@@ -309,7 +309,8 @@ export const openWholeFunction = (prefix: string): string => named("open_whole",
 /**
  * One document's read, as `open` (`delta_open`: the time is the name's, an implied
  * root opens with its defaults, the version is kept) or as `open_at`
- * (`delta_open_at`: the time is the caller's, a root not there is null, no version).
+ * (`delta_open_at`: the time is the caller's, a root not there is null -- an implied one
+ * opens with its defaults, as `open` does -- and no version).
  * `whole`: as `open`, every column of every row whatever columns the document
  * names (`_delta_open(name, TRUE)`: what the ledger's inverse and a walk's guard
  * read), with no `_as`.
@@ -325,7 +326,7 @@ export function readOf(schema: Schema, given: DocDef, at: boolean, whole = false
   const scope = scopeOf(schema, doc);
   const where = (first: string[]) => [...first, ...(scope.conds ? [scope.conds] : [])].join(" AND ") || "TRUE";
   const params = at ? "p_name TEXT, p_given TIMESTAMPTZ" : "p_name TEXT";
-  const missing = !at && doc.implied ? `v_doc := jsonb_build_object(${lit(doc.root)}, ${impliedRoot(root, doc)})${emptyIncludes};` : "RETURN NULL;";
+  const missing = doc.implied ? `v_doc := jsonb_build_object(${lit(doc.root)}, ${impliedRoot(root, doc)})${emptyIncludes};` : "RETURN NULL;";
   const done = at
     ? "RETURN v_doc;"
     : `INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;

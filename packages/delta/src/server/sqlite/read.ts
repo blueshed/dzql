@@ -1,13 +1,25 @@
 /** A document read from the tables: as they stand (open) or as they stood (open_at). */
-import { q, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { defaultForType, q, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { toMap } from "../custom";
-import { resolveScope, whereOf, type Scope } from "../scope";
+import { resolveScope, rowId, whereOf, type Scope } from "../scope";
 import { keeping } from "./keep";
 import { columnsOf, current, decodeRow, sqliteTime } from "./rows";
 
-/** Load a doc as it existed at a specific point in time (`at`: ISO-8601, or SQLite's own form). */
+/**
+ * Load a doc as it existed at a specific point in time (`at`: ISO-8601, or SQLite's own form). An
+ * implied document whose root row was not made by then is read as `open` reads one not made yet:
+ * its id and its columns' defaults, each included collection empty.
+ */
 export function loadDocAt(db: any, schema: Schema, def: DocDef, docId: string, at: string): any | null {
-  return readDoc(db, schema, def, resolveScope(def, docId), sqliteTime(at));
+  const scope = resolveScope(def, docId);
+  return readDoc(db, schema, def, scope, sqliteTime(at)) ?? (def.implied && scope.mode === "single" ? impliedDoc(schema, def, docId) : null);
+}
+
+/** An implied document before its root row is made: the row its first write would make, by its id and its columns' defaults, each included collection empty. */
+export function impliedDoc(schema: Schema, def: DocDef, docId: string): any {
+  const root: any = { id: rowId(docId) };
+  for (const [col, colDef] of Object.entries(schema.tables[def.root]!.columns)) root[col] = colDef.default ?? (colDef.nullable ? null : defaultForType(colDef.type));
+  return { [def.root]: root, ...Object.fromEntries(def.include.map((coll) => [coll, {}])) };
 }
 
 /**

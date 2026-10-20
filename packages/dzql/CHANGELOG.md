@@ -325,6 +325,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **An implied document not made yet is read as it stood as `open` reads it** (20 October, root
+  #120): the compiled `dzql_open_at__<doc>` answers its id and its columns' defaults, each included
+  collection empty, where it answered null, as delta's SQLite now does (delta's
+  `src/cases/path/implied.ts`, asked of dzql in `tests/delta`). So the stories' fresh render, which
+  reads storage (`open_at`), draws the page a server draws: a page reads `read(doc).<root>` with no
+  `?.` and no default said again in code (`tests/modelling/harness.test.ts`, the note not made
+  yet). The compiled text's snapshots change with it (`RETURN NULL` becomes the implied root in
+  `open_at`). Chat's session reads its row so (`session-api.ts`).
+
 - **A duplicate is refused in delta's words on Postgres** (19 October, the Shed's run 3): a write
   that breaks a unique constraint the schema says answered 409 with Postgres's message; it says
   `Already there: another row has the same <table>.<column> (a unique constraint)`, as SQLite does.
