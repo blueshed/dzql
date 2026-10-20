@@ -6,6 +6,29 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### A prototype grows into performance: the thin-client step is the move, not a port (20 October, roots #118-#121, #127, #129)
+
+Peter's word ("ok - let's do it"): the seams the two clients grew apart, fixed at their source, so
+evolve's `references/thin-client.md` is 571 lines where it was 943.
+
+- **One stories file, keyed** (#118, dzql and the paintbrush template): `Stories.stories` is a
+  record, a story with no body among the rest; a story gaining its body is that line, under its
+  key, and no test is renamed. `untold` reads a `Stories`.
+- **The store is the server's** (#119, dzql): `openStore` says it, `appOf` opens it as a server
+  starts and closes it as it stops; `bun --hot`'s ids carry on (1, 2, not 1, 34).
+- **An implied document reads its defaults as it stood** (#120, delta's `open_at` on SQLite, dzql's
+  on Postgres, delta's case suite asking both).
+- **The stories resolve a path as delta does** (#127, dzql's harness): a single document's root
+  row by its id is the root the document holds.
+- **Where data lives is the data folder** (#129): `DATA_PATH`, else `data/`, PGlite in its `pg/`,
+  in both starters; `PGLITE_DIR` is gone.
+- **Tests for both clients** (#121): a page through the browser, a document through dzql's
+  `documentsOf` (`tests/documents.ts` in the template); the template's tests split by what is
+  shared, so the step keeps `site`, `message`, `order`, `kitchen` and the moves' tests unchanged.
+- Found on the way, fixed: a tab moved through a resource with no document was answered refused;
+  a write that is no list of ops was 500 on Postgres. Opened: #131 (a schema refusal's words differ
+  by store), delta #92 (an implied document's empty root said twice in delta's SQLite).
+
 ### Each reference page says where its rules are shown working (20 October, root #114)
 
 - **A package's examples are its skill's worked answers** (Peter's decision), said once in the
