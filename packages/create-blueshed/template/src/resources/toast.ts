@@ -18,5 +18,6 @@ export function toast(msg: string, style: "notify" | "alert" = "notify") {
   clearTimeout(timer);
   el.textContent = msg;
   el.className = "toast show " + style;
+  el.setAttribute("role", style === "alert" ? "alert" : "status"); // heard by a screen reader, as it is shown
   timer = setTimeout(() => el!.classList.remove("show"), 1500);
 }

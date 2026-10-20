@@ -18,7 +18,7 @@ export async function startServer({
 
   // The documents, on one WebSocket: a page that opens one is subscribed to every change
   const ws = createWs();
-  await messageDoc(ws, dataDir);
+  closing.push((await messageDoc(ws, dataDir)).persisted); // its last change in the file before the server is done
 
   return serve(
     {

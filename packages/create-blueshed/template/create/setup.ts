@@ -18,6 +18,7 @@ import { join } from "node:path";
 export const NAMED = [
   "src/index.html",
   "tests/site.test.ts",
+  "tests/app.test.ts",
   "CLAUDE.md",
   ".claude/launch.json",
   ".railway/railway.ts",

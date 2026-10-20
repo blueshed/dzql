@@ -70,13 +70,13 @@ The test makes the database as version one left it (its history, `001-order`, an
 // tests/order-migrate.test.ts
 import { test, expect, afterAll } from "bun:test";
 import { Database } from "bun:sqlite";
-import { connectWs, openDoc } from "@blueshed/delta/client";
 import { defineSchema, fromFolder, importTables, migrate, migrationStatus } from "@blueshed/delta/sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import { catalogue, schema, type Order } from "../src/resources/order/order-api";
 import { stories } from "../stories";
+import { documents } from "./documents";
 
 const dataDir = mkdtempSync(`${tmpdir()}/order-migrate-`);
 afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
@@ -102,11 +102,10 @@ old.close();
 // A server on the data folder, and order 1's lines as it holds them: [id, item, quantity]
 async function orderLines() {
   const server = await startServer({ port: 0, dev: false, dataDir });
-  const client = connectWs(new URL("/ws", server.url).href);
+  const client = await documents(server);
   try {
-    const order = openDoc<Order>("order:1", client);
-    await order.ready;
-    return Object.values(order.data.peek()!.lines).map((l) => [l.id, l.item, l.quantity]);
+    const order = await client.open<Order>("order:1");
+    return Object.values(order.value().lines).map((l) => [l.id, l.item, l.quantity]);
   } finally {
     client.close();
     await server.stop(true);

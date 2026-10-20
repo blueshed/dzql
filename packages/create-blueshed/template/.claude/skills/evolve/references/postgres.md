@@ -81,12 +81,12 @@ A server stopped and started again carries on where it was:
 ```ts
 // tests/order-pg.test.ts
 import { test, expect, afterAll } from "bun:test";
-import { connectWs, openDoc } from "@blueshed/delta/client";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import type { Order } from "../src/resources/order/order-api";
 import { stories } from "../stories";
+import { documents } from "./documents";
 
 const scratch = mkdtempSync(`${tmpdir()}/order-pg-`);
 const dataDir = `${scratch}/data`; // not there yet, as on a new app's first start
@@ -95,12 +95,11 @@ afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 // A server on the data folder, a line added to order 1, and the server stopped: the ids of its lines
 async function addLine(item: number) {
   const server = await startServer({ port: 0, dev: false, dataDir });
-  const client = connectWs(new URL("/ws", server.url).href);
+  const client = await documents(server);
   try {
-    const order = openDoc<Order>("order:1", client);
-    await order.ready;
+    const order = await client.open<Order>("order:1");
     await order.send([{ op: "add", path: "/lines/-", value: { item } }]);
-    return Object.values(order.data.peek()!.lines).map((l) => l.id);
+    return Object.values(order.value().lines).map((l) => l.id);
   } finally {
     client.close();
     await server.stop(true);
@@ -120,13 +119,13 @@ The orders kept in SQLite come across, as the JSON file's came to SQLite:
 // tests/order-pg-move.test.ts
 import { test, expect, afterAll } from "bun:test";
 import { Database } from "bun:sqlite";
-import { connectWs, openDoc } from "@blueshed/delta/client";
 import { fromFolder, importTables, migrate } from "@blueshed/delta/sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/routes";
 import { schema, type Order } from "../src/resources/order/order-api";
 import { stories } from "../stories";
+import { documents } from "./documents";
 
 const dataDir = mkdtempSync(`${tmpdir()}/order-pg-move-`);
 afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
@@ -137,11 +136,10 @@ test(`${stories.stories.moved.name} -- from SQLite to Postgres: order 1, a cake`
   importTables(db, schema, { tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }], orders: [{ id: 1 }], lines: [{ id: 1, orders_id: 1, item: 2 }] } });
   db.close();
   const server = await startServer({ port: 0, dev: false, dataDir });
-  const client = connectWs(new URL("/ws", server.url).href);
+  const client = await documents(server);
   try {
-    const order = openDoc<Order>("order:1", client);
-    await order.ready;
-    expect(Object.values(order.data.peek()!.lines).map((l) => l.item)).toEqual([2]);
+    const order = await client.open<Order>("order:1");
+    expect(Object.values(order.value().lines).map((l) => l.item)).toEqual([2]);
   } finally {
     client.close();
     await server.stop(true);

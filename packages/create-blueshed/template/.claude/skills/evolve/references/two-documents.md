@@ -98,7 +98,7 @@ import { orderDocs } from "./resources/order/order-api";
 ```
 
 ```ts
-// src/routes.ts: after await messageDoc(ws, dataDir);
+// src/routes.ts: after messageDoc(ws, dataDir)
 await orderDocs(ws, dataDir);
 ```
 

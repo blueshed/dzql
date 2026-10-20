@@ -75,7 +75,7 @@ import { notesDoc } from "./resources/notes/notes-api";
 ```
 
 ```ts
-// src/routes.ts: after await messageDoc(ws, dataDir);
+// src/routes.ts: after messageDoc(ws, dataDir)
 await notesDoc(ws, dataDir);
 ```
 

@@ -768,6 +768,26 @@ describe("a server is routes to resources: apps composed side by side", () => {
     expect(() => assemble(ledgered)).toThrow(`ledgered: two resources own "ledger" (the kernel's own)`);
   });
 
+  test("a tab moved through a resource that keeps no document (a session with no row) is answered by an echo of nothing, not refused", async () => {
+    const place: Resource = { docType: "place", perSession: true, ledger: false, resolveDoc: (ws) => ws.data.sessionId, permit: (_ws, op) => op.op === "replace" && op.path === "/page" };
+    const failures: string[] = [];
+    const heardFailures = onFailure((what) => failures.push(what));
+    const server = await createServer({ name: "places", resources: [place], render: (_sessionId, address) => `<p class="at">${address}</p>`, active: () => true, index, delta: createLocal(), address: { doc: "place", path: "/page" } }, 0);
+    try {
+      const ws = connect(server, "placed");
+      await opened(ws);
+      await expectMessage(ws, "render");
+      write(ws, "place", [{ op: "replace", path: "/page", value: "attic" }], "go");
+      expect(await heard(ws)).toMatchObject([{ type: "patch", doc: "place", version: 0, ops: [], id: "go" }, { type: "render" }]);
+      expect(pageOf(ws)).toBe('<p class="at">attic</p>');
+      expect(failures).toEqual([]);
+      ws.close();
+    } finally {
+      heardFailures();
+      await server.stop(true);
+    }
+  });
+
   test("calling it again with the very same example object does not throw", async () => {
     const example = makeExample("reused");
     const a = await createServer(example, 0);

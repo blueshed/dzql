@@ -71,6 +71,15 @@ describe("openStore", () => {
     await store.close();
   });
 
+  test("a write that is no list of ops, or holds one that is no op, is refused as delta's SQLite refuses it: 400, in its words", async () => {
+    const store = openStore({ schema });
+    store.register([notes]);
+    await store.open();
+    expect((await store.delta.call("delta", { doc: "notes:", ops: "not ops" })).error).toEqual({ code: 400, message: "ops must be an array" });
+    expect((await store.delta.call("delta", { doc: "notes:", ops: [null] })).error).toEqual({ code: 400, message: "An op is an object: { op, path, value }" });
+    await store.close();
+  });
+
   test("an open that fails leaves it closed, and the next open tries again", async () => {
     let failing = true;
     const store = openStore({ schema, prepare: () => { if (failing) throw new Error("the seed failed"); } });

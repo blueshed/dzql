@@ -8,7 +8,9 @@ import { stories } from "../stories";
 
 // Routes are tested with fetch, the page in a real browser with Bun.WebView, entry points by
 // spawning them. Every route and everything a person sees or clicks has a test: the app's shell
-// and status here, each resource in its own file (message.test.ts).
+// and status here, each resource in its own file (message.test.ts). What is here is any page's,
+// light or drawn on the server, so it stays as it is when the page moves to the server; what the
+// light page alone does is app.test.ts.
 //
 // Bun.WebView's rules are at the top of railroad's `webview.ts` (`@blueshed/railroad/webview`): follow them.
 // Linux needs Chrome, found through BUN_CHROME_PATH: CI and, in the Claude Code web sandbox,
@@ -24,7 +26,7 @@ const pidFile = `${import.meta.dir}/out/.server.pid`;
 const stop = () => $`bun run stop`.cwd(`${import.meta.dir}/..`).env({ ...process.env, PID_FILE: pidFile }).text();
 
 const server = await startServer({ port: 0, dev: false, dataDir }); // random free port, no HMR
-const { view, open, waitFor, failFetch, close } = browser(() => server.url);
+const { view, open, waitFor, close } = browser(() => server.url);
 
 afterAll(async () => {
   close();
@@ -80,10 +82,6 @@ test(`${stories.stories.health.name} -- healthcheck answers ok`, async () => {
   expect(await (await api("/health")).text()).toBe("ok");
 });
 
-test("unknown paths return 404", async () => {
-  expect((await api("/nope")).status).toBe(404);
-});
-
 // --- The page, in a real browser ---
 
 test("home page loads: a box, its name the page's heading, the message and the status its cells", async () => {
@@ -95,7 +93,8 @@ test("home page loads: a box, its name the page's heading, the message and the s
 
 test("the Save button has its lucide icon, hidden from screen readers", async () => {
   await open();
-  await view.evaluate(`location.hash = "#/?message"`);
+  await waitFor(`document.querySelector('.cell[data-key="message"] .cell-name')`);
+  await view.click(`.cell[data-key="message"] .cell-name`); // its drawer opened as a person opens it
   await waitFor(`document.querySelector(".drawer .tool.add svg.icon")`);
   expect(await view.evaluate<string | null>(`document.querySelector(".drawer .tool.add svg").getAttribute("aria-hidden")`)).toBe("true");
   expect(await view.evaluate<string>(`document.querySelector(".drawer .tool.add").textContent.trim()`)).toBe("Save");
@@ -115,25 +114,6 @@ test(`${stories.stories.volume.name} -- with DATA_PATH set, the status line says
   } finally {
     delete process.env.DATA_PATH;
   }
-});
-
-test("a status that cannot be loaded says so", async () => {
-  await open();
-  await waitFor(`document.querySelector("#status .meta")`);
-  await failFetch();
-  // leave the page and come back: the view loads again, into a failing fetch
-  await view.evaluate(`location.hash = "#/elsewhere"`);
-  await waitFor(`document.body.textContent.includes("Page not found!")`);
-  await view.evaluate(`location.hash = "#/"`);
-  await waitFor(`document.body.textContent.includes("The status could not be loaded.")`);
-});
-
-test(`${stories.stories.health.name} -- a page that is not found links home`, async () => {
-  await open();
-  await view.evaluate(`location.hash = "#/nowhere"`);
-  await waitFor(`document.body.textContent.includes("Page not found!")`);
-  await view.click("#app a");
-  await waitFor(`document.querySelector("h1")?.textContent === "Paintbrush"`);
 });
 
 // --- The entry point and the sandbox hook ---

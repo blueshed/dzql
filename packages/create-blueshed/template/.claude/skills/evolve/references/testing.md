@@ -88,5 +88,5 @@ Working: `tests/evolve.ts` makes a new app from this template, applies this page
 - The page helpers are railroad's (`@blueshed/railroad/webview`): `open`, `waitFor`, `replaceText`, `failFetch`, `withOtherWindow`; `tests/browser.ts` adds `refuseWrites` (the server refuses what the page sends).
 - The Bun.WebView rules are at the top of railroad's `webview.ts` (`node_modules/@blueshed/railroad/webview.ts`): follow them exactly.
 - Every server in a test gets a scratch data folder (`mkdtempSync`), never the project's `data/`.
-- To test a document without a browser, hold it from a client in the test process: `connectWs` and `openDoc(name, client)`, as the kitchen's test does in [sqlite.md](sqlite.md).
+- To test a document without a browser, hold it from the test process as a page reads it: `tests/documents.ts` (`await documents(server)`, then `open`, `send`, `undo`), as the kitchen's test does in [sqlite.md](sqlite.md). A test of the page uses the browser, a test of a document `documents`: what both clients share, so when the page moves to the server ([thin-client.md](thin-client.md)) both stay, and only `documents.ts` changes.
 - delta's case suite (`@blueshed/delta/testing`: `errorCodeCases`, `pathCases` and the rest) is for a backend of one's own, dzql for Postgres, to answer as delta's do. An app tests its own documents, as here.

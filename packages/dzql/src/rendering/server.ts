@@ -309,7 +309,8 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
    * no `afterWrite` follows, and the tab is drawn where it now stands -- once it has been drawn at all.
    */
   async function movedOnly(ws: Socket, owner: (typeof resources)[number], docId: string, id?: WriteId): Promise<true> {
-    if (id !== undefined) send(ws, patchMessage(wireName(owner.docType, docId, ws), documents.version(`${owner.docType}:${docId}`) ?? 0, [], id));
+    // its version as held, loaded first: a resource that keeps no document (a session with no row) is at none
+    if (id !== undefined) send(ws, patchMessage(wireName(owner.docType, docId, ws), (await settled(documents, () => documents.version(`${owner.docType}:${docId}`))) ?? 0, [], id));
     await tell(ws.data.sessionId);
     app.moved!(ws);
     return true;

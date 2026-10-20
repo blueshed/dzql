@@ -284,6 +284,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **A test holds an app's documents the same way for either page** (`dzql/rendering/test-socket`,
+  20 October, root #121): `documentsOf(from)` is a test's client of an app's documents, as its
+  page reads them -- over delta's socket at a server's `/ws` (the light page's: give it the
+  server) or over the app's documents in this process (the thin client's: give it the store's
+  `delta`). `open(doc)` holds one (`value()`, kept current from what it is told; `send(ops)`,
+  answered as delta answers and resolved once its change is told back; `onOps`), `undo()` walks
+  the client's last write back, `close()` lets go. A test of a document written against it stays
+  as it is when the app moves its page to the server; the page itself is tested in a browser,
+  where both pages are the bento's HTML (`tests/rendering/documents-of.test.ts` runs one test both
+  ways). `openStore`'s `prepare` is given the data folder the store opens on, where a new database
+  finds the rows the app kept before.
+
 - **`registerDocs` on Postgres, one call as on SQLite** (`dzql/postgres`, 20 October, root #37):
   `await registerDocs(ws, pool, schema, docs, customDocs, options)` takes what delta's SQLite
   `registerDocs(ws, db, schema, docs, customDocs, options)` takes (`ledger`, `who`, `auth`, `owns`,
@@ -335,6 +347,17 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   for the CLI and the model's page).
 
 ### Fixed
+
+- **A tab moved through a resource that keeps no document is answered, not refused** (20 October,
+  found re-walking the evolve skill's thin-client step): a session with no row (the cookie is the
+  session) that says where a tab may stand moved the tab, then failed reading the version of a
+  document it does not have, so the write was answered `refused` and logged as failed. The echo
+  of nothing now reads the version as held, loaded first: none, 0 (`tests/rendering/server.test.ts`).
+
+- **On Postgres a write that is no list of ops, or holds one that is no op, is 400 in delta's
+  words** (20 October, found re-walking the thin-client step): `ops: "not ops"` was 500 ("ops must
+  be a JSON array") and `[null]` a pointer's error; they are "ops must be an array" and "An op is
+  an object: { op, path, value }", asked before anything else, as SQLite asks them.
 
 - **The stories resolve a path as delta does** (20 October, root #127): delta takes a single
   document's root row by its id (`/messages/1/text`, through `message:1`) and as the document

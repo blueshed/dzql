@@ -71,7 +71,7 @@ import { peopleDocs } from "./resources/people/people-api";
 ```
 
 ```ts
-// src/routes.ts: after await messageDoc(ws, dataDir);
+// src/routes.ts: after messageDoc(ws, dataDir)
 const auth = await peopleDocs(ws, dataDir); // who is at the socket
 ```
 

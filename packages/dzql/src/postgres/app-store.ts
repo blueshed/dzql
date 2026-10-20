@@ -42,8 +42,8 @@ export type StoreOptions = {
   ws?: WsServer;
   /** The Postgres schema the app is kept in, made when it is not there: `public` without one, as a database has it. */
   namespace?: string;
-  /** Run at each open, once the documents are compiled and before the listener serves them: the tables are there (to seed them), and a guard put on `delta` before now stands in front of the listener. */
-  prepare?: (pool: Pool) => void | Promise<void>;
+  /** Run at each open, once the documents are compiled and before the listener serves them: the tables are there (to seed them), and a guard put on `delta` before now stands in front of the listener. It is given the data folder the store is opened on, where a new database finds the rows the app kept before it. */
+  prepare?: (pool: Pool, where: { dataDir?: string }) => void | Promise<void>;
 };
 
 /** Why the store cannot be used: it is not open. */
@@ -107,7 +107,7 @@ export function openStore({ schema, database, migrations, ws, namespace, prepare
             await applyFramework(db, { namespace });
             await applySql(db, generateSql(schema, registered), { namespace });
             open = { pool: db, listener: undefined!, stories: storyStore(db, schema) };
-            await prepare?.(pool);
+            await prepare?.(pool, { dataDir });
             open.listener = await serveDocs(ws ?? delta.server, db, schema, registered, [], { ledger: { except: offLedger }, namespace });
           } catch (err) {
             open = undefined;

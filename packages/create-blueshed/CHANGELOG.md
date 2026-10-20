@@ -101,6 +101,26 @@ section up.
 
 ### Changed
 
+- **The tests are written against what both clients share** (20 October, root #121; needs dzql's
+  next release). A test of a document holds it through `tests/documents.ts` (dzql's
+  `documentsOf`: here over delta's socket), not `connectWs` and `openDoc`; a test of the page uses
+  the browser (`browser.ts`), where the light page and the one drawn on the server are the same
+  bento HTML. What the light page alone does is in files of its own, `tests/app.test.ts` (routes
+  by the hash, the status it fetches, the page not found) and `tests/message-view.test.ts` (the
+  toast's Not saved, Cmd+Enter, the hash), out of `site.test.ts` and `message.test.ts`. Saved is
+  heard as a status (the toast has `role="status"`, `role="alert"` for a refusal); `refuseWrites`
+  sends each op below the path meant, which any server refuses; the message's last change is in
+  its file before a stopped server is done (`closing.push(... .persisted)`), so the message's
+  restart test changes it through another server meanwhile. evolve's `sqlite.md`, `migrations.md`
+  and `postgres.md` hold their documents through `documents(server)`, and `testing.md` says so.
+- **The thin-client step is the move, not a port** (20 October, roots #118-#121, #127, #129):
+  `references/thin-client.md` is 571 lines where it was 943. What stays as it was: the documents'
+  definitions and paths, the data folder and the rows kept before, `startServer({ port, dev,
+  dataDir })`, `stories.ts` (three stories gain a body on their own line, three change their
+  words), and the tests `site`, `message`, `order`, `kitchen`, `order-move`, `order-pg` and
+  `order-pg-move`. What is rewritten is what draws the page, the store every document is in, and
+  the light page's own tests; `documents.ts` changes one line and `stories.test.ts` gains the
+  harness. No `.env.test`, no `PGLITE_DIR`, no default said twice.
 - **Each of evolve's references says where it is shown working** (20 October, root #114): a line
   starting `Working:`, naming `tests/evolve.ts`, which applies the page to a new app and runs it.
 - **The evolve skill's Postgres page registers documents with signing in as SQLite does**

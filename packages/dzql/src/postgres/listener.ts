@@ -631,6 +631,9 @@ export async function createDocListener<I = unknown>(
   }));
 
   ws.on("delta", withDoc("delta", async ({ docName, type, ctx, msg, client, respond, identity }) => {
+    // every op an object, asked of the whole write before anything else (400), in delta's words, as SQLite asks it
+    if (!Array.isArray(msg.ops)) return respond({ error: { code: 400, message: "ops must be an array" } });
+    if (msg.ops.some((op: unknown) => op === null || typeof op !== "object")) return respond({ error: { code: 400, message: "An op is an object: { op, path, value }" } });
     const writer = writerOf(identity, client);
     const kept = onLedger(type.prefix);
     const by = kept ? { who: whoOf(writer), cursor: cursorOf(msg, client, writer), undoable: msg.undoable !== false } : undefined;
