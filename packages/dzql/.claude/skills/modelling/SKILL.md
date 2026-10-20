@@ -30,7 +30,9 @@ handed a link, say what to run to open the page (`bun dev`, or `bun run model`).
      them), entities by their plural (`invoices`). A bare `refused` is a session signed out: sign
      in again and say so, never work around it.
 2. **Write the story down as it was said**: who tells it, whether they do it or are refused, their
-   words. Don't improve it; ask, and reword what they say. → *The verbs*
+   words. Don't improve it; ask, and reword what they say. Where their word is not the entity's
+   (they say "bill", the entity is `invoices`), keep their word in the story, and say the entity's
+   name once, in a line ("a bill is an invoice here"). → *The verbs*
 3. **Ask what the person needs in front of them to do it.** That is a document; whoever else must
    see the change holds it too. Name it for what it is to them, not for a table, in one word
    (`seat`, `invoice`). → *Documents*
@@ -54,6 +56,8 @@ handed a link, say what to run to open the page (`bun dev`, or `bun run model`).
 6. **Build nothing yet.** The model is done enough when the checks are closed (or say why they
    cannot be asked) and the teller reads the page and calls each story true. While none is open,
    `dzql model` (or `bun dev`, the model at `/model` beside the app) writes
-   `model/types.ts`, `guards.ts`, `migrations/` and `model.test.ts`, never a story. The app is
+   `model/types.ts`, `guards.ts`, `migrations/` and `model.test.ts`, never a story. Then run the
+   model's proof, `bun test model`: closed checks are not proof. A failing case is a gap: tell the
+   teller, and change the model until it passes. The app is
    built from them with the **dzql-app** skill, as dzql's `examples/cafe/` was (its README walks
    it). → *From the model to the app*

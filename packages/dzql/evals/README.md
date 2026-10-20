@@ -2,8 +2,9 @@
 
 Three scenarios per shipped skill (`modelling.json`, `dzql-app.json`), each aimed at a trap the
 skill exists to prevent. They are not run by `bun test` and do not ship to npm. Their domains (a
-bakery's pre-orders, a front desk, a team's leave) are not the held-out Shed's (paintbrush's
-`evals/shed/`), so a run of the Shed still measures what the skills lead to, unprompted.
+bakery's pre-orders, a front desk, a team's leave, dog walks) are not the held-out Shed's
+(paintbrush's `evals/shed/`), so a run of the Shed still measures what the skills lead to,
+unprompted.
 
 Every scenario, each a fresh session with nobody there: `bun scripts/evals.ts --only
 dzql/<skill>` from the repository's root, which makes each project from the checkout and keeps

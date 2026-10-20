@@ -142,6 +142,20 @@ describe("over a model's file, from the command line and over stdio", () => {
     return { out: await new Response(p.stdout).text(), err: await new Response(p.stderr).text(), code: await p.exited };
   };
 
+  test("dzql model --help (or -h) says the model's verbs and exits, and never starts the page", async () => {
+    for (const ask of [["model", "--help"], ["model", "-h"], ["model", "check", "--help"]]) {
+      const file = `${process.env.TMPDIR ?? "/tmp"}/help-${crypto.randomUUID()}.json`; // a page started by mistake keeps its model here, not in dzql
+      const p = Bun.spawn(["bun", cli, ...ask], { stdout: "pipe", stderr: "pipe", stdin: "ignore", env: { ...process.env, MODEL_PORT: "0", MODEL_FILE: file } });
+      const timer = setTimeout(() => p.kill(), 10_000); // a page started never exits: killed, it fails below
+      const [out, code] = [await new Response(p.stdout).text(), await p.exited];
+      clearTimeout(timer);
+      expect(code).toBe(0);
+      expect(out).toStartWith("Usage: dzql model [<verb>]");
+      expect(out).toContain("  check [--out model] [--drops]");
+      expect(out).not.toContain("/in/"); // no sign-in link: no page
+    }
+  }, 60000);
+
   test("guards are refused while a register is open, and written once all six are closed; the site either way", async () => {
     const { file, stories } = await made();
     const refused = await run(["model", "guards", file]);

@@ -1,0 +1,177 @@
+{
+ "tables": {
+  "models": [
+   {
+    "id": 1,
+    "name": "walks"
+   }
+  ],
+  "stories": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "text": "An owner books a walk for their dog on a day",
+    "actor": "owner",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "walks",
+      "op": "add",
+      "path": "done",
+      "to": "false"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 2,
+    "models_id": 1,
+    "text": "The walker says a walk is done",
+    "actor": "walker",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "walks",
+      "op": "replace",
+      "path": "done",
+      "to": "true"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "walks",
+      "path": "done",
+      "value": "false"
+     }
+    ]
+   },
+   {
+    "id": 3,
+    "models_id": 1,
+    "text": "An owner cancels a walk that is not done yet",
+    "actor": "owner",
+    "kind": "does",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "walks",
+      "op": "remove"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "walks",
+      "path": "done",
+      "value": "false"
+     }
+    ]
+   },
+   {
+    "id": 4,
+    "models_id": 1,
+    "text": "An owner cannot cancel a walk once it is done",
+    "actor": "owner",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "walks",
+      "op": "remove"
+     }
+    ],
+    "requires": [
+     {
+      "entity": "walks",
+      "path": "done",
+      "value": "true"
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "models_id": 1,
+    "text": "An owner cannot say a walk is done",
+    "actor": "owner",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "walks",
+      "op": "replace",
+      "path": "done",
+      "to": "true"
+     }
+    ],
+    "requires": null
+   },
+   {
+    "id": 6,
+    "models_id": 1,
+    "text": "The walker cannot book or cancel a walk",
+    "actor": "walker",
+    "kind": "cannot",
+    "post": null,
+    "touches": [],
+    "writes": [
+     {
+      "entity": "walks",
+      "op": "add"
+     },
+     {
+      "entity": "walks",
+      "op": "remove"
+     }
+    ],
+    "requires": null
+   }
+  ],
+  "documents": [
+   {
+    "id": 1,
+    "models_id": 1,
+    "name": "rota",
+    "root": "walks",
+    "own": 0,
+    "list": 1,
+    "holds": {
+     "walks": {
+      "parent": null,
+      "fields": [
+       {
+        "name": "dog",
+        "type": "text"
+       },
+       {
+        "name": "day",
+        "type": "text"
+       },
+       {
+        "name": "done",
+        "type": "boolean"
+       }
+      ]
+     }
+    },
+    "held_by": [
+     "walker",
+     "owner"
+    ],
+    "stories": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ]
+   }
+  ]
+ }
+}

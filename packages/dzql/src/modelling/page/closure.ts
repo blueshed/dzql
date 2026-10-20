@@ -219,12 +219,26 @@ export function closureOf(raw: Raw): Register[] {
       }),
   };
 
+  // a one-row document is opened at a row already there: nobody adds its root through it, unless
+  // its root hangs from nothing (its first write makes it) or it is each person's own (the visit's)
+  const oneRowOf = (d: (typeof docs)[number], e: string) => d.root === e && !d.list && !d.own && !!parentOf(e);
+  const adds = new Map(said.filter(({ w }) => w.op === "add").map(({ s, w }) => [`${s.id} ${w.entity}`, { s, entity: w.entity }]));
   const authorization: Register = {
     predicate: "authorization-closure",
     asks: "every write is the writer's to make: what a story touches, its teller holds (you may write what you may read)",
-    gaps: writes
-      .filter(({ s, entity }) => heldIn(entity).length > 0 && m.writable(s.actor, entity).length === 0)
-      .map(({ s, entity }) => ({ kind: "unscoped-write", where: story(s), detail: `${s.actor} touches ${entity}, held by no document ${s.actor} holds` })),
+    gaps: [
+      ...writes
+        .filter(({ s, entity }) => heldIn(entity).length > 0 && m.writable(s.actor, entity).length === 0)
+        .map(({ s, entity }) => ({ kind: "unscoped-write", where: story(s), detail: `${s.actor} touches ${entity}, held by no document ${s.actor} holds` })),
+      // the bakery's customer, holding an order only as the order's own document (an evaluation's feedback)
+      ...[...adds.values()]
+        .filter(({ s, entity }) => m.writable(s.actor, entity).length > 0 && m.writable(s.actor, entity).every((d) => oneRowOf(d, entity)))
+        .map(({ s, entity }) => {
+          const under = heldIn(entity).find((d) => !oneRowOf(d, entity));
+          const names = m.writable(s.actor, entity).map((d) => d.name).join(", ");
+          return { kind: "nowhere-to-add", where: story(s), detail: `${s.actor} adds ${entity}, and holds ${entity} only as the root of ${names}, one row opened where it already is: there is nowhere to add one. Hold ${entity} under its ${parentOf(entity)} in a document ${s.actor} holds, or in a list${under ? ` (heldby ${under.id} ... ${s.actor})` : ""}` };
+        }),
+    ],
   };
 
   // Easy's coverage (Simple's modeller): every write has been decided for everyone it could reach. Easy

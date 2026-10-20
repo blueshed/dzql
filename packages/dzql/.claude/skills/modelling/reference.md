@@ -36,6 +36,7 @@ it is the model saying no. Everyone signs in as `<name, lower case>@modeling.exa
 
 `src/modelling/page/cli.ts` (in a project, under `node_modules/dzql/`). Stories and documents are
 numbered as made, and named by number (`holds 3 ...`, `heldby 3 ...`, never by name); the page shows each number.
+`dzql model --help` lists them, and starts nothing.
 
 | Said | Verb |
 |---|---|
@@ -69,6 +70,10 @@ for everyone who holds it (the menu, the floor's tables), is `list`; without it 
 row (a table, a bill). Every holder is told every write, so cut documents by who must be told, not
 by table.
 
+A one-row document is opened at a row that is already there, so nobody adds its root row through
+it. Whoever adds a row needs it held under its parent, or in a list: the cafe's customer adds
+orders on `table`, under its invoice.
+
 ## The gaps
 
 | On the page | What it asks |
@@ -89,7 +94,7 @@ the page and at the foot of `show`: hjeli's six, Easy's coverage, and playabilit
 | Actor closure | someone holds a document and tells no story |
 | Precondition closure | a write changes a row no story adds (an own document's root is made by the visit), or names one by a ref; a story requires a state no write sets, or one none of its writes reaches (its row, a row above it, a row a ref names). Not asked until a story says `writes` or `requires` |
 | Referential closure | a story a document serves is not told; an entity hangs under one its document does not hold; a name no table, column or document can take (a document's is one word: `my_table`); two documents of one name; a ref into a document that is not there, does not hold what it names, or is one row and not a list |
-| Authorization closure | a teller writes what no document they hold holds: you may write what you may read |
+| Authorization closure | a teller writes what no document they hold holds: you may write what you may read; a teller adds rows they hold only as a one-row document's root, so there is nowhere to add one (*Documents*) |
 | Coverage | someone holds what a write changes, and no story says whether they may make it (a `cannot` story decides it); a `cannot` that the same teller's `does` already lets through, presupposing nothing, so it is never refused |
 | Playability | it is someone's move on a state no document they hold shows; someone waits on a state they cannot see |
 
@@ -118,7 +123,9 @@ README walks it; here is what each part of it says about the model.
    the guards as its teller and seen by everyone it tells, each `cannot` refused in its own words.
    It writes no stories. A file in `model/` a person wrote is kept, the model's beside it
    (`types.model.ts`). Every store takes the same definitions: the JSON file, SQLite, dzql's
-   Postgres.
+   Postgres. Run the proof as soon as `model/` is made: `bun test model`. Closed checks are not
+   proof; a failing case is a gap in the model, told to the teller and closed there, before any of
+   the app is built.
 2. **The store: `store.ts`.** Postgres, through dzql's `openStore`: the model's migrations with the
    model's schema (`migrations: { dir, app: "<name>-model", schema }`; the app's schema there would
    make delta warn that the definitions say more than the migrations), then the app's own tables

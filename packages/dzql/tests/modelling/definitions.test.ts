@@ -295,6 +295,42 @@ describe("the rest of what the model makes: the snapshot, the trajectory, the te
     }
   }, 30_000);
 
+  test("model.test.ts drops no story: one done nowhere that holds what it writes fails, and each other it cannot tell is left to do, saying why", async () => {
+    const bakery: Model = {
+      stories: {
+        "1": { id: 1, text: "The baker opens a day", actor: "baker", kind: "does", writes: [{ entity: "days", op: "add" }] } as never,
+        "2": { id: 2, text: "A customer orders loaves", actor: "customer", kind: "does", writes: [{ entity: "orders", op: "add" }] } as never,
+        "3": { id: 3, text: "A customer cannot order for a closed day", actor: "customer", kind: "cannot", writes: [{ entity: "orders", op: "add" }] } as never,
+        "4": { id: 4, text: "A customer signs in", actor: "customer", kind: "does", post: "/login" } as never,
+        "5": { id: 5, text: "The baker looks at the day", actor: "baker", kind: "does", touches: ["days"] } as never,
+      },
+      documents: {
+        "1": { id: 1, name: "day", root: "days", held_by: ["baker", "customer"], stories: [1, 2, 5], holds: { days: { parent: null, fields: [{ name: "date" }] }, orders: { parent: "days", fields: [{ name: "loaves", type: "integer" }] } } },
+        "2": { id: 2, name: "calendar", root: "days", list: 1, held_by: ["customer"], stories: [3], holds: { days: { parent: null, fields: [{ name: "date" }] } } },
+      },
+    };
+    const tests = testsOf(bakery, "bakery");
+    expect(tests).toContain(`test("A customer cannot order for a closed day", () => {\n  throw new Error("not proved: no document it is done on (calendar) holds orders, so it is done nowhere");\n});`);
+    expect(tests).toContain(`test.todo("The baker opens a day -- not proved here: what it writes is its document's own row, there before any write: nothing to prove");`);
+    expect(tests).toContain(`test.todo("A customer signs in -- not proved here: a form posted to a route, which the app's stories prove");`);
+    expect(tests).toContain(`test.todo("The baker looks at the day -- not proved here: it says nothing it writes (writes <story> add <entity>...)");`);
+    const app = mkdtempSync(join(import.meta.dir, ".export-"));
+    try {
+      mkdirSync(join(app, "migrations"));
+      await Bun.write(join(app, "types.ts"), typesOf(bakery));
+      const first = nextMigrationOf([], bakery)!;
+      await Bun.write(join(app, "migrations", `${first.name}.ts`), first.source);
+      await Bun.write(join(app, "model.test.ts"), tests);
+      const out = Bun.spawnSync(["bun", "test", "model.test.ts"], { cwd: app, env: { ...process.env, LOG_LEVEL: "silent" } }).stderr.toString();
+      expect(out).toContain(" 2 pass"); // the migrations, and the customer's order
+      expect(out).toContain(" 3 todo");
+      expect(out).toContain(" 1 fail");
+      expect(out).toContain("not proved: no document it is done on (calendar) holds orders");
+    } finally {
+      rmSync(app, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   test("a state is set up by the story that presupposes least: a table added free, not one paid and freed", () => {
     const cafe: Model = {
       stories: {

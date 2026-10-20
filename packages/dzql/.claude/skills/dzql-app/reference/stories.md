@@ -86,9 +86,15 @@ here: a story gaining its body is the same line, under the same key.
 A red that is not a story's proves nothing. `Cannot find module './src/links'` is a file not
 made yet, not a story failing.
 
-- Make what `stories.ts` imports first, the least that loads (the cast's `links.ts`, a resource
-  listed in `routes.ts` with nothing in it). The first red must be a story's own: `no control on
-  their page`, `nothing landed`, `refused, but it landed`, a page that did not change.
+- Before the first run, make the least that loads, in this order, and nothing more:
+  1. `links.ts`, the cast's links ([signin.md](signin.md));
+  2. its sign-in route, `/in/:token`, in `routes.ts` (without it every story fails as `could not
+     sign in`: a `405`);
+  3. an empty resource for each document the stories write, listed in `routes.ts` (without one, a
+     story fails as `no resource owns <doc>`).
+
+  The first red must then be a story's own: `no control on their page`, `nothing landed`,
+  `refused, but it landed`, a page that did not change.
 - A story that passes before anything is built -- a `cannot` that `permit` already refuses, an
   `opensTab` the app already stands on -- is made to fail for a moment: let the write through, or
   send the address somewhere else, watch the story fail, then put it back.
@@ -116,6 +122,9 @@ stories already prove Undo for every write: an Undo feature needs no story of it
 - An undo that meets someone's later change is refused in the kernel's words: `told: "Someone has
   changed that since, so it cannot be undone."`. Where writes only add rows, nobody's change can be
   in the way: say so, and write no such story.
+- Another person's Undo never reaches yours: the undo cursor is the session, so an Undo walks only
+  its own session's writes. That is dzql's own rule, proved by dzql, and needs no story. To show
+  it in the app, a server test with two sessions is enough ([tests.md](tests.md)).
 - An undo with nothing to take back is refused without a word. So where a person who writes
   nothing on the ledger is offered Undo, their `cannot: walked("undo")` fails as a control that
   always fails: give Undo only to those who write ([bento.md](bento.md#undo-follows-the-role)).
