@@ -42,3 +42,5 @@ SVG tags (`circle`, `g`, `linearGradient`, `foreignObject`, `fe*`…) are made i
 - An SVG element renders only under an `<svg>` ancestor (SVG's rule). Prefer `href` to `xlink:href`.
 
 Async components: [async](async.md).
+
+Worked example: `JobRow` and `Ring` in [`jobs-view.tsx`](../../../../examples/jobs/resources/jobs/jobs-view.tsx): bound projections, `oninput` and `onchange`, `disabled`, a `<select value>` after its options, `ref`, `readonly`, a style string and object, `null` rendering nothing, SVG with an adopted `<title>`.

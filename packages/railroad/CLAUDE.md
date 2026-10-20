@@ -29,6 +29,7 @@ bun check                # Bun's type check (TypeScript 7): strict, noUncheckedI
 bun run check:consumer   # tests/consumer-types/ and the README's files as a consumer compiles (bun check)
 bun test --coverage      # unit suite (happy-dom) + coverage table
 bun run test:webview     # real-browser suite, by explicit path
+bun run test:examples    # examples/jobs: its type check and unit tests, from its folder
 ```
 
 The release gate is the two tiers, `bun run test:fast` then `bun run test:slow`, as `publish.yml` runs them.
@@ -82,6 +83,14 @@ so after a dependency change run `bun install` and commit `bun.lock`.
   real browser. `tests/readme.test.ts` runs what README.md promises as
   written: `tests/fixtures/readme/` is its files byte for byte (checked
   there), served, built with `--compile`, and loaded with no DOM.
+- **The examples are the skill's worked answers.** `examples/jobs/` is an app in the one shape
+  (`routes.ts`, `resources/<name>/`), and every rule the reference pages prescribe is at work
+  there; each page links to the file. `tests/webview-examples.test.ts` runs it as its README says
+  and asserts what each rule is about; its own unit tests run from its folder (`bun run
+  test:examples`, in `test:fast`: its tsconfig is `react-jsx`, railroad's is `react`, and
+  `bunfig.toml`'s `root = "tests"` keeps a bare `bun test` here to railroad's own). A rule
+  changed is changed in the example and its test too; a rule that only a workaround satisfies goes
+  to `todo.jsonl`.
 - **`CHANGELOG.md`** and **`todo.jsonl`**: railroad's own, kept as the root
   CLAUDE.md says (What is going on).
 

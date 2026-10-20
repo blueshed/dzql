@@ -16,6 +16,23 @@ All notable changes to `@blueshed/railroad`. The format follows
   `pushDisposeScope(); try { x = build(); } finally { dispose = popDisposeScope(); }` is
   `const { value: x, dispose } = scoped(build)`.
 
+### Added
+
+- **`examples/jobs`, the skill's worked answer** (20 October, Peter's word: a package's examples
+  are its skill's worked answers): a live list of build jobs fed by a WebSocket, in the one shape
+  (`routes.ts` given to a plain `Bun.serve`, `resources/jobs/` and `resources/runners/`, each
+  `-api.ts`, handle and view), with a job's page by a keyed async route, a runners layout, an
+  async component and a custom root for its toasts. Each reference page links to where its rules
+  are at work, and `tests/webview-examples.test.ts` runs the app as its README says in a real
+  browser and asserts what each rule is about: a row changed in place re-renders that row's nodes
+  and no other, a disposed scope's effects stop, a reorder keeps the focus, a batch writes once,
+  the production build drops the warnings, and no page warns. Its unit tests run on happy-dom
+  from its own folder (`bun run test:examples`, part of `test:fast`); `bunfig.toml`'s
+  `root = "tests"` keeps a bare `bun test` here to railroad's own. Examples don't ship (`files` is
+  unchanged). The rules that turned out to be workarounds are open in `todo.jsonl` (#4 to #11).
+- **The setup reference says `--production` keeps the warnings under a `NODE_ENV` set otherwise**
+  (20 October): `bun test` sets `test`, and the environment wins (#12).
+
 ### Changed
 
 - **The realtime reference keeps its board in delta's JSON file** (20 October): the server is

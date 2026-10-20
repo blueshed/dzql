@@ -1,0 +1,53 @@
+:root {
+  --queued: #8a8f98;
+  --running: #2f6fdf;
+  --passed: #2e9e5b;
+  --failed: #d0453a;
+  font: 15px/1.4 system-ui, sans-serif;
+  color: #1d1f23;
+  background: #f6f7f9;
+}
+body { margin: 0 auto; max-width: 52rem; padding: 1rem; }
+body > nav { display: flex; gap: 1rem; margin-bottom: 1rem; }
+a { color: var(--running); }
+
+.filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.banner { color: var(--failed); font-weight: 600; }
+.summary, .empty, .pick, .host { color: var(--queued); }
+
+.rows { list-style: none; padding: 0; margin: 0; }
+.job {
+  display: grid;
+  grid-template-columns: 3rem 1fr 5rem 3rem auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #e3e5e8;
+  /* --progress is set by the row */
+  background: linear-gradient(to right, #e7efff var(--progress, 0%), transparent var(--progress, 0%));
+}
+.job .name { border: 1px solid transparent; background: transparent; font: inherit; }
+.job .name:focus { border-color: #c5cad3; background: white; }
+.job.failed .status { color: var(--failed); }
+.job.passed .status { color: var(--passed); }
+.job.running .status { color: var(--running); }
+
+.detail .live { display: flex; align-items: center; gap: 1rem; color: var(--accent); }
+.ring { transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 4; }
+.ring .track { stroke: #e3e5e8; }
+.ring .done { stroke: currentColor; }
+.command { width: 100%; font-family: ui-monospace, monospace; }
+.log { background: #1d1f23; color: #e3e5e8; padding: 0.75rem; }
+
+.runners nav { display: flex; gap: 1rem; }
+.runners .picked { font-weight: 600; }
+
+.error, .missing { color: var(--failed); }
+
+#toasts { position: fixed; right: 1rem; bottom: 1rem; display: grid; gap: 0.5rem; }
+.toast {
+  display: flex; gap: 0.5rem; align-items: center;
+  padding: 0.5rem 0.75rem; border-radius: 6px;
+  background: white; border-left: 4px solid var(--failed); box-shadow: 0 2px 8px #0002;
+}

@@ -30,8 +30,9 @@
   "scripts": {
     "check:consumer": "bun check -p tests/consumer-types/tsconfig.json && bun check -p tests/consumer-types/tsconfig.react.json && bun check -p tests/fixtures/readme/tsconfig.server.json",
     "test": "bun run test:fast",
-    "test:webview": "bun test ./tests/webview.test.ts ./tests/webview-kit.test.ts",
-    "test:fast": "bun check && bun test --path-ignore-patterns=\"tests/webview*.test.ts\"",
+    "test:webview": "bun test ./tests/webview.test.ts ./tests/webview-kit.test.ts ./tests/webview-examples.test.ts",
+    "test:examples": "bun check -p examples/jobs/tsconfig.json && cd examples/jobs && bun test",
+    "test:fast": "bun check && bun test --path-ignore-patterns=\"tests/webview*.test.ts\" && bun run test:examples",
     "test:slow": "bun run check:consumer && bun run test:webview"
   },
   "devDependencies": {

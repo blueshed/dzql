@@ -35,3 +35,5 @@ GlobalRegistrator.register();
 - `clearProviders()` resets `provide`/`inject` between tests.
 - Real-browser tests use `Bun.WebView` against the real `Bun.serve`: the `bun-route` skill has the server factory, the patterns and the footguns.
 - Keep browser tests in their own file and run them by explicit path too: with no browser found they skip with a warning, so a green bare `bun test` doesn't prove they ran.
+
+Worked example: [`jobs.test.tsx`](../../../../examples/jobs/tests/jobs.test.tsx), the app's unit tests on happy-dom, and [`webview-examples.test.ts`](../../../../tests/webview-examples.test.ts), the app in a real browser.

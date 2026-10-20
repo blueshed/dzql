@@ -38,3 +38,5 @@ navigate("/users/42");   // route() and the router are current as it returns
 - An async handler resolves to a thunk, as an async component does; a bare Node is an error. Bindings made in the thunk die on navigation.
 - `onError` runs when a handler throws or rejects (`err` is `unknown`); a returned Node renders in the target. Without it the error goes to `console.error`.
 - `navigate()` is synchronous. Setting `location.hash`, or following a `#/…` link, lands on the next `hashchange`, a macrotask later.
+
+Worked example: [`app.tsx`](../../../../examples/jobs/app.tsx) (the order, a keyed async route, a wildcard layout, a catch-all reading `params$`, `onError`), with the query split off in `JobPage` ([`jobs-view.tsx`](../../../../examples/jobs/resources/jobs/jobs-view.tsx)) and `route()` inside the layout ([`runners-view.tsx`](../../../../examples/jobs/resources/runners/runners-view.tsx)).
