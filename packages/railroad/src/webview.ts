@@ -11,7 +11,7 @@
  *   afterAll(() => close());
  *
  * Bun.WebView (experimental; follow these exactly):
- * - evaluate() takes a string expression, not a function: view.evaluate("document.title").
+ * - evaluate() takes a string expression, not a function: view.evaluate<string>("document.title").
  *   Wrap statements in an IIFE string. Results come back as JSON; give them a type: evaluate<string>(...).
  * - await every call. A view takes one navigate, evaluate, screenshot or input at a time, or throws ERR_INVALID_STATE.
  * - click(selector) waits until the element is visible, stable and not covered. It does not scroll.

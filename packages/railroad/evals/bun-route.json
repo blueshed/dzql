@@ -14,7 +14,7 @@
       "Each route's CSS is self-contained; there is no shared base.css",
       "server.ts imports both HTML files and registers them in Bun.serve({ routes }) with development: { hmr: true, console: true }",
       "The client script starts the page with mount() or routes(), and the counter binds {count}, not {count.get()}, with a lowercase onclick",
-      "Checks the route with curl for a 200, or asks the user to start the server first"
+      "Checks the route with curl for a 200 from a server it started on a free port (PORT=0, the URL read from its Listening on line) and stopped by its own pid, never by pkill -f; or asks the user to start the server first"
     ],
     "start": "empty"
   },
@@ -30,7 +30,7 @@
       "Detects ts mode: the client script is contact/contact.ts, with no JSX and no railroad or react import",
       "Builds the DOM with plain DOM calls (document.createElement, append, innerHTML or similar)",
       "Creates contact/contact.html and contact/contact.css, the CSS self-contained",
-      "Adds import contactPage from \"./contact/contact.html\" to server.ts and \"/contact\": contactPage to its routes, leaving the existing route alone",
+      "Imports \"./contact/contact.html\" in server.ts, under any name (contactPage, contact, ...), and registers it at \"/contact\" in its routes, leaving the existing route alone",
       "Does not add an external bundler, a build script or a framework dependency"
     ],
     "start": "empty",
@@ -51,8 +51,8 @@
     ],
     "expected_behavior": [
       "Refactors server.ts into an exported startServer(opts) that takes a port, with an if (import.meta.main) guard for running it directly",
-      "The test starts the server with startServer({ port: 0 }) in beforeAll, uses server.url.href (no hard-coded localhost:3000), and stops it in afterAll",
-      "Opens one view for the test file with browser(() => server.url) from @blueshed/railroad/webview (the kit's rule), not a new Bun.WebView in each test",
+      "The test starts the server with await startServer({ port: 0 }) at the file's top level, before browser() (webview.md's skeleton), uses server.url (no hard-coded localhost:3000), and stops it in afterAll",
+      "Opens one view for the test file with browser(() => server.url) from @blueshed/railroad/webview, added with bun add -d @blueshed/railroad since this app has no railroad (webview.md: the kit all the same), not a new Bun.WebView in each test",
       "Waits for #submit to be enabled before clicking it (the kit's waitFor, polling a page-side expression), since click does not wait for enabled",
       "Every view.evaluate call passes a type argument, e.g. evaluate<string>(...)",
       "Each evaluate argument is a single expression, or multi-statement code wrapped in Function(\"...; return ...;\")()",

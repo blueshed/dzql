@@ -39,6 +39,7 @@ Over delta: delta's [examples/kanban](https://github.com/blueshed/dzql/tree/main
 `when()` and `list()` (`app.tsx`, `resources/board/board-view.tsx`).
 
 - A collection replaces the row a change names and leaves the rest as they were, so a keyed `list()` over it, or over anything filtered or sorted from it, runs that row's projections and no other's. `rows.at(id)` is told of its own row alone; `null` while there is none.
+- What one change costs, with n rows: `put`, `patch` or `remove` finds a known row by `indexOf` (a scan of n references) and copies no row. The next `.get()` copies the array of references once, shared by every reader until the next change. A keyed `list()` walks the n keys and hands each row its value again: only the changed row's is new, so only its field signals run, and only a field whose value changed touches the DOM. No other row renders; no node is made or moved. A `.map()` or `computed()` over the rows (a filter, a sort) runs whole. Changes in one `batch()` cost one walk.
 - Never change a row object in place: nothing would know. A small document that is not rows is a `signal`: `.update((d) => ({ ...d, … }))` or `.mutate(fn)`.
 
 ## `@blueshed/delta`: documents over one WebSocket

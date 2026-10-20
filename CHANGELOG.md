@@ -16,12 +16,15 @@ what is open across them. Newest first.
   does; the model's loader takes an undo story. In the skills: delta-doc's one rule for tables
   (migrations; `createTables` for a database thrown away), its recipe's test run as written;
   dzql-app's undo in the stories, `permit` against `refuse`, seeding, Undo by role, and examples a
-  project can copy; evolve's files in the bucket and why; modelling's page stopped when nobody is
+  project can copy; evolve's files in the bucket and why; railroad's and bun-route's `@types/bun`,
+  `bun check`, a server on a free port stopped by its pid, and what a collection's change costs; modelling's page stopped when nobody is
   there; and both starters say asked to build, build. `scripts/docs.ts` now fails on a Shed noun in
   any skill page (run 5 found four), so the Shed stays held out.
 - The harness installs the checkout's packages as npm ships them (packed: a session's search does
   not follow `file:` links), gives each scenario its own ports, stops what a session leaves
-  running, and makes a copied example's tsconfig stand alone.
+  running, makes a copied example's tsconfig stand alone, installs what a copy brings, and runs a
+  project's own `test` script. Each run is recorded in its package's `evals/runs/2026-10-20-<skill>.md`
+  (railroad 39/40, delta-doc 19/20, dzql-app 13/14, modelling 16.5/17, evolve 10/20).
 - The Shed's API findings are Peter's: roots #137 (a group with people outside it), #138 (a rule
   the schema cannot say), #139 (who may write a document everyone reads) and #140 (`openStore` and
   sign-in).

@@ -1,5 +1,8 @@
 {
   "name": "greeting",
   "type": "module",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "^1.4.3"
+  }
 }

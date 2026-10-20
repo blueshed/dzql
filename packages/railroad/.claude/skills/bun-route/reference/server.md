@@ -37,6 +37,24 @@ app: [create-blueshed/template](https://github.com/blueshed/dzql/tree/main/packa
 - Use `Bun.serve`. An existing `import { serve } from "bun"` also works; leave it.
 - A handler that returns `Bun.file(...)` gets `Range` requests (`206 Partial Content`) for free, so `<video>` and `<audio>` seek (Bun 1.3.13+).
 
+## Checking a route
+
+A server of your own, on a free port, stopped by its pid, in one command:
+
+```sh
+PORT=0 bun server.ts > .server.log 2>&1 & pid=$!     # PORT=0: any free port, never one another run holds
+for i in $(seq 50); do grep -q "Listening on" .server.log && break; sleep 0.1; done
+url=$(sed -n 's/^Listening on //p' .server.log)       # http://localhost:<port>/
+curl -s -o /dev/null -w "%{http_code}\n" "${url}about"   # must print 200
+kill $pid; rm .server.log
+```
+
+- It needs the server above: `port` from `PORT`, and the `Listening on` line. Delta's `run` reads `PORT` and prints the line too.
+- Background `bun` itself. In `cd app && bun server.ts &`, `$!` is a shell, and killing it leaves the server running.
+- Stop only the server you started: `kill $pid`. Never `pkill -f` a pattern: it stops every server that matches, another session's too.
+- In a delta app, start the entry `run` is in (paintbrush's `src/routes.ts`) with a pid file of its own, `PORT=0 PID_FILE=.check.pid bun src/routes.ts`, since `run` refuses to start over a dev server's `.server.pid`. `kill $pid` stops it, or `PID_FILE=.check.pid bun run stop` (`delta stop`).
+- When the user runs the server, ask them to restart it and say its URL instead.
+
 ## Build and deploy
 
 ```sh

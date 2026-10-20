@@ -137,6 +137,14 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **The railroad and bun-route skills, from two rounds of their evals** (20 October, root #113).
+  ts and tsx both need `@types/bun`, said one way on every page; the type check is `bun check`
+  (never `tsc`); the js/ts template is a module (`export {};`), so its names do not clash with the
+  DOM's; a server is checked on a free port and stopped by its pid, never `pkill -f`
+  (`server.md`). `webview.md`: the kit in any app (a dev dependency), the server started at the
+  top, every `evaluate` typed (the kit's header too). `realtime.md` says what one change to a
+  collection costs. The eval fixtures type-check as they start.
+
 - **`loggedRequest` takes the handler's own arguments** (20 October, Peter's word; #11):
   `loggedRequest<A extends [Request, ...unknown[]]>(tag, handler: (...args: A) => Response |
   Promise<Response>): (...args: A) => Promise<Response>`. It took `(req: Request) => Response` and

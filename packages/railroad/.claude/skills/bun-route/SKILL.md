@@ -23,7 +23,9 @@ Read the existing HTML's `<script src>` extensions, `tsconfig.json` (and its `js
 
 If nothing settles it, ask.
 
-**Empty project** (no `package.json`, no server entry): `bun init -y`, delete its `index.ts`, then install only what the mode needs: nothing for js/ts; `bun add @blueshed/railroad`; or `bun add react react-dom && bun add -d @types/react @types/react-dom`. For ts/tsx, replace `compilerOptions` with the mode's block ([tsconfig](reference/tsconfig.md)). Create the server entry ([server](reference/server.md)).
+**ts and tsx need `@types/bun`** (devDependencies) for the tsconfig's `"types": ["bun"]`, or `bun check` finds no `Bun` and no `.html` import. `bun init` adds it; where it is missing, `bun add -d @types/bun` and say so. It is the type check's, not a dependency of the app.
+
+**Empty project** (no `package.json`): `bun init -y` (it adds `@types/bun`), delete its `index.ts`, then install what the mode needs beyond that: nothing for js/ts; `bun add @blueshed/railroad`; or `bun add react react-dom && bun add -d @types/react @types/react-dom`. For ts/tsx, replace `compilerOptions` with the mode's block ([tsconfig](reference/tsconfig.md)). A project with no server entry gets one ([server](reference/server.md)).
 
 ## 2. Arguments
 
@@ -37,11 +39,11 @@ If nothing settles it, ask.
 
 ## 4. Register it
 
-Where the app's routes are: `import aboutPage from "./about/about.html";` and `"/about": aboutPage,` in `routes`. With `@blueshed/delta` in deps, that is the routes handed to delta's `serve()` (`@blueshed/delta/serve`; paintbrush's `src/routes.ts`): the app is routes and resources, delta is the one server, and an app never writes a `Bun.serve` of its own. Otherwise it is the file that calls `Bun.serve()`. In a ts/tsx project `bun check` needs `@types/bun` and `"types": ["bun"]` for `Bun` and `.html` imports.
+Where the app's routes are: `import aboutPage from "./about/about.html";` and `"/about": aboutPage,` in `routes`. With `@blueshed/delta` in deps, that is the routes handed to delta's `serve()` (`@blueshed/delta/serve`; paintbrush's `src/routes.ts`): the app is routes and resources, delta is the one server, and an app never writes a `Bun.serve` of its own. Otherwise it is the file that calls `Bun.serve()`.
 
 ## 5. Verify
 
-Ask the user to start or restart the server. Read its port (default 3000), then `curl -s -o /dev/null -w "%{http_code}" http://localhost:<port>/<route>` must print `200`. With a browser tool, screenshot the page (from Docker, use `host.docker.internal`, not `localhost`), and check the CSS matches the other routes.
+Type-check with `bun check` (ts/tsx): Bun's own, nothing to install, no `tsc`, no script to add. Then curl the route for a `200` from a server you start on a free port (`PORT=0`, its URL read from the `Listening on` line) and stop by its pid, never by `pkill -f`: the command is in [server](reference/server.md#checking-a-route). With a browser tool, screenshot the page (from Docker, use `host.docker.internal`, not `localhost`), and check the CSS matches the other routes.
 
 ## 6. Test it (when it has interaction worth locking down)
 
@@ -52,7 +54,7 @@ Forms, drag, WebSockets, client state: write a `Bun.WebView` test. Make the serv
 - `development: process.env.NODE_ENV !== "production" && { hmr: true, console: true }`: always on in development, always gated, because Bun keeps HMR under `NODE_ENV=production`.
 - Each route's CSS is self-contained; no shared `base.css`.
 - HTML paths are relative (`./`) to the HTML file; scripts are `type="module"`.
-- Install framework dependencies only when the mode needs them; never `bun-types` beside `@types/bun`.
+- Install framework dependencies only when the mode needs them. ts and tsx always have `@types/bun`, never `bun-types` beside it.
 - No external bundler: `bun build` makes static assets or one binary ([server](reference/server.md)).
 - Browser tests bind `port: 0` and use `server.url.href`.
 

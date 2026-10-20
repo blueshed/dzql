@@ -3,6 +3,11 @@
 Four scenarios for the `evolve` skill (a new document; two documents, the kitchen and undo; files over HTTP; a schema change on a database holding orders), in the shape Anthropic's skill guidance uses:
 a `query` to give a fresh session, and `expected_behavior` to check in what it writes.
 
+Every scenario, each a fresh session with nobody there: `bun scripts/evals.ts --only
+create-blueshed/<skill>` from the repository's root, which makes each project from the checkout and keeps
+what each session did. Each run is graded, line by line, and recorded in `runs/<date>-<skill>.md`;
+a change to the skill is measured against the last.
+
 To run one by hand: make an app from this template (the README says how),
 open a new Claude Code session in it, paste the `query`, and check each expected behaviour
 in the code and in `bun test`. Run each with Haiku, Sonnet and Opus when the skill changes.

@@ -18,7 +18,8 @@
  *
  * The checkout's packages are installed as npm ships them (packed), never as links a search will not
  * follow. Each scenario has ports of its own (`PORT`, `MODEL_PORT`), and whatever a session leaves
- * running in its folder is stopped when it ends.
+ * running in its folder is stopped when it ends. An empty start is a person's: what its session
+ * installs (`bun add`) comes from npm, so a skill is measured against what npm has.
  */
 import { $ } from "bun";
 import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
@@ -160,6 +161,8 @@ async function make(r: (typeof runs)[number], dir: string): Promise<void> {
       standalone(to, join(root, c.from));
     }
   }
+  // a copy that brings a package.json is installed as it would be (an empty start's from npm, as a person's)
+  if (existsSync(join(dir, "package.json")) && !existsSync(join(dir, "node_modules"))) sh(["bun", "install"], dir);
   shipped(join(dir, "node_modules"));
   if (!existsSync(join(dir, ".git"))) sh(["git", "init", "-q"], dir);
   if (!existsSync(join(dir, ".gitignore"))) writeFileSync(join(dir, ".gitignore"), "node_modules/\n");
@@ -195,7 +198,9 @@ async function run(r: (typeof runs)[number]): Promise<Result> {
   const files = sh(["git", "diff", "--name-only", "start", "HEAD"], dir).stdout.toString().split("\n").filter(Boolean);
   await Bun.write(join(out, `${r.id}.diff`), sh(["git", "diff", "start", "HEAD", "--", ".", ":!bun.lock", ":!**/bun.lock"], dir).stdout);
   const check = sh(["bun", "check"], dir).exitCode === 0;
-  const t = existsSync(join(dir, "package.json")) ? sh(["bun", "test"], dir) : null;
+  // the project's own test script where it has one (a preload it says there, which a session may not write into bunfig.toml)
+  const pkg = existsSync(join(dir, "package.json")) ? (JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as { scripts?: Record<string, string> }) : undefined;
+  const t = pkg ? sh(pkg.scripts?.test ? ["bun", "run", "test"] : ["bun", "test"], dir) : null;
   const text = t ? t.stdout.toString() + t.stderr.toString() : "";
   const tests = t ? { pass: Number(/^ *(\d+) pass/m.exec(text)?.[1] ?? 0), fail: Number(/^ *(\d+) fail/m.exec(text)?.[1] ?? 0), exit: t.exitCode ?? -1 } : null;
   const result = { id: r.id, pkg: r.pkg, skill: r.skill, n: r.n, dir, minutes, exit, check, tests, files };

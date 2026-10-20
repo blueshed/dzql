@@ -17,7 +17,7 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 2. State as signals; derive with `.map()` or `computed()`.
 3. Components bind signals in JSX; `when()` and `list()` for what appears and repeats.
 4. Client routes with `routes()`: each draws a resource, its document's handle and view.
-5. Server data: `@blueshed/delta`, or your own patch stream. Then tests.
+5. Server data: `@blueshed/delta`, or your own patch stream. Then type-check with `bun check` (Bun's own: nothing to install, never `tsc`), and test.
 
 ## What bites
 

@@ -39,12 +39,14 @@ Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/rai
 script), its own `index.css`, and `app.tsx`, which calls `routes()` rather than `mount()`.
 
 - `mount()` opens the page's dispose scope. A bare `.append(<Page />)` works but leaves top-level `when()`/`list()` undisposable (railroad warns). For an interactive page prefer `routes(root, { "/": () => <Page /> })`: navigation, params and scopes come with it.
-- **js / ts** mode, plain DOM:
+- **js / ts** mode, plain DOM. `export {};` makes the file a module: a script with no `import` or `export` puts its top-level names in the page's global scope, where the DOM's own (`name`, `status`, `top`, `length`) clash with them in `bun check`.
 
   ```ts
+  export {};
+
   const el = document.createElement("div");
   el.innerHTML = `<h1>About</h1><p>Content here</p>`;
-  document.getElementById("root")!.append(el);
+  document.getElementById("root")!.append(el); // in a .js file, without the `!`
   ```
 
 - **tsx-react** mode: `import { createRoot } from "react-dom/client";` then `createRoot(document.getElementById("root")!).render(<Page />);`.

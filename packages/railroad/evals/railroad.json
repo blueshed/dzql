@@ -35,7 +35,7 @@
       "The loading message is when()'s falsy branch, not a fallback prop",
       "The branch is handed the settled result as its fields: it handles the error case (\"error\" in r) before reading r.value, a signal it binds or reads once (r.value.peek()); it never reads r$.peek() or r$.map(...)",
       "No effect(async () => ...); any async work started from an effect writes its result to a signal",
-      "The /posts/:id route is a plain synchronous handler taking ({ id }) and returning when(resolved(...)), keyed by default, so going to /posts/2 loads post 2; not { keyed: false }",
+      "The /posts/:id route is a plain synchronous handler taking ({ id }) and returning when(resolved(...)), directly or through a component that returns it (({ id }) => <Post id={id} />), keyed by default, so going to /posts/2 loads post 2; not { keyed: false }",
       "Writes no async component or handler (and no thunk or fallback prop), no { keyed: true } (the default), and reads no params$ to refetch"
     ]
   }
