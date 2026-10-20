@@ -238,6 +238,36 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   sentence. `validateOps` (`dzql/postgres`) says a row's id as a field, a row id past 2^53 - 1 and
   a parent key that is no id as `delta_apply` now does.
 
+- **The last refusals worded otherwise on Postgres are worded as delta's SQLite words them** (20
+  October, root #135). A write that would hand its row away was `post:1: that would take it out of
+  your reach`; it is `post:1: that would take it out of your reach (its owns: @author_id)`, the
+  path from `_delta_docs.owns` (a new column, compiled into `_delta_find_doc`: lookups' snapshot
+  updated); where row-level security refuses the row first (a role it holds), the listener says
+  the same in place of `new row violates row-level security policy for table "posts"`. A parent key
+  given as text that is no number was the cast's `invalid input syntax for type bigint: "x"`; it is
+  `weddings "x" names no row: an id is a whole number` (`_delta_parent_id`, asked where the key was
+  cast). A row id that is no number was `row id "x" in /courses/x is not a number: ...`; it is
+  `/courses/x: Row id "x" is not a number: Postgres mints row ids -- add to /courses/- and read the
+  id from the echo`, after the op's path as every refusal is. Found by comparing every refusal
+  delta's case suites raise, SQLite against PGlite and the server, and the law's words: a document
+  opened whose root is not there was `Not found`; it is `Not found: no households row 99. Make the
+  row first, or declare the document implied: true`. A name's boolean or json value its column
+  cannot take was the cast's (`invalid input syntax for type boolean: "maybe"`, `... for type
+  json`); the compiled scope asks it (`scopeOf`), `kept must be a boolean (true/false, yes/no,
+  on/off, 1/0, or a prefix), not "maybe"` and `wishes must be JSON, not "abc"`, so the told
+  function refuses such a name as it refused an integer's (opens', resolve's, scope's, root's,
+  holds', holders', ledger's and told's snapshots updated). A time off the calendar was the cast's
+  `date/time field value out of range: "2021-02-30"`; it is `/slots/-/starts: starts must be an
+  ISO-8601 time` (`_delta_on_calendar`, in `_delta_assert_fields_declared` and compileColumns'
+  checks: columns' snapshot updated). `validateOps` (`dzql/postgres`) says each as `delta_apply`
+  does: a whole collection (`Whole-collection ops are not supported: remove /courses`) and an add
+  or remove of a single document's root (`Root supports replace only`) were `Invalid op: ...`; a
+  parent key's text, `names no row` once the value is otherwise right (and not where the document
+  gives it), was `weddings_id must be an id: an integer`; a year 0000 is no time (Postgres has no
+  year 0). `tests/delta-pg/path-pglite.test.ts` asks that every 400 is `delta_apply`'s sentence.
+  The codes are as they were. Left, and opened as root #136: a zone past ±15:59, which Postgres
+  cannot keep (a 500) and SQLite does, and a year 0000.
+
 - **A document's refusals, and an op wrong in several ways, are worded as delta's SQLite words
   them** (20 October, root #134). A row the document does not hold was `row not found:
   case_messages/404` (and `root row not found: case_rooms` for a single document's root gone

@@ -20,7 +20,7 @@
  *   version; and a few copies opened again from the writing server, while the
  *   other watcher holds them, read the same: a copy the server keeps that has
  *   gone stale is found;
- * - across backends, the same answers (an error's code; a write's ops; a walk's
+ * - across backends, the same answers (an error's code and words; a write's ops; a walk's
  *   ops and conflict), the same told to each watcher, and the same documents.
  *
  * A failure names its seed and step; `DELTA_LAW_SEED=<seed>` runs that seed
@@ -355,13 +355,13 @@ function stepOf(r: ReturnType<typeof random>, k: Known, last: Step | undefined):
 
 const meOf = (name: string) => people.find((p) => p.name === name)!.me;
 
-/** What a step answers, as every backend must answer it alike: a code, or the ops a write applied or a walk took and its conflict. */
+/** What a step answers, as every backend must answer it alike: a refusal, its code and its words, or the ops a write applied or a walk took and its conflict. */
 async function take(p: Place, step: Step): Promise<unknown> {
   const as = p.as(meOf(step.cursor));
   const res = step.kind === "delta"
     ? await as.call("delta", { doc: step.doc, ops: step.ops, cursor: step.cursor, inverse: true })
     : await as.call(step.kind, { cursor: step.cursor });
-  if (res.error) return res.error.code >= 500 ? res.error : { code: res.error.code };   // the server's own: its message says why
+  if (res.error) return res.error;   // the whole sentence, on every backend (root #135)
   if (res.result === null) return null;
   return { ops: res.result.ops, conflict: res.result.conflict };
 }

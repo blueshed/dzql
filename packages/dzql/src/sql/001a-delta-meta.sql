@@ -30,6 +30,10 @@ ALTER TABLE _delta_docs ADD COLUMN IF NOT EXISTS implied BOOLEAN NOT NULL DEFAUL
 -- collection not named, whole. It is opened, told and written by those alone.
 ALTER TABLE _delta_docs ADD COLUMN IF NOT EXISTS held JSONB NOT NULL DEFAULT '{}';
 
+-- A document's owns as a path, as delta writes it: what a write that would
+-- hand its row away is told (delta_apply, _delta_keeps_reach).
+ALTER TABLE _delta_docs ADD COLUMN IF NOT EXISTS owns TEXT;
+
 -- Each document and collection is compiled by generateSql: these generic
 -- forms, made by earlier versions, are dropped.
 DROP FUNCTION IF EXISTS _delta_collection_framework(text);
@@ -152,17 +156,18 @@ $$;
 
 -- A row id from a path segment. This backend keeps BIGINT ids it mints from
 -- seq_<table>, so anything else is a client error (SQLSTATE 22P02 → 400) that
--- names the fix. So is a number past 2^53 - 1: a row is read out as JSON, and
+-- names the fix, after the op's path (`p_path`, else the row's), as delta says
+-- a refusal. So is a number past 2^53 - 1: a row is read out as JSON, and
 -- no JavaScript number holds such an id exactly, so the row would be told under
--- another (the SQLite backend refuses it too, in these words, after the op's
--- path: `p_path`, else the row's). Digits name their number, however many there are ("007" is 7).
+-- another (the SQLite backend refuses it too, in these words). Digits name
+-- their number, however many there are ("007" is 7).
 DROP FUNCTION IF EXISTS _delta_row_id(text, text);   -- its first form named no op's path
 CREATE OR REPLACE FUNCTION _delta_row_id(p_collection TEXT, p_segment TEXT, p_path TEXT DEFAULT NULL)
 RETURNS bigint LANGUAGE plpgsql IMMUTABLE AS $$
 BEGIN
   IF p_segment IS NULL OR p_segment !~ '^[0-9]+$' THEN
-    RAISE EXCEPTION 'row id "%" in /%/% is not a number: Postgres mints row ids -- add to /%/- and read the id from the echo',
-      p_segment, p_collection, p_segment, p_collection
+    RAISE EXCEPTION '%: Row id "%" is not a number: Postgres mints row ids -- add to % and read the id from the echo',
+      COALESCE(p_path, _delta_build_path(p_collection, p_segment)), p_segment, _delta_build_path(p_collection, '-')
       USING ERRCODE = '22P02';
   END IF;
   IF p_segment::numeric > 9007199254740991 THEN
@@ -172,6 +177,18 @@ BEGIN
   END IF;
   RETURN p_segment::bigint;
 END;
+$$;
+
+-- Is the day a time begins with (YYYY-MM-DD) one the calendar has: a month of
+-- the year, a day of the month, in a year from 1 -- as delta's isIsoTime asks
+-- it, so a time it refuses is refused in its words, not by the cast (22008).
+CREATE OR REPLACE FUNCTION _delta_on_calendar(p_time TEXT)
+RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
+  SELECT COALESCE(y >= 1 AND m BETWEEN 1 AND 12 AND d BETWEEN 1 AND CASE
+    WHEN m = 2 THEN CASE WHEN (y % 4 = 0 AND y % 100 <> 0) OR y % 400 = 0 THEN 29 ELSE 28 END
+    WHEN m IN (4, 6, 9, 11) THEN 30 ELSE 31 END, FALSE)
+    FROM (SELECT v[1]::int AS y, v[2]::int AS m, v[3]::int AS d
+            FROM regexp_match(p_time, '^(\d{4})-(\d{2})-(\d{2})') AS v) AS day;
 $$;
 
 -- Refuse a value that is not an object, names a field the collection does
@@ -224,8 +241,9 @@ BEGIN
           WHEN 'integer' THEN jsonb_typeof(val) = 'number' AND val::text::numeric = trunc(val::text::numeric)
           WHEN 'real' THEN jsonb_typeof(val) = 'number'
           WHEN 'boolean' THEN jsonb_typeof(val) = 'boolean'
-          -- ISO-8601, as isIsoTime (src/postgres/schema.ts) reads it; a day off the calendar is refused by the cast (22008, 400)
+          -- ISO-8601, as delta's isIsoTime reads it: a day the calendar has (_delta_on_calendar)
           WHEN 'timestamptz' THEN jsonb_typeof(val) = 'string' AND (val #>> '{}') ~ '^\d{4}-\d{2}-\d{2}([T ]([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,6})?)?(Z|[+-]([01]\d|2[0-3])(:?[0-5]\d)?)?)?$'
+            AND _delta_on_calendar(val #>> '{}')
           ELSE TRUE END THEN NULL
         ELSE k || ' must be ' || CASE c->>'type' WHEN 'text' THEN 'a string' WHEN 'integer' THEN 'an integer'
           WHEN 'real' THEN 'a number' WHEN 'boolean' THEN 'a boolean' ELSE 'an ISO-8601 time' END

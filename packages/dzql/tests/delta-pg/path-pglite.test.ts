@@ -238,6 +238,20 @@ describe("pglite: validateOps answers as delta_apply does", () => {
     ["fo-slim:1", { op: "add", path: "/seats/-", value: { table_no: 2 } }],
     ["fo-seats-kept:1", { op: "add", path: "/seats/-", value: { weddings_id: 1, table_no: 4 } }],
     ["fo-seats-wished:5", { op: "add", path: "/seats/-", value: { weddings_id: 1, table_no: 4, kept: false } }],
+    // a parent key that is text and no number (todo #135): it names no row, where it is not given by the document
+    ["fo-all-courses:", { op: "add", path: "/courses/-", value: { name: "x", weddings_id: "abc" } }],
+    ["fo-board:1", { op: "add", path: "/courses/-", value: { name: "x", weddings_id: "abc" } }],
+    ["fo-board:1", { op: "add", path: "/drinks/-", value: { name: "x", courses_id: "abc" } }],
+    ["fo-board:1", { op: "replace", path: "/households/1", value: { email: "q@x", weddings_id: "abc" } }],
+    ["fo-board:1", { op: "replace", path: "/households/1", value: { nope: 1, weddings_id: "abc" } }],
+    ["fo-household:1", { op: "replace", path: "/households", value: { email: "q@x", weddings_id: "abc" } }],
+    ["fo-household:1", { op: "replace", path: "/households/weddings_id", value: " 1 " }],
+    ["fo-household:1", { op: "replace", path: "/households/weddings_id", value: "abc" }],
+    // a time the calendar has not
+    ["fo-slots-of:1", { op: "add", path: "/slots/-", value: { starts: "2021-02-30" } }],
+    ["fo-slots-of:1", { op: "add", path: "/slots/-", value: { starts: "2020-02-29T10:00:00Z" } }],
+    ["fo-slots-of:1", { op: "add", path: "/slots/-", value: { starts: "2021-13-01" } }],
+    ["fo-slots-of:1", { op: "add", path: "/slots/-", value: { starts: "0000-01-01" } }],
   ];
   const WIRE: Record<string, number> = { "22023": 400, "22P02": 400, "23502": 400, P0002: 404, "23505": 409 };
 
@@ -257,11 +271,13 @@ describe("pglite: validateOps answers as delta_apply does", () => {
     }
     expect(answers.filter((a) => a.database === 500)).toEqual([]);
     expect(answers.filter((a) => (a.ahead.length > 0) !== (a.database === 400))).toEqual([]);
-    // and in the same words (todo #134): a value's refusals, every one, the whole sentence (each after its path);
-    // a single document's other root, the sentence alone, as delta's SQLite says it
-    const worded = answers.filter((a) => a.database === 400 && /Unknown field|must be|cannot be null|Required field missing|alone: add another/.test(a.told!));
-    expect(worded.length).toBeGreaterThan(20);
-    expect(worded.filter((a) => (/alone: add another/.test(a.told!) ? a.ahead.join("; ") : a.said) !== a.told)).toEqual([]);
+    // and in the same words (todo #134, #135): every refusal, the whole sentence, each after its path; a path
+    // that is no pointer, a single document's other root and a parent key that names no row, the sentence alone,
+    // as delta's SQLite says each
+    const alone = /^Invalid JSON Pointer|alone: add another|names no row/;
+    const worded = answers.filter((a) => a.database === 400);
+    expect(worded.length).toBeGreaterThan(40);
+    expect(worded.filter((a) => (alone.test(a.told!) ? a.ahead.join("; ") : a.said) !== a.told)).toEqual([]);
   }, 30_000);   // many PGlite round trips: past bun's 5s default on a loaded machine
 });
 

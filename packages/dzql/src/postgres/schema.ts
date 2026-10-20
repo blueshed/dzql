@@ -93,15 +93,14 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
     const fieldErr = (field: string, v: unknown): string | null => {
       if (field === fk) {
         if (v === null || v === undefined) return `${field} cannot be null`;
-        if (typeof v !== "string") return Number.isInteger(v) ? null : `${field} must be an id: an integer, or text`;   // delta's words, as delta_apply says them
-        return /^\s*[+-]?\d+\s*$/.test(v) ? null : `${field} must be an id: an integer`;   // text the column cannot cast, which delta_apply leaves to the cast
+        return typeof v === "string" || Number.isInteger(v) ? null : `${field} must be an id: an integer, or text`;   // delta's words, as delta_apply says them
       }
       const col = Object.hasOwn(table.columns, field) ? table.columns[field]! : undefined;
       if (!col || v === null || v === undefined) return col && !col.nullable && v === null ? `${field} cannot be null` : null;
       // a value of its column's type, not cast (_delta_assert_fields)
       const of: Record<string, [boolean, string]> = {
         text: [typeof v === "string", "a string"], integer: [Number.isInteger(v), "an integer"], real: [typeof v === "number", "a number"],
-        boolean: [typeof v === "boolean", "a boolean"], timestamptz: [isIsoTime(v) || v instanceof Date, "an ISO-8601 time"],
+        boolean: [typeof v === "boolean", "a boolean"], timestamptz: [(isIsoTime(v) && !String(v).startsWith("0000")) || v instanceof Date, "an ISO-8601 time"],   // Postgres has no year 0 (_delta_on_calendar)
       };
       const [ok, what] = of[col.type] ?? [true, ""];
       return ok ? null : `${field} must be ${what}`;
@@ -129,20 +128,33 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
         }
       }
     };
+    // A parent key given as text that is no whole number names no row: told once the value is
+    // otherwise as it may be written, the sentence alone (_delta_parent_id, as delta's SQLite says it).
+    const noRow = (row: Record<string, unknown>) => {
+      const v = fk === undefined ? undefined : row[fk];
+      if (typeof v === "string" && !/^\s*[+-]?\d+\s*$/.test(v)) fail(`${table.parent!.collection} "${v}" names no row: an id is a whole number`);
+    };
     // A row's id, as the path names it: the number its digits name, up to 2^53 - 1 (_delta_row_id).
     const idErr = (seg: string): string | null =>
-      !/^[0-9]+$/.test(seg) ? `Row id "${seg}" in ${op.path} is not a number: Postgres mints row ids -- add to ${joinPath(collKey, "-")} and read the id from the echo`
+      !/^[0-9]+$/.test(seg) ? `Row id "${seg}" is not a number: Postgres mints row ids -- add to ${joinPath(collKey, "-")} and read the id from the echo`
       : pastSafeId(seg) ? `Row id ${seg} is past 2^53 - 1, which no number holds exactly -- add to ${joinPath(collKey, "-")} and read the id from the echo`
       : null;
+
+    // `/<coll>` is a single document's root row, replaced whole, and nothing else (as delta_apply,
+    // in delta's words): given no mode, the root's is taken as a single document's
+    if (parts.length === 1 && (opts.list || collKey !== def.root)) { fail(`Whole-collection ops are not supported: ${op.op} ${op.path}`); continue; }
+    if (parts.length === 1 && op.op !== "replace") { fail("Root supports replace only"); continue; }
 
     // A single document's root: `replace /<root>` is the root row, whole, and
     // `replace /<root>/<field>` (a segment that is not an id) writes one field
     // -- a column, or the parent key: the row moves (#37).
     if (collKey === def.root && !opts.list && op.op === "replace" && (parts.length === 1 || (parts.length === 2 && !/^\d+$/.test(parts[1]!)))) {
+      const before = errors.length;
       if (parts[1] === "id") fail("Unknown field: id");   // a row keeps the id its path names
       else if (parts.length === 2) rowErrs({ [parts[1]!]: value }, "replace", false);
       else if (!isObject) fail("Replace value must be an object");
       else { rowErrs(value, "replace"); required(value); }
+      if (errors.length === before) noRow(parts.length === 2 ? { [parts[1]!]: value } : value);
       continue;
     }
 
@@ -170,7 +182,10 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
         fail(`${docName ?? `${def.prefix}<id>`} holds ${collKey} ${id} alone: add another ${collKey} row through a document that lists them`);
         continue;
       }
-      if (seg !== "-" && !digits) fail(idErr(seg)!);
+      if (seg !== "-" && !digits) { fail(idErr(seg)!); continue; }
+      // a single document's own child is given its root's id, and a list's root row its scope's, whatever the value says
+      const given = opts.list === false ? table.parent?.collection === def.root && collKey !== def.root : !!opts.list && collKey === def.root && fk !== undefined && opts.values?.[fk] !== undefined;
+      if (!given) noRow(value);
       continue;
     }
     const idError = idErr(parts[1]!);
@@ -181,11 +196,14 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
       if (!known(field) || field === "id") { fail(`Unknown field: ${field}`); continue; }   // a row keeps the id its path names
       const err = fieldErr(field, value);
       if (err) fail(err);
+      else noRow({ [field]: value });
       continue;
     }
     if (!isObject) { fail("Replace value must be an object"); continue; }
+    const before = errors.length;
     rowErrs(value, "replace");
     required(value);
+    if (errors.length === before) noRow(value);
   }
   return errors;
 }

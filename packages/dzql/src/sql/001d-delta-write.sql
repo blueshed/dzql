@@ -175,6 +175,22 @@ CREATE OR REPLACE FUNCTION _delta_row_there(p_collection_key TEXT, p_id BIGINT)
 RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT FALSE; $$;
 
 -- ---------------------------------------------------------------------------
+-- _delta_parent_id: a parent key's value, written, as the id it names: a whole
+-- number. Text that is none names no row, as delta's SQLite says it (22P02,
+-- 400), before it would be cast; NULL stays NULL.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _delta_parent_id(p_parent TEXT, p_key TEXT)
+RETURNS BIGINT LANGUAGE plpgsql IMMUTABLE AS $$
+BEGIN
+  IF p_key !~ '^\s*[+-]?[0-9]+\s*$' THEN
+    RAISE EXCEPTION '% "%" names no row: an id is a whole number', p_parent, p_key USING ERRCODE = '22P02';
+  END IF;
+  RETURN p_key::BIGINT;
+END;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- _delta_assert_parent_held: a parent key written (in `p_value`, over the row
 -- as it is, `p_row`) moves the row, and only under a parent the document holds,
 -- as an add names one: through it, a row is never moved into another
@@ -189,7 +205,7 @@ RETURNS void AS $$
 BEGIN
   IF p_parent_fk IS NOT NULL
      AND jsonb_typeof(p_value->p_parent_fk) IN ('number', 'string')
-     AND (p_value->>p_parent_fk)::BIGINT IS DISTINCT FROM (p_row->>p_parent_fk)::BIGINT
+     AND _delta_parent_id(p_parent, p_value->>p_parent_fk) IS DISTINCT FROM (p_row->>p_parent_fk)::BIGINT
      AND (NOT _delta_row_in_scope(p_def, p_doc_name, p_parent, (p_value->>p_parent_fk)::BIGINT)
           OR NOT _delta_row_there(p_parent, (p_value->>p_parent_fk)::BIGINT)) THEN
     RAISE EXCEPTION 'Row not found: %/%', p_parent, p_value->>p_parent_fk
@@ -623,14 +639,14 @@ BEGIN
                             AND v_coll_key IS DISTINCT FROM v_def.root_collection))
          AND NOT _delta_row_in_scope(
                v_def, p_doc_name, v_coll.parent_collection,
-               (v_new_row->>v_coll.parent_fk)::BIGINT) THEN
+               _delta_parent_id(v_coll.parent_collection, v_new_row->>v_coll.parent_fk)) THEN
         RAISE EXCEPTION 'Row not found: %/%',
           v_coll.parent_collection, COALESCE(v_new_row->>v_coll.parent_fk, '')
           USING ERRCODE = 'P0002';
       END IF;
       -- ... and whatever the document, the parent it names must be there (a list names it only by key)
       IF v_coll.parent_fk IS NOT NULL AND v_new_row->>v_coll.parent_fk IS NOT NULL
-         AND NOT _delta_row_there(v_coll.parent_collection, (v_new_row->>v_coll.parent_fk)::BIGINT) THEN
+         AND NOT _delta_row_there(v_coll.parent_collection, _delta_parent_id(v_coll.parent_collection, v_new_row->>v_coll.parent_fk)) THEN
         RAISE EXCEPTION 'Row not found: %/%', v_coll.parent_collection, v_new_row->>v_coll.parent_fk
           USING ERRCODE = 'P0002';
       END IF;
@@ -640,7 +656,7 @@ BEGIN
       -- the document holds no parent of its root.
       IF NOT v_is_list AND v_coll_key = v_def.root_collection AND v_coll.parent_fk IS NOT NULL
          AND v_root_was IS NOT NULL
-         AND (v_new_row->>v_coll.parent_fk)::BIGINT IS DISTINCT FROM (v_root_was->>v_coll.parent_fk)::BIGINT THEN
+         AND _delta_parent_id(v_coll.parent_collection, v_new_row->>v_coll.parent_fk) IS DISTINCT FROM (v_root_was->>v_coll.parent_fk)::BIGINT THEN
         RAISE EXCEPTION 'Row not found: %/%',
           v_coll.parent_collection, COALESCE(v_new_row->>v_coll.parent_fk, '')
           USING ERRCODE = 'P0002';
@@ -844,9 +860,10 @@ BEGIN
   -- written, so an undo walks back exactly what was done -- and so does the
   -- writer's entry in the log, once, for the custom documents.
   -- A write through a document whose owns is a path leaves it reaching the writer, or its row
-  -- gone: a row is never handed away (403; compiled per document, _delta_keeps_reach).
+  -- gone: a row is never handed away (403; compiled per document, _delta_keeps_reach), in
+  -- delta's words, its path with them.
   IF NOT _delta_keeps_reach(v_def, p_doc_name) THEN
-    RAISE EXCEPTION '%: that would take it out of your reach', p_doc_name USING ERRCODE = '42501';
+    RAISE EXCEPTION '%: that would take it out of your reach (its owns: %)', p_doc_name, v_def.owns USING ERRCODE = '42501';
   END IF;
   v_version := _delta_tell(p_doc_name, v_touched, v_broadcast_ops);
 

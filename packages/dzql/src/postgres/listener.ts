@@ -76,11 +76,16 @@ async function declaredSchema(pool: Pool): Promise<Schema> {
   }
 }
 
-function errMsg(err: unknown): string {
+function errMsg(err: unknown, doc?: { name: string; owns?: string }): string {
   // a unique constraint the schema says (delta's idx_<table>_unique_<columns>): in delta's words, as SQLite says it
-  const e = err as { code?: unknown; constraint?: string; table?: string; detail?: string } | null;
+  const e = err as { code?: unknown; constraint?: string; table?: string; detail?: string; message?: string } | null;
   const key = e?.code === "23505" && e.constraint?.includes("_unique_") ? /^Key \((.+?)\)=/.exec(e.detail ?? "")?.[1] : undefined;
   if (key) return `Already there: another row has the same ${key.split(", ").map((c) => `${e!.table}.${c}`).join(", ")} (a unique constraint)`;
+  // a row the policies (derived from the paths) refuse as written, through a document whose owns is a path:
+  // the backstop met it before delta_apply's own check could, and it is the same refusal, in delta's words
+  if (e?.code === "42501" && doc?.owns !== undefined && /^new row violates row-level security policy/.test(e.message ?? "")) {
+    return `${doc.name}: that would take it out of your reach (its owns: ${doc.owns})`;
+  }
   return err instanceof Error ? err.message : String(err);
 }
 
@@ -537,7 +542,7 @@ export async function createDocListener<I = unknown>(
         }
         await fn({ docName, type: found.type, ctx: found.ctx, msg, client, respond, identity });
       } catch (err) {
-        const m = errMsg(err);
+        const m = errMsg(err, { name: docName, owns: found.type.def?.owns });
         log.error(`${label} failed: ${m}`);
         respond({ error: { code: wireCode(err), message: m } });
       }
@@ -606,7 +611,8 @@ export async function createDocListener<I = unknown>(
         result = await type.open(ctx, docName, msg, identity);
         if (holds.get(docName) === held) break;
       }
-      if (!result) return respond({ error: NOT_FOUND });
+      // a document whose root row is not there, in delta's words (a name the identity does not own was refused above, as not there)
+      if (!result) return respond({ error: type.def ? { code: 404, message: `Not found: no ${type.def.root} row ${docName.slice(type.prefix.length)}. Make the row first, or declare the document implied: true` } : NOT_FOUND });
 
       pruneDoc(docName);
       let state = tracked.get(docName);

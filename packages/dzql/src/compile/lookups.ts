@@ -78,7 +78,7 @@ ${searchPath("_delta_serial_past(text, bigint)")}`;
 RETURNS _delta_docs AS $$
 BEGIN
 ${byLength.map((d) => {
-    const row = { prefix: d.prefix, root_collection: d.root, include: d.include, scope: d.scope, implied: !!d.implied, held: d.columns ?? {} };
+    const row = { prefix: d.prefix, root_collection: d.root, include: d.include, scope: d.scope, implied: !!d.implied, held: d.columns ?? {}, owns: d.owns };
     return `  IF starts_with(p_doc_name, ${lit(d.prefix)}) THEN RETURN jsonb_populate_record(null::_delta_docs, ${lit(JSON.stringify(row))}::jsonb); END IF;`;
   }).join("\n")}
   RETURN NULL;   -- a name no document holds
