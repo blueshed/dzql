@@ -2,8 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createLocal } from "../src/server/local";
 import { createTables, defineCustomDoc, defineDoc, defineSchema, inverseOf, registerDocs } from "../src/server/sqlite";
-import { registerDoc } from "../src/server/server";
+import { registerDocs as registerJson } from "../src/server/json";
 import { registerMemory } from "../src/server/kinds";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { applyOps, type DeltaOp } from "../src/core";
 import { setLogLevel } from "../src/server/logger";
 
@@ -49,16 +52,16 @@ describe("createLocal", () => {
     expect((await local.call("open", { doc: "nobody:1" })).error).toEqual({ code: 404, message: "No handler matched: open" });
   });
 
-  test("a handler that throws is answered with its code, as a socket answers it, never a rejection: the free-form document's 404", async () => {
-    const file = `/tmp/delta-local-throws-${Date.now()}.json`;
+  test("a handler that throws is answered with its code, as a socket answers it, never a rejection: applyOps' 404 and 400", async () => {
     const local = createLocal();
-    await registerDoc(local.server, "free", { file, empty: { a: { x: 1 } } as any });
-    expect((await local.call("delta", { doc: "free", ops: [{ op: "replace", path: "/nope", value: 1 }] })).error)
+    const doc = { a: { x: 1 } };
+    local.server.on("delta", (msg, _c, respond) => { applyOps(doc, msg.ops); respond({ result: { ack: true } }); });   // throws as applyOps refuses
+    expect((await local.call("delta", { ops: [{ op: "replace", path: "/nope", value: 1 }] })).error)
       .toEqual({ code: 404, message: 'Path not found: "/nope" is not there to replace' });
-    expect((await local.call("delta", { doc: "free", ops: [{ op: "move", from: "/a", path: "/b" }] })).error?.code).toBe(400);
+    expect((await local.call("delta", { ops: [{ op: "move", from: "/a", path: "/b" }] })).error?.code).toBe(400);
+    expect(doc).toEqual({ a: { x: 1 } });
     local.server.on("boom", () => { throw new Error("kaboom"); });
     expect((await local.call("boom", {})).error).toEqual({ code: 500, message: "kaboom" });
-    try { (await import("node:fs")).unlinkSync(file); } catch {}
   });
 
   test("a handler that answers after an await is waited for", async () => {
@@ -155,13 +158,20 @@ describe("in process, an answer is the caller's own, as over the socket", () => 
     expect(JSON.stringify((await local.call("open", { doc })).result)).not.toContain("MUTATED");
   }
 
-  test("the JSON file (registerDoc)", async () => {
-    const file = `/tmp/delta-local-own-${Date.now()}.json`;
-    const local = createLocal();
-    await registerDoc(local.server, "chat:room", { file, empty: { messages: { m1: { text: "hi" }, m2: { text: "yo" } } as Record<string, any>, title: "t" } });
-    await ownAnswer(local, "chat:room", [{ op: "replace", path: "/messages/m1/text", value: "edited" }, { op: "remove", path: "/messages/m2" }],
-      (kept) => { kept.messages.m1.text = "MUTATED"; kept.title = "MUTATED"; });
-    try { (await import("node:fs")).unlinkSync(file); } catch {}
+  test("the JSON file", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "delta-local-own-"));
+    try {
+      const local = createLocal();
+      const store = registerJson(local.server, join(dir, "data.json"), schema, [room]);
+      await local.call("open", { doc: "room:1" });
+      const made = await local.call("delta", { doc: "room:1", ops: [{ op: "replace", path: "/rooms/topic", value: "t" }, { op: "add", path: "/messages/-", value: { text: "hi" } }, { op: "add", path: "/messages/-", value: { text: "yo" } }] });
+      expect(made.error).toBeUndefined();
+      await ownAnswer(local, "room:1", [{ op: "replace", path: "/messages/1/text", value: "edited" }, { op: "remove", path: "/messages/2" }],
+        (kept) => { kept.messages[1].text = "MUTATED"; kept.rooms.topic = "MUTATED"; });
+      await store.persisted();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test("a memory document, and what peek gives", async () => {

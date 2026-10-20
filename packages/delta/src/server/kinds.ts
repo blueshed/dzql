@@ -97,7 +97,7 @@ export function registerMemory<T>(ws: WsServer, options: MemoryOptions<T>) {
     const next = structuredClone(d.value);
     let ops: DeltaOp[];
     try {
-      ops = mintIds(next, msg.ops as DeltaOp[]); // add /<coll>/- names the row (a uuid), as the free-form document does
+      ops = mintIds(next, msg.ops as DeltaOp[]); // add /<coll>/- names the row (a uuid), as a stored document's names it (a serial)
       applyOps(next, ops);
     } catch (err: any) {
       // the code applyOps gives it (404 not there, 400 malformed), as every backend answers; else malformed

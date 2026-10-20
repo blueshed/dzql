@@ -8,6 +8,10 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **The realtime reference keeps its board in delta's JSON file** (20 October): the server is
+  `registerDocs` from `@blueshed/delta/json` with a schema (`defineSchema`, `defineDoc`), and a new
+  card is `add /cards/-`, named by the server. delta has no free-form document any more.
+
 - **The README installs the skills one way** (20 October): `bunx @blueshed/delta install-skills`,
   as every blueshed package does, in place of copying the folders by hand.
 

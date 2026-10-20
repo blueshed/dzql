@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- **The free-form document is gone: delta keeps three stores and its kinds** (20 October, Peter's
+  word on root todo #37). `registerDoc` (`@blueshed/delta/server`), with its `DocHandle` and
+  `DocOptions`, was a fourth store: no schema, uuid ids, a JSON file of its own, off the path to
+  SQLite and Postgres. A document is kept in the JSON file, SQLite or dzql's Postgres, each with a
+  schema, or it is a kind (memory, source, static). **To move across**, a free-form document
+  becomes a JSON file document with a schema: say its rows with `defineSchema` and what someone
+  has open with `defineDoc`, and register them with `registerDocs` from `@blueshed/delta/json`:
+
+  ```ts
+  // was: await registerDoc(ws, "board:1", { file: "./board.json", empty: { cards: {} } });
+  import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/json";
+  const schema = defineSchema({
+    boards: { columns: { name: "text?" } },
+    cards: { parent: "boards", columns: { title: "text" } },
+  });
+  registerDocs(ws, "./board.json", schema, [defineDoc("board:", { root: "boards", include: ["cards"], implied: true })]);
+  ```
+
+  Paths become a table's (`/cards/<id>`, a new row `add /cards/-`, its id a serial the server
+  names); what `accept` refused, the schema refuses (400: a column it does not declare, a value
+  of the wrong type). The old file's values are moved by hand, or by `importTables` from
+  `@blueshed/delta/json` once they are rows. `applyAndBroadcast` and `getDoc` have no
+  replacement on the server: a write from the server is a `delta` like any other (`createLocal()`
+  in process), and a read is an `open`.
+- **`normalizeForBroadcast` is gone** (`@blueshed/delta/server`): no document had broadcast whole
+  rows since 0.13, and nothing used it. No replacement.
+- **Named snapshots are gone**: `createSnapshot` and `resolveSnapshot` (`@blueshed/delta/sqlite`),
+  with the `_snapshots` table they made. Nothing used them. No replacement: `loadDocAt` and
+  `open_at` take the time itself. A database that has a `_snapshots` table keeps it, unread; drop
+  it when you like.
+
 ### Fixed
 
 - **`install-skills` in development installs railroad's skill from railroad** (20 October): delta's

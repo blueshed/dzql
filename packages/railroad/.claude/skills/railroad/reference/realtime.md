@@ -50,17 +50,24 @@ function Board() {
   ), () => <p>loading…</p>);
 }
 
-await doc.send([{ op: "add", path: "/cards/7", value: { id: 7, title: "new card" } }]);
+await doc.send([{ op: "add", path: "/cards/-", value: { title: "new card" } }]);   // the server names it
 ```
 
 ```ts
-// server.ts: delta's one server hosts the page and the socket
+// server.ts: delta's one server hosts the page and the socket; the boards are kept in a JSON file
 import home from "./index.html";
-import { createWs, registerDoc } from "@blueshed/delta/server";
+import { createWs } from "@blueshed/delta/server";
+import { defineDoc, defineSchema, registerDocs } from "@blueshed/delta/json";
 import { run, serve } from "@blueshed/delta/serve";
 
+const schema = defineSchema({
+  boards: { columns: { name: "text?" } },
+  cards: { parent: "boards", columns: { title: "text" } },
+});
+const board = defineDoc("board:", { root: "boards", include: ["cards"], implied: true });
+
 const ws = createWs();
-await registerDoc(ws, "board:1", { file: "./board.json", empty: { cards: {} } });
+registerDocs(ws, "./board.json", schema, [board]);
 await run(() => serve({ ws, routes: { "/": home } }));
 ```
 

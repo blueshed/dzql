@@ -6,6 +6,14 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### delta keeps three stores and its kinds (20 October, #37, delta's part)
+
+- **The free-form document is gone** (`registerDoc`, breaking): a document is kept in the JSON
+  file, SQLite or dzql's Postgres, each with a schema, or it is a kind. railroad's realtime
+  reference and paintbrush's evaluations now show the JSON file's `registerDocs`. Two exports
+  nothing used go with it: `normalizeForBroadcast` and the named snapshots (`createSnapshot`,
+  `resolveSnapshot`). delta's CHANGELOG says how to move across.
+
 ### The Bun, the hook and the root's statements, said once (20 October)
 
 - **/publish moves the sibling ranges `scripts/ranges.ts` names** (#78), rather than a list kept by

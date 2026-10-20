@@ -1,4 +1,4 @@
-# Documents not kept in tables: memory, source, static, free-form
+# Documents not kept in tables: memory, source, static
 
 From `tests/kinds.test.ts`: who is here, live, written by the server.
 
@@ -11,9 +11,9 @@ here.peek("here:general");                            // { people: { p1: "Ada" }
 ```
 
 Options and handles: `MemoryOptions`, `SourceOptions`, `StaticOptions`, `Sourced` in
-`src/server/kinds.ts` (`@blueshed/delta/kinds`); `DocOptions` in `src/server/server.ts` for the
-free-form document. Each registers a prefix on any `WsServer` and the browser opens it like any
-document.
+`src/server/kinds.ts` (`@blueshed/delta/kinds`). Each registers a prefix on any `WsServer` and the
+browser opens it like any document. A document kept in a file is the JSON file's, with a schema
+(`backends.md`): settings, a scratchpad, one row of a table.
 
 ## Memory: the truth is this process
 
@@ -42,15 +42,3 @@ const reactor = registerSource(ws, { prefix: "reactor:", read: async (id) => rea
 
 `registerStatic(ws, { prefix: "units:", value: (id) => UNITS[id] })`: undefined is 404. The
 value must be an object; open answers it spread with `_v: 1`. Every write is 403.
-
-## Free-form: one JSON value in a file
-
-`await registerDoc(ws, "notes", { file, empty: { lines: {} } })` (`@blueshed/delta/server`): a
-single typed document with no schema (settings, a scratchpad).
-
-- Not on the moving-on path: no schema, no `exportTables`, uuid ids for `add /<coll>/-`.
-- Saved whole or not at all (a temp file beside it, renamed); a file there but not JSON is
-  refused at start, naming it.
-- Broadcasts carry no `v`; `inverse: true` answers `{ ack, ops }`.
-- `accept: (op) => true | false | reason` takes or refuses each op before any is applied: one it
-  does not take refuses the whole write, 400 with that reason. An empty write writes nothing.

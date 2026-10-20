@@ -85,7 +85,7 @@ exact version, or the setup stops reading it).
 - **A holder is told what changed**: a row that arrives whole (`add`), one that leaves
   (`remove`), and one that stays as a `replace` of each field whose value changed -- the write's,
   a default's, a trigger's -- compared row before and after (`changedFields` in `core.ts`; a
-  membership view in `custom.ts`). A memory or free-form document
+  membership view in `custom.ts`). A memory document
   tells its ops as applied. The client freshens the row a field op lands in (maps kept), so a keyed `list()`
   sees the row as new. A write's answer and ledger entry keep whole rows: they are its record.
 - **A document may hold some columns** (`defineDoc`'s `columns`): it is opened, told
@@ -106,8 +106,11 @@ exact version, or the setup stops reading it).
   `tests/sqlite-isolation.test.ts` pins that nobody else is told.
 - **Rows carry from one backend to the next** with `exportTables` / `importTables` (the same
   `Snapshot` on each): every row, every temporal version, and each sequence, so the next serial
-  follows on. Not the ledger: undo history starts fresh on the next backend. The free-form
-  document (`registerDoc`) is not a table backend: no schema, uuid ids.
+  follows on. Not the ledger: undo history starts fresh on the next backend.
+- **Three stores, and the kinds.** A document is stored in the JSON file, SQLite or dzql's
+  Postgres, each with a schema; or it is a kind (memory, source, static). There is no fourth
+  store, a document with no schema in a file of its own: settings or a scratchpad are a
+  schema's rows in the JSON file.
 - **A walk is guarded**: `planWalk` (`src/server/ledger.ts`) sets back only what an entry
   changed, where the document still holds what it left (and a row it made is removed only if
   nobody has put rows under it); a conflict walks nothing and is recorded as walked -- but for a
@@ -131,7 +134,7 @@ exact version, or the setup stops reading it).
 - `src/client/`: `client.ts` (reconnecting socket with `onConnect`, reactive `openDoc`,
   version-gap resync, `send` after its echo), `dom-ops.ts` (`applyOpsToCollection`). It
   imports railroad's subpaths, never the root barrel.
-- `src/server/server.ts`: `createWs`, the free-form document (`registerDoc`), `WsServer`.
+- `src/server/server.ts`: `createWs`, `registerMethod`, `WsServer`.
 - `src/server/serve.ts` (`./serve`): the one server. `serve` (an app's routes and resources, the
   socket on its path, `/health`, a 404), `run` (the pid file, `bun --hot`, the signals), `stop`
   (`delta stop`), and the `App` contract. An app never writes a `Bun.serve` of its own.
@@ -155,7 +158,7 @@ exact version, or the setup stops reading it).
   is SQLite's `migrate` over it.
 - `src/server/auth-link.ts` (`./auth-link`) and `src/client/auth-link.ts` (`./auth-link/client`):
   link sign-in, a `DeltaAuth` with its routes, a `LinkStore` (`sqliteLinkStore`) and the page's side.
-- `src/server/file.ts`: how `registerDoc` and `./json` keep their file (a save whole or not
+- `src/server/file.ts`: how `./json` keeps its file (a save whole or not
   at all: temp beside the real file, its mode, synced, renamed; stale temps cleared at start).
 - `src/server/local.ts`: `createLocal()`, delta in-process with no socket.
 - `src/server/kinds.ts`: `registerMemory`, `registerStatic`, `registerSource`.

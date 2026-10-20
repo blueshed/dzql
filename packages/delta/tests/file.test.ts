@@ -1,8 +1,8 @@
 /**
- * How the free-form document (`registerDoc`) and the JSON file (`./json`)
- * keep their file: a save is whole or not at all, survives a power cut (the
- * temp and its folder are synced), keeps the file's mode, writes through a
- * symlink to the real file, and a temp a crash left behind is cleared at start.
+ * How the JSON file (`./json`) keeps its file: a save is whole or not at all,
+ * survives a power cut (the temp and its folder are synced), keeps the file's
+ * mode, writes through a symlink to the real file, and a temp a crash left
+ * behind is cleared at start.
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import fs, { chmodSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -11,7 +11,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { clearStaleTemps, writeFileAtomic, writeFileAtomicSync } from "../src/server/file";
 import { createLocal } from "../src/server/local";
-import { registerDoc } from "../src/server/server";
 import { defineSchema, importTables, registerDocs } from "../src/server/json";
 import { setLogLevel } from "../src/server/logger";
 
@@ -121,33 +120,35 @@ describe("a temp a crash left", () => {
     }
   });
 
-  test("registerDoc and the JSON file clear them when they start", async () => {
+  test("the JSON file clears them when it starts", () => {
     const gone = 2 ** 22 + 7;
-    writeFileSync(join(dir, `doc.json.${gone}.1.tmp`), "{");
     writeFileSync(join(dir, `data.json.${gone}.1.tmp`), "{");
-    await registerDoc(createLocal().server, "doc", { file: join(dir, "doc.json"), empty: {} });
     registerDocs(createLocal().server, join(dir, "data.json"), defineSchema({}), []);
     expect(readdirSync(dir)).toEqual([]);
   });
 });
 
-describe("the backends save so", () => {
-  test("registerDoc keeps a 0600 file 0600, and writes through a symlink", async () => {
+describe("the JSON file saves so", () => {
+  test("a write keeps a 0600 file 0600, and writes through a symlink", async () => {
+    const schema = defineSchema({ notes: { columns: { text: "text" }, temporal: false } });
+    const notes = [{ prefix: "notes:", root: "notes", include: [], scope: {} }];
     const f = join(dir, "a.json");
-    writeFileSync(f, '{"x":{}}');
+    writeFileSync(f, "{}");
     chmodSync(f, 0o600);
     const real = join(dir, "real.json");
     const link = join(dir, "link.json");
-    writeFileSync(real, '{"x":{}}');
+    writeFileSync(real, "{}");
     symlinkSync(real, link);
-    const local = createLocal();
-    const a = await registerDoc(local.server, "a", { file: f, empty: { x: {} } as any });
-    const l = await registerDoc(local.server, "l", { file: link, empty: { x: {} } as any });
-    for (const doc of ["a", "l"]) await local.call("delta", { doc, ops: [{ op: "add", path: "/x/k", value: 1 }] });
-    await Promise.all([a.persist(), l.persist()]);
+    for (const file of [f, link]) {
+      const local = createLocal();
+      const store = registerDocs(local.server, file, schema, notes);
+      await local.call("open", { doc: "notes:" });
+      await local.call("delta", { doc: "notes:", ops: [{ op: "add", path: "/notes/-", value: { text: "k" } }] });
+      await store.persisted();
+    }
     expect(mode(f)).toBe("600");
     expect(lstatSync(link).isSymbolicLink()).toBe(true);
-    expect(JSON.parse(readFileSync(real, "utf8"))).toEqual({ x: { k: 1 } });
+    expect(JSON.parse(readFileSync(real, "utf8")).tables.notes).toEqual([{ id: 1, text: "k" }]);
     expect(readdirSync(dir).sort()).toEqual(["a.json", "link.json", "real.json"]);
   });
 
@@ -167,7 +168,7 @@ describe("the backends save so", () => {
 
 describe("nothing to save", () => {
   // an empty write saved the JSON file all the same, making one nobody had written to
-  test("the JSON file: an empty write makes no file, as registerDoc's makes none", async () => {
+  test("the JSON file: an empty write makes no file", async () => {
     const schema = defineSchema({ notes: { columns: { text: "text" }, temporal: false } });
     const file = join(dir, "data.json");
     const local = createLocal();

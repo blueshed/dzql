@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach } from "bun:test";
 import { Database } from "bun:sqlite";
 import {
   defineSchema, defineDoc, createTables, registerDocs,
-  loadDocAt, createSnapshot, resolveSnapshot,
+  loadDocAt,
   migrateSchema, validateOps, importTables,
   type Schema, type DocDef,
 } from "../src/server/sqlite";
@@ -1363,52 +1363,6 @@ describe("loadDocAt", () => {
     // After removal — comment gone
     const doc2 = loadDocAt(db, schema, projectDoc, "p1", "2020-07-01 00:00:00");
     expect(Object.keys(doc2!.comments)).toHaveLength(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Snapshots
-// ---------------------------------------------------------------------------
-
-describe("snapshots", () => {
-  test("create and resolve snapshot", () => {
-    const db = new Database(":memory:");
-    const ts = createSnapshot(db, "release-v1", "2020-06-15 12:00:00");
-    expect(ts).toBe("2020-06-15 12:00:00");
-
-    const resolved = resolveSnapshot(db, "release-v1");
-    expect(resolved).toBe("2020-06-15 12:00:00");
-  });
-
-  test("resolve non-existent snapshot returns null", () => {
-    const db = new Database(":memory:");
-    expect(resolveSnapshot(db, "nope")).toBeNull();
-  });
-
-  test("update existing snapshot", () => {
-    const db = new Database(":memory:");
-    createSnapshot(db, "latest", "2020-01-01 00:00:00");
-    createSnapshot(db, "latest", "2020-06-01 00:00:00");
-    expect(resolveSnapshot(db, "latest")).toBe("2020-06-01 00:00:00");
-  });
-
-  test("use snapshot with loadDocAt", () => {
-    const db = new Database(":memory:");
-    createTables(db, schema);
-
-    db.run("INSERT INTO projects (id, name, status, valid_from) VALUES ('p1', 'Alpha', 'active', '2020-01-01 00:00:00')");
-    db.run("INSERT INTO tasks (id, project_id, title, done, valid_from) VALUES ('t1', 'p1', 'V1', 0, '2020-01-01 00:00:00')");
-
-    // Snapshot before update
-    createSnapshot(db, "v1", "2020-03-01 00:00:00");
-
-    // Update task
-    db.run("UPDATE tasks SET valid_to = '2020-06-01 00:00:00' WHERE id = 't1' AND valid_to IS NULL");
-    db.run("INSERT INTO tasks (id, project_id, title, done, valid_from) VALUES ('t1', 'p1', 'V2', 1, '2020-06-01 00:00:00')");
-
-    const snapshotTime = resolveSnapshot(db, "v1")!;
-    const doc = loadDocAt(db, schema, projectDoc, "p1", snapshotTime);
-    expect(doc!.tasks["t1"].title).toBe("V1");
   });
 });
 

@@ -1,8 +1,8 @@
 /**
  * The runtime CLI as an agent runs it: a subprocess against a
- * server started here (SQLite in memory, a free-form document, the same
- * behind an auth module, and Postgres in process), read back as one JSON line
- * per event.
+ * server started here (SQLite in memory, a JSON file, the same behind an
+ * auth module, and Postgres in process), read back as one JSON line per
+ * event.
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -10,15 +10,20 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { defineSchema, defineDoc, createTables, registerDocs } from "../src/server/sqlite";
-import { createWs, registerDoc, registerMethod } from "../src/server/server";
+import { registerDocs as registerJson } from "../src/server/json";
+import { createWs, registerMethod } from "../src/server/server";
 import { wireAuth, type DeltaAuth } from "../src/server/auth";
 import { setLogLevel } from "../src/server/logger";
+import { mockClient } from "../src/testing";
 
 setLogLevel("silent");
 
 const CLI = resolve(import.meta.dir, "..", "src", "cli.ts");
 const schema = defineSchema({ items: { columns: { name: "text" } } });
 const items = defineDoc("items:", { root: "items", include: [] });
+// the lines of a JSON file: what `notes:` and `busy:` hold
+const notes = defineSchema({ lines: { columns: { text: "text" }, temporal: false } });
+const linesDoc = (prefix: string) => defineDoc(prefix, { root: "lines", include: [] });
 
 const auth: DeltaAuth<{ id: number }> = {
   actions: {
@@ -37,7 +42,7 @@ function serve(withAuth: boolean, dir?: string) {
   const ws = createWs();
   if (withAuth) wireAuth(ws, auth);
   registerDocs(ws, db, schema, [items], [], withAuth ? { auth, shared: true } : {});
-  if (dir) void registerDoc(ws, "notes", { file: join(dir, "notes.json"), empty: { lines: {} } });
+  if (dir) registerJson(ws, join(dir, "notes.json"), notes, [linesDoc("notes:")]);
   registerMethod(ws, "nothing", () => undefined);
   const server = Bun.serve({ port: 0, routes: { [ws.path]: ws.upgrade }, websocket: ws.websocket });
   ws.setServer(server);
@@ -116,24 +121,28 @@ describe("delta open / delta / call --json: one JSON line, stderr empty", () => 
     expect(lines[0]).toMatchObject({ ack: true, ops: [{ op: "add", path: expect.stringMatching(/^\/items\/\d+$/), value: { name: "a" } }] });
   });
 
-  test("delta on a document that answers { ack } alone prints the ops from its broadcast", async () => {
-    const { code, lines } = await run(["delta", "notes", '[{"op":"add","path":"/lines/l1","value":"hi"}]', "--url", open.url, "--json"]);
+  test("delta on the JSON file answers the ops as applied, the row the server named", async () => {
+    const { code, lines } = await run(["delta", "notes:", '[{"op":"add","path":"/lines/-","value":{"text":"hi"}}]', "--url", open.url, "--json"]);
     expect(code).toBe(0);
-    expect(lines).toEqual([{ ack: true, ops: [{ op: "add", path: "/lines/l1", value: "hi" }] }]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ ack: true, ops: [{ op: "add", path: "/lines/1", value: { id: 1, text: "hi" } }] });
   });
 
   test("delta prints its own ops, not another writer's that lands between its open and its write", async () => {
     const ws = createWs();
-    let handle: Awaited<ReturnType<typeof registerDoc>>;
-    let n = 0;
-    ws.on("open", (msg) => { if (msg.doc === "busy") setImmediate(() => handle.applyAndBroadcast([{ op: "add", path: `/lines/theirs${n++}`, value: "theirs" }])); });
-    handle = await registerDoc(ws, "busy", { file: join(dir, "busy.json"), empty: { lines: {} } });
+    // another writer, as soon as the CLI has opened: its row is the first
+    ws.on("open", (msg) => {
+      if (msg.doc === "busy:") setImmediate(() => ws.websocket.message(mockClient(), JSON.stringify({ action: "delta", doc: "busy:", ops: [{ op: "add", path: "/lines/-", value: { text: "theirs" } }] })));
+    });
+    registerJson(ws, join(dir, "busy.json"), notes, [linesDoc("busy:")]);
     const server = Bun.serve({ port: 0, routes: { [ws.path]: ws.upgrade }, websocket: ws.websocket });
     ws.setServer(server);
     try {
-      const { code, lines } = await run(["delta", "busy", '[{"op":"add","path":"/lines/mine","value":"mine"}]', "--url", `ws://localhost:${server.port}/ws`, "--json"]);
+      const { code, lines } = await run(["delta", "busy:", '[{"op":"add","path":"/lines/-","value":{"text":"mine"}}]', "--url", `ws://localhost:${server.port}/ws`, "--json"]);
       expect(code).toBe(0);
-      expect(lines).toEqual([{ ack: true, ops: [{ op: "add", path: "/lines/mine", value: "mine" }] }]);
+      expect(lines).toHaveLength(1);
+      expect(lines[0]).toMatchObject({ ack: true, ops: [{ op: "add", path: "/lines/2", value: { id: 2, text: "mine" } }] });   // theirs landed first, and is not among them
+      expect(lines[0].ops).toHaveLength(1);
     } finally {
       server.stop(true);
     }

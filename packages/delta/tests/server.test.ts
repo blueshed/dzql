@@ -1,12 +1,14 @@
 import { describe, test, expect, afterAll } from "bun:test";
 import {
-  createWs, registerDoc, registerMethod, normalizeForBroadcast,
+  createWs, registerMethod,
   trackSubscribe, trackUnsubscribe, dropClientSubscriptions, onClientDrop,
 } from "../src/server/server";
 import { wireAuth, isAuthError, type DeltaAuth } from "../src/server/auth";
+import { defineDoc, defineSchema, registerDocs } from "../src/server/json";
+import { createLocal } from "../src/server/local";
 import { setLogLevel } from "../src/server/logger";
 import { mockClient } from "../src/testing";
-import { mkdtempSync, readdirSync, realpathSync, rmSync, unlinkSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -17,6 +19,21 @@ setLogLevel("silent");
 // ---------------------------------------------------------------------------
 
 const mockSocket = (clientId = "test-client") => mockClient({ clientId });
+
+// A note kept in the JSON file: the document the socket and the saving below are tried on.
+const notes = defineSchema({ notes: { columns: { text: "text", n: "integer" }, temporal: false } });
+const note = defineDoc("note:", { root: "notes", include: [], implied: true });
+
+const tmpDirs: string[] = [];
+/** A JSON file in a folder of its own, removed after the suite. */
+function tmpFile(tag: string): string {
+  const dir = mkdtempSync(join(tmpdir(), `delta-server-${tag}-`));
+  tmpDirs.push(dir);
+  return join(dir, "data.json");
+}
+afterAll(() => {
+  for (const d of tmpDirs) rmSync(d, { recursive: true, force: true });
+});
 
 // ---------------------------------------------------------------------------
 // createWs — unit tests
@@ -183,342 +200,6 @@ describe("createWs", () => {
 });
 
 // ---------------------------------------------------------------------------
-// normalizeForBroadcast — field-level ops become whole-row replaces
-// ---------------------------------------------------------------------------
-
-describe("normalizeForBroadcast", () => {
-  const doc = {
-    cards: {
-      "5": { id: 5, title: "edited", done: true },
-      "9": { id: 9, title: "other" },
-    },
-    settings: { theme: "dark" },
-  };
-
-  test("depth>=3 field op becomes a whole-row replace read from doc state", () => {
-    const ops = normalizeForBroadcast(doc, [
-      { op: "replace", path: "/cards/5/title", value: "edited" },
-    ]);
-    expect(ops).toEqual([
-      { op: "replace", path: "/cards/5", value: doc.cards["5"] },
-    ]);
-  });
-
-  test("depth<=2 ops pass through untouched", () => {
-    const ops = [
-      { op: "replace", path: "/settings/theme", value: "light" },
-      { op: "add", path: "/cards/-", value: { id: 1 } },
-      { op: "remove", path: "/cards/9" },
-      { op: "replace", path: "", value: doc },
-    ] as const;
-    expect(normalizeForBroadcast(doc, [...ops])).toEqual([...ops]);
-  });
-
-  test("multiple field ops on one row collapse to a single replace", () => {
-    const ops = normalizeForBroadcast(doc, [
-      { op: "replace", path: "/cards/5/title", value: "edited" },
-      { op: "replace", path: "/cards/5/done", value: true },
-    ]);
-    expect(ops).toEqual([
-      { op: "replace", path: "/cards/5", value: doc.cards["5"] },
-    ]);
-  });
-
-  test("a field op on a row removed later in the same batch is dropped", () => {
-    const afterApply = { cards: { "9": { id: 9 } } }; // row 5 already gone
-    const ops = normalizeForBroadcast(afterApply, [
-      { op: "replace", path: "/cards/5/title", value: "x" },
-      { op: "remove", path: "/cards/5" },
-    ]);
-    expect(ops).toEqual([{ op: "remove", path: "/cards/5" }]);
-  });
-
-  test("escaped path segments survive the rewrite", () => {
-    const d = { "a/b": { "k~x": { v: 1 } } };
-    const ops = normalizeForBroadcast(d, [
-      { op: "replace", path: "/a~1b/k~0x/v", value: 1 },
-    ]);
-    expect(ops).toEqual([
-      { op: "replace", path: "/a~1b/k~0x", value: { v: 1 } },
-    ]);
-  });
-
-  test("registerDoc broadcasts the ops as applied: what changed, a field by itself", async () => {
-    const tmpFile = `/tmp/railroad-test-normalize-${Date.now()}.json`;
-    const ws = createWs();
-    const published: any[] = [];
-    ws.setServer({ publish: (_ch: string, data: string) => published.push(JSON.parse(data)) });
-    const handle = await registerDoc(ws, "board", {
-      file: tmpFile,
-      empty: { cards: { "5": { id: 5, title: "before" } } as Record<string, any> },
-    });
-
-    const sock = mockSocket();
-    await ws.websocket.message(sock, JSON.stringify({
-      id: 1, action: "delta", doc: "board",
-      ops: [{ op: "replace", path: "/cards/5/title", value: "after" }],
-    }));
-
-    expect(handle.getDoc().cards["5"]!.title).toBe("after");
-    expect(published[0].ops).toEqual([
-      { op: "replace", path: "/cards/5/title", value: "after" },
-    ]);
-    try { unlinkSync(tmpFile); } catch {}
-  });
-});
-
-// ---------------------------------------------------------------------------
-// registerDoc — unit tests with temp file
-// ---------------------------------------------------------------------------
-
-describe("registerDoc", () => {
-  const tmpFile = `/tmp/railroad-test-doc-${Date.now()}.json`;
-
-  afterAll(() => {
-    try { unlinkSync(tmpFile); } catch {}
-  });
-
-  test("loads empty doc when file missing", async () => {
-    const ws = createWs();
-    const handle = await registerDoc(ws, "todo", {
-      file: tmpFile,
-      empty: { items: [] as string[] },
-    });
-    expect(handle.getDoc()).toEqual({ items: [] });
-  });
-
-  test("open action returns doc and subscribes", async () => {
-    const ws = createWs();
-    await registerDoc(ws, "todo", {
-      file: tmpFile,
-      empty: { items: [] as string[] },
-    });
-
-    const sock = mockSocket();
-    await ws.websocket.message(sock, JSON.stringify({ id: 1, action: "open", doc: "todo" }));
-    expect(sock.sent[0]).toEqual({ id: 1, result: { items: [] } });
-    expect(sock.subscriptions.has("todo")).toBe(true);
-  });
-
-  test("delta action applies ops and persists", async () => {
-    const ws = createWs();
-    const handle = await registerDoc(ws, "todo", {
-      file: tmpFile,
-      empty: { items: [] as string[] },
-    });
-
-    const sock = mockSocket();
-    await ws.websocket.message(sock, JSON.stringify({
-      id: 1,
-      action: "delta",
-      doc: "todo",
-      ops: [{ op: "add", path: "/items/-", value: "buy milk" }],
-    }));
-
-    expect(sock.sent[0]).toEqual({ id: 1, result: { ack: true } });
-    expect(handle.getDoc()).toEqual({ items: ["buy milk"] });
-
-    // verify persisted to disk, once the save it queued is done
-    await handle.persist();
-    const persisted = await Bun.file(tmpFile).json();
-    expect(persisted.items).toContain("buy milk");
-  });
-
-  test("accept refuses a write it does not take, whole, with 400 and its reason; an empty write writes nothing", async () => {
-    const ws = createWs();
-    const handle = await registerDoc(ws, "note", {
-      file: `${tmpFile}.note`,
-      empty: { text: "Hello" },
-      accept: (op) => (op.op === "replace" && op.path === "/text" && typeof op.value === "string") || "a note is a replace of /text with a string",
-    });
-    const sock = mockSocket();
-    const send = (id: number, ops: unknown) => ws.websocket.message(sock, JSON.stringify({ id, action: "delta", doc: "note", ops }));
-    await send(1, [{ op: "replace", path: "/text", value: "kept" }, { op: "replace", path: "/text", value: 7 }]);
-    expect(sock.sent.at(-1)).toEqual({ id: 1, error: { code: 400, message: "a note is a replace of /text with a string" } });
-    await send(2, "not ops");
-    expect(sock.sent.at(-1)).toEqual({ id: 2, error: { code: 400, message: "ops must be an array" } });
-    expect(handle.getDoc()).toEqual({ text: "Hello" }); // nothing of either write
-    await send(3, []);
-    expect(sock.sent.at(-1)).toEqual({ id: 3, result: { ack: true } });
-    await send(4, [{ op: "replace", path: "/text", value: "kept" }]);
-    expect(handle.getDoc()).toEqual({ text: "kept" });
-
-    const plain = await registerDoc(ws, "plain", { file: `${tmpFile}.plain`, empty: { n: 0 }, accept: () => false });
-    await ws.websocket.message(sock, JSON.stringify({ id: 5, action: "delta", doc: "plain", ops: [{ op: "replace", path: "/n", value: 1 }] }));
-    expect(sock.sent.at(-1)).toEqual({ id: 5, error: { code: 400, message: "plain does not take replace /n" } });
-    expect(plain.getDoc()).toEqual({ n: 0 });
-    await handle.persist();
-    for (const f of [`${tmpFile}.note`, `${tmpFile}.plain`]) try { unlinkSync(f); } catch {}
-  });
-
-  test("a writer that asks (inverse: true) is answered the ops as applied: ids minted, a field write as its row", async () => {
-    const ws = createWs();
-    await registerDoc(ws, "todo", { file: tmpFile, empty: { rows: { a: { id: "a", text: "x", done: false } } } as any });
-    const sock = mockSocket();
-    const ops = [{ op: "add", path: "/rows/-", value: { text: "y" } }, { op: "replace", path: "/rows/a/done", value: true }];
-    await ws.websocket.message(sock, JSON.stringify({ id: 1, action: "delta", doc: "todo", ops, inverse: true }));
-    const [made, row] = sock.sent[0].result.ops;
-    expect(sock.sent[0].result.ack).toBe(true);
-    expect(made).toEqual({ op: "add", path: `/rows/${made.value.id}`, value: { text: "y", id: made.value.id } });
-    expect(row).toEqual({ op: "replace", path: "/rows/a", value: { id: "a", text: "x", done: true } });
-  });
-
-  test("close action unsubscribes", async () => {
-    const ws = createWs();
-    await registerDoc(ws, "todo", {
-      file: tmpFile,
-      empty: { items: [] as string[] },
-    });
-
-    const sock = mockSocket();
-    // open first
-    await ws.websocket.message(sock, JSON.stringify({ id: 1, action: "open", doc: "todo" }));
-    expect(sock.subscriptions.has("todo")).toBe(true);
-
-    // close
-    await ws.websocket.message(sock, JSON.stringify({ id: 2, action: "close", doc: "todo" }));
-    expect(sock.subscriptions.has("todo")).toBe(false);
-    expect(sock.sent[1]).toEqual({ id: 2, result: { ack: true } });
-  });
-
-  test("open for wrong doc name is ignored", async () => {
-    const ws = createWs();
-    await registerDoc(ws, "todo", {
-      file: tmpFile,
-      empty: { items: [] as string[] },
-    });
-
-    const sock = mockSocket();
-    await ws.websocket.message(sock, JSON.stringify({ id: 1, action: "open", doc: "other" }));
-    // no handler matched
-    expect(sock.sent[0].error.message).toContain("No handler matched");
-  });
-
-  test("a path without a leading slash is refused and leaves the document (F4)", async () => {
-    const file = `${tmpFile}.f4`;
-    await Bun.write(file, JSON.stringify({ messages: { a: { text: "hi" } }, title: "keep" }));
-    const ws = createWs();
-    const published: any[] = [];
-    ws.setServer({ publish: (_ch: string, raw: string) => published.push(JSON.parse(raw)) });
-    const handle = await registerDoc(ws, "chat:room", { file, empty: { messages: {}, title: "" } as any });
-    const sock = mockSocket();
-    await ws.websocket.message(sock, JSON.stringify({ id: 1, action: "delta", doc: "chat:room", ops: [{ op: "remove", path: "messages" }] }));
-    expect(sock.sent[0].error.message).toContain('Invalid JSON Pointer "messages"');
-    expect(handle.getDoc()).toEqual({ messages: { a: { text: "hi" } }, title: "keep" });
-    expect(published).toEqual([]);
-    try { unlinkSync(file); } catch {}
-  });
-
-  test("a batch whose second op fails changes nothing, broadcasts nothing, persists nothing (D5)", async () => {
-    const file = `${tmpFile}.d5`;
-    await Bun.write(file, JSON.stringify({ messages: { m1: { text: "hi" } } }));
-    const ws = createWs();
-    const published: any[] = [];
-    ws.setServer({ publish: (_ch: string, raw: string) => published.push(JSON.parse(raw)) });
-    const handle = await registerDoc(ws, "chat:room", { file, empty: { messages: {} } as any });
-    const sock = mockSocket();
-    await ws.websocket.message(sock, JSON.stringify({ id: 1, action: "delta", doc: "chat:room", ops: [
-      { op: "replace", path: "/messages/m1/text", value: "HALF" },
-      { op: "replace", path: "/messages/zz/text", value: "x" },
-    ] }));
-    expect(sock.sent[0].error.message).toContain("Path not found");
-    expect(handle.getDoc()).toEqual({ messages: { m1: { text: "hi" } } });
-    expect(published).toEqual([]);
-    await handle.persist();
-    expect(await Bun.file(file).json()).toEqual({ messages: { m1: { text: "hi" } } });
-    try { unlinkSync(file); } catch {}
-  });
-
-  test("a remove or replace of a row that is not there is a 404, as on SQLite and Postgres: nothing acked, nothing broadcast (#4)", async () => {
-    const file = `${tmpFile}.n4`;
-    await Bun.write(file, JSON.stringify({ messages: { m1: { text: "hi" } }, list: ["a", "c"] }));
-    const ws = createWs();
-    const published: any[] = [];
-    ws.setServer({ publish: (_ch: string, raw: string) => published.push(JSON.parse(raw)) });
-    const handle = await registerDoc(ws, "chat:room", { file, empty: { messages: {}, list: [] } as any });
-    const sock = mockSocket();
-    const bad = [
-      { op: "remove", path: "/messages/nope" },
-      { op: "replace", path: "/messages/nope", value: { text: "x" } },
-      { op: "replace", path: "/messages/m1/nope", value: "x" },
-      { op: "remove", path: "/list/2" },
-    ];
-    for (const [i, op] of bad.entries()) {
-      await ws.websocket.message(sock, JSON.stringify({ id: i + 1, action: "delta", doc: "chat:room", ops: [op] }));
-      expect([op.path, sock.sent[i].error?.code]).toEqual([op.path, 404]);
-    }
-    expect(published).toEqual([]);
-    // an add at an index inserts, and is broadcast as sent
-    await ws.websocket.message(sock, JSON.stringify({ id: 9, action: "delta", doc: "chat:room", ops: [{ op: "add", path: "/list/1", value: "b" }] }));
-    expect(handle.getDoc()).toEqual({ messages: { m1: { text: "hi" } }, list: ["a", "b", "c"] });
-    expect(published).toEqual([{ doc: "chat:room", ops: [{ op: "add", path: "/list/1", value: "b" }] }]);
-    try { unlinkSync(file); } catch {}
-  });
-
-  test("an op that is not add, replace or remove is a 400: nothing applied, broadcast or persisted", async () => {
-    const file = `${tmpFile}.verb`;
-    await Bun.write(file, JSON.stringify({ a: { x: 1 } }));
-    const ws = createWs();
-    const published: any[] = [];
-    ws.setServer({ publish: (_ch: string, raw: string) => published.push(JSON.parse(raw)) });
-    const handle = await registerDoc(ws, "free", { file, empty: { a: {} } as any });
-    const sock = mockSocket();
-    await ws.websocket.message(sock, JSON.stringify({ id: 1, action: "delta", doc: "free", ops: [{ op: "frobnicate", path: "/a", value: 9 }] }));
-    await ws.websocket.message(sock, JSON.stringify({ id: 2, action: "delta", doc: "free", ops: [{ op: "move", from: "/a", path: "/b" }] }));
-    expect(sock.sent.map((m) => m.error?.code)).toEqual([400, 400]);
-    expect(handle.getDoc()).toEqual({ a: { x: 1 } });
-    expect(published).toEqual([]);
-    await handle.persist();
-    expect(await Bun.file(file).json()).toEqual({ a: { x: 1 } });
-    try { unlinkSync(file); } catch {}
-  });
-
-  test("a save goes to a temp file renamed over the document's, and leaves no temp file behind", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "delta-doc-save-"));
-    const file = join(dir, "doc.json");
-    const ws = createWs();
-    const handle = await registerDoc(ws, "todo", { file, empty: { items: [] as string[] } });
-    const written: string[] = [];
-    const realWrite = Bun.write;
-    (Bun as any).write = (to: any, ...rest: any[]) => { written.push(String(to)); return (realWrite as any)(to, ...rest); };
-    try {
-      for (let i = 0; i < 5; i++) handle.applyAndBroadcast([{ op: "add", path: "/items/-", value: `n${i}` }]);
-      await handle.persist();
-    } finally {
-      (Bun as any).write = realWrite;
-    }
-    expect(written.length).toBeGreaterThan(0);
-    const real = realpathSync(file);   // a save goes beside the real file (on macOS /var is /private/var)
-    for (const to of written) expect(to).toMatch(new RegExp(`^${real}\\.\\d+\\.\\d+\\.tmp$`));   // never the file itself: a temp beside it
-    expect(readdirSync(dir)).toEqual(["doc.json"]);
-    expect((await Bun.file(file).json()).items).toEqual(["n0", "n1", "n2", "n3", "n4"]);
-    rmSync(dir, { recursive: true, force: true });
-  });
-
-  test("a file that is not JSON (empty, or cut short by a crash) is refused at start, naming the file: never opened as empty and saved over", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "delta-doc-bad-"));
-    for (const [name, text] of [["empty.json", ""], ["cut.json", '{"items": ["a", "b"']] as const) {
-      const file = join(dir, name);
-      await Bun.write(file, text);
-      await expect(registerDoc(createWs(), "todo", { file, empty: { items: [] as string[] } })).rejects.toThrow(`${file} is not JSON`);
-      expect(await Bun.file(file).text()).toBe(text);
-    }
-    rmSync(dir, { recursive: true, force: true });
-  });
-
-  test("loads existing file on startup", async () => {
-    await Bun.write(tmpFile, JSON.stringify({ items: ["existing"] }));
-
-    const ws = createWs();
-    const handle = await registerDoc(ws, "todo", {
-      file: tmpFile,
-      empty: { items: [] as string[] },
-    });
-    expect(handle.getDoc()).toEqual({ items: ["existing"] });
-  });
-});
-
-// ---------------------------------------------------------------------------
 // registerMethod — unit tests
 // ---------------------------------------------------------------------------
 
@@ -602,17 +283,16 @@ describe("registerMethod", () => {
 
 describe("integration", () => {
   const ws = createWs({ path: "/ws" });
-  const tmpFile = `/tmp/railroad-test-int-${Date.now()}.json`;
+  const file = tmpFile("int");
   let server: ReturnType<typeof Bun.serve>;
   let port: number;
 
   afterAll(async () => {
     server?.stop(true);
-    try { unlinkSync(tmpFile); } catch {}
   });
 
   test("server starts and accepts WebSocket", async () => {
-    await registerDoc(ws, "msg", { file: tmpFile, empty: { text: "" } });
+    registerDocs(ws, file, notes, [note]);
     registerMethod(ws, "ping", () => "pong");
 
     server = Bun.serve({ port: 0, routes: { [ws.path]: ws.upgrade }, websocket: ws.websocket });
@@ -648,25 +328,27 @@ describe("integration", () => {
 
   test("open doc over WebSocket", async () => {
     const sock = await connect();
-    const res = await request(sock, { action: "open", doc: "msg" });
-    expect(res.result).toEqual({ text: "" });
+    const res = await request(sock, { action: "open", doc: "note:1" });
+    expect(res.result).toEqual({ notes: { id: 1, text: "", n: 0 } });
     sock.close();
   });
 
-  test("delta op over WebSocket", async () => {
+  test("delta op over WebSocket, kept in the file", async () => {
     const sock = await connect();
-    await request(sock, { action: "open", doc: "msg" });
+    await request(sock, { action: "open", doc: "note:1" });
 
     const res = await request(sock, {
       action: "delta",
-      doc: "msg",
-      ops: [{ op: "replace", path: "/text", value: "hello" }],
+      doc: "note:1",
+      ops: [{ op: "replace", path: "/notes/1/text", value: "hello" }],
     });
-    expect(res.result).toEqual({ ack: true });
+    expect(res.result.ack).toBe(true);
 
     // re-open to verify state
-    const res2 = await request(sock, { action: "open", doc: "msg" });
-    expect(res2.result.text).toBe("hello");
+    const res2 = await request(sock, { action: "open", doc: "note:1" });
+    expect(res2.result.notes.text).toBe("hello");
+    await Bun.sleep(50);   // the save after the write
+    expect(JSON.parse(readFileSync(file, "utf8")).tables.notes).toEqual([{ id: 1, text: "hello", n: 0 }]);
     sock.close();
   });
 
@@ -689,8 +371,8 @@ describe("integration", () => {
     const sock2 = await connect("c2");
 
     // both subscribe
-    await request(sock1, { action: "open", doc: "msg" });
-    await request(sock2, { action: "open", doc: "msg" });
+    await request(sock1, { action: "open", doc: "note:1" });
+    await request(sock2, { action: "open", doc: "note:1" });
 
     // collect notifications on sock2
     const notifications: any[] = [];
@@ -702,13 +384,14 @@ describe("integration", () => {
     // sock1 sends a delta
     await request(sock1, {
       action: "delta",
-      doc: "msg",
-      ops: [{ op: "replace", path: "/text", value: "broadcast" }],
+      doc: "note:1",
+      ops: [{ op: "replace", path: "/notes/1/text", value: "broadcast" }],
     });
 
     // give pub/sub a tick
     await Bun.sleep(50);
-    expect(notifications.some((n) => n.doc === "msg" && n.ops?.length)).toBe(true);
+    // told as the root's field: the root is /notes in its document
+    expect(notifications).toContainEqual({ doc: "note:1", ops: [{ op: "replace", path: "/notes/text", value: "broadcast" }] });
 
     sock1.close();
     sock2.close();
@@ -861,18 +544,6 @@ describe("clientId collision (#24)", () => {
   });
 });
 
-// Local temp-file helper for the blocks below (the older describes each
-// declare their own `tmpFile` const inside their scope).
-const persistTmpFiles: string[] = [];
-function tmpFile(tag: string): string {
-  const f = `/tmp/delta-server-test-${tag}-${Date.now()}-${Math.random().toString(36).slice(2)}.json`;
-  persistTmpFiles.push(f);
-  return f;
-}
-afterAll(() => {
-  for (const f of persistTmpFiles) { try { unlinkSync(f); } catch {} }
-});
-
 // ---------------------------------------------------------------------------
 // Malformed frames (v0.5.0 review #2)
 //
@@ -932,22 +603,32 @@ describe("malformed frames", () => {
 });
 
 // ---------------------------------------------------------------------------
-// persist() serialization (v0.5.0 review A2)
+// The JSON file's saves are one at a time (v0.5.0 review A2)
 //
-// `applyAndBroadcast` fired persist() without await, queue or catch: two rapid
-// deltas raced whole-file Bun.writes and the file could settle on the OLDER
-// snapshot, and an fs failure after a successful ack became an unhandled
-// rejection.
+// A save fired without a queue raced the one before it: two rapid writes
+// raced whole-file Bun.writes, and the file could settle on the OLDER state.
+// What a failed save does is `tests/file.test.ts`'s ("a save that fails").
 // ---------------------------------------------------------------------------
 
-describe("persist queue", () => {
-  test("writes never overlap (deterministic — instruments Bun.write)", async () => {
+describe("the JSON file's saves", () => {
+  /** `note:1` in a file of its own, opened and its row made; `set(n)` writes n, not awaited by the caller unless it chooses. */
+  async function opened(tag: string) {
+    const file = tmpFile(tag);
+    const local = createLocal();
+    const store = registerDocs(local.server, file, notes, [note]);
+    await local.call("open", { doc: "note:1" });
+    const set = (n: number) => local.call("delta", { doc: "note:1", ops: [{ op: "replace", path: "/notes/1/n", value: n }] });
+    await set(0);   // implied: its first write makes the row
+    await store.persisted();
+    const saved = (): number => JSON.parse(readFileSync(file, "utf8")).tables.notes[0].n;
+    return { local, store, set, saved };
+  }
+
+  test("saves never overlap (deterministic — instruments Bun.write)", async () => {
     // Ordering assertions alone are timing-dependent and a poor way to prove a
-    // race is gone. Counting concurrent writers is exact: pre-fix, N unawaited
-    // deltas started N concurrent Bun.writes.
-    const file = tmpFile("persist-overlap");
-    const ws = createWs();
-    const handle = await registerDoc<{ n: number }>(ws, "po", { file, empty: { n: 0 } });
+    // race is gone. Counting concurrent writers is exact: without the queue, N
+    // unawaited writes started N concurrent Bun.writes.
+    const { store, set, saved } = await opened("persist-overlap");
 
     const realWrite = Bun.write;
     let inFlight = 0;
@@ -959,72 +640,42 @@ describe("persist queue", () => {
       finally { inFlight--; }
     };
     try {
-      for (let i = 1; i <= 20; i++) {
-        handle.applyAndBroadcast([{ op: "replace", path: "/n", value: i }]);
-      }
-      await handle.persist();
+      for (let i = 1; i <= 20; i++) void set(i);
+      await store.persisted();
     } finally {
       (Bun as any).write = realWrite;
     }
 
     expect(maxInFlight).toBe(1);
-    expect(JSON.parse(await Bun.file(file).text()).n).toBe(20);
+    expect(saved()).toBe(20);
   });
 
-  test("rapid deltas leave the file on the LATEST state", async () => {
-    const file = tmpFile("persist-order");
-    const ws = createWs();
-    const handle = await registerDoc<{ n: number }>(ws, "p", { file, empty: { n: 0 } });
+  test("rapid writes leave the file on the LATEST state", async () => {
+    const { local, store, set, saved } = await opened("persist-order");
 
-    // Fire many without awaiting — the pre-fix race.
-    for (let i = 1; i <= 25; i++) {
-      handle.applyAndBroadcast([{ op: "replace", path: "/n", value: i }]);
-    }
-    await handle.persist();   // resolves only after the whole queue drains
+    // Fire many without awaiting — the race the queue closes.
+    for (let i = 1; i <= 25; i++) void set(i);
+    await store.persisted();   // resolves only after the whole queue drains
 
-    expect(JSON.parse(await Bun.file(file).text()).n).toBe(25);
-    expect(handle.getDoc().n).toBe(25);
+    expect(saved()).toBe(25);
+    expect((await local.call("open", { doc: "note:1" })).result.notes.n).toBe(25);
   });
 
-  test("persist() resolves after its own write, in call order", async () => {
-    const file = tmpFile("persist-chain");
-    const ws = createWs();
-    const handle = await registerDoc<{ n: number }>(ws, "pc", { file, empty: { n: 0 } });
+  test("persisted() resolves once the writes before it are in the file, in call order", async () => {
+    const { store, set, saved } = await opened("persist-chain");
 
     const order: number[] = [];
     const writes = [1, 2, 3].map((i) => {
-      handle.applyAndBroadcast([{ op: "replace", path: "/n", value: i }]);
-      return handle.persist().then(() => order.push(i));
+      void set(i);
+      return store.persisted().then(() => {
+        expect(saved()).toBeGreaterThanOrEqual(i);
+        order.push(i);
+      });
     });
     await Promise.all(writes);
 
     expect(order).toEqual([1, 2, 3]);
-    expect(JSON.parse(await Bun.file(file).text()).n).toBe(3);
-  });
-
-  test("a failing write is logged, not thrown as an unhandled rejection", async () => {
-    // A path under a file (/dev/null) makes every write fail. The delta is already acked and
-    // broadcast by then, so the failure must not escape applyAndBroadcast.
-    const ws = createWs();
-    const handle = await registerDoc<{ n: number }>(ws, "pf", {
-      file: "/dev/null/pf.json", empty: { n: 0 },
-    });
-
-    const seen: unknown[] = [];
-    const onReject = (e: unknown) => seen.push(e);
-    process.on("unhandledRejection", onReject);
-    try {
-      handle.applyAndBroadcast([{ op: "replace", path: "/n", value: 1 }]);
-      await new Promise((r) => setTimeout(r, 50));
-    } finally {
-      process.off("unhandledRejection", onReject);
-    }
-    expect(seen).toEqual([]);
-
-    // The chain survives the failure: a later persist() still runs rather than
-    // inheriting the rejected promise.
-    await handle.persist().catch(() => {});
-    expect(handle.getDoc().n).toBe(1);
+    expect(saved()).toBe(3);
   });
 });
 

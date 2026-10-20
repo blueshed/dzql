@@ -18,7 +18,7 @@ same thing pass.
 ## Stage 1: one shared document
 
 **Structure.**
-- The shed's list is one shared document from the start (`registerDoc`, opened with `openDoc`).
+- The shed's list is one shared document from the start (`registerDocs` on the JSON file, with a schema; opened with `openDoc`).
 - A resource folder follows the template's layout (`-api.ts`, the document side, `-view.tsx`).
 - Tools are rows addressed by id, never by position.
 - A change that is not a tool with a name is refused by the document's rule, a 400 with a message

@@ -20,7 +20,7 @@ registerDocs(ws, db, schema, [room]);
   share the file but hear only their own writes live (`sqlite.md`).
 - **Postgres**: servers that share the data, people who see only their own: the next step is
   dzql's, not delta's (`postgres.md`).
-- **Free-form, memory, source, static**: not tables (`kinds.md`).
+- **Memory, source, static**: not tables (`kinds.md`).
 
 The two table backends take one schema and one set of `defineDoc`s; `./json` and `./sqlite` each
 export `defineSchema`, `defineDoc`, `defineCustomDoc`, so moving on changes the import path.

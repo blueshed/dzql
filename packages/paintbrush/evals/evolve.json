@@ -4,7 +4,7 @@
     "query": "Add a notes page: I type a note, press Add, and it appears in a list under the box.",
     "files": [],
     "expected_behavior": [
-      "Makes the notes a shared document from the start (registerDoc in notes-api.ts, openDoc in notes.ts), not HTTP routes and not a 'live' feature added later",
+      "Makes the notes a shared document from the start (registerDocs from @blueshed/delta/json with a schema in notes-api.ts, openDoc in notes.ts), not HTTP routes and not a 'live' feature added later",
       "Makes src/resources/notes/ with notes-api.ts, notes.ts and notes-view.tsx, registers the document in startServer and puts the view in a route in src/app.tsx",
       "Adds with add /notes/- and removes by id; never sets notes.data or adds the note locally: the change that comes back draws it",
       "Renders the list with list() keyed by id, and binds signals ({x}, x$.map) rather than calling .get() in JSX",

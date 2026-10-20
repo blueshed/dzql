@@ -54,7 +54,7 @@ export { createTables, migrateSchema } from "./sqlite/ddl";
 export { migrate, migrationStatus, renameColumn, dropColumn, renameTable, fromFolder } from "./sqlite/migrate";
 export type { Migration, MigrateOptions, MigrateResult, MigrationStatus, MigrationTools } from "./sqlite/migrate";
 export { validateOps } from "./sqlite/validate";
-export { loadDocAt, createSnapshot, resolveSnapshot } from "./sqlite/read";
+export { loadDocAt } from "./sqlite/read";
 export { exportTables, importTables } from "./sqlite/carry";
 export { inverseOf } from "./sqlite/write";
 

@@ -22,7 +22,7 @@ server names (on an array, append). The parsers are `splitPath` / `joinPath` in 
   Never a template string.
 - `""` on `replace` / `remove` swaps or clears the whole document in place (same kind:
   object for object, array for array). `"/"` is the member named `""`, not the root.
-- A segment is a string unless its parent is an array: on a free-form or memory document
+- A segment is a string unless its parent is an array: on a memory document
   `/items/007` is key `"007"`; on a table backend it is row 7.
 - `add` at an array index inserts before it; `replace` or `remove` of what is not there is a 404.
 - A row keeps the id its path names; an `id` in the value is ignored, and `id` is not a field.

@@ -1,26 +1,28 @@
 /**
- * Delta Server — WebSocket protocol layer + document/method registration for Bun.
+ * Delta Server — WebSocket protocol layer + method registration for Bun.
  *
  * Provides the server half of the delta-doc system:
  *   - createWs()       — shared WebSocket infrastructure (action routing, pub/sub, upgrade)
- *   - registerDoc()    — persist a typed JSON document, sync via delta ops
  *   - registerMethod() — expose a stateless RPC handler (public; names
  *                        starting with `_` are private and never wire-callable)
  *
+ * Documents are registered on it by a store (`./json`, `./sqlite`, dzql's
+ * Postgres) or a kind (`./kinds`).
+ *
  * Usage:
- *   import { createWs, registerDoc, registerMethod } from "@blueshed/delta/server";
+ *   import { createWs, registerMethod } from "@blueshed/delta/server";
+ *   import { registerDocs } from "@blueshed/delta/json";
  *
  *   const ws = createWs();
- *   await registerDoc<Message>(ws, "message", { file: "./message.json", empty: { message: "" } });
+ *   registerDocs(ws, "./data.json", schema, docs);
  *   registerMethod(ws, "status", () => ({ bun: Bun.version }));
  *
  *   // served by delta's one server (./serve), never a Bun.serve of the app's own
  *   import { run, serve } from "@blueshed/delta/serve";
  *   await run(() => serve({ ws, routes: myRoutes }));
  */
-import { clearStaleTemps, readJsonFile, writeFileAtomic } from "./file";
 import { createLogger } from "./logger";
-import { applyOps, splitPath, joinPath, type DeltaOp } from "../core";
+import { splitPath, joinPath, type DeltaOp } from "../core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,25 +60,6 @@ export interface WsServer {
     message(ws: any, raw: any): void;
     close(ws: any): void;
   };
-}
-
-export interface DocHandle<T> {
-  getDoc(): T;
-  persist(): Promise<void>;
-  /** Applies `ops` and broadcasts them as applied; returns them as the writer is answered (ids minted, field writes as their rows). */
-  applyAndBroadcast(ops: DeltaOp[]): DeltaOp[];
-}
-
-export interface DocOptions<T> {
-  /** Where the document is kept. A file that is there but not JSON is refused at start, naming it. */
-  file: string;
-  /** The document while there is no file. */
-  empty: T;
-  /**
-   * Asked of each op of a write before any is applied: `true` takes it; `false`, or a reason, refuses
-   * the whole write with 400 and that reason, and nothing changes. Without it, every op is taken.
-   */
-  accept?: (op: DeltaOp) => boolean | string;
 }
 
 // ---------------------------------------------------------------------------
@@ -506,48 +489,15 @@ export function createWs(opts?: WsOptions): WsServer {
 }
 
 // ---------------------------------------------------------------------------
-// Document registration
+// A row the server names
 // ---------------------------------------------------------------------------
-
-/**
- * Rewrite field-level ops (depth >= 3, e.g. `/cards/5/title`) into whole-row
- * replaces of their depth-2 ancestor (`/cards/5`), with the row value read
- * from the just-applied doc state.
- *
- * No document broadcasts so since 0.13: a holder is told what changed, and the
- * client gives the row a field lands in a fresh reference itself. Kept for a
- * custom stream whose readers want whole rows.
- *
- * Depth <= 2 ops pass through untouched. Multiple field ops on one row
- * collapse to a single replace (the doc already reflects the whole batch). A
- * rewrite whose row no longer exists (removed later in the same batch) is
- * dropped — the removal op itself broadcasts the disappearance.
- */
-export function normalizeForBroadcast(doc: unknown, ops: DeltaOp[]): DeltaOp[] {
-  const out: DeltaOp[] = [];
-  const rewritten = new Set<string>();
-  for (const op of ops) {
-    const segs = splitPath(op.path);
-    if (segs.length < 3) {
-      out.push(op);
-      continue;
-    }
-    const rowPath = joinPath(segs[0]!, segs[1]!);
-    if (rewritten.has(rowPath)) continue;
-    const row = (doc as any)?.[segs[0]!]?.[segs[1]!];
-    if (row === undefined) continue;
-    rewritten.add(rowPath);
-    out.push({ op: "replace", path: rowPath, value: row });
-  }
-  return out;
-}
 
 /**
  * `add .../-` onto a map of rows (an object, not an array) is "a new row, the
  * server names it": mint a uuid, put it in the path and in the value's `id`,
  * so the op as applied -- and as broadcast -- names the row, as the SQL
  * backends' echoes do. On an array, `/-` appends, as RFC 6902 says.
- * Shared by the free-form document (`registerDoc`) and memory documents (`kinds.ts`).
+ * Used by memory documents (`kinds.ts`).
  * @internal
  */
 export function mintIds(doc: unknown, ops: DeltaOp[]): DeltaOp[] {
@@ -562,75 +512,6 @@ export function mintIds(doc: unknown, ops: DeltaOp[]): DeltaOp[] {
     const value = v !== null && typeof v === "object" && !Array.isArray(v) ? { ...v, id } : v;
     return { op: "add", path: joinPath(...segs.slice(0, -1), id), value };
   });
-}
-
-/** Register a persisted JSON document with the WebSocket server. */
-export async function registerDoc<T>(
-  ws: Pick<WsServer, "on" | "publish">,
-  name: string,
-  opts: DocOptions<T>,
-): Promise<DocHandle<T>> {
-  const log = createLogger(`[${name}]`);
-  clearStaleTemps(opts.file);
-  const saved = readJsonFile(opts.file) as T | undefined;
-  let doc: T = saved === undefined ? structuredClone(opts.empty) : { ...structuredClone(opts.empty), ...saved };
-
-  log.info(`loaded from ${opts.file}`);
-
-  // Whole-file writes are serialized through a promise chain. Two rapid deltas
-  // previously raced `Bun.write`, so the file could settle on the OLDER
-  // snapshot when the writes completed out of order.
-  let persisting: Promise<void> = Promise.resolve();
-
-  function persist(): Promise<void> {
-    const done = persisting
-      .then(() => writeFileAtomic(opts.file, JSON.stringify(doc, null, 2)));
-    // The chain must survive a failed write, so it continues from a swallowed
-    // copy — but the promise handed back still rejects, so an explicit
-    // `await handle.persist()` can observe the error.
-    persisting = done.catch(() => {});
-    return done;
-  }
-
-  function applyAndBroadcast(sent: DeltaOp[]): DeltaOp[] {
-    const ops = mintIds(doc, sent);
-    applyOps(doc, ops);
-    log.info(`delta [${ops.map((o) => `${o.op} ${o.path}`).join(", ")}]`);
-    ws.publish(name, { doc: name, ops });   // told as applied: what changed
-    // Fire-and-forget by design (the delta is already acked and broadcast), so
-    // an fs failure is logged rather than left as an unhandled rejection.
-    persist().catch((err: any) => log.error(`persist failed: ${err.message}`));
-    return normalizeForBroadcast(doc, ops);   // the answer keeps whole rows: its record
-  }
-
-  ws.on("open", (msg, client, respond) => {
-    if (msg.doc !== name) return;
-    trackSubscribe(client, name);
-    respond({ result: doc });
-    log.debug("opened");
-  });
-
-  ws.on("delta", (msg, _client, respond) => {
-    if (msg.doc !== name) return;
-    if (!Array.isArray(msg.ops)) throw Object.assign(new Error("ops must be an array"), { code: 400 });
-    for (const op of msg.ops) {
-      const taken = opts.accept?.(op) ?? true;
-      if (taken !== true) throw Object.assign(new Error(taken || `${name} does not take ${op?.op} ${op?.path}`), { code: 400 });
-    }
-    if (msg.ops.length === 0) return respond({ result: { ack: true } }); // nothing to change: nothing written, nobody told
-    const ops = applyAndBroadcast(msg.ops);
-    // the ops as applied to a writer that asks (`inverse: true`, as SQLite takes it): it has no inverse to give
-    respond({ result: msg.inverse ? { ack: true, ops } : { ack: true } });
-  });
-
-  ws.on("close", (msg, client, respond) => {
-    if (msg.doc !== name) return;
-    trackUnsubscribe(client, name);
-    respond({ result: { ack: true } });
-    log.debug("closed");
-  });
-
-  return { getDoc: () => doc, persist, applyAndBroadcast };
 }
 
 // ---------------------------------------------------------------------------

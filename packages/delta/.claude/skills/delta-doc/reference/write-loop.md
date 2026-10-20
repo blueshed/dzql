@@ -44,7 +44,7 @@ rebuild from `doc.data` is a category error.
 - The client applies the next `v`, ignores one it has, and **re-opens on a gap** or on a
   broadcast that does not apply to its copy (a remove of a row it lacks).
 - Versioned: SQLite and the JSON file with a ledger; memory and source kinds.
-  Without `v` (the free-form document, no ledger, custom docs) broadcasts apply as they come.
+  Without `v` (no ledger, custom docs) broadcasts apply as they come.
 
 ## Gotchas
 
