@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 /**
  * `bun scripts/docs.ts`: what people and Claude read is held to the code. In every live Markdown file
- * (not a CHANGELOG, not history, not an eval's run): each relative link resolves; each
+ * (not a CHANGELOG, not history, not an eval's run): each relative link resolves, and each link to this
+ * repository on GitHub names a file in the checkout (a skill links its package's examples so: they do not ship); each
  * `packages/...` path it names exists; and in a package's skills, CLAUDE.md and README, each `src/`,
  * `examples/`, `tests/` or `scripts/` path it names exists in that package. And every skill a
  * package ships (`.claude/skills/<name>/SKILL.md`, in git) has its evaluations beside it
@@ -23,6 +24,9 @@ for (const file of files) {
   for (const m of text.matchAll(/\]\(([^)#\s]+)(?:#[^)]*)?\)/g)) {
     const to = m[1]!;
     if (!/^[a-z]+:/.test(to) && !existsSync(normalize(join(root, dirname(file), to)))) wrong.push(`${file}: a link to ${to}, which is not there`);
+    // a link to this repository on GitHub (how a skill, which ships without the examples, names one) names a file here
+    const here = /^https:\/\/github\.com\/blueshed\/dzql\/(?:blob|tree)\/main\/(.+)$/.exec(to)?.[1];
+    if (here && !existsSync(join(root, here))) wrong.push(`${file}: a link to ${here} on GitHub, which is not in this checkout`);
   }
   for (const m of text.matchAll(/`((packages|src|examples|tests|scripts)\/[A-Za-z0-9_./-]*[A-Za-z0-9_])`/g)) {
     const [, path, top] = m;

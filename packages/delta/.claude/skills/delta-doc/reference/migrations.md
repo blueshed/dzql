@@ -24,7 +24,7 @@ const result = await migrate(db, await fromFolder("migrations"), { app: "team", 
 // result.drift: what the definitions say beyond the history (empty: they agree)
 ```
 
-Working: [examples/lists](../../../../examples/lists/README.md), whose history renames a column
+Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), whose history renames a column
 on a database that holds data (`resources/lists/migrations/002-title.ts`: `make` wrote a drop and
 an add, made a `renameColumn` by hand), run at start-up, with undo fenced across it.
 

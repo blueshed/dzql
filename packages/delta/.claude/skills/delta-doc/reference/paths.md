@@ -48,7 +48,7 @@ server names (on an array, append). The parsers are `splitPath` / `joinPath` in 
 backend (`errorCodeCases` in `src/cases/writes.ts`):
 
 - **400** malformed: no leading `/`, unknown field, missing required field, bad id.
-- **401** not signed in (an `auth` gate said no). [examples/lists](../../../../examples/lists/README.md)
+- **401** not signed in (an `auth` gate said no). [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md)
   answers both: nobody is 401, and a list someone is not on is 404, to open or to write.
 - **403** read-only: custom, static and source documents; memory over a socket; a past (`at:`) name.
 - **404** not there: a document, row or path; a document the identity does not `own`.

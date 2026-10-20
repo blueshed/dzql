@@ -31,4 +31,4 @@ After an `await` there is no scope (browser JS has no AsyncContext). The thunk g
 - For streams or several stages rather than one swap, an effect writes a signal and `when()` shows it.
 - `effect(async () => …)` is an error (logged in development): start the async work from a synchronous effect and write the result to a signal.
 
-Worked example: `JobPage` (a keyed async route handler), `JobLog` (an async component with a fallback, disposed before it settles) and `NewJobPage` in [`jobs-view.tsx`](../../../../examples/jobs/resources/jobs/jobs-view.tsx); async work started from an effect in [`runners-view.tsx`](../../../../examples/jobs/resources/runners/runners-view.tsx).
+Worked example: `JobPage` (a keyed async route handler), `JobLog` (an async component with a fallback, disposed before it settles) and `NewJobPage` in [`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx); async work started from an effect in [`runners-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/runners/runners-view.tsx).

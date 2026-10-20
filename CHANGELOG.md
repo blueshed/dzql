@@ -6,6 +6,14 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The examples, linked from the skills where the skills go (20 October)
+
+- A skill ships without its package's examples, so its links to them name the files on GitHub
+  (`https://github.com/blueshed/dzql/blob/main/packages/<package>/examples/...`), not a relative
+  path that leads nowhere in an app's `node_modules`; `scripts/docs.ts` holds each to a file in the
+  checkout. delta's browser examples wait 15 s, not 5, inside their tests' 20: a cold start beside
+  every package's tests can take five.
+
 ### Every published package carries its licence (20 October)
 
 - dzql, create-dzql and create-blueshed now ship `LICENSE` (MIT, as railroad and delta do), and

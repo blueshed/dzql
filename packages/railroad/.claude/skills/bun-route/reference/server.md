@@ -44,4 +44,4 @@ bun build --compile server.ts --outfile myapp       # server, client and runtime
 - `--compile` follows the HTML imports in `server.ts`; cross-compile with `--target=bun-linux-x64` and the like.
 - `--target=bun` keeps `using`/`await using` native (Bun 1.3.14+), so the tests' `await using view` compiles.
 
-Worked example (a Bun app without delta): railroad's jobs, [`routes.ts`](../../../../examples/jobs/routes.ts).
+Worked example (a Bun app without delta): railroad's jobs, [`routes.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/routes.ts).

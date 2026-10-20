@@ -14,7 +14,7 @@ registerDocs(ws, db, schema, docs, [], { ledger: true, auth });   // no owns bes
 On Postgres the definitions are the same, each registered as `docTypeFromDef(def, pool, { auth })`,
 and dzql compiles each path into SQL of its own (`postgres.md`).
 
-Working: [examples/lists](../../../../examples/lists/README.md), a list for its members
+Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), a list for its members
 (`@id->members[lists_id=$].person`), the lists one person is on (`mine:`, `@person` over a
 scope), and everyone for anyone signed in (`people:`, `shared: true`), in
 `resources/lists/lists-api.ts` and `resources/people/people-api.ts`.

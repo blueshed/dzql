@@ -42,4 +42,4 @@ The methods and options are typed in `signals.ts` (`Signal`, `ReadonlySignal`, `
 - `.touch()` re-runs effects and computeds that return primitives. A computed that returns the same reference bails: project to fresh values (`Object.values(...)`, primitives) or give `.map()` `{ equals: () => false }`.
 - `.mutate()` uses `structuredClone`: plain data only, no functions, class instances or DOM nodes.
 
-Worked example: [`jobs-view.tsx`](../../../../examples/jobs/resources/jobs/jobs-view.tsx) (`computed` beside what reads it, `.update` and `.mutate` on a small object, `batch` for two writes) and [`jobs.ts`](../../../../examples/jobs/resources/jobs/jobs.ts) (`.peek`, change in place, `.touch`).
+Worked example: [`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx) (`computed` beside what reads it, `.update` and `.mutate` on a small object, `batch` for two writes) and [`jobs.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs.ts) (`.peek`, change in place, `.touch`).

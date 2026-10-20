@@ -43,4 +43,4 @@ SVG tags (`circle`, `g`, `linearGradient`, `foreignObject`, `fe*`…) are made i
 
 Async components: [async](async.md).
 
-Worked example: `JobRow` and `Ring` in [`jobs-view.tsx`](../../../../examples/jobs/resources/jobs/jobs-view.tsx): bound projections, `oninput` and `onchange`, `disabled`, a `<select value>` after its options, `ref`, `readonly`, a style string and object, `null` rendering nothing, SVG with an adopted `<title>`.
+Worked example: `JobRow` and `Ring` in [`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx): bound projections, `oninput` and `onchange`, `disabled`, a `<select value>` after its options, `ref`, `readonly`, a style string and object, `null` rendering nothing, SVG with an adopted `<title>`.

@@ -18,7 +18,7 @@ version, **who** (for the audit) and the **cursor** (what undo walks). SQLite ke
 From a page, undo is an action on its socket: `inject(WS).send({ action: "undo" })` (and
 `"redo"`); the answer says what it did, and the change itself arrives through the documents, as
 every write's does. Working, with two people signed in on one list, each undoing their own:
-[examples/lists](../../../../examples/lists/README.md) (`resources/lists/lists.ts`, Undo and Redo
+[examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md) (`resources/lists/lists.ts`, Undo and Redo
 in `lists-view.tsx`).
 
 ## The cursor

@@ -84,4 +84,4 @@ On a page dzql's server draws, the one piece with state of its own is an applet,
 draw it: `applet(render, reduce?)` from `dzql/rendering/applet`, its props a signal. How, with the
 ticker's example, is dzql's `dzql-app` skill (`reference/applets.md`).
 
-Worked example, your own patch stream: [`jobs.ts`](../../../../examples/jobs/resources/jobs/jobs.ts) and [`jobs-view.tsx`](../../../../examples/jobs/resources/jobs/jobs-view.tsx), over a plain `Bun.serve` feed ([`jobs-api.ts`](../../../../examples/jobs/resources/jobs/jobs-api.ts)). Over delta: delta's kanban example.
+Worked example, your own patch stream: [`jobs.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs.ts) and [`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx), over a plain `Bun.serve` feed ([`jobs-api.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-api.ts)). Over delta: delta's kanban example.

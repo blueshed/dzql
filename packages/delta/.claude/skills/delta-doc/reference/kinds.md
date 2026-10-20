@@ -15,7 +15,7 @@ Options and handles: `MemoryOptions`, `SourceOptions`, `StaticOptions`, `Sourced
 browser opens it like any document. A document kept in a file is the JSON file's, with a schema
 (`backends.md`): settings, a scratchpad, one row of a table.
 
-Working, all three on one page: [examples/lobby](../../../../examples/lobby/README.md), who is
+Working, all three on one page: [examples/lobby](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lobby/README.md), who is
 here (memory), the colours to wear (static) and the server's load (source).
 
 ## Memory: the truth is this process

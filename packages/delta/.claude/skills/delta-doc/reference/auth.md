@@ -45,7 +45,7 @@ const me = await call<Person | null>("me");          // null: nobody: show "Who 
 ```
 
 Working, signed in by a link from the command or the page, with the picker in development:
-[examples/lists](../../../../examples/lists/README.md) (`routes.ts`, `app.tsx`, `resources/people/`).
+[examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md) (`routes.ts`, `app.tsx`, `resources/people/`).
 
 - **A link:** `call("link", { person, opens })` from anyone signed in (`mayLink` narrows it);
   the first person's from the server, `bunx @blueshed/delta link app.db 1 --origin https://my.app`.
