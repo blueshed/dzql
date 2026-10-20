@@ -1,9 +1,10 @@
 /**
  * The jobs on the page: the list (`#/`), a job's own page (`#/jobs/:id`) and a new job's form
  * (`#/jobs/new`). Each component runs once and returns real nodes; what changes later is a signal
- * or a function bound in the JSX, never a re-render.
+ * or a function bound in the JSX, never a re-render. What comes later, from the server, is a
+ * signal too: `resolved(promise)`, shown by `when()`.
  */
-import { batch, computed, inject, list, navigate, signal, when, type JSX, type ReadonlySignal, type Row } from "@blueshed/railroad";
+import { batch, computed, inject, list, navigate, resolved, signal, when, type JSX, type ReadonlySignal, type Row } from "@blueshed/railroad";
 import type { Job } from "./jobs-api";
 import { detail, failedCount, FEED, jobs, logOf } from "./jobs";
 import { runners } from "../runners/runners";
@@ -79,23 +80,28 @@ function JobRow({ job }: { job: Row<Job> }): JSX.Element {
 }
 
 /**
- * `#/jobs/:id`, a keyed route: each id its own run, the last one disposed. Async, so it resolves
- * to a thunk, which railroad runs under a scope it owns. Routes match segments only, so
- * `#/jobs/3?log` gives the id `3?log`: the query is split off here.
+ * `#/jobs/:id`: keyed, as a route is, so each id runs it again and the last run is disposed.
+ * The job comes later, so it is a signal: `resolved()` is null until it settles, and `when()`
+ * shows it. The handler stays synchronous, so what the branch builds is in the route's scope
+ * however late the job comes. Routes match segments only, so `#/jobs/3?log` gives the id `3?log`:
+ * the query is split off here.
  */
-export async function JobPage({ id: param = "" }: Record<string, string>): Promise<() => JSX.Element> {
+export function JobPage({ id: param = "" }: Record<string, string>): JSX.Element {
   const [id = "", query] = param.split("?");
-  const d = await detail(id); // a 404 throws: routes()' onError draws it
-  return () => (
-    <article class="detail" data-id={d.id}>
-      <h2>#{d.id} {d.name}</h2>
-      <JobLive id={d.id} />
-      <input class="command" readonly value={d.command} aria-label="command" />
-      {query === "log"
-        ? <JobLog id={d.id} fallback={() => <p class="waiting">The log comes when the job ends…</p>} />
-        : <a class="show-log" href={`#/jobs/${d.id}?log`}>show the log</a>}
-    </article>
-  );
+  if (!/^\d+$/.test(id)) throw new Error(`#${id} is not a job's number.`); // routes()' onError draws it
+  return when(resolved(detail(id)), (r$) => {
+    const r = r$.peek(); // settled: it never changes again
+    if ("error" in r) return <p class="error">{r.error instanceof Error ? r.error.message : "Something went wrong."}</p>;
+    const d = r.value;
+    return (
+      <article class="detail" data-id={d.id}>
+        <h2>#{d.id} {d.name}</h2>
+        <JobLive id={d.id} />
+        <input class="command" readonly value={d.command} aria-label="command" />
+        {query === "log" ? <JobLog id={d.id} /> : <a class="show-log" href={`#/jobs/${d.id}?log`}>show the log</a>}
+      </article>
+    );
+  }, () => <p class="loading">Loading #{id}…</p>);
 }
 
 /** The job as the feed has it now, or word that it has gone. */
@@ -121,20 +127,25 @@ function Ring({ progress$ }: { progress$: ReadonlySignal<number> }): JSX.Element
   );
 }
 
-/** An async component: shown by its fallback until the log comes, then by the thunk it resolves to. */
-async function JobLog({ id }: { id: number }): Promise<() => JSX.Element> {
-  const lines = await logOf(id);
-  // fetched once and never changed: a plain .map is right for a static array
-  return () => <pre class="log" tabindex="0">{lines.map((l) => <div>{l}</div>)}</pre>;
+/** The log, once the job has ended: waiting until the server answers, then the lines. */
+function JobLog({ id }: { id: number }): JSX.Element {
+  return when(resolved(logOf(id)), (r$) => {
+    const r = r$.peek();
+    if ("error" in r) return <p class="error">The log is not there.</p>;
+    // fetched once and never changed: a plain .map is right for a static array
+    return <pre class="log" tabindex="0">{r.value.map((l) => <div>{l}</div>)}</pre>;
+  }, () => <p class="waiting">The log comes when the job ends…</p>);
 }
 
-/** `#/jobs/new`, declared before `#/jobs/:id` so "new" is not an id. Async: it loads the runners first. */
-export async function NewJobPage(): Promise<() => JSX.Element> {
-  const all = await runners();
-  return () => {
-    const feed = inject(FEED);
-    let name!: HTMLInputElement;
-    let runner!: HTMLSelectElement;
+/** `#/jobs/new`, declared before `#/jobs/:id` so "new" is not an id. The form waits for the runners. */
+export function NewJobPage(): JSX.Element {
+  const feed = inject(FEED);
+  let name!: HTMLInputElement;
+  let runner!: HTMLSelectElement;
+  return when(resolved(runners()), (r$) => {
+    const r = r$.peek();
+    if ("error" in r) return <p class="error">The runners could not be loaded.</p>;
+    const all = r.value;
     const roomiest = all.reduce((a, b) => (b.slots > a.slots ? b : a)).name;
     return (
       <form class="new" onsubmit={(e) => {
@@ -145,10 +156,10 @@ export async function NewJobPage(): Promise<() => JSX.Element> {
         <input ref={(el) => (name = el)} required placeholder="name" aria-label="name" />
         {/* value after children: the roomiest runner is chosen, not the first */}
         <select ref={(el) => (runner = el)} value={roomiest} aria-label="runner">
-          {all.map((r) => <option value={r.name}>{r.name}</option>)}
+          {all.map((one) => <option value={one.name}>{one.name}</option>)}
         </select>
         <button>add</button>
       </form>
     );
-  };
+  });
 }

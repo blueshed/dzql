@@ -216,7 +216,7 @@ test("scopes: a toast is a root of its own, live until dismissed; then its effec
   expect(await view.evaluate<string>(`__what.textContent`)).toBe("#4 test e2e (flaky): queued");
 });
 
-test("async and routes: #/jobs/:id is keyed and async; what it bound stops when it is left", async () => {
+test("async and routes: #/jobs/:id is keyed and shows its job when it comes; what it bound stops when it is left", async () => {
   await list();
   await go("#/jobs/2");
   await waitFor(`document.querySelector('.detail[data-id="2"] .live .status')?.textContent === "queued"`);
@@ -238,7 +238,7 @@ test("async and routes: #/jobs/:id is keyed and async; what it bound stops when 
   expect(await view.evaluate<string>(`__ring.getAttribute("stroke-dasharray")`)).toBe("40 100");
 });
 
-test("async: a component shows its fallback until it settles; disposed first, its thunk never runs", async () => {
+test("async: when(resolved()) shows the wait until the log comes; left first, it builds nothing", async () => {
   await list();
   await go("#/jobs/3?log"); // segments only: the handler splits the query off
   await waitFor(`document.querySelector(".waiting")`);
@@ -268,16 +268,19 @@ test("routes: /jobs/new comes before /jobs/:id; its select takes its value after
   await waitFor(`document.querySelector('${row(7, ".name")}')?.value === "ship it"`);
 });
 
-test("routes: onError draws a job that is not there; a path no route has is read through params$", async () => {
+test("routes: a job that is not there says so, onError draws a handler that throws; a path no route has is the catch-all's params, keyed", async () => {
   await list();
-  await go("#/jobs/999");
+  await go("#/jobs/999"); // the server's 404 is the { error } resolved() settles as
   await waitFor(`document.querySelector(".error")?.textContent === "There is no such job."`);
+  await go("#/jobs/x"); // the handler throws: routes()' onError draws it
+  await waitFor(`document.querySelector(".error")?.textContent === "#x is not a job's number."`);
   await go("#/nope");
   await waitFor(`document.querySelector(".missing")?.textContent.startsWith("There is no page at /nope.")`);
   await view.evaluate(`window.__missing = document.querySelector(".missing")`);
   await go("#/jobs/1/"); // a trailing slash is a segment: not /jobs/:id
   await waitFor(`document.querySelector(".missing")?.textContent.startsWith("There is no page at /jobs/1/.")`);
-  expect(await view.evaluate<boolean>(`__missing === document.querySelector(".missing")`)).toBe(true);
+  // keyed: another path ran the handler again, with that path as its params
+  expect(await view.evaluate<boolean>(`__missing.isConnected`)).toBe(false);
 });
 
 test("routes: the runners layout stays mounted while route() picks the runner inside it", async () => {

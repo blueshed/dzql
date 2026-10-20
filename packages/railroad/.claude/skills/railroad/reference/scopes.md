@@ -20,8 +20,8 @@ dispose();                                                 // effects stop, node
 
 A scope is opened by a component (`createElement`), a `routes()` handler, a `when()` branch, a `list()` row and `mount()`, which returns the disposer (`routes()` returns one too). Everything made inside goes with it.
 
-Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a custom root for each toast, built in a socket's handler,
-with `trackDispose` (`resources/toast.tsx`); a fresh request each run, cleaned up, and a computed
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a root of its own for each toast, built in a socket's handler
+and mounted first in its host, with `trackDispose` (`resources/toast.tsx`); a fresh request each run, cleaned up, and a computed
 made beside the effect (`resources/runners/runners-view.tsx`); a module-level effect's disposer
 kept (`watchTitle` in `resources/jobs/jobs.ts`).
 
@@ -33,10 +33,13 @@ kept (`watchTitle` in `resources/jobs/jobs.ts`).
   effect(() => { user.get(); label ??= name.map((n) => n.toUpperCase()); });
   ```
 
+  A computed kept so keeps its last value and never updates; in development a `.get()` of it after its run warns, once, naming the run.
+
 - Opening a fresh resource each run is fine when that is the intent: ``openDoc(`room:${room.get()}`)`` follows `room`.
 - An effect at module top level is never disposed: keep its disposer.
 - An event handler is not a scope: an effect made in `onclick` leaks. Derive in the component body.
 - `when()` or `list()` made outside any scope leaks, and warns in development.
 - `route()` (singular) opens no scope; at module level it lives for the app, which is allowed.
-- A custom root is `const { value, dispose } = scoped(() => build())`: what `build` makes is in a scope of its own, closed on every path, a throw included. It is synchronous: never across an `await`. `trackDispose(fn)` registers a cleanup; `hasActiveDisposeScope()` says whether one is open.
-- After an `await` there is no scope: that is why async components resolve to a thunk ([async](async.md)).
+- A root of your own, made where there is no scope (a socket's handler), is a `mount()`: `const dismiss = mount(host, () => <Toast />, { before: host.firstChild })` places it before a child (at the end without `before`), and its disposer stops what it made and takes its nodes out, wherever they went.
+- A root that is not nodes is `const { value, dispose } = scoped(() => build())`: what `build` makes is in a scope of its own, closed on every path, a throw included. It is synchronous: never across an `await`. `trackDispose(fn)` registers a cleanup; `hasActiveDisposeScope()` says whether one is open.
+- After an `await` there is no scope: data that comes later is `resolved(promise)`, shown by `when()` from a synchronous component ([async](async.md)).

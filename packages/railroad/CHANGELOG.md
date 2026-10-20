@@ -8,6 +8,20 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Breaking
 
+- **A route is keyed by default** (20 October, Peter's word; #8). A bare handler ran once per
+  pattern, so `"/users/:id": ({ id }) => …` kept the first id after `/users/1` → `/users/2`, unless
+  the route said `{ keyed: true, handler }`. Now every route is keyed: when the matched params
+  change (compared value by value) the old run is disposed and the handler runs again, so its
+  `params` are the match and destructuring them is right. A layout that must stay mounted opts out
+  with `{ keyed: false, handler }`, which runs once per pattern as a bare handler did, its params
+  following through `params$`. To move across: a wildcard layout (`"/sites/*": () => <Sites />`),
+  and any handler that keeps state or focus across a change of its params by reading `params$`,
+  becomes `{ keyed: false, handler: … }`; `{ keyed: true, handler: h }` may become `h` (it still
+  works). A handler that reads `params$` and is left keyed still works, and runs again on each
+  change. A route whose params do not change (`"/"`, `"/about"`) behaves as before. No package in
+  this repository calls `routes()`. `examples/jobs`: `"/jobs/:id": JobPage`, the runners layout
+  says `keyed: false`, and the catch-all takes its path apart (`({ "*": path }) => …`) in place of
+  reading `params$`.
 - **A keyed `list()` row is its fields, each a signal** (20 October, Peter's word; #6). render's
   first argument was `ReadonlySignal<T>`, read field by field as `row$.map((r) => r.x)`, and
   destructuring it read nothing live. It is now `Row<T>`: for a row that is an object, a signal per
@@ -34,6 +48,30 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Added
 
+- **`resolved(promise)`: data that comes later, as a signal** (20 October, Peter's word; #7). It is
+  `null` until the promise settles, then `{ value }` or `{ error }` (the `Settled<T>` type), once,
+  and `when()` shows it: `when(resolved(load(id)), (r$) => …, () => <p>loading…</p>)` from a
+  component or route handler that stays synchronous, so everything the branch builds is in a scope
+  however late the promise settles, and nothing is built if it was left first. An async component
+  or handler had to resolve to a thunk (`return () => <div/>`) for that, with a `fallback` prop for
+  the wait; both are still accepted, and the skill teaches `resolved()` in their place. Exported
+  from the root and `./signals`. `examples/jobs`' `JobPage`, `JobLog` and `NewJobPage` are
+  synchronous (no thunk, no `fallback`, and `NewJobPage`'s `inject()` is back in its body); a job
+  the server has not got is the `{ error }` its page shows, and a malformed id throws to `onError`.
+- **A computed kept from an effect's run says it has gone stale** (20 October, Peter's word; #9).
+  What an effect run makes is disposed before its next run, and a computed disposed so keeps its
+  last value: `label ??= name.map(…)` in an effect worked once and then never updated, silently.
+  In development a `.get()` of a computed after the run that made it was disposed warns, once per
+  computed, naming the run by its source; a read in that run's own teardown (a cleanup) doesn't.
+  A production build drops it, as the other warnings. No API change.
+- **`mount(target, render, { before })` places a root where it is asked** (20 October, Peter's
+  word; #10): before a child of `target` (`null` or no options: at the end, as before), and its
+  disposer takes the nodes out wherever they went. A root placed by hand was `scoped(build)`,
+  placed, and its nodes removed after `dispose()` by hand (a forgotten removal left them, and a
+  fragment's nodes had to be listed before it was placed): `const t = scoped(build);
+  host.prepend(t.value)` and `t.dispose(); t.value.remove()` are `const dismiss = mount(host, build,
+  { before: host.firstChild })` and `dismiss()`. `scoped()` stays, for a root that is not nodes.
+  `MountOptions` is exported as a type. `examples/jobs`' toasts are mounted first in their host.
 - **`collection(key, rows?)`: a keyed list of rows, changed a row at a time** (20 October, Peter's
   word; #4, #5). `set(rows)` for a snapshot, `put(row)` to add or replace by key, `patch(key,
   fields)` for `{ ...row, ...fields }`, `remove(key)`; `put`, `patch` and `remove` return the row as
@@ -67,6 +105,15 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **`loggedRequest` takes the handler's own arguments** (20 October, Peter's word; #11):
+  `loggedRequest<A extends [Request, ...unknown[]]>(tag, handler: (...args: A) => Response |
+  Promise<Response>): (...args: A) => Promise<Response>`. It took `(req: Request) => Response` and
+  passed the request alone, so a Bun route's typed `req.params` was read back by a cast and its
+  server argument was lost. A handler typed `(req: BunRequest<"/api/users/:id">, server) => …`
+  keeps both; a `(req: Request) => …` handler wraps as before. `examples/jobs`' `jobs-api.ts` types
+  its requests, and its `idOf` cast is gone. delta keeps a copy of this file
+  (`packages/delta/src/server/logger.ts`, held to it line for line by its `tests/server.test.ts`),
+  which wants re-syncing from `export type LogLevel` on.
 - **The skill says the new way, and only it** (20 October): SKILL.md's rules 3 and 9,
   `when-list.md`, `realtime.md` and `signals.md` teach a row taken apart into its fields and a
   `collection` for rows changed one at a time; `.touch()` and `{ equals: () => false }` are no

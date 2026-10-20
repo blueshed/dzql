@@ -40,7 +40,8 @@ function RunnerPanel({ name$ }: { name$: ReadonlySignal<string> }): JSX.Element 
     return () => ctl.abort();
   });
 
-  // Made beside the effect, not in it: a run disposes what its body made before the next run
+  // Made beside the effect, not in it: a run disposes what its body made before the next run, and
+  // a computed kept from one would read stale (in development, it says so)
   const theirs = computed(() => jobs.get().filter((j) => j.runner === name$.get()));
 
   return (

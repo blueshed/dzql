@@ -2,6 +2,7 @@
 
 ```ts
 // store.ts
+import type { BunRequest } from "bun";
 import { key, provide, inject, tryInject, createLogger, loggedRequest } from "@blueshed/railroad";
 
 type Store = { hello: (name: string) => string };
@@ -16,7 +17,10 @@ log.info("listening");                             // 12:34:56.789 INFO  [server
 log.debug("tick");                                 // only at LOG_LEVEL=debug
 
 Bun.serve({
-  routes: { "/api/hello": loggedRequest("[api]", () => new Response("ok")) },
+  routes: {
+    "/api/hello": loggedRequest("[api]", () => new Response("ok")),
+    "/api/users/:id": loggedRequest("[api]", (req: BunRequest<"/api/users/:id">) => Response.json(req.params)),
+  },
 });
 ```
 
@@ -33,3 +37,4 @@ its unit tests; the logger and `loggedRequest` on the server (`resources/jobs/jo
 - `clearProviders()` resets the registry between tests.
 - `LOG_LEVEL` (in `.env`, or `setLogLevel()`) is `silent`, `error`, `warn`, `info` or `debug`; an unknown value falls back to `info`.
 - `loggedRequest(tag, handler)` logs method, path, status and time; a throw is logged and re-thrown.
+- It takes what the handler takes and passes it all on: type the request (`req: BunRequest<"/api/users/:id">`) and `req.params` is typed, with no cast; a second argument, Bun's server, comes through too.

@@ -45,4 +45,4 @@ SVG tags (`circle`, `g`, `linearGradient`, `foreignObject`, `fe*`…) are made i
 - A `when()`/`list()` fragment appended by hand (`svg.appendChild(when(…))`) doesn't adopt those four on its first render: place it through JSX, `mount()`, `routes()` or a parent `when()`/`list()`.
 - An SVG element renders only under an `<svg>` ancestor (SVG's rule). Prefer `href` to `xlink:href`.
 
-Async components: [async](async.md).
+Data that comes later: [async](async.md).

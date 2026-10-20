@@ -4,7 +4,7 @@
  * API:
  *   routes(target, table, options?) — declarative hash router, swaps target
  *                             content; a table value is a handler or
- *                             { handler, keyed? }
+ *                             { handler, keyed? } (keyed unless keyed: false)
  *   route<T>(pattern)       — reactive route: Signal<T | null>, null when unmatched
  *   navigate(path)          — set location.hash; route() and routes() are
  *                             current when it returns (no tick to wait for)
@@ -26,37 +26,34 @@
  * Handlers receive (params, params$) and return a Node, or a Promise of a
  * THUNK (() => Node): railroad runs the thunk under a scope it owns, so
  * reactive bindings built after the first await are disposed on navigation.
- *   "/users/:id": { keyed: true, handler: async ({ id }) => {
- *     const u = await load(id); return () => <User u={u} />; } }
  * A promise that resolves to a bare Node is an error (onError, or the
  * console): what it built after its first await would have no owner scope.
- *   params  — the params at the time the handler ran. A handler runs once
- *             per pattern, so `({ id }) => <h1>{id}</h1>` still shows the
- *             first id after /users/1 → /users/2 (unless the route is keyed).
- *   params$ — ReadonlySignal that updates when params change within the same
- *             pattern: `(_, p$) => <h1>{p$.map(p => p.id)}</h1>`
  * A handler, like a component, runs untracked: a .get() in it is a one-shot
  * read that doesn't subscribe the router (and warns, in development).
  *
- * The router manages cleanup automatically. When params change within the
- * same pattern (e.g. /users/1 → /users/2), params$ updates — no teardown.
+ * Routes are keyed: a handler runs again whenever the matched params change
+ * (compared value by value), the previous run disposed, as Solid's
+ * <Show keyed> does. So `params` is the match, and destructuring is right:
+ *   "/users/:id": ({ id }) => <User id={id} />
+ * /users/1 → /users/2 runs it again for 2 (local state and focus reset).
  *
- * Keyed routes — a table value `{ handler, keyed: true }` re-runs its handler
- * whenever the matched params change (compared value by value), disposing
- * the previous run, as Solid's <Show keyed> does. Then destructuring works:
- *   "/users/:id": { keyed: true, handler: ({ id }) => <User id={id} /> }
- * Keep a wildcard layout unkeyed, or every sub-path remounts it (its
- * params["*"] changes). `{ handler }` without keyed is a bare handler.
+ * A layout opts out — `{ handler, keyed: false }` runs once per pattern and
+ * stays mounted while its params change; they reach it through params$, a
+ * ReadonlySignal of the current match (its `params` stays the first):
+ *   "/sites/*": { keyed: false, handler: (_, p$) => <Sites rest$={p$.map(p => p["*"])} /> }
+ * A wildcard layout wants it, or every sub-path remounts it (its params["*"]
+ * changes). params$ is given to a keyed handler too; it changes only when the
+ * handler runs again.
  *
  * navigate(path) updates the route signal synchronously, so route() and the
  * router show the new path as navigate() returns, and the hashchange that
  * follows re-runs nothing. Setting location.hash yourself, or following an
  * <a href="#/…">, still lands on the next hashchange (a macrotask later).
  *
- * Nested routes — use wildcard to keep a layout mounted:
+ * Nested routes — use a wildcard, unkeyed, to keep a layout mounted:
  *   routes(app, {
  *     "/":          () => <Home />,
- *     "/sites/*":   () => <SitesLayout />,
+ *     "/sites/*":   { keyed: false, handler: () => <SitesLayout /> },
  *   });
  *   // Inside SitesLayout, use route() for sub-navigation:
  *   const detail = route("/sites/:id");
@@ -169,9 +166,10 @@ type RouteHandler = (
   params$: ReadonlySignal<Record<string, string>>,
 ) => Node | Promise<() => Node>;
 
-/** A table entry: a handler, or `{ handler, keyed }`. With `keyed: true` the
- *  handler re-runs (a fresh scope, the old one disposed) whenever the matched
- *  params change, instead of running once per pattern. */
+/** A table entry: a handler, or `{ handler, keyed }`. Keyed (the default) the
+ *  handler runs again (a fresh scope, the old one disposed) whenever the
+ *  matched params change; with `keyed: false` it runs once per pattern and
+ *  follows its params through params$, as a layout does. */
 type RouteEntry<H> = H | { handler: H; keyed?: boolean };
 
 export interface RouterOptions {
@@ -306,12 +304,12 @@ export function routes(
     for (const [pattern, entry] of Object.entries(table)) {
       const params = matchRoute(pattern, path);
       if (!params) continue;
-      const { handler, keyed } = typeof entry === "function" ? { handler: entry, keyed: false } : entry;
-      // Same pattern, new params: push them into params$, no teardown. Unless a
-      // render for the old params is still in flight: its resolution would
-      // paint outdated content, and a handler that captured the initial
-      // `params` would never refresh, so tear down and run it again. A keyed
-      // route runs again whenever the params differ.
+      const { handler, keyed = true } = typeof entry === "function" ? { handler: entry } : entry;
+      // Same pattern, new params: a keyed route (the default) runs again
+      // whenever they differ. An unkeyed one has them pushed into params$, no
+      // teardown, unless a render for the old params is still in flight: its
+      // resolution would paint outdated content, and a handler that captured
+      // the initial `params` would never refresh, so tear down and run it again.
       if (
         pattern === activePattern && !asyncPending &&
         !(keyed && !sameParams(params, activeParams!.peek()))

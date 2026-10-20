@@ -3,21 +3,16 @@
  *
  * The feed tells of a failure from its socket's onmessage, and an event handler is not a scope:
  * what a toast builds there (its when() over the job) would never be torn down.
- * So each toast is a custom root, `scoped(build)`: what it makes is in a scope of its own, which
- * dismissing it disposes. (`mount()` would do too, but it appends; the newest toast goes first.)
+ * So each toast is a root of its own, `mount()`ed first in its host (`before`): what it makes is
+ * in a scope of its own, and dismissing it, the mount's disposer, stops that and takes it out.
  */
-import { inject, scoped, trackDispose, when, type JSX } from "@blueshed/railroad";
+import { inject, mount, trackDispose, when, type JSX } from "@blueshed/railroad";
 import { FEED, jobs } from "./jobs/jobs";
 
 /** What the feed calls when job `id` fails: a toast in `host`, newest first. */
 export function toasts(host: Element): (id: number) => void {
   return (id) => {
-    const toast = scoped(() => <Toast id={id} dismiss={() => dismiss()} />);
-    const dismiss = () => {
-      toast.dispose(); // its effects stop
-      toast.value.parentNode?.removeChild(toast.value); // and its node goes: dispose leaves it
-    };
-    host.prepend(toast.value);
+    const dismiss = mount(host, () => <Toast id={id} dismiss={() => dismiss()} />, { before: host.firstChild });
   };
 }
 

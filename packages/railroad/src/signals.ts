@@ -35,6 +35,8 @@
  *   batch(fn)                 — group writes into a single flush
  *   untrack(fn)               — read without registering a dependency
  *   collection<T>(key, rows?) — a keyed list of rows, changed a row at a time
+ *   resolved<T>(promise)      — a promise as a signal: null until it settles,
+ *                               then { value } or { error }, for when()
  *
  * Signal<T> methods:
  *   .get()                    — read (tracks dependency when inside effect/computed)
@@ -79,6 +81,9 @@
  *   app code — mount UI through routes() or jsx's mount() so a root scope
  *   exists. Each effect/computed run is itself an owner scope: anything its
  *   body creates is disposed before the next run and when it is disposed.
+ *   A computed disposed so keeps its last value and never updates, so in
+ *   development a .get() of it after (outside a teardown) warns, once, naming
+ *   the run: what must outlive one run is made outside the effect's body.
  *
  * Render bodies: components, when() branches, list() rows and route handlers
  * run untracked (see jsx.ts), so a .get() there is a one-shot read. In
@@ -159,6 +164,11 @@ type Listener = (() => void) & {
   output?: Signal<any>;
   deps?: Set<Signal<any>>;
   fresh?: number;
+  // An effect's own function, to name its run in a warning (a computed's: the
+  // function it was given).
+  body?: Function;
+  // A computed's: the run it was disposed with, in development (see effect()).
+  diedWith?: Function;
 };
 
 // Global tracking for effect dependencies
@@ -257,6 +267,17 @@ const warnings = {
         "to a single row and others are dropped. keyFn must return a unique key per item.",
     );
   },
+  // A computed made in an effect's run, read after that run disposed it: it
+  // keeps its last value, and nothing will update it again.
+  disposedRead(producer: Listener): void {
+    const run = Function.prototype.toString.call(producer.diedWith).replace(/\s+/g, " ");
+    producer.diedWith = undefined; // once per computed
+    console.warn(
+      "[railroad] A computed is read after the effect run that made it was disposed: it keeps " +
+        "its last value and never updates. What must outlive one run is made outside the effect's " +
+        `body, beside it. The run: ${run.length > 120 ? `${run.slice(0, 117)}...` : run}`,
+    );
+  },
   // A keyed row read as the signal it once was: row.map(…) is the row's
   // field "map", a signal of undefined, not a function.
   rowAsSignal(name: string): void {
@@ -284,6 +305,10 @@ try {
 
 let batchDepth = 0;
 const pendingEffects = new Set<Listener>();
+
+// While an effect's run is torn down (before its next run, or on dispose), the
+// function that run is: see effect()'s release().
+let releasing: Function | null = null;
 
 // === Flush scheduler ===
 //
@@ -514,6 +539,8 @@ export class Signal<T> implements ReadonlySignal<T> {
 
   get(): T {
     if (activeFlush && this.level >= activeFlush.floor) freshen(activeFlush, this);
+    // Set only in development, and never while a run's teardown reads it
+    if (this.producer?.diedWith && !releasing) warn!.disposedRead(this.producer);
     if (currentListener) this.listeners.add(currentListener);
     else if (rendering) warn!.renderRead();
     if (currentDeps) currentDeps.add(this);
@@ -608,13 +635,22 @@ export function effect(fn: () => void | (() => void)): () => void {
 
   // Dispose the last run's children and call its cleanup, each exactly once
   // (cleared first, so a run that throws can't leave them to be called again).
+  // `releasing` names the run meanwhile: a computed disposed in it is marked
+  // (computed(), below), and a read during the teardown doesn't warn.
   const release = () => {
     const c = children;
     const k = cleanup;
     children = null;
     cleanup = undefined;
-    if (c) c();
-    if (k) k();
+    if (!c && !k) return;
+    const prev = releasing;
+    releasing = execute.body ?? fn;
+    try {
+      if (c) c();
+      if (k) k();
+    } finally {
+      releasing = prev;
+    }
   };
 
   const execute: Listener = () => {
@@ -744,6 +780,7 @@ export function computed<T>(
   let s!: Signal<T>;
   effect(() => {
     const self = currentListener!;
+    self.body = fn; // its runs are named by what it was given
     self.deps = currentDeps!; // what this run reads, for freshen()
     const v = fn();
     // currentDeps is this effect's live dep set (fn has finished reading).
@@ -762,6 +799,9 @@ export function computed<T>(
       self.output = s;
     }
   });
+  // Disposed with an effect's run, it is marked with that run, so a read after
+  // warns (development only; get() checks the mark)
+  if (warn) trackDispose(() => { if (releasing) s.producer!.diedWith = releasing; });
   return s;
 }
 
@@ -842,6 +882,34 @@ export function batch(fn: () => void): void {
 
 export function signal<T>(initialValue: T, options?: SignalOptions<T>): Signal<T> {
   return new Signal(initialValue, options);
+}
+
+// === resolved() ===
+
+/** What a promise settled as: its value, or what it rejected with. */
+export type Settled<T> = { value: T } | { error: unknown };
+
+/**
+ * A promise as a signal: null until it settles, then `{ value }` or
+ * `{ error }`, once, never changing again. Data that comes later is shown by
+ * when() over it, from a component or route handler that stays synchronous,
+ * so everything the branch builds is in a scope however late the promise
+ * settles (after an await there is none: browser JS has no AsyncContext):
+ *
+ *   function Profile() {
+ *     return when(resolved(load("/api/me")), (r$) => {
+ *       const r = r$.peek(); // settled: it never changes again
+ *       return "error" in r ? <p>no profile</p> : <p>{r.value.name}</p>;
+ *     }, () => <p>loading…</p>);
+ *   }
+ *
+ * A rejection is the `{ error }` it settles as, not an unhandled rejection. A
+ * branch that was disposed first (a navigation) is never built.
+ */
+export function resolved<T>(promise: PromiseLike<T>): ReadonlySignal<Settled<T> | null> {
+  const s = new Signal<Settled<T> | null>(null);
+  promise.then((value) => s.set({ value }), (error: unknown) => s.set({ error }));
+  return s;
 }
 
 // === collection() ===
