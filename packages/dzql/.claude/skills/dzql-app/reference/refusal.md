@@ -51,6 +51,9 @@ answers closed against Undo too (`permitUndo`) and what a walk did, told (`after
 - A refusal from the store -- the model's guards (`guardWrites`), a document's permission -- reaches
   the page as one from `refuse` does, its words the story's alone: the guards' answer carries the
   story's number beside them (`error.story`), for logs and the proof, never on the page.
+- So does any other the store makes (a value the schema does not take, 400; a row not there; a
+  clash, 409), in delta's words ("text must be a string"), or the resource's own for them:
+  `refused: "Not saved"` on the `Resource`. The guards' words are the app's, and stay.
 
 ## Undo is checked before it runs
 

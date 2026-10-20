@@ -8,14 +8,15 @@ export function browser(url: () => URL) {
   return {
     ...page,
 
-    // Make every change the page sends to a document from now on one the server refuses: each op at
-    // a path below the one meant, which no document has (delta's socket and a page drawn on the server alike)
+    // Make every change the page sends to a document from now on one the store refuses: each value
+    // one no schema takes (a number where text or a row goes), each op without one at a path below
+    // the one meant, which no document has (delta's socket and a page drawn on the server alike)
     refuseWrites: () =>
       page.view.evaluate(`(() => {
         const send = WebSocket.prototype.send;
         WebSocket.prototype.send = function (data) {
           const msg = JSON.parse(data);
-          if (Array.isArray(msg.ops)) msg.ops = msg.ops.map((op) => ({ ...op, path: op.path + "/refused" }));
+          if (Array.isArray(msg.ops)) msg.ops = msg.ops.map((op) => ("value" in op ? { ...op, value: 1 } : { ...op, path: op.path + "/refused" }));
           return send.call(this, JSON.stringify(msg));
         };
       })()`),

@@ -16,6 +16,8 @@ differ, fixed where each differs.
 - **Undo and Redo only when asked** (#126, breaking in dzql): dzql's `bento({ undo: true })`, as
   railroad's `bento({ undo, redo })`; the examples ask, and `sqlite.md` gives the light page its
   Undo, which its test presses.
+- **A store's refusal says why** (#123, dzql): any 4xx is told beside the control, in the
+  guards' words, the resource's (`refused`), or delta's; the step's message says Not saved again.
 
 ### The traps delta's examples found, removed (20 October, delta #88-#91)
 

@@ -543,12 +543,13 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("a write the store refuses (403: the model's guards; 401: nobody they know) is refused on the page with the store's reason; another error is reported", async () => {
+  test("a write the store refuses (4xx) is refused on the page saying why: the guards' words (403, 401), else the resource's, else delta's; another error is reported", async () => {
     // an app of its own: the store's refusal stands in front of it, as the model's guards do (dzql/modelling/guards)
     const guarded = createLocal();
     guarded.server.on("delta", (msg, _client, respond) => {
       if (JSON.stringify(msg.ops ?? []).includes('"forbidden"')) respond({ error: { code: 403, message: "The store says no." } });
       if (JSON.stringify(msg.ops ?? []).includes('"anonymous"')) respond({ error: { code: 401, message: "Sign in to write to note." } });
+      if (JSON.stringify(msg.ops ?? []).includes('"unshaped"')) respond({ error: { code: 400, message: "text must be a string" } });
       if (JSON.stringify(msg.ops ?? []).includes('"clashing"')) respond({ error: { code: 500, message: "The disk is full." } });
     });
     const store = new Database(":memory:");
@@ -566,6 +567,9 @@ describe("createServer, generically (no example from the examples directory invo
       // a 401 is a refusal too, saying why (cafe-d's feedback: it was "delta applied nothing")
       const unsigned = write(ws, "note", [{ op: "replace", path: "/text", value: "anonymous" }]);
       expect(await refusal()).toEqual({ type: "refused", id: unsigned, reason: "Sign in to write to note." });
+      // a write the schema does not take (400), in delta's words, where it was refused without one
+      const unshaped = write(ws, "note", [{ op: "replace", path: "/text", value: "unshaped" }]);
+      expect(await refusal()).toEqual({ type: "refused", id: unshaped, reason: "text must be a string" });
       // the store failing is reported, and the write refused
       const heard: string[] = [];
       const stop = onFailure((what, err) => heard.push(`${what}: ${(err as Error).message}`));
@@ -576,6 +580,19 @@ describe("createServer, generically (no example from the examples directory invo
       ws.close();
     } finally {
       app.stop(true);
+    }
+    // a resource that says its own words for the store's refusal: they stand for delta's, never for the guards'
+    const worded = await createServer({ name: "worded", resources: [{ ...noteResource, shape: undefined, refused: "Not saved." }], render: (sessionId) => `<p>worded</p>${toldAt(sessionId, "note", "/text")}`, active: () => true, index, delta: guarded }, 0);
+    try {
+      const ws = await open(worded);
+      const answered = (value: string): Promise<WireMessage[]> => (write(ws, "note", [{ op: "replace", path: "/text", value }], value), heard(ws));
+      const told = await answered("unshaped");
+      expect(told[0]).toEqual({ type: "refused", id: "unshaped", reason: "Not saved." });
+      expect(htmlOf(told.filter((m) => m.type === "render").at(-1)!)).toContain('<p class="refused" role="alert">Not saved.</p>'); // beside the control that sent it
+      expect((await answered("forbidden"))[0]).toEqual({ type: "refused", id: "forbidden", reason: "The store says no." });
+      ws.close();
+    } finally {
+      worded.stop(true);
     }
   });
 

@@ -18,7 +18,7 @@ setDefaultTimeout(30_000); // first browser start can be slow
 
 const dataDir = mkdtempSync(`${tmpdir()}/message-`); // a scratch data folder, never the project's data/
 let server = await startServer({ port: 0, dev: false, dataDir }); // random free port, no HMR
-const { view, open, waitFor, replaceText, withOtherWindow, close } = browser(() => server.url);
+const { view, open, waitFor, replaceText, withOtherWindow, refuseWrites, close } = browser(() => server.url);
 
 afterAll(async () => {
   close();
@@ -74,6 +74,8 @@ const CELL = `.cell[data-key="message"] .cell-name`;
 const SAVE = ".drawer .tool.add";
 /** Saved, said where a person hears it: a line that is a status. */
 const SAID = (words: string) => `[...document.querySelectorAll('[role="status"]')].some((s) => s.textContent.trim() === "${words}")`;
+/** Not saved, said where a person hears it at once: a line that is an alert. */
+const ALERT = (words: string) => `[...document.querySelectorAll('[role="alert"]')].some((s) => s.textContent.trim() === "${words}")`;
 
 /** The page, with the message's drawer opened as a person opens it: a tap on the cell. */
 async function openMessage(on: Bun.WebView = view, waitIn: (expr: string) => Promise<void> = waitFor) {
@@ -105,6 +107,13 @@ test("the drawer goes as it came: its ×, Escape, or Back, and the box behind is
     await waitFor(`!document.querySelector(".drawer")`);
     expect(await view.evaluate<string>(`document.querySelector(${JSON.stringify(CELL)}).getAttribute("aria-expanded")`)).toBe("false");
   }
+});
+
+test("where you are is the URL: the drawer open, it ends ?message, so a reload opens it again", async () => {
+  await openMessage();
+  await waitFor(`location.href.endsWith("?message")`);
+  await view.evaluate(`(window.before = true, location.reload())`);
+  await waitFor(`!window.before && document.querySelector("textarea")`);
 });
 
 test(`${stories.stories.saves.name} -- saving says Saved once the server has it, and the message survives a reload`, async () => {
@@ -150,6 +159,17 @@ test(`${stories.stories.refused.name} -- typing that is not saved is not overwri
   });
   await Bun.sleep(300); // time for the change to arrive, had it been taken
   expect(await view.evaluate<string>(`document.querySelector("textarea").value`)).toBe("half-typed");
+});
+
+test(`${stories.stories.refused.name} -- a save the server refuses says Not saved, and what was typed stays in the box`, async () => {
+  await openMessage();
+  await waitFor(`document.querySelector("textarea")?.value === "from the first!?"`);
+  await replaceText("textarea", "not to be kept");
+  await refuseWrites();
+  await view.click(SAVE);
+  await waitFor(ALERT("Not saved"));
+  await waitFor(`document.querySelector("textarea")?.value === "not to be kept"`);
+  await holding(async (doc) => expect(doc.value().messages.text).toBe("from the first!?"));
 });
 
 test(`${stories.stories.restarts.name} -- after the server restarts, the page has what changed meanwhile and follows again`, async () => {

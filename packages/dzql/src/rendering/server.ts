@@ -287,10 +287,14 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
     const writing = documents.write(doc, rest.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable });
     // a write never undone: its echo names no change
     const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : { version: w.version, entry: undoable ? w.entry : undefined }));
-    // a store's own refusal (403: the model's guards, a document's permission; 401: nobody the guards
-    // know) says why, as a resource's does; a write the store cannot make (a row not there) is refused
-    // without a word, as it always was; the store itself failing (5xx) is reported, never silent
-    if ("error" in written && (written.error.code === 403 || written.error.code === 401)) throw refuse(written.error.message);
+    // a store's own refusal (4xx) says why, as a resource's does: the model's guards or a document's
+    // permission (403), or nobody the guards know (401), in the store's words, the app's own; any
+    // other (a value the schema does not take, 400; a row not there; a clash) in the resource's
+    // (`refused`), else delta's; the store itself failing (5xx) is reported, never silent
+    if ("error" in written && written.error.code >= 400 && written.error.code < 500) {
+      const guarded = written.error.code === 403 || written.error.code === 401;
+      throw refuse(guarded ? written.error.message : (owner.refused ?? written.error.message));
+    }
     const named = owner.perSession ? owner.docType : doc; // a session's own named by type: its id is a credential
     if ("error" in written && written.error.code >= 500) failed(`writing ${named}`, new Error(`${written.error.code}: ${written.error.message}`));
     if ("error" in written || written.ops.length === 0) return false;

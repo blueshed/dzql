@@ -1252,7 +1252,7 @@ describe("a failure that says why", () => {
       'nothing landed: ada\'s write was refused by room\'s permit: "Not now."',
       "nothing landed: ada's write was refused by room's shape",
       'nothing landed: ada\'s write was refused by room\'s shape: "Say less."',
-      "nothing landed: ada's write was refused past room's permit and shape: delta applied nothing",
+      'nothing landed: ada\'s write was refused past room\'s permit and shape: delta applied nothing: "/nowhere/at/all: Unknown collection: nowhere"', // delta's words, as the page is told them
       "nothing landed: ada's write was refused by session's shape",
       "nothing landed: ada's write was refused, as here:general is a memory document, which the wire does not write",
       "nothing landed: dee's write was refused, as dee's page did not read room:general: it read session, lobby:all",

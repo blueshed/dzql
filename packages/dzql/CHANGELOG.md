@@ -176,6 +176,14 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **A write the store refuses says why, whatever refused it** (20 October, root #123). The kernel
+  told a store's 403 and 401 and refused the rest without a word, so a value the schema does not
+  take (400) was handed back with nothing beside the control. Now any 4xx is a refusal with words,
+  drawn by `toldAt` like any other: the guards' (403, 401) as before; any other in the resource's
+  own, `refused` on the `Resource` (`refused: "Not saved"`), else delta's ("text must be a
+  string"). The wire is unchanged (`WIRE` stays 4): a `refused` answer carries a reason more
+  often. Nothing to move across; a page that draws `toldAt` beside its control shows the words.
+
 - **The ticker's city picker takes its row apart** (20 October, railroad's #6): a keyed `list()`
   row is its fields now, so `examples/ticker/applets/city-picker-applet.tsx` reads `({ tz, label },
   i$)` in place of `z$.peek().tz` and `z$.map((z) => z.label)`.

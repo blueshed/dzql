@@ -4,7 +4,7 @@ When the page should be drawn where the documents are: many people at once, slow
 
 **What stays:** the documents' definitions, their paths and the history of migrations; the rows, in the same data folder (`DATA_PATH`, else `data/`), and the rows kept before; `startServer({ port, dev, dataDir })`, which opens the store as the server starts and closes it as it stops; the HTTP route (`/api/status`); the look; `stories.ts`, each story under its key, a few gaining a body on their own line; and the tests of a document (`documents.ts` says where they are held) and of the page in a browser (both pages are the bento's HTML): `site.test.ts`, `message.test.ts`, `order.test.ts`, `kitchen.test.ts` and the moves'.
 
-**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; `orderDocs` becomes the store every document is in (`store.ts`). And the tests of what the light page alone did (`app.test.ts`, `message-view.test.ts`), which become the thin page's.
+**What is rewritten:** what draws the page. Each `<name>-view.tsx` (railroad) becomes `<name>-view.ts` (strings, dzql's `bento`), a handler that sent a change the write its control names (`write(doc, op, path)`); `app.tsx` becomes `page.ts`; each `<name>.ts`, the browser's handle on a document, becomes its resource on the server; `orderDocs` becomes the store every document is in (`store.ts`). And the tests of what the light page alone did (`app.test.ts`, `message-view.test.ts`): the first becomes the thin page's, the second goes.
 
 ```sh
 rm src/app.tsx src/resources/bento.tsx src/resources/toast.ts src/resources/status/status.ts src/resources/status/status-view.tsx src/resources/message/message-view.tsx src/resources/order/order-view.tsx
@@ -154,7 +154,7 @@ import type { Resource } from "dzql/rendering/resources/resource";
 import { tell } from "dzql/rendering/refusal";
 
 // The message's resource: anyone may change its text, and is told Saved once it has landed. What
-// the schema does not take (a text that is not text), delta refuses.
+// the schema does not take (a text that is not text), delta refuses, told as the light page told it.
 
 /** The path a save writes, as the light page wrote it: the one message's text, its row by its id. */
 export const TEXT = "/messages/1/text";
@@ -164,6 +164,7 @@ export const message: Resource = {
   ledger: false, // no undo, as on the JSON file
   resolveDoc: () => "1",
   permit: (_ws, op) => op.op === "replace" && op.path === TEXT,
+  refused: "Not saved", // in place of delta's words
   afterWrite: (ws) => tell(ws.data.sessionId, { doc: "message", path: TEXT, said: "Saved" }),
 };
 ```
@@ -456,11 +457,6 @@ saves: story("Saving (the button) says Saved once the server has it, and the mes
 ```
 
 ```ts
-// stories.ts: in place of refused: story(
-refused: story("A save the server refuses is handed back, and typing not yet saved is never overwritten by another window's save."),
-```
-
-```ts
 // stories.ts: in place of health: story(
 health: story("The health check answers ok, and an unknown page opens on the box."),
 ```
@@ -535,62 +531,10 @@ test(`${stories.stories.health.name} -- a page that is not one opens on the box`
 });
 ```
 
-```ts
-// tests/message-view.test.ts
-import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { startServer } from "../src/routes";
-import { browser } from "./browser";
-import { documents } from "./documents";
-import { stories } from "../stories";
-
-// What this page's message drawer alone does, drawn on the server: where it stands is the URL, and
-// a save refused is handed back to the box. What any page of the message does is message.test.ts.
-
-setDefaultTimeout(30_000);
-
-const dataDir = mkdtempSync(`${tmpdir()}/message-view-`);
-const server = await startServer({ port: 0, dev: false, dataDir });
-const { view, open, waitFor, replaceText, refuseWrites, close } = browser(() => server.url);
-
-afterAll(async () => {
-  close();
-  await server.stop(true);
-  rmSync(dataDir, { recursive: true, force: true });
-});
-
-const CELL = `.cell[data-key="message"] .cell-name`;
-
-/** The page, with the message's drawer opened as a person opens it: a tap on the cell. */
-async function openMessage() {
-  await open();
-  await waitFor(`document.querySelector(${JSON.stringify(CELL)})`);
-  await view.click(CELL);
-  await waitFor(`document.querySelector("textarea")`);
-}
-
-test("where you are is the URL: the drawer open is ?message, so a reload or a link opens it again", async () => {
-  await openMessage();
-  await waitFor(`location.search === "?message"`);
-});
-
-test(`${stories.stories.refused.name} -- a save the server refuses is handed back to the box, and the message stays as it was`, async () => {
-  await openMessage();
-  await replaceText("textarea", "not to be kept");
-  await refuseWrites();
-  await view.click(".drawer .tool.add");
-  await waitFor(`document.querySelector("textarea")?.value === "not to be kept"`);
-  const client = await documents(server);
-  expect((await client.open("message:1")).value()).toEqual({ messages: { id: 1, text: "Hello" } });
-  client.close();
-});
-```
-
 Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md, sqlite.md and postgres.md) and runs its type check and tests (`bun run test:evolve`).
 
 - `bun run stories` says each story; `STORY_BY_HAND=1 bun run stories` does each with the page's own controls, in a browser the size of a phone.
-- **What changed for the people using it**, each by where it is drawn: Saved is said beside the box, not in a toast; a refusal delta makes is handed back to the box without a word, where the toast said Not saved; Cmd+Enter does not save (the box saves by its button); typing not yet saved is kept while the caret is in the box; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
+- **What changed for the people using it**, each by where it is drawn: Saved is said beside the box, not in a toast; Not saved is said beside the box, where it was a toast too; Cmd+Enter does not save (the box saves by its button); typing not yet saved is kept while the caret is in the box; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
 - **The session:** nobody signs in, so the cookie is the session and no row is kept by it (`Example.session` left out). Sign-in by link, a session kept as a row (`sessionRows`), is dzql-app's `signin.md`; delta's `auth-link` ([auth.md](auth.md)) is for a page that is delta's client, not this one.
 - **The store is the server's**, as `orderDocs`'s was: opened as it starts, on its data folder, and closed as it stops, so a test runs servers on folders of its own, and `bun dev`'s reload closes the last store before it opens the next (its ids carry on).
 - From here the app grows with `dzql-app`; the other references here are the light page's. `CLAUDE.md` and `README.md` still describe the light page: say the thin one, as create-dzql's do.

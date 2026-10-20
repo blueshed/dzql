@@ -71,6 +71,13 @@ export type Resource = {
    */
   shape?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): PatchOp[];
   /**
+   * What a write the store refuses is told as, beside the control that sent it, in place of delta's
+   * own words: a value the schema does not take (400: "text must be a string"), a row not there, a
+   * clash (409). Omitted: delta's words. A refusal of the model's guards or of a document's
+   * permission (403), or of nobody they know (401), is told in the store's words, the app's own.
+   */
+  refused?: string;
+  /**
    * Before an undo or redo: may it go ahead? Given the ops it would write, in the wire's paths:
    * each field it sets back its own replace (`replace /answer`).
    *

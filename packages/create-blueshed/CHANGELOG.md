@@ -89,6 +89,13 @@ section up.
   them only when asked (dzql's `bento({ undo: true })`, which the thin-client step says), so the
   page keeps its tools as it moves; `tests/bento-page.tsx` holds the two equal for a box with
   none, open and closed.
+- **A refusal says Not saved on the thin client too** (20 October, root #123; needs dzql's next
+  release, whose kernel tells a store's 4xx with words): the thin-client step's message resource
+  says `refused: "Not saved"`, so the `refused` story keeps the light page's words. The template's
+  `refuseWrites` (`tests/browser.ts`) makes a refusal the store makes on either page (each value
+  one no schema takes; an op without one, a path below), and the refusal's test is in
+  `message.test.ts`, both pages', as is "where you are is the URL" (it ends `?message`), so the
+  step writes no `message-view.test.ts`.
 - **The evolve skill's last step: the page drawn on the server** (20 October, root #73):
   `references/thin-client.md`, applied after two-documents, sqlite and postgres by
   `tests/evolve.ts`, moves the order app to dzql's thin client in the shape `bun create dzql`
