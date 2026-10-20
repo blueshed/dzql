@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { bboxStory, runExample, stop, until, type Proc } from "./helpers/examples";
 
 test("sites-bbox on SQLite: a box is told the sites that come into it, move in it, and leave it", async () => {
-  const server = runExample("sites-bbox/server.ts");
+  const server = runExample("sites-bbox/routes.ts");
   try {
     const [, url, world] = await until(server, /(ws:\S+)[\s\S]*"(world:\d+)"/);
     await bboxStory(url!, url!, world!);
@@ -22,7 +22,7 @@ test("sites-bbox on SQLite: a box is told the sites that come into it, move in i
 
 describe("kanban", () => {
   test("two browsers on board:1: a card clicked in one moves to the next column in both", async () => {
-    const server = runExample("kanban/serve.ts");
+    const server = runExample("kanban/routes.ts");
     const browsers: Proc[] = [];
     const browser = (more: Record<string, string>) => {
       const p = Bun.spawn(["bun", join(import.meta.dir, "helpers/kanban-browser.ts")], {

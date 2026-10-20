@@ -1,7 +1,8 @@
 /**
- * The skill's recipe runs as written: reference/recipe.md's `types.ts`, `server.ts`,
- * `client.tsx`, `tsconfig.json` and `index.html` blocks, saved in a folder inside the package
- * (so `@blueshed/delta/...` resolves to this source, as from node_modules).
+ * The skill's recipe runs as written: each of reference/recipe.md's blocks under a file's
+ * heading (`routes.ts`, `resources/room/room-api.ts`, ..., `tsconfig.json`), saved at that path
+ * in a folder inside the package (so `@blueshed/delta/...` resolves to this source, as from
+ * node_modules).
  * The server runs on a free port; each browser is a Bun process with
  * happy-dom for the page and Bun's own WebSocket. One types a message and
  * submits the form, and the other's `#log` shows it.
@@ -17,7 +18,7 @@ const skill = await Bun.file(new URL("../.claude/skills/delta-doc/reference/reci
 
 const blockAfter = (marker: string) => blockOf(skill, marker, "reference/recipe.md");
 
-/** One browser: the recipe's page in happy-dom, its client.tsx, then (if asked) a message typed and sent; it exits once `#log` shows `HEAR`, or fails after 5 s. */
+/** One browser: the recipe's page in happy-dom, its app.tsx, then (if asked) a message typed and sent; it exits once `#log` shows `HEAR`, or fails after 5 s. */
 const BROWSER = `
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 const Native = globalThis.WebSocket;
@@ -25,7 +26,7 @@ GlobalRegistrator.register({ url: "http://localhost:" + process.env.PORT + "/" }
 globalThis.WebSocket = Native;
 const html = await Bun.file(new URL("./index.html", import.meta.url)).text();
 document.body.innerHTML = html.replace(/<!doctype html>/i, "").replace(/<script[^>]*><\\/script>/, "");
-await import("./client.tsx");
+await import("./app.tsx");
 if (process.env.SAY) {
   const form = document.getElementById("say");
   form.elements.namedItem("text").value = process.env.SAY;
@@ -49,16 +50,15 @@ test("the recipe (reference/recipe.md), as written: one browser sends a message,
     return p;
   };
   try {
-    const server = blockAfter("### `server.ts`");
-    expect(server).toContain("{ port: 3100 }");   // the one change: a free port, which run says on stdout
-    await Bun.write(join(dir, "server.ts"), server.replace("{ port: 3100 }", "{ port: 0 }"));
-    await Bun.write(join(dir, "types.ts"), blockAfter("### `types.ts`"));
-    await Bun.write(join(dir, "client.tsx"), blockAfter("### `client.tsx`"));
-    await Bun.write(join(dir, "tsconfig.json"), blockAfter("### `tsconfig.json`"));
-    await Bun.write(join(dir, "index.html"), blockAfter("### `index.html`"));
+    const files = [...skill.matchAll(/^### `([^`]+)`$/gm)].map((m) => m[1]!);
+    expect(files).toEqual(["routes.ts", "resources/room/room-api.ts", "resources/room/room.ts", "resources/room/room-view.tsx", "app.tsx", "index.html", "tsconfig.json"]);
+    for (const file of files) await Bun.write(join(dir, file), blockAfter(`### \`${file}\``));   // Bun.write makes the folders
+    const routes = blockAfter("### `routes.ts`");
+    expect(routes).toContain("{ port: 3100 }");   // the one change: a free port, which run says on stdout
+    await Bun.write(join(dir, "routes.ts"), routes.replace("{ port: 3100 }", "{ port: 0 }"));
     await Bun.write(join(dir, "browser.ts"), BROWSER);
 
-    const [, port] = await until(spawn("server.ts"), /Listening on http:\/\/[^/]*:(\d+)/);
+    const [, port] = await until(spawn("routes.ts"), /Listening on http:\/\/[^/]*:(\d+)/);
     const reader = spawn("browser.ts", { PORT: port!, HEAR: "hello from ada" });
     await until(reader, /ready/);
     const writer = spawn("browser.ts", { PORT: port!, HEAR: "hello from ada", SAY: "hello from ada" });

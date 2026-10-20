@@ -13,6 +13,14 @@ what is open across them. Newest first.
   dzql-app) have theirs now, three scenarios each. A run is recorded (`evals/runs/`), and
   `/publish` stops on a skill changed since its last run (root #113).
 
+### delta's examples are routes and resources (20 October)
+
+- **Every app is routes and resources, joined by documents** (Peter's word), as paintbrush is:
+  delta's kanban and sites-bbox, and delta-doc's recipe, are now `routes.ts` and
+  `resources/<name>/` (`<name>-api.ts`, and for a page, `<name>.ts` and `<name>-view.tsx`). dzql's Postgres server of sites-bbox
+  imports the example's schema from its new path, `resources/schema.ts`. delta's CHANGELOG has
+  each move.
+
 ### delta keeps three stores and its kinds (20 October, #37, delta's part)
 
 - **The free-form document is gone** (`registerDoc`, breaking): a document is kept in the JSON

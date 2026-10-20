@@ -1,10 +1,10 @@
 # What a write may do
 
-From `examples/kanban/client.tsx`: moving a card is writing its parent key, through the board
+From `examples/kanban/resources/board/board-view.tsx`: moving a card is writing its parent key, through the board
 that holds both columns.
 
 ```ts
-await doc.send([{ op: "replace", path: `/kanban_cards/${card.id}/kanban_columns_id`, value: next.id }]);
+await board.send([{ op: "replace", path: `/kanban_cards/${card.id}/kanban_columns_id`, value: next.id }]);
 ```
 
 ## A batch

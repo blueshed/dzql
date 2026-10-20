@@ -1,6 +1,7 @@
 /**
- * Driver: start a delta server and open board:1 over two sockets; what one
- * client changes, the other is told, and its `openDoc` signal shows it.
+ * Driver: start the board's server (routes.ts) and open board:1 over two
+ * sockets; what one client changes, the other is told, and its `openDoc`
+ * signal shows it.
  *
  *   bun run examples/kanban/run.ts
  *
@@ -10,18 +11,10 @@
  * bob's `data` signal updates automatically via the client's internal
  * `applyOps` dispatch. Nothing hand-rolled — every piece is the library.
  */
-
-
-import { openBoard, DB_PATH } from "./setup";
-import { startServer } from "./server";
-import { connectWs, openDoc } from "../../src/client/client";
-import type { DeltaOp } from "../../src/core";
-
-interface BoardDoc {
-  kanban_boards:  Record<string, any>;
-  kanban_columns: Record<string, any>;
-  kanban_cards:   Record<string, any>;
-}
+import { connectWs, openDoc } from "@blueshed/delta/client";
+import type { DeltaOp } from "@blueshed/delta/core";
+import { startServer } from "./routes";
+import { DB_PATH, type BoardDoc } from "./resources/board/board-api";
 
 function hr(title: string) {
   console.log(`\n── ${title} ${"─".repeat(Math.max(2, 72 - title.length))}`);
@@ -32,7 +25,7 @@ function show(label: string, value: unknown) {
 }
 
 async function main() {
-  const srv = startServer(openBoard());
+  const srv = startServer({ port: 0, dev: false });   // any free port
   const wsUrl = `ws://localhost:${srv.port}/ws`;
   console.log(`delta server up on ${wsUrl}  (DB: ${DB_PATH})`);
 

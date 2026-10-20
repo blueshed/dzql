@@ -1,8 +1,9 @@
 /**
- * What both servers share: the tables, the world document, and what a
- * bounding box is. Where the rows are kept is server.ts's (SQLite; dzql's examples keep them in Postgres).
+ * What both resources share, and both servers: the tables, the world document, and what a
+ * bounding box is. The world (world/world-api.ts) and the box (box/box-api.ts) register over
+ * these; where the rows are kept is the server's (SQLite here; dzql's examples keep them in Postgres).
  */
-import { defineSchema, defineDoc } from "../../src/server/sqlite";
+import { defineSchema, defineDoc } from "@blueshed/delta/sqlite";
 
 export const schema = defineSchema({
   worlds: { columns: { label: "text" }, temporal: false },

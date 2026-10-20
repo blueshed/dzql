@@ -1,6 +1,6 @@
 /**
- * One browser on examples/kanban (tests/postgres-examples.test.ts): the page
- * in happy-dom, its client.tsx over Bun's own WebSocket to the server on PORT
+ * One browser on examples/kanban (tests/examples.test.ts): the page
+ * in happy-dom, its app.tsx over Bun's own WebSocket to the server on PORT
  * (run from examples/kanban, so Bun takes railroad's JSX from its tsconfig).
  * It says "ready" once the board shows; with CLICK, clicks that card; then it
  * exits once card SEE is in column IN, or fails after 5 s.
@@ -14,7 +14,7 @@ globalThis.WebSocket = Native;
 const page = new URL("../../examples/kanban/", import.meta.url);
 const html = await Bun.file(new URL("index.html", page)).text();
 document.body.innerHTML = html.replace(/<!doctype html>/i, "").replace(/<script[^>]*><\/script>/, "");
-await import(new URL("client.tsx", page).pathname);   // not a literal, so bun check leaves its JSX to the example's tsconfig
+await import(new URL("app.tsx", page).pathname);   // not a literal, so bun check leaves its JSX to the example's tsconfig
 
 /** Column title -> the titles of its cards. */
 const board = () => Object.fromEntries([...document.querySelectorAll(".column")].map((c) =>

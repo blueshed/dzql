@@ -56,6 +56,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The kanban example is routes and resources** (20 October, Peter's word: every app is routes
+  and resources, joined by documents, as paintbrush is). `examples/kanban/` is `routes.ts` (the
+  page and the socket given to `serve`; run, it is the server, by `run`), the page (`index.html`,
+  `index.css`, `app.tsx`) and `resources/board/`: `board-api.ts` (the tables, `board:` and the
+  seeded board, registered by `boardApi(ws)`), `board.ts` (the `openDoc` handle) and
+  `board-view.tsx`. `serve.ts`, `server.ts` and `setup.ts` are folded into `routes.ts` and
+  `board-api.ts`: one way to run the server, `bun examples/kanban/routes.ts`. `run.ts`, the two
+  clients in the terminal, starts the same server.
+- **The sites-bbox example is routes and resources** (20 October): `examples/sites-bbox/` is
+  `routes.ts` (the socket given to `serve`; run, it is the server, by `run`), and its two
+  documents' server sides, `resources/world/world-api.ts` (`world:`, the tables made and the
+  world seeded) and `resources/box/box-api.ts` (the custom `sites-in-bbox:`), each registered on
+  the one database. No page, so no client files. The schema, the world document and what a box
+  is are `resources/schema.ts`, which both resources import, and dzql's Postgres server of the
+  example too (`server-pg.ts`'s one import moved). `server.ts` became `routes.ts`;
+  `bun examples/sites-bbox/routes.ts` runs it.
+- **The recipe is routes and resources** (20 October): delta-doc's chat room is `routes.ts`, the
+  page (`app.tsx`, `index.html`) and its `tsconfig.json`, and `resources/room/`: `room-api.ts`
+  (the schema, `room:` and `roomApi(ws)`, which registers it on the JSON file), `room.ts` (the
+  `openDoc` handle) and `room-view.tsx` (its `list()`). `types.ts`, `server.ts` and `client.tsx`
+  are gone into them, so someone's first app is laid out as every app after it. Moving to SQLite
+  changes `room-api.ts` alone. `tests/recipe.test.ts` writes each block to the path its heading
+  names and runs it as before; the skill's server, backends, write-loop and rendering pages
+  quote the new files.
+
 - **The recipe's client is railroad's** (20 October, root #30): `client.tsx` draws the room with
   `list()` over `doc.data`, as the recipe's first line says the client needs, in place of raw DOM
   and `applyOpsToCollection`; a `tsconfig.json` says the JSX. `tests/recipe.test.ts` runs it as

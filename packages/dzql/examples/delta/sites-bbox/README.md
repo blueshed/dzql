@@ -3,7 +3,7 @@
 delta's example, [packages/delta/examples/sites-bbox](../../../../delta/examples/sites-bbox/README.md):
 a world of sites, and a box (`sites-in-bbox:<minLng>,<minLat>,<maxLng>,<maxLat>`) that holds the
 sites inside it and is told what changes for it. Its schema and documents are delta's
-(`schema.ts` there); here the rows are in Postgres, so a box open on one server is told of sites
+(`resources/schema.ts` there); here the rows are in Postgres, so a box open on one server is told of sites
 written through another.
 
 From `packages/dzql`: `bun run test:setup` starts the compose Postgres on 5433 (`DATABASE_URL` names

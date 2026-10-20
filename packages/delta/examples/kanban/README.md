@@ -2,31 +2,52 @@
 
 To move a card you need the board in front of you: its columns and their cards. That is one
 document, `board:1`, over three tables in SQLite (`kanban_boards`, `kanban_columns`,
-`kanban_cards`, in `schema.ts`). Open it and you hold it: a card someone else moves, moves on
-your board too, with nothing to fetch or refresh.
+`kanban_cards`). Open it and you hold it: a card someone else moves, moves on your board too,
+with nothing to fetch or refresh.
+
+## What is here
+
+The app is its routes and its resources, as every app is (paintbrush's README, *Routes,
+resources and documents*):
+
+```
+routes.ts              the app: the page and the socket, given to delta's serve; run, it is the server
+index.html, index.css  the page
+app.tsx                the socket every document rides, and the board's view on the page
+resources/board/
+  board-api.ts         the server side: the tables, the board:1 document, one board seeded
+  board.ts             the client's handle: openDoc("board:1")
+  board-view.tsx       the board on the page, drawn with railroad
+run.ts                 two clients in the terminal, on the same server
+```
 
 ## Run the page
 
 ```sh
-bun examples/kanban/serve.ts                   # port 3100
-PORT=3199 bun examples/kanban/serve.ts         # if 3100 is busy
+bun examples/kanban/routes.ts                   # port 3100
+PORT=3199 bun examples/kanban/routes.ts         # if 3100 is busy
 ```
 
 Open <http://localhost:3100> in two tabs. Click a card and it moves to the next column in both.
 Double-click a column title to rename it; "+ add card" adds one. Each is one op: `replace` for a
 move or a rename, `add` for a card. Each run resets the board.
 
-`client.tsx` is the whole page:
+`routes.ts` is the server, and `board.ts` and `board-view.tsx` are the board on the page:
 
 ```tsx
-provide(WS, connectWs("/ws"));                     // openDoc finds the socket
-const doc = openDoc<BoardDoc>("board:1");           // doc.data is a signal of the board
+// routes.ts: the document on the socket, the page beside it
+const ws = createWs();
+const db = boardApi(ws);
+return serve({ ws, routes: { "/": index }, close: [() => db.close()] }, { port, dev });
 
-// a column's cards, keyed by id: a moved card re-renders, the rest stay
-{list<Card>(cards$, (c) => c.id, (c$) => <CardItem card$={c$} />)}
+// board.ts: board.data is a signal of the board
+export const board = openDoc<BoardDoc>("board:1");
+
+// board-view.tsx: a column's cards, keyed by id: a moved card re-renders, the rest stay
+{list<Card>(cards$, (c: Card) => c.id, (c$) => <CardItem card$={c$} />)}
 
 // a move is one op on one path
-await doc.send([{ op: "replace", path: `/kanban_cards/${id}/kanban_columns_id`, value: nextId }]);
+await board.send([{ op: "replace", path: `/kanban_cards/${card.id}/kanban_columns_id`, value: next.id }]);
 ```
 
 ## Run it in the terminal
@@ -39,7 +60,7 @@ Alice and Bob open the board over two sockets. Alice renames a column, moves a c
 one in a single `send`; the script prints what Bob was told and his board after it. Then Charlie
 opens the board late and gets the same.
 
-`tests/examples.test.ts` runs both: two browsers on `serve.ts` (one clicks a card, both see it
+`tests/examples.test.ts` runs both: two browsers on `routes.ts` (one clicks a card, both see it
 move), and `run.ts`. The board lives in memory, fresh each run; `KANBAN_DB=board.db` keeps it in
 a file. On Postgres the same schema and documents run on dzql (`dzql/postgres`).
 

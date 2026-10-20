@@ -73,7 +73,8 @@ row `1`. The document did not exist until its first write made it (`implied: tru
 In a browser, `openDoc("list:1", connectWs("/ws"))` holds the same document as a live value
 (`bun add @blueshed/railroad`: the client is drawn with it). The skill's
 [recipe](.claude/skills/delta-doc/reference/recipe.md) is a chat room in a browser, kept in a JSON
-file, in four short files.
+file, laid out as every app is: its routes, and the room as a resource (the document on the
+server, the client's handle to it, and its view).
 
 ## When you grow
 
@@ -113,8 +114,8 @@ Each of these is a page of the skill's [reference](.claude/skills/delta-doc/refe
   `bun create dzql my-app` makes one.
 
 `bunx @blueshed/delta install-skills` copies the skill into your project for Claude Code. In a
-clone of this repository, [`examples/`](examples/) has a chat, a kanban board, and the sites
-inside a box on a map. [CHANGELOG.md](CHANGELOG.md) says what changed in each release.
+clone of this repository, [`examples/`](examples/) has a kanban board and the sites inside a
+box on a map, each laid out as the recipe is. [CHANGELOG.md](CHANGELOG.md) says what changed in each release.
 
 ## Why delta
 

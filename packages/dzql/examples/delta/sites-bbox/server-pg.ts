@@ -13,7 +13,7 @@ import {
 } from "../../../src/postgres";
 import { createWs } from "@blueshed/delta/server";
 import { serve } from "@blueshed/delta/serve";
-import { schema, worldDoc, parse, matches, type BBox } from "../../../../delta/examples/sites-bbox/schema";
+import { schema, worldDoc, parse, matches, type BBox } from "../../../../delta/examples/sites-bbox/resources/schema";
 
 const sitesInBbox = defineCustomDoc<BBox>("sites-in-bbox:", {
   watch: ["sites"],
