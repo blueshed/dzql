@@ -41,3 +41,19 @@ describe("what a page's bundle imports of the kernel", () => {
     expect((await reach("src/modelling/stories-run.ts")).some((chain) => chain.endsWith("./harness"))).toBe(true);
   });
 });
+
+// railroad is an optional peer only an applet drawn by it needs (src/rendering/applet.ts), and
+// delta's client imports railroad: so no other module of dzql's names either, statically or by a
+// written import(), or a thin app, which has no railroad, fails its type check in node_modules
+describe("what needs railroad, only an applet imports", () => {
+  const named = async () => {
+    const found: string[] = [];
+    for (const file of new Bun.Glob("src/**/*.ts").scanSync(ROOT)) {
+      if (file === "src/rendering/applet.ts" || file.startsWith("src/modelling/page/")) continue; // the applet; the model's page is an app of its own, with railroad
+      for (const { path: spec } of transpiler.scanImports((await Bun.file(resolve(ROOT, file)).text()).replace(/^#!.*\n/, "")))
+        if (/^@blueshed\/(railroad|delta\/client)/.test(spec)) found.push(`${file} -> ${spec}`);
+    }
+    return found;
+  };
+  test("no module but the applet names railroad or delta's client", async () => expect(await named()).toEqual([]));
+});

@@ -572,6 +572,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **A thin app type-checks as npm installs it** (21 October, found by the evals' round 3): `bun
+  check` in a new `bun create dzql` app failed in `node_modules/@blueshed/delta/src/client`,
+  because `dzql/rendering/test-socket`'s light path imported delta's client, which needs railroad,
+  an optional peer a thin app does not have. A `file:` install had nested a railroad and hidden it.
+  The light path names delta's client by a variable now, with the few types it uses its own, and a
+  test holds that no module but the applet names railroad or delta's client.
+
 - **The model's loader takes an undo story** (20 October): a story that writes `walked("undo")` was
   read as a write to `ledger`, "a document the example does not have". The ledger is the kernel's.
 

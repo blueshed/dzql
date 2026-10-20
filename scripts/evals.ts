@@ -33,7 +33,7 @@ mkdirSync(out, { recursive: true });
 
 type Scenario = { skills: string[]; query: string; expected_behavior: string[]; start?: Start; after?: number; copy?: { from: string; to: string; at?: string; replace?: boolean }[] };
 type Start = "empty" | "railroad" | "delta" | "dzql" | "blueshed";
-type Result = { id: string; pkg: string; skill: string; n: number; dir: string; minutes: number; exit: number | null; check: boolean; tests: { pass: number; fail: number; exit: number } | null; files: string[] };
+type Result = { id: string; pkg: string; skill: string; n: number; dir: string; minutes: number; exit: number | null; check: boolean; tests: { pass: number; fail: number; exit: number; none?: true } | null; files: string[] };
 
 // each package's evaluations, and the start its scenarios take unless they say
 const sources: { pkg: string; dir: string; start: Start; skills: string }[] = [
@@ -97,6 +97,17 @@ function shipped(modules: string, top = modules): void {
   }
 }
 
+/** A package.json's `file:` links to the checkout's packages pointed at their tarballs instead; whether any was. */
+function packed(file: string): boolean {
+  const pkg = JSON.parse(readFileSync(file, "utf8")) as Record<string, Record<string, string> | undefined>;
+  let changed = false;
+  for (const field of ["dependencies", "devDependencies", "peerDependencies", "overrides"])
+    for (const [name, dir] of Object.entries(LOCAL))
+      if (pkg[field]?.[name]?.startsWith("file:") && !pkg[field]![name]!.endsWith(".tgz")) (pkg[field]![name] = `file:${tarball(dir)}`), (changed = true);
+  if (changed) writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
+  return changed;
+}
+
 /** A copied tsconfig that extends one outside what was copied stands alone: what it extends, inlined. */
 function standalone(copied: string, from: string): void {
   const file = existsSync(join(copied, "tsconfig.json")) ? join(copied, "tsconfig.json") : copied.endsWith("tsconfig.json") ? copied : undefined;
@@ -116,11 +127,12 @@ function standalone(copied: string, from: string): void {
 
 /** Every process still running in a folder: a server a session started and left. */
 function stopLeftIn(dir: string): number[] {
-  const lines = sh(["lsof", "-a", "-d", "cwd", "-Fpn"], dir).stdout.toString().split("\n");
+  const lsof = Bun.spawnSync(["lsof", "-a", "-d", "cwd", "-Fpn"], { cwd: root, stdout: "pipe", stderr: "pipe" }); // from outside the folder, or it finds itself
+  const lines = lsof.stdout.toString().split("\n");
   const pids: number[] = [];
   for (let i = 0, pid = 0; i < lines.length; i++) {
     if (lines[i]!.startsWith("p")) pid = Number(lines[i]!.slice(1));
-    else if (lines[i]!.startsWith("n") && (lines[i]!.slice(1) === dir || lines[i]!.slice(1).startsWith(`${dir}/`)) && pid !== process.pid) pids.push(pid);
+    else if (lines[i]!.startsWith("n") && (lines[i]!.slice(1) === dir || lines[i]!.slice(1).startsWith(`${dir}/`)) && pid !== process.pid && pid !== lsof.pid) pids.push(pid);
   }
   for (const pid of pids) try { process.kill(pid); } catch {}
   return pids;
@@ -128,7 +140,7 @@ function stopLeftIn(dir: string): number[] {
 
 /** A project as the scenario starts it, committed. */
 async function make(r: (typeof runs)[number], dir: string): Promise<void> {
-  const local = (names: string[]) => Object.fromEntries(names.map((n) => [`@blueshed/${n}`, `file:${join(root, "packages", n)}`]));
+  const local = (names: string[]) => Object.fromEntries(names.map((n) => [`@blueshed/${n}`, `file:${tarball(n)}`]));
   const bare = (names: string[], skills: string[]) => {
     mkdirSync(dir, { recursive: true });
     const deps = local(names);
@@ -162,6 +174,9 @@ async function make(r: (typeof runs)[number], dir: string): Promise<void> {
     }
   }
   // a copy that brings a package.json is installed as it would be (an empty start's from npm, as a person's)
+  // the checkout's packages as tarballs (a starter's --local names their folders, whose devDependencies
+  // come along and hide what the app never added); then installed, and anything still linked unlinked
+  if (existsSync(join(dir, "package.json")) && packed(join(dir, "package.json"))) rmSync(join(dir, "node_modules"), { recursive: true, force: true });
   if (existsSync(join(dir, "package.json")) && !existsSync(join(dir, "node_modules"))) sh(["bun", "install"], dir);
   shipped(join(dir, "node_modules"));
   if (!existsSync(join(dir, ".git"))) sh(["git", "init", "-q"], dir);
@@ -202,7 +217,9 @@ async function run(r: (typeof runs)[number]): Promise<Result> {
   const pkg = existsSync(join(dir, "package.json")) ? (JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as { scripts?: Record<string, string> }) : undefined;
   const t = pkg ? sh(pkg.scripts?.test ? ["bun", "run", "test"] : ["bun", "test"], dir) : null;
   const text = t ? t.stdout.toString() + t.stderr.toString() : "";
-  const tests = t ? { pass: Number(/^ *(\d+) pass/m.exec(text)?.[1] ?? 0), fail: Number(/^ *(\d+) fail/m.exec(text)?.[1] ?? 0), exit: t.exitCode ?? -1 } : null;
+  // a project with no test file is no failing test: none, said so
+  const none = /\b0 test files\b|No tests found/i.test(text);
+  const tests = t ? { pass: Number(/^ *(\d+) pass/m.exec(text)?.[1] ?? 0), fail: Number(/^ *(\d+) fail/m.exec(text)?.[1] ?? 0), exit: none ? 0 : t.exitCode ?? -1, ...(none ? { none: true as const } : {}) } : null;
   const result = { id: r.id, pkg: r.pkg, skill: r.skill, n: r.n, dir, minutes, exit, check, tests, files };
   console.log(JSON.stringify(result));
   return result;

@@ -142,9 +142,15 @@ export async function documentsOf(from: { url: URL | string } | Local): Promise<
   return "url" in from ? overSocket(from.url) : inProcess(from);
 }
 
+/** Of delta's client, what the light page's tests use: a thin app has no railroad, which it imports. */
+type SocketClient = { send(msg: Record<string, unknown>): Promise<any>; close(): void };
+type SocketDoc<T> = { ready: Promise<unknown>; data: { peek(): T | null }; send(ops: DeltaOp[]): Promise<any>; onOps(fn: (ops: DeltaOp[]) => void): () => void };
+/** Named, not written in the import: a thin app's type check then never reads delta's client. */
+const DELTA_CLIENT = "@blueshed/delta/client";
+
 /** delta's own client, on the socket a light page opens. */
 async function overSocket(url: URL | string): Promise<DocumentsClient> {
-  const { connectWs, openDoc } = await import("@blueshed/delta/client"); // the light page's: a thin app need not have it
+  const { connectWs, openDoc } = (await import(DELTA_CLIENT)) as { connectWs(url: string): SocketClient; openDoc<T>(doc: string, client: SocketClient): SocketDoc<T> };
   const client = connectWs(new URL("/ws", url).href);
   return {
     async open<T>(doc: string) {
