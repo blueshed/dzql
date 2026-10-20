@@ -6,6 +6,15 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### A package's examples are its skill's worked answers (20 October)
+
+- **railroad has its first example, `examples/jobs`** (Peter's word: every rule a skill prescribes
+  is shown working in an example the tests run, and the skill points at it): a live job list over
+  a plain `Bun.serve` feed, in the routes-and-resources shape, run in a real browser by
+  `packages/railroad/tests/webview-examples.test.ts`. The rules it showed to be workarounds (rows
+  changed in place, the thunk, unkeyed params, among them) are open in railroad's `todo.jsonl`
+  for Peter to decide. railroad's CHANGELOG has the detail.
+
 ### A skill is tested as code is (20 October)
 
 - **Every shipped skill has its evaluations**: `evals/<skill>.json` beside it, a few scenarios each

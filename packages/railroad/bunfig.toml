@@ -1,2 +1,5 @@
 [test]
 preload = ["./tests/happy-dom.setup.ts"]
+# What a bare `bun test` here finds: railroad's tests. An example is an app of its own, its
+# tests run from its folder (`bun run test:examples`)
+root = "tests"

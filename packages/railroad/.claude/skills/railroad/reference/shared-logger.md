@@ -28,3 +28,5 @@ Signatures: `shared.ts` and `logger.ts`.
 - `clearProviders()` resets the registry between tests.
 - `LOG_LEVEL` (in `.env`, or `setLogLevel()`) is `silent`, `error`, `warn`, `info` or `debug`; an unknown value falls back to `info`.
 - `loggedRequest(tag, handler)` logs method, path, status and time; a throw is logged and re-thrown.
+
+Worked example: `FEED` and `FAILED` in [`jobs.ts`](../../../../examples/jobs/resources/jobs/jobs.ts) (one exported key each; `tryInject` for what a unit test leaves out), provided in [`app.tsx`](../../../../examples/jobs/app.tsx); the logger on the server in [`jobs-api.ts`](../../../../examples/jobs/resources/jobs/jobs-api.ts) and [`routes.ts`](../../../../examples/jobs/routes.ts).

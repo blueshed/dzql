@@ -41,3 +41,5 @@ The methods and options are typed in `signals.ts` (`Signal`, `ReadonlySignal`, `
 - An effect that writes a signal, then reads a computed of it that it read before, sees the old value and re-runs once the write settles; a computed it reads for the first time in the pass is brought up to date first.
 - `.touch()` re-runs effects and computeds that return primitives. A computed that returns the same reference bails: project to fresh values (`Object.values(...)`, primitives) or give `.map()` `{ equals: () => false }`.
 - `.mutate()` uses `structuredClone`: plain data only, no functions, class instances or DOM nodes.
+
+Worked example: [`jobs-view.tsx`](../../../../examples/jobs/resources/jobs/jobs-view.tsx) (`computed` beside what reads it, `.update` and `.mutate` on a small object, `batch` for two writes) and [`jobs.ts`](../../../../examples/jobs/resources/jobs/jobs.ts) (`.peek`, change in place, `.touch`).

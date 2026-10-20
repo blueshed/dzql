@@ -35,3 +35,5 @@ A scope is opened by a component (`createElement`), a `routes()` handler, a `whe
 - `route()` (singular) opens no scope; at module level it lives for the app, which is allowed.
 - A custom root is `const { value, dispose } = scoped(() => build())`: what `build` makes is in a scope of its own, closed on every path, a throw included. It is synchronous: never across an `await`. `trackDispose(fn)` registers a cleanup; `hasActiveDisposeScope()` says whether one is open.
 - After an `await` there is no scope: that is why async components resolve to a thunk ([async](async.md)).
+
+Worked example: [`toast.tsx`](../../../../examples/jobs/resources/toast.tsx) (a custom root built from a socket's handler, `trackDispose`), [`runners-view.tsx`](../../../../examples/jobs/resources/runners/runners-view.tsx) (a fresh request each run, cleaned up; a computed made beside the effect) and `watchTitle` in [`jobs.ts`](../../../../examples/jobs/resources/jobs/jobs.ts) (a module-level effect's disposer).

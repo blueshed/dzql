@@ -30,3 +30,5 @@ After an `await` there is no scope (browser JS has no AsyncContext). The thunk g
 - An async route handler's bindings die on navigation.
 - For streams or several stages rather than one swap, an effect writes a signal and `when()` shows it.
 - `effect(async () => …)` is an error (logged in development): start the async work from a synchronous effect and write the result to a signal.
+
+Worked example: `JobPage` (a keyed async route handler), `JobLog` (an async component with a fallback, disposed before it settles) and `NewJobPage` in [`jobs-view.tsx`](../../../../examples/jobs/resources/jobs/jobs-view.tsx); async work started from an effect in [`runners-view.tsx`](../../../../examples/jobs/resources/runners/runners-view.tsx).

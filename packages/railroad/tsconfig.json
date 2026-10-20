@@ -9,7 +9,8 @@
   },
   "exclude": [
     "tests/consumer-types",
-    "tests/fixtures/readme"
+    "tests/fixtures/readme",
+    "examples"
   ],
   "include": [
     "**/*"

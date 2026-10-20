@@ -61,3 +61,5 @@ The methods and options are Bun's types (`Bun.WebView` in `@types/bun`); read th
 - Use `server.url.href`, never a hard-coded `localhost:3000`; never start the server with a shell command in `beforeAll`.
 - Give the factory a throwaway data path: `mkdtempSync(join(tmpdir(), "app-test-"))` in `beforeAll`, `rmSync(dir, { recursive: true, force: true })` in `afterAll`.
 - `cdp(method, params)` (DevTools Protocol) works only on the `chrome` backend.
+
+Worked example: railroad's [`webview-examples.test.ts`](../../../../tests/webview-examples.test.ts), which runs its jobs example as its README says and drives it with the kit.

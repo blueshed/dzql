@@ -42,3 +42,5 @@ Both are typed in `jsx.ts`. Both render synchronously (in the DOM when `mount()`
 - `options` (keyed form) are `SignalOptions` for each row's signal. The default `Object.is` is right when a changed row is a new object (delta's client gives one). Rows mutated in place then `.touch()`ed need `{ equals: () => false }`: [realtime](realtime.md).
 - The index form, `list(items, (item, i) => …)`, passes raw values and rebuilds every row on every change: static lists only.
 - Any array derived from a signal goes through `list()`. A plain `.map()` bakes its rows in once; it is right only for a static array (`COLUMNS.map(c => <Column col={c} />)`).
+
+Worked example: [`jobs-view.tsx`](../../../../examples/jobs/resources/jobs/jobs-view.tsx) (a keyed `list()` over rows changed in place, `when()` over a count and over a function, a static `.map`) and [`runners-view.tsx`](../../../../examples/jobs/resources/runners/runners-view.tsx) (`when()` following its value through `v$`, rows keyed by name).
