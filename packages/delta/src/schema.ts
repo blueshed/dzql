@@ -410,14 +410,17 @@ export function lastId(snapshot: Snapshot, key: string): number {
 
 /**
  * A time a write may give a timestamptz column: ISO-8601, a date or a date and
- * time (to the microsecond), with a zone or without (UTC), on the calendar.
+ * time (to the microsecond), with a zone or without (UTC), on the calendar --
+ * and only what Postgres's timestamptz holds, so every backend keeps the same
+ * times: a zone up to ±15:59, a year from 0001 (there is no year 0).
  * `_delta_assert_fields` (001a) asks the same of a value on Postgres.
  */
-const ISO = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,6})?)?(?:Z|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$/;
+const ISO = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,6})?)?(?:Z|[+-](?:0\d|1[0-5])(?::?[0-5]\d)?)?)?$/;
 export function isIsoTime(value: unknown): boolean {
   const m = typeof value === "string" ? ISO.exec(value) : null;
-  if (!m) return false;
-  const day = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  if (!m || Number(m[1]) < 1) return false;
+  const day = new Date(0);
+  day.setUTCFullYear(Number(m[1]), Number(m[2]) - 1, Number(m[3]));   // the year as written: Date.UTC reads 0-99 as 1900-1999
   return day.getUTCMonth() === Number(m[2]) - 1 && day.getUTCDate() === Number(m[3]);
 }
 

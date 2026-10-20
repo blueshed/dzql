@@ -186,8 +186,9 @@ describe("createDocListener (end-to-end WS flow)", () => {
       expect(openRes.result).toBeDefined();
       expect(openRes.result).toHaveProperty("items");
 
-      // Apply an op via another client.
+      // Apply an op via another client (a connection writes only what it has opened).
       const writer = mockClient();
+      await sendAndAwait(ws, writer, { action: "open", doc: "items:" });
       const delta = await sendAndAwait(ws, writer, {
         action: "delta",
         doc: "items:",
@@ -224,7 +225,9 @@ describe("createDocListener (end-to-end WS flow)", () => {
     try {
       const reader = mockClient();
       expect((await sendAndAwait(ws, reader, { action: "open", doc: "items-count:" })).result).toEqual({ n: 0 });
-      await sendAndAwait(ws, mockClient(), { action: "delta", doc: "items:", ops: [{ op: "add", path: "/items/-", value: { name: "unheard" } }] });
+      const other = mockClient();
+      await sendAndAwait(ws, other, { action: "open", doc: "items:" });
+      expect((await sendAndAwait(ws, other, { action: "delta", doc: "items:", ops: [{ op: "add", path: "/items/-", value: { name: "unheard" } }] })).error).toBeUndefined();
       await sendAndAwait(ws, reader, { action: "delta", doc: "items-count:", ops: [{ op: "replace", path: "/n", value: 1 }] });
       await waitFor(() => published.some((p) => p.channel === "items-count:"), { timeout: 3000 });
       await new Promise((r) => setTimeout(r, 200));
@@ -238,14 +241,18 @@ describe("createDocListener (end-to-end WS flow)", () => {
     const ws = createWs();
     ws.publish = () => {};
     const refusing = (prefix: string, code: unknown): DocType => ({
-      ...items(),
       prefix,
       parse: (name) => (name === prefix ? {} : null),
+      async open() { return { result: {}, version: 0 }; },   // opened before it is written, as every document is
       async apply() { throw Object.assign(new Error(`${prefix} refuses`), { code }); },
     });
     const listener = await createDocListener(ws, pool, { types: [refusing("read-only:", 403), refusing("odd:", 600), refusing("named:", "403")] });
     try {
-      const write = async (doc: string) => (await sendAndAwait(ws, mockClient(), { action: "delta", doc, ops: [{ op: "add", path: "/items/-", value: { name: "x" } }] })).error;
+      const write = async (doc: string) => {
+        const c = mockClient();
+        await sendAndAwait(ws, c, { action: "open", doc });
+        return (await sendAndAwait(ws, c, { action: "delta", doc, ops: [{ op: "add", path: "/items/-", value: { name: "x" } }] })).error;
+      };
       expect(await write("read-only:")).toMatchObject({ code: 403, message: "read-only: refuses" });
       expect((await write("odd:"))?.code).toBe(500);
       expect((await write("named:"))?.code).toBe(500);

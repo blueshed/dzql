@@ -51,8 +51,9 @@ time). A value the column cannot take (`seats-kept:maybe`) is 400.
 
 ## Gotchas
 
-- Write times as ISO 8601 with a zone: a stored time without one is UTC. Anything else written
-  is 400.
+- Write times as ISO 8601 with a zone: a stored time without one is UTC. Only what Postgres's
+  `timestamptz` holds, on every backend: a zone up to ±15:59, a year from 0001. Anything else
+  written is 400.
 - **`at:` reads the past**: a temporal table as it stood, the others as they are now. Such a
   document takes no writes (403). It is told only what its time does not keep; a future date reads as now.
 - Do not put tenant-sensitive identifiers in a prefix (`tenant-42:`): error messages name

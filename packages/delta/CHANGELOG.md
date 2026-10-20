@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- **A connection writes only what it has opened, and a time is only what Postgres's timestamptz
+  holds** (20 October, root #136). Two writes that used to land are now refused, on every backend:
+  - A `delta` from a socket for a document that socket has not opened (or has closed, or was let
+    go of) is 404 `Doc not loaded: open <doc> before writing to it`, though another socket has it
+    open: SQLite and the JSON file asked only that someone in the process had it open, and dzql's
+    Postgres asked nothing. It is the wire's rule (`wire.md`), and dzql's law. An in-process caller
+    (`createLocal()`, `data.local`) is not held to it: it is the server itself, hearing every
+    channel through `onPublish` and naming its own cursor, and a server that draws pages writes for
+    a person through it having asked its own wire the rule. So, the other way, an in-process write
+    to a document nobody here has open now lands on SQLite and the JSON file (it was 404), read for
+    the write and not kept. The client sends a document's open ahead of a write made while its
+    socket was down (a page's first click), where the write used to go first. **To move across**: a
+    script or test that sends `delta` on a socket opens the document on that socket first; `doc.send`
+    and `openDoc` need nothing.
+  - A time with a zone past ±15:59 (`2021-01-01T00:00:00+16:00`) or in the year 0000 is 400
+    `<path>: <field> must be an ISO-8601 time` (`isIsoTime`): SQLite and the JSON file kept them,
+    Postgres cannot (a zone past ±15:59 was its 500). **To move across**: give such a time in UTC.
+  `errorCodeCases` asks the first (and that an in-process caller writes a document nobody has
+  open, and that a write sent right behind its open lands), `refusals` the second, with a case
+  that the edges (±15:59, 0001) are kept.
+
 - **The examples move to railroad's `when()`, which hands its branch the value as a keyed row is**
   (20 October, railroad #13; railroad's own changelog has the change). A `when()` branch over an
   object is handed its fields, each a signal, then `v$`. `examples/lobby`'s colours are

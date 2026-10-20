@@ -68,7 +68,9 @@ describe("delta_apply on the wire", () => {
   });
 
   const delta = async (ops: any[]) => {
-    const r = await sendAndAwait(ws, mockClient(), { action: "delta", doc: "items:", ops });
+    const c = mockClient();
+    await sendAndAwait(ws, c, { action: "open", doc: "items:" });   // a connection writes only what it has opened
+    const r = await sendAndAwait(ws, c, { action: "delta", doc: "items:", ops });
     await listener.destroy();
     return r;
   };

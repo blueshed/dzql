@@ -214,14 +214,17 @@ describe("Finding #1: concurrent writes to the same field", () => {
       ops: [{ op: "add", path: "/sites/800", value: { name: "v1", lat: 1, lng: 2 } }],
     });
 
+    // A client opens it at v1 (a connection writes only what it has opened).
+    const stale = makeClient("stale");
+    await sendAndAwait(ws, stale, { action: "open", doc });
+
     // Someone else advances the row to v2.
     await sendAndAwait(ws, writer, {
       action: "delta", doc, ops: [{ op: "replace", path: "/sites/800/name", value: "v2" }],
     });
 
-    // A client that only ever saw v1 writes again. With no version guard the
+    // The client that saw v1 writes again. With no version guard the
     // server cannot tell this edit was made against stale state — it applies.
-    const stale = makeClient("stale");
     const res = await sendAndAwait(ws, stale, {
       action: "delta", doc, ops: [{ op: "replace", path: "/sites/800/name", value: "v3-from-stale-base" }],
     });

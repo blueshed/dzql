@@ -34,6 +34,9 @@ registered on `createLocal().server` (`store.ts`).
   the ledger's `who`), one client per identity. `local.call` itself is anonymous.
 - **The cursor is yours to name** (`cursor` on the message): in-process callers carry
   `data.local`, which a socket client cannot (`ledger.md`).
+- **You write a document without opening it**: a socket writes only what it has opened
+  (`wire.md`), but an in-process caller is the server itself, hearing every channel through
+  `onPublish`. A rendering server asks its own wire that rule of the page it writes for.
 - **`onPublish(fn)`** hears every broadcast on every channel, the one stream of changes, and
   each view sent to one caller alone (a custom document's) with a third argument
   `to: { identity }`. It returns the unsubscribe. A listener that throws is logged; the others

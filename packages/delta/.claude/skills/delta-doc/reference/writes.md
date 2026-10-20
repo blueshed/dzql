@@ -14,6 +14,8 @@ item removed by its ×, through the list (`resources/lists/lists-view.tsx`).
 
 ## A batch
 
+- It goes through a document its connection has open (404 `Doc not loaded` otherwise:
+  `wire.md`); an in-process caller's needs none.
 - Ops land in the order sent and the batch applies whole or not at all.
 - It is checked op by op: the first refused op answers (a 404 before a later 400, or the
   reverse), nothing lands, and serials taken before it are spent.

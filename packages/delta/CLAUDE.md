@@ -86,6 +86,8 @@ exact version, or the setup stops reading it).
   out per identity. `ownsCases` (`src/cases/owns.ts`) asks it of every backend.
 - **You may write what you may read.** Every row-addressed write is gated on the same scope as
   the read, on every backend.
+- **A connection writes only what it has opened** (404 `Doc not loaded`), on every backend;
+  an in-process caller (`data.local`) is the server and is not held to it (`errorCodeCases`).
 - **A holder is told what changed**: a row that arrives whole (`add`), one that leaves
   (`remove`), and one that stays as a `replace` of each field whose value changed -- the write's,
   a default's, a trigger's -- compared row before and after (`changedFields` in `core.ts`; a

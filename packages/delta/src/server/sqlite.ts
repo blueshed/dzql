@@ -445,7 +445,14 @@ export function registerDocs<I = unknown>(
 
     heardElsewhere();
     reloadEvicted();
-    const doc = cache.get(docName);
+    // A connection writes only what it has opened: the wire's rule, as dzql's Postgres listener
+    // holds it. An in-process caller (createLocal(), `client.data.local`) is not held to it: it is
+    // the server itself, not a page -- it hears every channel (onPublish) and names its own cursor --
+    // and a server that draws pages (dzql/rendering) writes for a person through it, having asked
+    // its own wire the same rule. It writes a document nobody here has open, read for the write.
+    const local = client.data?.local === true;
+    let doc = local || subscriptions.get(docName)?.has(client) ? cache.get(docName) : undefined;
+    const read = !doc;
     if (!doc) {
       // a name its root's columns cannot take is the writer's mistake (400), before it is a document not open
       try { whereOf(resolveScope(match.def, match.docId), keeping(db, schema.tables[match.def.root]!)); }
@@ -455,11 +462,14 @@ export function registerDocs<I = unknown>(
       if (scope.mode === "single" && !match.def.implied && !readDoc(db, schema, match.def, scope)) {
         return respond({ error: { code: 404, message: `Document not found: ${docName} (its root, ${joinPath(match.def.root, String(rowId(scope.id!)))}, is not there)` } });
       }
-      respond({ error: { code: 404, message: `Doc not loaded: open ${docName} before writing to it` } });
-      return;
+      if (!local) return respond({ error: { code: 404, message: `Doc not loaded: open ${docName} before writing to it` } });
+      try { doc = load(docName, match.def, match.docId); }
+      catch (err: any) { return respond({ error: failure(named(err)) }); }
     }
 
-    const out = write(docName, match.def, doc, msg.ops as DeltaOp[], { who: whoOf(client), cursor: cursorOf(msg, client), undoable: msg.undoable !== false, as: identityOf(client) });
+    let out: ReturnType<typeof write>;
+    try { out = write(docName, match.def, doc, msg.ops as DeltaOp[], { who: whoOf(client), cursor: cursorOf(msg, client), undoable: msg.undoable !== false, as: identityOf(client) }); }
+    finally { if (read) unheld(docName); }   // a copy read for an in-process write alone is not kept
     if ("error" in out) return respond(out);
     // A writer that keeps its own history asks for the inverse (or keeps a
     // ledger): what delta applied, walked back, read from the document as it

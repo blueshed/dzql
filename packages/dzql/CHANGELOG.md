@@ -25,6 +25,20 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **A socket writes only what it has opened; a time past what timestamptz holds is 400, not 500**
+  (20 October, root #136). The Postgres listener answers a `delta` from a socket for a document
+  that socket has not opened (or has closed, or was let go of) 404 `Doc not loaded: open <doc>
+  before writing to it`, as delta's SQLite does, after the same refusals SQLite asks first (an op's
+  path no pointer, a name its root cannot take, a single document whose root is not there, each in
+  delta_apply's words). It used to write it. A write sent right behind its open waits for that open
+  (a socket's messages run side by side). An in-process caller (`createLocal()`, as
+  `dzql/rendering` writes for a person) is not held to it, on either backend: the server itself,
+  which asks its own wire the rule. A time with a zone past ±15:59 is `<path>: <field> must be an
+  ISO-8601 time` (`_delta_assert_fields` and the compiled column checks; `validateOps` the same),
+  where the cast raised 22009, a 500. **To move across**: a script or test that sends `delta` on a
+  socket opens the document on that socket first. dzql's own tests that wrote without opening now
+  open first. Snapshot updated: `columns` (the zone in the compiled time check).
+
 - **Undo and Redo are drawn only when the page asks for them** (20 October, root #126). dzql's
   `bento({ icon, session, undo, leave })` draws the page's tools it is given, as railroad's
   `bento({ undo, redo, leave })` always has: `undo: true` draws Undo and Redo (writes to the

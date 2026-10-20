@@ -22,7 +22,7 @@ import { resolveScope } from "@blueshed/delta/backend";
 import type { DocType } from "./registry";
 import type { DeltaAuth } from "@blueshed/delta/auth";
 import { isAuthError } from "@blueshed/delta/auth";
-import type { DeltaOp } from "@blueshed/delta/core";
+import { splitPath, type DeltaOp } from "@blueshed/delta/core";
 import { isEntryId, ledgerWho, socketCursor } from "@blueshed/delta/backend";
 import { assertOwned, createCustomDocs, NOT_FOUND, sendTo, type CustomDoc, type Owns, type Refusal } from "@blueshed/delta/backend";
 import { namespaceOf } from "./sql";
@@ -246,6 +246,30 @@ export async function createDocListener<I = unknown>(
   const holds = new Map<string, Promise<unknown>>();
   const opening = new Map<string, number>();
   const queued = new Map<string, Promise<unknown>>();
+  /**
+   * Each socket's opens not yet answered, by name: messages from one socket run
+   * side by side, so a write sent right behind its open waits for that open
+   * (`openedBy`) before it is asked whether the socket has the document open.
+   */
+  const asked = new WeakMap<object, Map<string, Promise<unknown>>>();
+  const askedOpen = (handler: (msg: any, client: any, respond: (r: any) => void) => Promise<void>) =>
+    (msg: any, client: any, respond: (r: any) => void): Promise<void> => {
+      const done = handler(msg, client, respond);
+      const name = msg?.doc;
+      if (client && typeof client === "object" && typeof name === "string") {
+        const mine = asked.get(client) ?? new Map<string, Promise<unknown>>();
+        asked.set(client, mine);
+        mine.set(name, done);
+        const settled = () => { if (mine.get(name) === done) mine.delete(name); };
+        done.then(settled, settled);
+      }
+      return done;
+    };
+  /** Has this socket `docName` open here: opened (once an open it sent before has been answered), not closed or let go since. */
+  async function openedBy(client: any, docName: string): Promise<boolean> {
+    await asked.get(client)?.get(docName)?.catch(() => {});
+    return tracked.get(docName)?.subscribers.has(client) ?? false;
+  }
   let holder: number | null = null;
   /** `sql` for `docName`, after what was asked for it before. */
   function inOrder(docName: string, sql: string): Promise<unknown> {
@@ -600,7 +624,7 @@ export async function createDocListener<I = unknown>(
     });
   }
 
-  ws.on("open", withDoc("open", async ({ docName, type, ctx, msg, client, respond, identity }) => {
+  ws.on("open", askedOpen(withDoc("open", async ({ docName, type, ctx, msg, client, respond, identity }) => {
     opening.set(docName, (opening.get(docName) ?? 0) + 1);
     try {
       // held before the read: a write from now is told to this name; one lost
@@ -634,12 +658,24 @@ export async function createDocListener<I = unknown>(
       if (left > 0) opening.set(docName, left); else opening.delete(docName);
       release(docName);
     }
-  }));
+  })));
 
   ws.on("delta", withDoc("delta", async ({ docName, type, ctx, msg, client, respond, identity }) => {
     // every op an object, asked of the whole write before anything else (400), in delta's words, as SQLite asks it
     if (!Array.isArray(msg.ops)) return respond({ error: { code: 400, message: "ops must be an array" } });
     if (msg.ops.some((op: unknown) => op === null || typeof op !== "object")) return respond({ error: { code: 400, message: "An op is an object: { op, path, value }" } });
+    // A connection writes only what it has opened: the wire's rule, as delta's SQLite holds it.
+    // An in-process caller (createLocal(), `client.data.local`) is not held to it, there as here:
+    // it is the server itself, not a page -- it hears every channel and names its own cursor --
+    // and a server that draws pages (dzql/rendering) writes for a person through it, having asked
+    // its own wire the same rule.
+    if (!client?.data?.local && !(await openedBy(client, docName))) {
+      // what SQLite asks before it: each op's path a pointer (400), then the name one its root's
+      // columns can take (400) and a single document's root there (404, as a write through it says)
+      for (const op of msg.ops as DeltaOp[]) splitPath(op.path);
+      if (!(await type.open(ctx, docName, msg, identity)) && type.def) await type.apply(ctx, docName, [], identity, undefined, declared);
+      return respond({ error: { code: 404, message: `Doc not loaded: open ${docName} before writing to it` } });
+    }
     const writer = writerOf(identity, client);
     const kept = onLedger(type.prefix);
     const by = kept ? { who: whoOf(writer), cursor: cursorOf(msg, client, writer), undoable: msg.undoable !== false } : undefined;

@@ -678,6 +678,28 @@ describe("onConnect: saying who you are before the docs re-open", () => {
     client.close();
   });
 
+  // a connection writes only what it has opened: a write made before the socket is up (a page's
+  // first click, a script's first line) goes out behind its document's open, never ahead of it
+  test("a write made before the socket is up goes out behind its document's open", async () => {
+    const seen: string[] = [];
+    server = Bun.serve({
+      port: 0,
+      fetch(req, s) { return s.upgrade(req) ? undefined as any : new Response("no", { status: 400 }); },
+      websocket: {
+        message(ws, raw) {
+          const msg = JSON.parse(String(raw));
+          seen.push(`${msg.action} ${msg.doc}`);
+          ws.send(JSON.stringify({ id: msg.id, result: msg.action === "open" ? { rows: {} } : { ack: true } }));
+        },
+      },
+    });
+    const client = connectWs(`ws://localhost:${server.port}/ws`, { backoff: 10 });
+    const doc = openDoc<{ rows: Record<string, unknown> }>("rows:", client);
+    expect(await doc.send([{ op: "add", path: "/rows/-", value: {} }])).toEqual({ ack: true });
+    expect(seen).toEqual(["open rows:", "delta rows:"]);
+    client.close();
+  });
+
   // Only the client onConnect is given skipped `ready`. One that
   // called through DI -- `call("authenticate", params)`, no client, as
   // everywhere else in a page -- sent through inject(WS), which waited for

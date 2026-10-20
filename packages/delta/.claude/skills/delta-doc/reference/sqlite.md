@@ -37,8 +37,9 @@ paths (the lists) on one file (`resources/people/people-api.ts`, `resources/list
   `console.warn`s on type drift: treat that as a real signal). A rename, a drop, a change of
   type or data moved is a migration, run first: `migrations.md`.
 - A single document's root row must exist before it opens: seed it, or declare it `implied: true`.
-- A `delta` for a name this process has not opened is 404 `Doc not loaded`. `doc.send` never
-  meets it; a script sending `delta` itself opens the document first.
+- A `delta` for a name this connection has not opened is 404 `Doc not loaded`, as on every
+  backend (`wire.md`). `doc.send` never meets it; a script sending `delta` itself opens the
+  document first.
 - **Processes may share the file.** A write takes the lock (`BEGIN IMMEDIATE`, 5 s
   `busy_timeout` unless the app set its own) and re-reads any copy another process changed. But a
   document open in one process is **not told** of a write in another until it is next opened or

@@ -56,7 +56,12 @@ afterEach(async () => {
   await listener.destroy();
 });
 
-const delta = (name: string, ops: any[]) => sendAndAwait(ws, mockClient(), { action: "delta", doc: name, ops });
+// a connection writes only what it has opened
+const delta = async (name: string, ops: any[]) => {
+  const c = mockClient();
+  await sendAndAwait(ws, c, { action: "open", doc: name });
+  return sendAndAwait(ws, c, { action: "delta", doc: name, ops });
+};
 
 describe("an add of a row that is already there (Postgres)", () => {
   test("temporal: a 409 that names the fix, and one live row", async () => {

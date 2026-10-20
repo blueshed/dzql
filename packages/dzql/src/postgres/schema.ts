@@ -100,7 +100,7 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
       // a value of its column's type, not cast (_delta_assert_fields)
       const of: Record<string, [boolean, string]> = {
         text: [typeof v === "string", "a string"], integer: [Number.isInteger(v), "an integer"], real: [typeof v === "number", "a number"],
-        boolean: [typeof v === "boolean", "a boolean"], timestamptz: [(isIsoTime(v) && !String(v).startsWith("0000")) || v instanceof Date, "an ISO-8601 time"],   // Postgres has no year 0 (_delta_on_calendar)
+        boolean: [typeof v === "boolean", "a boolean"], timestamptz: [isIsoTime(v) || v instanceof Date, "an ISO-8601 time"],   // what timestamptz holds: a zone to ±15:59, a year from 0001
       };
       const [ok, what] = of[col.type] ?? [true, ""];
       return ok ? null : `${field} must be ${what}`;

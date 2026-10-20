@@ -409,7 +409,8 @@ describe("with auth, every document says who owns it (todo #18)", () => {
     expect((await sendAndAwait(ws, bob, { action: "open", doc: "rls-tally:2" })).result).toEqual({ n: 1 });
     // the one identity on the name hears its rows on the name's channel
     listener.register(docTypeFromDef(mine, app, { auth, owns: (who, name) => name === `rls-mine:${who.id}` }));
-    await sendAndAwait(ws, alice, { action: "delta", doc: "rls-mine:1", ops: [{ op: "add", path: "/rls_items/-", value: { name: "alice SECRET" } }] });
+    await sendAndAwait(ws, alice, { action: "open", doc: "rls-mine:1" });   // a connection writes only what it has opened
+    expect((await sendAndAwait(ws, alice, { action: "delta", doc: "rls-mine:1", ops: [{ op: "add", path: "/rls_items/-", value: { name: "alice SECRET" } }] })).error).toBeUndefined();
     await settle();
     expect(heard(alice, "rls-bag:1")).toEqual([{ doc: "rls-bag:1", ops: [{ op: "add", path: expect.stringMatching(/^\/rls_items\/\d+$/), value: expect.objectContaining({ name: "alice SECRET" }) }] }]);
     expect(heard(alice, "rls-tally:1").at(-1).ops).toEqual([{ op: "replace", path: "", value: { n: 1 } }]);
@@ -553,6 +554,7 @@ describe("who is told is worked out whatever the writer may read (todo #33)", ()
       return doc;
     };
     const copy = await open();
+    await sendAndAwait(ws, bob, { action: "open", doc: "rls-cards-by:2" });   // a connection writes only what it has opened
     const card = (list: number, text: string) => sendAndAwait(ws, bob, { action: "delta", doc: "rls-cards-by:2", ops: [{ op: "add", path: "/rls_cards/-", value: { rls_lists_id: list, text } }] });
     // you may write what you may read: a list he cannot read answers as one that is not there
     const [hidden, none] = [await card(1, "hidden"), await card(99, "none")];

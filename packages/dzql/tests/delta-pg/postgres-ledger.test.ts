@@ -52,6 +52,7 @@ describe("the Postgres ledger", () => {
   test("a write is recorded with its inverse and version, and answers with them; over the socket the cursor is the connection", async () => {
     const ws = await process();
     const alice = mockClient({ clientId: "c-alice" });
+    await sendAndAwait(ws, alice, { action: "open", doc: "items:" });   // a connection writes only what it has opened
     const answer = await sendAndAwait(ws, alice, add("alpha", "ignored"));
     expect(answer.result).toMatchObject({ ack: true, version: 1, entry: 1, ops: [{ op: "add" }], inverse: [{ op: "remove" }] });
     expect(answer.result.inverse[0].path).toBe(answer.result.ops[0].path);
@@ -114,6 +115,7 @@ describe("the Postgres ledger", () => {
     const ws = await process();
     const alice = mockClient({ clientId: "c-alice" });
     const mallory = mockClient({ clientId: "c-mallory" });
+    await sendAndAwait(ws, alice, { action: "open", doc: "items:" });
     await sendAndAwait(ws, alice, add("alice's"));
     expect((await sendAndAwait(ws, mallory, { action: "undo", cursor: "c-alice" })).result).toBeNull();
     expect(await names()).toEqual(["alice's"]);
@@ -127,6 +129,7 @@ describe("the Postgres ledger", () => {
     // a client chooses its connection id (?clientId=, to keep its cursor across a reconnect): one leaked or guessed
     const alice = mockClient({ clientId: "c-1", identity: "alice" });
     const mallory = mockClient({ clientId: "c-1", identity: "mallory" });
+    await sendAndAwait(ws, alice, { action: "open", doc: "items:" });
     await sendAndAwait(ws, alice, add("alice's"));
     expect((await sendAndAwait(ws, mallory, { action: "undo" })).result).toBeNull();
     expect(await names()).toEqual(["alice's"]);

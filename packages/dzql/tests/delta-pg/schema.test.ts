@@ -353,6 +353,14 @@ describe("validateOps", () => {
       expect(validateOps(wedding, household, [...add("/households/-")])).toEqual([]);
     });
 
+    test("a time is what timestamptz holds, as delta_apply asks it: a zone to ±15:59, a year from 0001 (root #136)", () => {
+      const timed = defineSchema({ slots: { columns: { starts: "timestamptz" }, temporal: false } });
+      const slots = defineDoc("slots:", { root: "slots", include: [] });
+      const at = (v: string) => messages(validateOps(timed, slots, [{ op: "replace", path: "/slots/1/starts", value: v }], { doc: "slots:" }));
+      for (const v of ["2021-01-01T00:00:00+16:00", "2021-01-01T00:00:00-2000", "0000-01-01"]) expect({ v, m: at(v) }).toEqual({ v, m: ["starts must be an ISO-8601 time"] });
+      for (const v of ["2021-01-01T00:00:00+15:59", "2021-01-01T00:00:00-1559", "0001-01-01"]) expect({ v, m: at(v) }).toEqual({ v, m: [] });
+    });
+
     test("a column that is not nullable is not written null", () => {
       expect(messages(validateOps(wedding, board, [{ op: "replace", path: "/households/1/email", value: null }]))).toEqual(["email cannot be null"]);
       expect(messages(validateOps(wedding, board, [{ op: "add", path: "/households/-", value: { email: null } }]))).toEqual(["email cannot be null"]);

@@ -23,8 +23,11 @@ a refusal asked as the message itself (`client.send({ action: "open", doc })`, i
 - `open { doc }` → the document, with `_v` where the backend versions.
 - `delta { doc, ops, cursor?, undoable?, inverse? }` → `{ ack: true, version? }`; with a ledger
   also `ops`, `inverse`, `entry`; asked (`inverse: true`), `ops` (and `inverse` on SQLite).
-  `cursor` counts in-process only. On SQLite and the JSON file the document must be open in
-  this process (404 `Doc not loaded`): a script opens before it writes.
+  `cursor` counts in-process only. **A connection writes only what it has opened**, on every
+  backend: a `delta` for a document this socket has not opened (or has closed, or was let go
+  of) is 404 `Doc not loaded: open <doc> before writing to it`, though another socket has it
+  open. A script opens before it writes; a `delta` sent right behind its `open` is behind it.
+  An in-process caller (`local.md`) is the server, not a connection, and is not held to it.
 - `undo` / `redo { cursor?, dry?, entry?, change? }` (ledger) → `{ doc, ops, inverse, version,
   entry }`, a conflict, or `null`.
 - `history { doc, cursor?, limit? }` (ledger) → `[{ id, doc, version, ops, inverse, at, undoable, mine }]`.

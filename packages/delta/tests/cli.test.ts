@@ -130,9 +130,13 @@ describe("delta open / delta / call --json: one JSON line, stderr empty", () => 
 
   test("delta prints its own ops, not another writer's that lands between its open and its write", async () => {
     const ws = createWs();
-    // another writer, as soon as the CLI has opened: its row is the first
-    ws.on("open", (msg) => {
-      if (msg.doc === "busy:") setImmediate(() => ws.websocket.message(mockClient(), JSON.stringify({ action: "delta", doc: "busy:", ops: [{ op: "add", path: "/lines/-", value: { text: "theirs" } }] })));
+    // another writer, as soon as the CLI has opened: its row is the first (it opens before it writes, as every connection does)
+    const other = mockClient();
+    ws.on("open", (msg, client) => {
+      if (msg.doc === "busy:" && client !== other) setImmediate(async () => {
+        await ws.websocket.message(other, JSON.stringify({ action: "open", doc: "busy:" }));
+        await ws.websocket.message(other, JSON.stringify({ action: "delta", doc: "busy:", ops: [{ op: "add", path: "/lines/-", value: { text: "theirs" } }] }));
+      });
     });
     registerJson(ws, join(dir, "busy.json"), notes, [linesDoc("busy:")]);
     const server = Bun.serve({ port: 0, routes: { [ws.path]: ws.upgrade }, websocket: ws.websocket });

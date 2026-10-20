@@ -6,6 +6,17 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### A connection writes only what it has opened; a time is what every backend holds (20 October, root #136)
+
+- **Breaking**, delta and dzql: a socket's `delta` for a document it has not opened is 404 `Doc not
+  loaded: open <doc> before writing to it` on every backend (SQLite asked only that the process had
+  it open; dzql's Postgres wrote it). It is the wire's rule, and dzql's law; an in-process caller
+  (`createLocal()`) is the server and is not held to it, on either backend. delta's client sends a
+  document's open ahead of a write made while its socket was down. A time with a zone past ±15:59
+  or in the year 0000 is 400 in delta's words everywhere (SQLite kept it; Postgres answered 500 or
+  400). delta's cases ask both. To move across: a script that sends `delta` on a socket opens the
+  document first; a time is given in UTC.
+
 ### railroad: one way for a branch's value, one way for data that comes later (20 October, railroad #13, #7)
 
 - **A `when()` branch is handed its value as a keyed `list()` row is** (breaking): an object as its

@@ -241,8 +241,9 @@ BEGIN
           WHEN 'integer' THEN jsonb_typeof(val) = 'number' AND val::text::numeric = trunc(val::text::numeric)
           WHEN 'real' THEN jsonb_typeof(val) = 'number'
           WHEN 'boolean' THEN jsonb_typeof(val) = 'boolean'
-          -- ISO-8601, as delta's isIsoTime reads it: a day the calendar has (_delta_on_calendar)
-          WHEN 'timestamptz' THEN jsonb_typeof(val) = 'string' AND (val #>> '{}') ~ '^\d{4}-\d{2}-\d{2}([T ]([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,6})?)?(Z|[+-]([01]\d|2[0-3])(:?[0-5]\d)?)?)?$'
+          -- ISO-8601, as delta's isIsoTime reads it: a zone timestamptz holds (to ±15:59: past it the
+          -- cast raises 22009, a 500), and a day the calendar has (_delta_on_calendar)
+          WHEN 'timestamptz' THEN jsonb_typeof(val) = 'string' AND (val #>> '{}') ~ '^\d{4}-\d{2}-\d{2}([T ]([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,6})?)?(Z|[+-](0\d|1[0-5])(:?[0-5]\d)?)?)?$'
             AND _delta_on_calendar(val #>> '{}')
           ELSE TRUE END THEN NULL
         ELSE k || ' must be ' || CASE c->>'type' WHEN 'text' THEN 'a string' WHEN 'integer' THEN 'an integer'

@@ -111,6 +111,49 @@ export function errorCodeCases(backend: CaseBackend): void {
       const written = await sendAndAwait(up.ws, c, { action: "delta", doc: "case-room:3", ops: [{ op: "add", path: "/case_messages/-", value: { text: "x" } }] });
       expect(written.error).toEqual({ code: 404, message: "Document not found: case-room:3 (its root, /case_rooms/3, is not there)" });
     });
+
+    // the wire's rule: a connection writes only what it has opened -- though another holds it open, and once it has closed it
+    test("a write through a document this connection has not opened: not loaded (404), and nothing changed", async () => {
+      const notLoaded = { code: 404, message: "Doc not loaded: open case-room:1 before writing to it" };
+      const ops = [{ op: "replace", path: "/case_messages/7/text", value: "x" }];
+      const holder = mockClient({ clientId: "holder" });
+      await sendAndAwait(up.ws, holder, { action: "open", doc: "case-room:1" });
+      const c = mockClient({ clientId: "writer" });
+      expect((await sendAndAwait(up.ws, c, { action: "delta", doc: "case-room:1", ops })).error).toEqual(notLoaded);
+      expect((await sendAndAwait(up.ws, c, { action: "delta", doc: "case-room:2", ops: [] })).error).toEqual({ ...notLoaded, message: notLoaded.message.replace("case-room:1", "case-room:2") });
+      await sendAndAwait(up.ws, c, { action: "open", doc: "case-room:1" });
+      await sendAndAwait(up.ws, c, { action: "close", doc: "case-room:1" });
+      expect((await sendAndAwait(up.ws, c, { action: "delta", doc: "case-room:1", ops })).error).toEqual(notLoaded);
+      expect(Object.values((await fresh(up.ws, "case-room:1")).case_messages)).toEqual([{ id: 7, case_rooms_id: 1, text: "hi" }]);
+      await sendAndAwait(up.ws, c, { action: "open", doc: "case-room:1" });
+      expect((await sendAndAwait(up.ws, c, { action: "delta", doc: "case-room:1", ops: [{ op: "replace", path: "/case_messages/7/text", value: "hi" }] })).error).toBeUndefined();
+    });
+
+    // a socket's messages run side by side: a write sent right behind its open, its answer not waited for, is behind it
+    test("a write sent right behind its document's open lands", async () => {
+      const c = mockClient({ clientId: "eager" });
+      const [opened, written] = await Promise.all([
+        sendAndAwait(up.ws, c, { action: "open", doc: "case-room:2" }),
+        sendAndAwait(up.ws, c, { action: "delta", doc: "case-room:2", ops: [{ op: "replace", path: "/case_messages/8/text", value: "elsewhere" }] }),
+      ]);
+      expect(opened.error).toBeUndefined();
+      expect(written.error).toBeUndefined();
+    });
+
+    // createLocal()'s caller (`data.local`) is the server itself, not a connection: it hears every channel
+    test("an in-process caller writes a document nobody has open, and its write is there to the next open", async () => {
+      const own = await backend(roomsApp);   // its own, so nobody has opened the room before
+      try {
+        const server = mockClient({ local: true });
+        const ops = (text: string) => [{ op: "replace", path: "/case_messages/8/text", value: text }];
+        expect((await sendAndAwait(own.ws, server, { action: "delta", doc: "case-room:2", ops: ops("by the server") })).error).toBeUndefined();
+        expect((await sendAndAwait(own.ws, server, { action: "delta", doc: "case-room:2", ops: ops("again") })).error).toBeUndefined();
+        expect((await fresh(own.ws, "case-room:2")).case_messages["8"].text).toBe("again");
+        expect((await sendAndAwait(own.ws, server, { action: "delta", doc: "case-room:3", ops: [] })).error).toEqual({ code: 404, message: "Document not found: case-room:3 (its root, /case_rooms/3, is not there)" });
+      } finally {
+        await own.end();
+      }
+    });
   });
 }
 
@@ -181,6 +224,10 @@ export const refusals: Record<string, { ops: unknown[]; message: string }> = {
   "a row moved under text that is no number": { ops: [{ op: "replace", path: "/case_jars/1", value: { name: "jam", case_shelves_id: "top" } }], message: `case_shelves "top" names no row: an id is a whole number` },
   "a time the calendar has not": { ops: [{ op: "replace", path: "/case_shelves/checked", value: "2026-02-30" }], message: "/case_shelves/checked: checked must be an ISO-8601 time" },
   "a time in a month there is not": { ops: [{ op: "replace", path: "/case_shelves/checked", value: "2026-13-01T10:00:00Z" }], message: "/case_shelves/checked: checked must be an ISO-8601 time" },
+  // only what Postgres's timestamptz holds, so no backend keeps a time another cannot: a zone to ±15:59, a year from 0001
+  "a time in a zone past +15:59": { ops: [{ op: "replace", path: "/case_shelves/checked", value: "2021-01-01T00:00:00+16:00" }], message: "/case_shelves/checked: checked must be an ISO-8601 time" },
+  "a time in a zone past -15:59": { ops: [{ op: "replace", path: "/case_shelves/checked", value: "2021-01-01T00:00:00-2000" }], message: "/case_shelves/checked: checked must be an ISO-8601 time" },
+  "a time in the year 0": { ops: [{ op: "replace", path: "/case_shelves/checked", value: "0000-01-01" }], message: "/case_shelves/checked: checked must be an ISO-8601 time" },
   // an op wrong in several ways: every refusal of it, joined by "; " -- the fields there are not, then
   // each value not as it may be written, then each required field left out, each kind by name
   "a row added wrong in several ways": {
@@ -219,6 +266,16 @@ export function refusalCases(backend: CaseBackend): void {
         expect(now.case_shelves.label).toBe("top");
       });
     }
+
+    test("a time at the edges of what every backend holds is kept: a zone of ±15:59, the year 0001", async () => {
+      const c = mockClient();
+      await sendAndAwait(up.ws, c, { action: "open", doc: "case-shelf:1" });
+      for (const at of ["2021-01-01T00:00:00+15:59", "2021-01-01T00:00:00-1559", "0001-01-01"]) {
+        const r = await sendAndAwait(up.ws, c, { action: "delta", doc: "case-shelf:1", ops: [{ op: "replace", path: "/case_shelves/checked", value: at }] });
+        expect(r.error).toBeUndefined();
+        expect(Date.parse((await fresh(up.ws, "case-shelf:1")).case_shelves.checked)).toBe(Date.parse(at));
+      }
+    });
   });
 }
 
@@ -236,6 +293,7 @@ export function createRowCases(backend: CaseBackend): void {
       const ada = mockClient({ clientId: "ada" });
       const view = (await sendAndAwait(up.ws, peer, { action: "open", doc: "case-room:1" })).result;
       delete view._v;
+      await sendAndAwait(up.ws, ada, { action: "open", doc: "case-room:1" });
       for (const text of ["hello", "again"]) {
         const r = await sendAndAwait(up.ws, ada, { action: "delta", doc: "case-room:1", ops: [{ op: "add", path: "/case_messages/-", value: { text } }] });
         expect(r.error).toBeUndefined();

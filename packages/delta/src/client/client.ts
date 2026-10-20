@@ -421,19 +421,20 @@ export function connectWs(
       finally { if (hooking === connect) hooking = 0; }
       if (isClosed || ws.readyState !== WebSocket.OPEN) return;   // dropped meanwhile; the next open runs it again
     }
+    // Re-open every tracked doc. Fires on initial connect AND on reconnect,
+    // so a doc opened before the socket came up or during an outage catches
+    // up as soon as the socket is ready. Sent before anything waiting for
+    // `ready`: a connection writes only what it has opened, so a write made
+    // while the socket was down goes out behind its document's open.
+    for (const [name, entry] of docs) {
+      request({ action: "open", doc: name })
+        .then((state) => entry.onOpen(state))
+        .catch((err: any) => docLog.error(`re-open ${name}: ${err.message}`));
+    }
     connected.set(true);
     isReady = true;
     readyResolve();
     listeners.get("open")?.forEach((fn) => fn({}));
-
-    // Re-open every tracked doc. Fires on initial connect AND on reconnect,
-    // so a doc opened before the socket came up or during an outage catches
-    // up as soon as the socket is ready.
-    for (const [name, entry] of docs) {
-      sendInternal({ action: "open", doc: name })
-        .then((state) => entry.onOpen(state))
-        .catch((err: any) => docLog.error(`re-open ${name}: ${err.message}`));
-    }
   });
 
   ws.addEventListener("close", () => {
