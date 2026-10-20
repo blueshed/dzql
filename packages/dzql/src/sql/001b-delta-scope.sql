@@ -132,10 +132,19 @@ RETURNS BOOLEAN LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def 
 -- list, under another's board) does not hide the document that holds it. It
 -- answers document names, never a row; each document is told only what it
 -- holds (a caller may ask it of a row it makes up, and learn which open
--- documents would hold it). It sees past RLS where its owner does: the role
--- that applied the framework, owning the tables without FORCE ROW LEVEL
--- SECURITY, or with BYPASSRLS; applied as the app's own role, it sees what
--- the writer sees, as before.
+-- documents would hold it). What each is told (_delta_told) is worked out as
+-- the writer, from the rows the write itself read and wrote.
+--
+-- Why a definer, and not policies that let the fan-out read (todo #19): a
+-- policy cannot tell the fan-out's reads from any other query of the same
+-- role, so one that let the writer read another document's rows to find who
+-- holds them would let the writer read those rows anywhere -- the backstop
+-- gone for every table on a path. A definer that answers only names keeps
+-- every row behind the policies, and its own lookups are the compiled holds,
+-- which hand back nothing. It sees past RLS where its owner does: the role
+-- that applied the SQL, by the policies' own word (_delta_govern, which lets
+-- that role past while dzql.definer is raised, as the compiled function does),
+-- or with BYPASSRLS.
 -- generateSql writes it (compileHolders), each document asked by its own
 -- lookups; before it is applied no document holds a row.
 CREATE OR REPLACE FUNCTION _delta_holders(p_coll TEXT, p_row JSONB, p_writer TEXT)
@@ -143,6 +152,39 @@ RETURNS TEXT[] LANGUAGE sql VOLATILE SECURITY DEFINER AS $$ SELECT ARRAY[]::text
 DO $$ BEGIN
   EXECUTE format('ALTER FUNCTION _delta_holders(TEXT, JSONB, TEXT) SET search_path = %s, pg_temp', COALESCE(NULLIF(current_setting('search_path'), ''), 'public'));
 END $$;
+
+-- ---------------------------------------------------------------------------
+-- _delta_govern: a table's row-level security, as generateSql derives it from
+-- the documents' paths (compilePolicies, todo #19). Given `p_may`, the table's
+-- dzql_may__<collection>(row, check): every document holding it says a path,
+-- so its policy, dzql_owns, lets a person read a row some document they may
+-- have holds (USING), and write one that stays so (WITH CHECK); RLS enabled
+-- and FORCED, so the table's owner meets it too when it is the app's role.
+-- Past it: the role applying this (the owner, which owns the definer
+-- functions too) while `dzql.definer` is raised -- inside those functions,
+-- which raise it for their own reads and put it back; another role raising it
+-- gains nothing. A superuser, or a role with BYPASSRLS, is never held by RLS.
+-- Given none: the table says nothing a policy can (some document holds it
+-- with no path, or none does); dzql's policy, if it made one, is taken off,
+-- and RLS with it where no policy of the app's own is left.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION _delta_govern(p_table TEXT, p_may TEXT) RETURNS void AS $$
+DECLARE
+  v_past TEXT := format('(current_user = %L AND current_setting(''dzql.definer'', true) = ''on'')', current_user);
+  v_ours BOOLEAN := EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = current_schema() AND tablename = p_table AND policyname = 'dzql_owns');
+BEGIN
+  IF v_ours THEN EXECUTE format('DROP POLICY dzql_owns ON %I', p_table); END IF;
+  IF p_may IS NULL THEN
+    IF v_ours AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = current_schema() AND tablename = p_table) THEN
+      EXECUTE format('ALTER TABLE %I NO FORCE ROW LEVEL SECURITY, DISABLE ROW LEVEL SECURITY', p_table);
+    END IF;
+    RETURN;
+  END IF;
+  EXECUTE format('CREATE POLICY dzql_owns ON %I USING (%s OR %I(%I, FALSE)) WITH CHECK (%s OR %I(%I, TRUE))',
+    p_table, v_past, p_may, p_table, v_past, p_may, p_table);
+  EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY, FORCE ROW LEVEL SECURITY', p_table);
+END;
+$$ LANGUAGE plpgsql;
 
 -- ---------------------------------------------------------------------------
 -- _delta_strip_temporal: remove valid_from/valid_to/override from a JSONB row

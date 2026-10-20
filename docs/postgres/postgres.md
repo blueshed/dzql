@@ -91,7 +91,9 @@ person)`, through delta's `pathSql`: the same SQL SQLite runs. The listener asks
 write, history and a walk, and before telling each socket of a change, so someone the path stops
 reaching is let go. A write that would leave the path not reaching the writer (handing the row
 away) is refused, 403. A path that cannot be followed is an error naming the document. There are
-no table rules.
+no table rules: beneath the documents, each table every document holding it says by a path gets
+row-level security derived from those paths, the backstop for the compiled reads and writes, which
+run as the caller (`rls.md`).
 
 ## Compiled SQL
 
@@ -118,6 +120,7 @@ delta's path cases, on the seed and after writes, and its text.
 | The ledger's reads: a document whole (an entry's inverse, a walk's guard), a field the same, a row beyond the document | `dzql_open_whole__<doc>` via `_delta_open`; `_delta_same`, `_delta_row_standing`, per collection |
 | A collection's definition, a table's serial | `_delta_collection`, `_delta_serial_new`, `_delta_serial_past`, per collection |
 | Who may have a document (`owns` as a path), and a write that keeps it in reach | `dzql_owns__<doc>`; `_delta_keeps_reach`, asked by `delta_apply` |
+| May the person have a document that holds a row (the table's row-level security) | `dzql_may__<coll>`, the policy `dzql_owns`, put on by `_delta_govern` |
 | What a remove takes with it, and what a moved row carries | `dzql_cascade_remove__<coll>`, `dzql_cascade_rows__<coll>`, `dzql_hanging_rows__<coll>`, via `_delta_cascade_remove`, `_delta_cascade_rows`, `_delta_hanging_rows` |
 
 Three rules follow:
@@ -160,4 +163,5 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
 - PGlite (`openPglite(dir?)`, `bun add @electric-sql/pglite`) is one process: a `Pool` that
   `dzql/postgres` runs on unchanged.
 - **Never deploy PGlite**: it needs far more memory than a small server has. Tests and development only.
-- **The superuser bypasses RLS**, even with `FORCE`: a hand-written policy needs a non-superuser pool (`rls.md`).
+- **The superuser bypasses RLS**, even with `FORCE`: the policies derived from the paths, and a
+  hand-written one, hold only a pool that is neither a superuser nor `BYPASSRLS` (`rls.md`).

@@ -25,6 +25,26 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **Row-level security, derived from the documents' paths, is the backstop beneath them** (20
+  October, #19). `generateSql` gives each table every document holding it says by a path (`owns`
+  as a string) RLS enabled and forced, and one policy, `dzql_owns`, whose `dzql_may__<collection>`
+  asks whether the person (`app.user_id`) may have a document that holds the row; the compiled
+  reads and writes run as the caller beneath it, so a bug in one of them leaks nothing the paths do
+  not give. What reads past it is the owner's and answers only yes, no or a name: the policies'
+  lookups, `dzql_owns__<doc>` (now `SECURITY DEFINER`) and the fan-out, `_delta_holders`, which
+  still finds who holds a row the writer may not read and tells them, worked out as the writer from
+  the rows the write itself touched. They raise `dzql.definer`, which each policy lets past for the
+  table's owner alone. **What an app on such a table must now do, unless its pool is a superuser
+  or `BYPASSRLS`** (PGlite's, the compose database's: nothing changes there): re-apply the
+  framework before `generateSql` (it calls 001b's new `_delta_govern`), as the role that owns the
+  tables; give `auth` an `asSqlArg`, so every document call binds `app.user_id`; and bind it
+  (`withAppAuth`) in a custom document's `query` or `recompute`, and in any query of its own on
+  such a table, which otherwise reads as empty. `exportTables`, `importTables` (one transaction
+  each now) and `migrate` act as the owner, past the policies. A table some document holds with
+  no path is left as the app set it. `docs/postgres/rls.md`; `tests/compile/policies.test.ts`,
+  `tests/delta-pg/rls-backstop-pglite.test.ts` (a compiled check made wrong on purpose, refused),
+  and delta's permission cases as a role RLS holds.
+
 - **The model's page signs in by link alone** (20 October, #62): the email and password form, its
   `/login` route, the `mdl_logins` table and `MODEL_PASSWORD` are gone. Each keeper's link is
   printed as `dzql model` starts; the CLI signs in with it (`bun run cli login <link>`).

@@ -39,6 +39,7 @@ import { compileLedger } from "../compile/ledger";
 import { compileLookups } from "../compile/lookups";
 import { compileTold } from "../compile/told";
 import { compileOwns } from "../compile/owns";
+import { compilePolicies } from "../compile/policies";
 
 export interface GenerateSqlOptions {
   /** The module the definitions came from (`dzql sql` names it): the header says it, and how to make the file again. */
@@ -116,7 +117,7 @@ export function generateSql(
   lines.push("");
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
-  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs));
+  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs), "", compilePolicies(schema, docs));
   return lines.join("\n");
 }
 

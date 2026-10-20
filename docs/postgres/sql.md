@@ -39,10 +39,12 @@ functions you call stay these:
   Bind for what the function reads, not only where `:user_id` appears.
 - **Write through `delta_apply` / `delta_apply_as`**, never `INSERT` / `UPDATE` on a delta
   table: only that path versions, logs and NOTIFYs, so subscribers stay live.
-- **`SECURITY DEFINER` bypasses RLS.** Delta is persistence and broadcast, not authorization:
-  such a function checks its own preconditions (through `_`-prefixed guard helpers, never
-  callable from the wire), and a named add (an id the writer chose) is judged by the session's role's privileges on the table
-  (`_delta_serial_new` / `_delta_serial_past`, `packages/dzql/src/compile/lookups.ts`).
+- **What runs as the owner answers, never reads out.** The compiled reads and writes run as the
+  caller, under the policies the paths make (`rls.md`). The few `SECURITY DEFINER` functions answer
+  yes, no or a name: the policies' lookups (`dzql_may__`), the ownership answers (`dzql_owns__`),
+  the fan-out (`_delta_holders`, names only), and a named add (an id the writer chose), judged by
+  the session's role's privileges on the table (`_delta_serial_new` / `_delta_serial_past`,
+  `packages/dzql/src/compile/lookups.ts`). Each pins the path it was applied with, `pg_temp` last.
 - Never edit `001*`, nor `_delta_collections` / `_delta_docs` by hand: `generateSql` fills them.
 - Tables need `seq_<table>` sequences: `generateSql` makes them; do not hand-write tables.
 - Framework SQL older than the listener works, with a warning: re-apply it (`applyFramework`

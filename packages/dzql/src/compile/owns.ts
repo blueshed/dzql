@@ -4,6 +4,9 @@
  * The name's values are read as its scope reads them (`scopeOf`); a single document's root row is
  * read at its current version; the path is lowered by delta's `pathSql`, the same SQL SQLite runs.
  * The listener asks it where delta asks `owns` (open, write, walk, before each change is told).
+ * SECURITY DEFINER, with `dzql.definer` raised (`compilePolicies`): a path is followed through the
+ * tables whole, as on SQLite, whatever the person's own policies hide of a membership on the way; it
+ * answers yes or no, never a row.
  *
  * And `_delta_keeps_reach(def, name)`, which `delta_apply` asks once a write's ops are applied: a
  * write through a document with a path must leave it reaching the writer (`app.user_id`), or its
@@ -13,6 +16,8 @@
 import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { assertPath, parsePath, pathSql } from "@blueshed/delta/paths";
 import { lit, named, need, scopeOf, caseOf, WHOLE } from "./opens";
+import { PAST } from "./policies";
+import { searchPath } from "./lookups";
 
 /** A document's ownership function: `dzql_owns__<slug>`. */
 export const ownsFunction = (prefix: string): string => named("owns", prefix);
@@ -41,12 +46,18 @@ DECLARE
   p_at     TIMESTAMPTZ;
   v_single BOOLEAN;
   v_id     BIGINT;
+  v_owns   BOOLEAN;
+  ${PAST.declare}
   ${scope.declare.join("\n  ")}
 BEGIN
+  ${PAST.raise}
   ${scope.body}
-  RETURN COALESCE(${reaches}, FALSE);
+  v_owns := COALESCE(${reaches}, FALSE);
+  ${PAST.lower}
+  RETURN v_owns;
 END;
-$$ LANGUAGE plpgsql STABLE;`;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+${searchPath(`${ownsFunction(doc.prefix)}(text, bigint)`)}`;
 }
 
 /** The ownership functions of `docs` with a path, and `_delta_keeps_reach` for every one. */

@@ -21,7 +21,7 @@ import { lit, noDoc, openAtFunction, caseOf, prefixDispatch } from "./opens";
 const CALLER = "COALESCE(NULLIF(current_setting('role'), 'none'), session_user)";
 
 /** The search path a definer function runs with: the schemas applied in, and pg_temp last. */
-const searchPath = (signature: string) => `DO $$
+export const searchPath = (signature: string) => `DO $$
 DECLARE
   v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
 BEGIN

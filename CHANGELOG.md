@@ -10,6 +10,8 @@ what is open across them. Newest first.
 
 - **Several apps on one Postgres database, a schema each** (dzql #29): `namespace` on dzql's
   `openStore` and its steps; each app's changes on a channel of its own. dzql's CHANGELOG has the detail.
+- **Row-level security derived from the documents' paths** (dzql #19, breaking for an app whose
+  role RLS holds): the backstop beneath the compiled reads and writes, which run as the caller.
 
 ### The Bun, the hook and the root's statements, said once (20 October)
 

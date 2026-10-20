@@ -2221,12 +2221,14 @@ DECLARE
   v_names TEXT[] := ARRAY[]::text[];
   v_rid   BIGINT;
   v_cand  TEXT;
+  v_was_past TEXT := current_setting('dzql.definer', true);
 BEGIN
   IF current_setting('transaction_isolation') <> 'read committed' THEN
     RAISE EXCEPTION 'a delta write runs at READ COMMITTED, not %: a document opened while it ran would not be told of it',
       upper(current_setting('transaction_isolation')) USING ERRCODE = '0A000';
   END IF;
   IF p_row IS NULL THEN RETURN v_names; END IF;
+  PERFORM set_config('dzql.definer', 'on', true);   -- the rows a chain climbs, past the policies: names come back, never a row (compilePolicies)
   CASE p_coll
     WHEN 'weddings' THEN
       -- fo-board:
@@ -3075,6 +3077,7 @@ BEGIN
       END LOOP;
     ELSE NULL;
   END CASE;
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
   RETURN v_names;
 END;
 $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;

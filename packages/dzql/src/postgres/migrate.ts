@@ -112,11 +112,20 @@ function store(client: PoolClient, app: string, collections?: string): Store<Poo
   };
 }
 
-/** Runs `fn` on a client of its own, holding nothing after. */
+/**
+ * Runs `fn` on a client of its own, holding nothing after: as the tables' owner, past the policies
+ * the documents' paths make (`dzql.definer` raised for the client's while, todo #19), so a history
+ * counts and changes every row, as it does where no policy is.
+ */
 async function withClient<T>(pool: Pool, fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
-  try { return await fn(client); }
-  finally { client.release(); }
+  try {
+    await client.query("SELECT set_config('dzql.definer', 'on', false)");
+    return await fn(client);
+  } finally {
+    await client.query("SELECT set_config('dzql.definer', '', false)").catch(() => {});
+    client.release();
+  }
 }
 
 /**
