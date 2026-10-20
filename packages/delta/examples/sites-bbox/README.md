@@ -14,13 +14,26 @@ it is told the fields that changed, one that moves out or is deleted is removed,
 outside every open box is sent to no one.
 
 The box is a custom document (`defineCustomDoc`): `query` reads what is in it when it is opened,
-`matches` says whether a site belongs. `schema.ts` holds the tables, the world document and what
-a box is; `server.ts` keeps the rows.
+`matches` says whether a site belongs.
+
+## What is here
+
+The app is its routes and its resources, as every app is (paintbrush's README, *Routes,
+resources and documents*), with no page: a client opens the documents on the socket.
+
+```
+routes.ts                    the app: the socket, given to delta's serve; run, it is the server
+resources/
+  schema.ts                  the tables, the world document and what a box is, which both resources
+                             (and dzql's Postgres server) import
+  world/world-api.ts         world:1, the tables made and the world seeded
+  box/box-api.ts             sites-in-bbox:, the custom document over the same rows
+```
 
 ## Run on SQLite
 
 ```sh
-PORT=3100 bun examples/sites-bbox/server.ts
+PORT=3100 bun examples/sites-bbox/routes.ts
 ```
 
 In memory, in one process. On Postgres the same schema and documents run on dzql

@@ -1,6 +1,6 @@
 # Custom documents: derived, read-only views
 
-From `examples/sites-bbox/server.ts`: the sites inside a box, kept live as sites move.
+From `examples/sites-bbox/resources/box/box-api.ts`: the sites inside a box, kept live as sites move.
 
 ```ts
 const sitesInBbox = defineCustomDoc<BBox>("sites-in-bbox:", {
@@ -12,7 +12,7 @@ const sitesInBbox = defineCustomDoc<BBox>("sites-in-bbox:", {
   }),
   matches,                                  // (collection, row, criteria) → still in the box?
 });
-registerDocs(ws, db, schema, [worldDoc], [sitesInBbox]);
+registerDocs(ws, db, schema, [], [sitesInBbox]);   // beside world-api.ts's [worldDoc], on the same db
 ```
 
 `CustomDoc` in `src/server/custom.ts` is the contract. Clients open it like any document; writes

@@ -64,6 +64,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `board-view.tsx`. `serve.ts`, `server.ts` and `setup.ts` are folded into `routes.ts` and
   `board-api.ts`: one way to run the server, `bun examples/kanban/routes.ts`. `run.ts`, the two
   clients in the terminal, starts the same server.
+- **The sites-bbox example is routes and resources** (20 October): `examples/sites-bbox/` is
+  `routes.ts` (the socket given to `serve`; run, it is the server, by `run`), and its two
+  documents' server sides, `resources/world/world-api.ts` (`world:`, the tables made and the
+  world seeded) and `resources/box/box-api.ts` (the custom `sites-in-bbox:`), each registered on
+  the one database. No page, so no client files. The schema, the world document and what a box
+  is are `resources/schema.ts`, which both resources import, and dzql's Postgres server of the
+  example too (`server-pg.ts`'s one import moved). `server.ts` became `routes.ts`;
+  `bun examples/sites-bbox/routes.ts` runs it.
 
 - **The recipe's client is railroad's** (20 October, root #30): `client.tsx` draws the room with
   `list()` over `doc.data`, as the recipe's first line says the client needs, in place of raw DOM
