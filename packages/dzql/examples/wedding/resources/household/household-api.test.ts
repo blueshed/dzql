@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createDocuments, setActiveDocuments } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import { db, delta } from "../delta";
-import { householdFrom, read, shape, whatItDid, type HouseholdDocument } from "./household";
-import * as weddingDoc from "./wedding";
+import { db, delta } from "../../store";
+import { householdFrom, read, shape, whatItDid, type HouseholdDocument } from "./household-api";
+import * as weddingDoc from "../wedding/wedding-api";
 
 let offer: Parameters<typeof shape>[1];
 let documents: ReturnType<typeof createDocuments>;

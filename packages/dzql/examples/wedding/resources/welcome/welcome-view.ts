@@ -3,9 +3,9 @@
 // disclosure so the plain path -- enter a code -- stays the only thing offered. The two forms
 // write the session; a code refused is said beside its box, and the note is what a resend says back.
 
-import type { Wedding } from "../documents/wedding";
-import { esc, join, write } from "./html";
-import { formatDay, frame, layers } from "./shared";
+import type { Wedding } from "../wedding/wedding-api";
+import { esc, join, write } from "../../html";
+import { formatDay, frame, layers } from "../../shared";
 
 export function welcome(w: Wedding, note: string | null, refused = ""): string {
   const page = join(

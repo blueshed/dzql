@@ -1,24 +1,23 @@
-import * as householdDoc from "../documents/household";
-import * as sessionDoc from "../documents/session";
-import * as weddingDoc from "../documents/wedding";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import type { Resource } from "dzql/rendering/resources/resource";
 import { activeDocuments, settled } from "dzql/rendering/documents";
-import { putAway } from "./session";
-import { householdPage, type HouseholdView } from "../views/household";
-import { keepEveryone } from "../everyone";
-import { refuse, tell, toldAt } from "dzql/rendering/refusal";
+import { refuse, tell } from "dzql/rendering/refusal";
+import * as householdDoc from "./household-api";
+import * as sessionDoc from "../session/session-api";
+import * as weddingDoc from "../wedding/wedding-api";
+import { putAway } from "../session/session";
+import { keepEveryone } from "../../everyone";
 
 // A household's document (`household:<id>`), written by the household that arrived by its code.
 // Nearly everything it writes changes what others see -- an answer puts figures in the photo every
 // household watches, a claim takes a gift from every other household, the couple's board counts
 // it all -- and each follows from what their pages read: the board holds this household's rows
-// (delta's fan-out), and the photo and the gifts' counts are kept in `everyone` (../everyone.ts).
+// (delta's fan-out), and the photo and the gifts' counts are kept in `everyone` (../../everyone.ts).
 // Each page is sent only the parts of it that changed.
 
 type Rule = { path: RegExp; ops: PatchOp["op"][]; /** Locked after the deadline. */ dated?: boolean };
 
-/** The household's writable surface: which paths, with which ops. Whether the value is valid is documents/household.ts's call. */
+/** The household's writable surface: which paths, with which ops. Whether the value is valid is ./household-api.ts's call. */
 const RULES: Rule[] = [
   { path: /^\/answer$/, ops: ["replace", "remove"], dated: true },
   { path: /^\/message$/, ops: ["replace"] }, // emptied by replacing it with nothing
@@ -33,31 +32,6 @@ const RULES: Rule[] = [
 
 /** The fields the dated rules write, as the document holds them: `/households` answer, a guest's coming and choices. */
 const DATED = new Set(["answer", "coming", "choices"]);
-
-/** Everything a household's page reads, for this session. */
-function viewFor(session: sessionDoc.SessionDocument, sessionId: string): HouseholdView | undefined {
-  const h = householdDoc.read(session.id!);
-  if (!h) return undefined;
-  const w = weddingDoc.wedding();
-  return {
-    session,
-    wordsTold: toldAt(sessionId, "household", "/message"),
-    h,
-    w,
-    courses: weddingDoc.courses(),
-    gifts: weddingDoc.gifts(),
-    events: weddingDoc.events(),
-    places: weddingDoc.places(),
-    open: weddingDoc.answersOpen(),
-    names: weddingDoc.namesRevealed(w.day),
-  };
-}
-
-/** A household's page. `viewFor` is always there in practice: read() only reports a kind for a code that exists. */
-export function renderHousehold(session: sessionDoc.SessionDocument, sessionId: string): string | undefined {
-  const v = viewFor(session, sessionId);
-  return v && householdPage(v);
-}
 
 export const household: Resource = {
   docType: "household",

@@ -5,7 +5,7 @@
 // touches the DOM is photo-applet.ts, imported only by client/main.ts.
 
 import type { PatchOp } from "dzql/rendering/json-patch";
-import type { Figure } from "../documents/wedding";
+import type { Figure } from "../resources/everyone/everyone-api";
 import { esc } from "dzql/rendering/html";
 import { arrange, figure, print, specOf, type Spec } from "./figure";
 

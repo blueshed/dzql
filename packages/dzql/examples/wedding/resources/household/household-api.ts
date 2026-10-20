@@ -1,15 +1,17 @@
-import { db } from "../delta";
+import { defineDoc } from "@blueshed/delta/sqlite";
 import { read as readDoc } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
-import { allowsLook, isLookField, LOOK_FIELDS, type Look } from "../looks";
-import type { Course, Row, Rows } from "./wedding";
-import { integer, text, yesNo } from "./values";
+import { db, register } from "../../store";
+import { allowsLook, isLookField, LOOK_FIELDS, type Look } from "../../looks";
+import type { Course, Row, Rows } from "../wedding/wedding-api";
+import { integer, text, yesNo } from "../../values";
 
-// A household's document, kept in delta (`household:<id>`, ../delta.ts): the answer, the message,
+// A household's document, kept in delta (`household:<id>`), on the ledger: the answer, the message,
 // the guests (each wearing a minifigure, with their choices), the asks, and the gifts it has
 // claimed. The household writes it; the couple read every household through the board
-// (documents/board.ts), which builds each one with `householdFrom` here.
+// (../board/board-api.ts), which builds each one with `householdFrom` here.
+register([defineDoc("household:", { root: "households", include: ["guests", "asks", "claims"] })]);
 
 export type Answer = "yes" | "maybe" | "no";
 export type NamedBy = "couple" | "household" | "ask";

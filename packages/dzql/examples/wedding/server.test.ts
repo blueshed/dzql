@@ -577,7 +577,7 @@ describe("the couple", () => {
     let html = await at(ws, "venues?row=1");
     expect(html).toContain(`<span class="what">The Mount Without</span>`);
     expect(html).toContain(`id="venues-drawer"`);
-    expect(html).toContain(`data-applet="picture-field"`); // the picture, by the applet delta.ts names
+    expect(html).toContain(`data-applet="picture-field"`); // the picture, by the applet resources/board/board-api.ts names (`derived`)
     await at(ws, "venues?new");
     html = (await send(ws, "board", [{ op: "add", path: "/venues/-", value: "Arnos Vale" }])).page;
     expect(html).toContain('data-page="venues"'); // answered, the modal is put away

@@ -1,33 +1,35 @@
 import { run, serve } from "@blueshed/delta/serve";
 import { appOf } from "dzql/rendering/server";
 import type { Example } from "dzql/rendering/example";
-import * as sessionDoc from "./documents/session";
-import * as weddingDoc from "./documents/wedding";
-import { delta, sessions } from "./delta";
-import { welcome } from "./views/welcome";
-import { toldAt } from "dzql/rendering/refusal";
-import { board, everyone, renderBoard, wedding, welcome as welcomeDoc } from "./resources/board";
-import { household, renderHousehold } from "./resources/household";
-import { session } from "./resources/session";
-import { routes } from "./http";
 import index from "./client/index.html";
+import { delta, sessions } from "./store";
+import { render } from "./page";
+import { read as sessionOf } from "./resources/session/session-api";
+import { session } from "./resources/session/session";
+import { household } from "./resources/household/household";
+import { board } from "./resources/board/board";
+import { wedding } from "./resources/wedding/wedding";
+import { welcome } from "./resources/welcome/welcome";
+import { everyone } from "./resources/everyone/everyone";
+import { routes } from "./http";
+
+// The wedding: a save-the-date that becomes each household's page once its code is entered, and
+// the couple's board. The app is its routes and its resources, each document a folder of
+// ./resources/ (its api, its resource, and its part of the page where it has one), its store
+// ./store.ts, its page ./page.ts, its stories ./stories.ts; the pictures are plain HTTP (./http.ts).
 
 export const app: Example = {
   name: "wedding",
-  resources: [session, household, board, wedding, welcomeDoc, everyone],
-  // The welcome until a code says who you are, then whichever of the two it makes you.
-  render(sessionId, address) {
-    const visit = sessionDoc.read(sessionId, address); // the visit, where this tab stands
-    const page = visit.kind === "household" ? renderHousehold(visit, sessionId) : visit.kind === "couple" ? renderBoard(visit) : undefined;
-    return page ?? welcome(weddingDoc.welcome(), visit.note, toldAt(sessionId, "session", "/code"));
-  },
+  resources: [session, household, board, wedding, welcome, everyone],
+  // The welcome until a code says who you are, then whichever of the two it makes you (./page.ts).
+  render,
   // The same guard every write path already needs: a tab that has left (or whose code no longer
   // exists) shouldn't be able to write, undo included, as if it were still in.
-  active: (sessionId) => sessionDoc.read(sessionId).code !== null,
+  active: (sessionId) => sessionOf(sessionId).code !== null,
   index,
   address: { doc: "session", path: "/page" }, // a tab's URL is where it stands: the visit says where it may, the kernel moves the tab
   routes,
-  delta, // the documents are delta's (./delta.ts)
+  delta, // the documents are delta's (./store.ts)
   session: sessions.of, // a visit is a numbered row, named by its cookie
 };
 

@@ -1,10 +1,11 @@
 import { activeDocuments, read, serverWrite, settled } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import { db } from "./delta";
+import { db, WEDDING } from "./store";
 import { LOOK_FIELDS, type Look } from "./looks";
-import { inPhoto, namesRevealed, WEDDING, type Everyone, type Figure } from "./documents/wedding";
+import { inPhoto, type Everyone, type Figure } from "./resources/everyone/everyone-api";
+import { namesRevealed } from "./resources/wedding/wedding-api";
 
-// What households see of each other (`everyone:<wedding>`, ../delta.ts), kept true by the server:
+// What households see of each other (`everyone:<wedding>`, ./resources/everyone/everyone-api.ts), kept true by the server:
 // who stands in the photo -- each figure's look, its family, a ghost or not, and a name only once
 // the names have come down -- and how many households have claimed each gift, never which. It is
 // computed whole from the tables each time a household or the board changes, not nudged by

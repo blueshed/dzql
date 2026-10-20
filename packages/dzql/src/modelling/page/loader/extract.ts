@@ -1,5 +1,5 @@
-// The facts of an app, read from it as it stands: its stories, its delta.ts
-// (tables, and documents as root + include), its resources' permit rules, what the harness
+// The facts of an app, read from it as it stands: its stories, its store and each resource's api
+// (tables, and documents as root + include; an app of its own may say them in a delta.ts), its resources' permit rules, what the harness
 // says when it runs the stories, and its documents as that run read them (documents.ts). Nothing
 // here is proposed; everything is read. A project with no app yet (no index.ts) is read from its
 // stories alone: no run, so nothing of who was told.
@@ -28,14 +28,15 @@ export async function extract(at: string) {
   const sources = await documentSources(dir);
   const session = stories.goTo?.("").doc ?? null;
 
-  // ── tables: delta.ts's schema ──
-  // Where each table is touched outside delta.ts and the documents delta composes: the seed that
-  // makes its rows, and any code that reads or writes it with its own SQL. A table the stories never
+  // ── tables: the store's schema ──
+  // Where each table is touched outside a delta.ts that says only the tables and the documents: the
+  // seed that makes its rows, and any code that reads or writes it with its own SQL -- a resource's
+  // api's too, which keeps its reads and its rules beside its document. A table the stories never
   // reach but code does is how a concept arrives without a story. The stories are not code: a
   // table's name in one is a path or a word, never a read.
   const files: { path: string; lines: string[] }[] = [];
   for await (const f of new Bun.Glob("**/*.{ts,sql}").scan(dir)) {
-    if (f.includes(".test.") || f === "delta.ts" || f.endsWith("-api.ts") || f === "stories.ts" || f.startsWith("node_modules/")) continue;
+    if (f.includes(".test.") || f === "delta.ts" || f === "stories.ts" || f.startsWith("node_modules/")) continue;
     files.push({ path: f, lines: (await Bun.file(`${dir}/${f}`).text()).split("\n") });
   }
   const touches = (sqlName: string) =>

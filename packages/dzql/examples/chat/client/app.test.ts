@@ -280,7 +280,7 @@ describe("app.ts in a real browser", () => {
     await joinRoom(view, crypto.randomUUID());
     await waitFor(view, SEND_MESSAGE_FORM_VISIBLE, (v) => v === true);
 
-    // a room keeps its last fifty (documents/room.ts); fill it, as fast as the socket takes them
+    // a room keeps its last fifty (resources/room/room-api.ts); fill it, as fast as the socket takes them
     await view.evaluate(`(() => { for (let i = 0; i < 50; i++) window.eta.socket().send(JSON.stringify({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: "filler " + i }] })); return 1; })()`);
     await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("filler 49"));
     const m = `document.querySelector('.messages')`;

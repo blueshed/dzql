@@ -90,6 +90,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   `watchlist/` and `clock/`; `views/page.ts` is `page.ts`, composing the board (the watchlist's
   view), the market (the ticker's) and the clock (the clock's); the default city is said with the
   tables in `store.ts`, a column's default. Its 17 stories pass, with the same 5 warnings.
+  Then the wedding: `resources/session/`, `household/`, `board/`, `wedding/`, `welcome/` and
+  `everyone/` (the memory document; `everyone.ts`, which keeps it, stays at the root, as chat's
+  `presence.ts` does); `views/<thing>.ts` are each resource's `<name>-view.ts`, and `page.ts`
+  composes them; what both pages draw (`shared.ts`, `photo.ts`, `html.ts`, `surfaces.ts`,
+  `icons.ts`) and `values.ts` sit at the root; the pictures, no document, are kept by `http.ts`,
+  which serves them; the seed, the one-claim trigger and the pictures' table stay in `store.ts`.
+  Its 22 stories pass, with the same 3 warnings. The model's loader (`extract`) now reads a
+  resource's api for code that touches a table with its own SQL, as it read `documents/<thing>.ts`
+  (the wedding's couples, looked up by `whose()`, are read there).
 - **A ref keeps its surrogate** (20 October, #79, on Peter's design): a row that names a row a story
   can remove keeps, beside the key, what it shows of it, copied as it is written (`dish_name`,
   `dish_price` beside `dish`); the page shows the named row while it stands, and the copy once it

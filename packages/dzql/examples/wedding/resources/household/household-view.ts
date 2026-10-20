@@ -7,23 +7,24 @@
 // household: tools on the rail, each opening a drawer that is read, used (a gift claimed) and put
 // away. Which reading and which drawer is the session's word.
 
-import type { Guest, HouseholdDocument } from "../documents/household";
-import { over, type Named, type SessionDocument } from "../documents/session";
-import * as weddingDoc from "../documents/wedding";
-import type { Course, Gift, Wedding } from "../documents/wedding";
-import { addModal, addTool, choice, collectionPage, field, findControl, prop,readingSwitch, row, rows, drawer, tool, type Crumb } from "./bento";
-import type { DressProps } from "../applets/dress";
-import { LOOK_FIELDS } from "../looks";
-import type { MenuProps } from "../applets/menu";
-import { esc, join, go, open, write, appletProps, appletWrites } from "./html";
+import type { Guest, HouseholdDocument } from "./household-api";
+import { over, type Named, type SessionDocument } from "../session/session-api";
+import * as weddingDoc from "../wedding/wedding-api";
+import { everyone as everyoneNow } from "../everyone/everyone-api";
+import type { Course, Gift, Wedding } from "../wedding/wedding-api";
+import { addModal, addTool, choice, collectionPage, field, findControl, prop,readingSwitch, row, rows, drawer, tool, type Crumb } from "../../surfaces";
+import type { DressProps } from "../../applets/dress";
+import { LOOK_FIELDS } from "../../looks";
+import type { MenuProps } from "../../applets/menu";
+import { esc, join, go, open, write, appletProps, appletWrites } from "../../html";
 import { part } from "dzql/rendering/parts";
 import { watch } from "dzql/rendering/documents";
-import { icon, type IconName } from "./icons";
-import { familyEntries, photoMount, tapsOf } from "./photo";
-import { crowd, type CrowdProps } from "../applets/photo";
-import { answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, layers, isComing, isGuestOut, matches, picture, placeRows, plural, runNames, specOf, timetableRows } from "./shared";
+import { icon, type IconName } from "../../icons";
+import { familyEntries, photoMount, tapsOf } from "../../photo";
+import { crowd, type CrowdProps } from "../../applets/photo";
+import { answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, layers, isComing, isGuestOut, matches, picture, placeRows, plural, runNames, specOf, timetableRows } from "../../shared";
 
-/** Opening something over the page this household is on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
+/** Opening something over the page this household is on -- a drawer, a modal -- and putting it away: both are going somewhere (../../html.ts). */
 const open_ = (v: HouseholdView, what: string, which: string | number = ""): string => open(over(v.session.ui).path, what, which);
 const close = (v: HouseholdView): string => go(over(v.session.ui).path);
 
@@ -177,7 +178,7 @@ function everyonePhoto(props: CrowdProps): string {
 /** The page read as everyone's photo; beyond EVERYONE_UP_TO, one figure per family, and a tap
  * opens a family in it -- a crumb longer, the way back to everyone before it. */
 function everyoneReading(v: HouseholdView, familyKey: string | null): { body: string; crumbs: Crumb[] } {
-  const props: CrowdProps = { everyone: weddingDoc.everyone(), open: familyKey, reveal: v.names };
+  const props: CrowdProps = { everyone: everyoneNow(), open: familyKey, reveal: v.names };
   const { level, shown, total, open } = crowd(props);
   const crumbs: Crumb[] = open ? [{ label: v.h.code, back: go("") }, { label: "Everyone", back: go("everyone") }, { label: "One family" }] : [{ label: v.h.code }];
   const note =

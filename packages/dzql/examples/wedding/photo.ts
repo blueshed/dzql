@@ -2,17 +2,18 @@
 // families. What stands in the household's and the board's is decided here, on the server, from the
 // documents; the drawing is the photo applet's (applets/photo.ts), which gets the entries as props
 // and animates the changes. The photo of everyone watches its document instead, and what stands in
-// it is derived in the applet's own module (`crowd`), on the server and in the browser alike.
+// it is derived in the applet's own module (`crowd`), on the server and in the browser alike. No
+// one resource's: the household's view and the board's both draw it, so it sits beside ./page.ts.
 
-import type { PhotoEntry } from "../applets/photo";
-export { familiesPhoto, type Family } from "../applets/photo";
-import type { HouseholdDocument } from "../documents/household";
-import type { Spec } from "../applets/figure";
+import type { PhotoEntry } from "./applets/photo";
+export { familiesPhoto, type Family } from "./applets/photo";
+import type { HouseholdDocument } from "./resources/household/household-api";
+import type { Spec } from "./applets/figure";
 import { appletProps, appletWrites, esc } from "./html";
 import { address } from "dzql/rendering/bento";
 import { part } from "dzql/rendering/parts";
 import { guestMark, isGuestOut, matches } from "./shared";
-import { specOf } from "../applets/figure";
+import { specOf } from "./applets/figure";
 
 export type { PhotoEntry };
 

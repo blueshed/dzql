@@ -1,9 +1,10 @@
 // The pieces the household's pages and the couple's share: dates, rows, summaries, the answer's
-// face, the figure a guest's look draws as.
+// face, the figure a guest's look draws as. No one resource's part of the page: each view
+// (`resources/<name>/<name>-view.ts`) draws with them, so they sit beside ./page.ts.
 
-import type { Answer, Guest, HouseholdDocument } from "../documents/household";
-import type { Course, Event, Place, Wedding } from "../documents/wedding";
-import { row, site } from "./bento";
+import type { Answer, Guest, HouseholdDocument } from "./resources/household/household-api";
+import type { Course, Event, Place, Wedding } from "./resources/wedding/wedding-api";
+import { row, site } from "./surfaces";
 import { rows } from "dzql/rendering/bento";
 
 export { layers, matches } from "dzql/rendering/bento";
@@ -42,7 +43,7 @@ export function runNames(names: string[], start = ""): string[] {
 /** The couple's names, the root's name. */
 export const coupleName = (w: Pick<Wedding, "name1" | "name2">): string => `${w.name1} & ${w.name2}`;
 
-export { specOf } from "../applets/figure";
+export { specOf } from "./applets/figure";
 
 /** Not coming: said so, or not said while the household said no. Still, and marked no at their feet (guestMark). */
 export function isGuestOut(g: Pick<Guest, "coming">, h: Pick<HouseholdDocument, "answer">): boolean {

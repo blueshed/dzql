@@ -1,10 +1,9 @@
-import * as boardDoc from "../documents/board";
-import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import type { Resource } from "dzql/rendering/resources/resource";
-import { putAway } from "./session";
-import { boardPage } from "../views/board";
-import { keepEveryone } from "../everyone";
+import * as boardDoc from "./board-api";
+import * as sessionDoc from "../session/session-api";
+import { putAway } from "../session/session";
+import { keepEveryone } from "../../everyone";
 
 // The couple's document (`board:<wedding>`): the wedding and everything beneath it. Written by the
 // couple, who arrived by the wedding's own code; read by them alone. What they keep reaches the
@@ -19,7 +18,7 @@ const CHILD = "(dishes|drinks)";
 
 /** The couple's writable surface: what their page offers, which paths with which ops. A field is
  * emptied by replacing it with nothing, never removed; a row's parent and its order's number are
- * the server's. Whether the value is valid is documents/board.ts's call. */
+ * the server's. Whether the value is valid is ./board-api.ts's call. */
 const RULES: Rule[] = [
   { path: /^\/(name1|name2|day|deadline|venue|message|picture_key)$/, ops: ["replace"] },
   { path: /^\/households\/-$/, ops: ["add"] },
@@ -41,13 +40,7 @@ const RULES: Rule[] = [
 ];
 
 /** May the couple make this change? The permit's, and the page's, which draws a control only where it says yes. */
-const may = (op: PatchOp["op"], path: string): boolean => RULES.some((r) => r.path.test(path) && r.ops.includes(op));
-
-/** The couple's page. The board is always there in practice: read() only reports a kind for a code that exists. */
-export function renderBoard(session: sessionDoc.SessionDocument): string | undefined {
-  const b = boardDoc.read(session.id!);
-  return b && boardPage({ session, b, may });
-}
+export const may = (op: PatchOp["op"], path: string): boolean => RULES.some((r) => r.path.test(path) && r.ops.includes(op));
 
 export const board: Resource = {
   docType: "board",
@@ -63,12 +56,3 @@ export const board: Resource = {
   // a reply, a guest, a gift taken off: what everyone sees follows
   afterChange: () => keepEveryone(),
 };
-
-/** What a household reads of the wedding (`wedding:<id>`): written by the couple, through the board, and by nobody from the wire. */
-export const wedding: Resource = { docType: "wedding", resolveDoc: () => undefined };
-
-/** What a visitor without a code reads (`welcome:<id>`): the wedding's own row. */
-export const welcome: Resource = { docType: "welcome", resolveDoc: () => undefined };
-
-/** Who stands in the photo and how many have claimed each gift (`everyone:<id>`): live, kept by the server. */
-export const everyone: Resource = { docType: "everyone", kind: "memory", resolveDoc: () => undefined };

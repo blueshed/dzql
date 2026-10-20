@@ -748,7 +748,7 @@ describe("stories harness", () => {
   // should see, or say what it should not.
   describe("what an author is told stands in for nothing, says its own words, and is of its own moment", async () => {
     const { example: wedding, stories: vows } = await load("wedding");
-    const visit = await import("../../examples/wedding/documents/session");
+    const visit = await import("../../examples/wedding/resources/session/session-api");
     const named = (start: string): Story => vows.stories.find((s) => s.name.startsWith(start))!;
     const withHousehold = (f: (household: Resource) => Partial<Resource>, from: Example = wedding): Example => ({ ...from, resources: from.resources.map((c) => (c.docType === "household" ? { ...c, ...f(c) } : c)) });
     const maybe = named("The Okafors say maybe");

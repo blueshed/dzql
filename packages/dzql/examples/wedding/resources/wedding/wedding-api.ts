@@ -1,14 +1,14 @@
-import { db } from "../delta";
+import { defineDoc } from "@blueshed/delta/sqlite";
 import { read as readDoc } from "dzql/rendering/documents";
-import type { Look } from "../looks";
+import { LISTS, register, WEDDING } from "../../store";
+import { everyone } from "../everyone/everyone-api";
 
-// The wedding itself and the lists that stand on it, as a household reads them (`wedding:<id>`,
-// ../delta.ts): the couple write them through the board (documents/board.ts). And what
-// households see of each other (`everyone:<id>`, kept by ../everyone.ts): who stands in the photo,
-// and how many have claimed each gift -- never whose.
+// The wedding itself and the lists that stand on it, as a household reads them (`wedding:<id>`),
+// on the ledger: the couple write them through the board (../board/board-api.ts). How many have
+// claimed each gift, never whose, is what households see of each other (../everyone/everyone-api.ts).
+register([defineDoc("wedding:", { root: "weddings", include: LISTS })]);
 
-/** The one wedding. */
-export const WEDDING = "1";
+export { WEDDING };
 
 export type Wedding = {
   id: number;
@@ -49,11 +49,6 @@ const lists = (): Lists => readDoc<Lists>(`wedding:${WEDDING}`);
 /** The wedding as a household reads it. */
 export function wedding(): Wedding {
   return weddingOf(lists().weddings);
-}
-
-/** The wedding as a visitor without a code reads it: its own row, nothing beneath it. */
-export function welcome(): Wedding {
-  return weddingOf(readDoc<{ weddings: Row }>(`welcome:${WEDDING}`).weddings);
 }
 
 /** Has the day come? Read from the wedding's date, never written: the date produces it. */
@@ -139,32 +134,3 @@ export const placesOf = (rows: Rows | undefined): Place[] =>
 
 export const events = (): Event[] => eventsOf(lists().events);
 export const places = (): Place[] => placesOf(lists().places);
-
-// ───────────────────────────── everyone ─────────────────────────────
-
-/** One figure in the photo, as every household may see it: whose family, a ghost or not, the look -- and the name only once the names have come down. */
-export type Figure = { household: string; ghost: boolean; look: Look; name?: string };
-export type Everyone = { figures: Record<string, Figure>; taken: Record<string, number> };
-
-export const everyone = (): Everyone => readDoc<Everyone>(`everyone:${WEDDING}`);
-
-/** Whether a minifigure stands in the photo: "in" (its household said yes and it is coming), "ghost" (a maybe), or not at all. */
-export function inPhoto(row: { coming: number | null; answer: "yes" | "maybe" | "no" | null }): "in" | "ghost" | null {
-  if (row.coming === 0) return null;
-  return row.answer === "yes" ? "in" : row.answer === "maybe" ? "ghost" : null;
-}
-
-export type Picture = { type: string; bytes: Uint8Array };
-
-const pictureStmt = db.query<Picture, [string]>("SELECT type, bytes FROM wedding_pictures WHERE key = ?");
-const putPictureStmt = db.query<unknown, [string, string, Uint8Array, number]>(
-  "INSERT INTO wedding_pictures (key, type, bytes, created_at) VALUES (?, ?, ?, ?)",
-);
-
-export function picture(key: string): Picture | undefined {
-  return pictureStmt.get(key) ?? undefined;
-}
-
-export function putPicture(key: string, type: string, bytes: Uint8Array): void {
-  putPictureStmt.run(key, type, bytes, Date.now());
-}

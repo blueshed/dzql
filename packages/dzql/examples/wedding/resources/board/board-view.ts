@@ -5,24 +5,25 @@
 // or a name; the plus invites a household. The four lists the couple keep -- courses,
 // gifts, events, where to stay -- are tools on the rail, each a drawer of rows that takes a new one
 // in place, and a row opens a drawer of its own, whose × goes back to its list. The venues are a
-// page nobody wrote: drawn from their shape (src/rendering/derive.ts), by what delta.ts declares of them.
+// page nobody wrote: drawn from their shape (src/rendering/derive.ts), by what ./board-api.ts declares of them (`derived`).
 
-import type { BoardDocument } from "../documents/board";
-import type { HouseholdDocument } from "../documents/household";
-import { over, type SessionDocument } from "../documents/session";
-import { addModal, addTool, choice, collectionPage, confirmModal, field, findControl, prop, readingSwitch, row, rows, drawer, surfaces, tool, type FieldOptions } from "./bento";
-import { appletWrites, esc, join, go, open as openAt, write } from "./html";
+import type { BoardDocument } from "./board-api";
+import type { HouseholdDocument } from "../household/household-api";
+import { over, type SessionDocument } from "../session/session-api";
+import { addModal, addTool, choice, collectionPage, confirmModal, field, findControl, prop, readingSwitch, row, rows, drawer, surfaces, tool, type FieldOptions } from "../../surfaces";
+import { appletWrites, esc, join, go, open as openAt, write } from "../../html";
 import { address } from "dzql/rendering/bento";
 import { part } from "dzql/rendering/parts";
-import { icon, type IconName } from "./icons";
-import { familiesPhoto, photoMount, type Family, type PhotoEntry } from "./photo";
-import { answerOf, answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, guestMark, layers, isComing, matches, picture, placeRows, plural, runNames, specOf, timetableRows, type AnswerMark } from "./shared";
-import { inPhoto } from "../documents/wedding";
-import { derived, schema } from "../delta";
+import { icon, type IconName } from "../../icons";
+import { familiesPhoto, photoMount, type Family, type PhotoEntry } from "../../photo";
+import { answerOf, answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, guestMark, layers, isComing, matches, picture, placeRows, plural, runNames, specOf, timetableRows, type AnswerMark } from "../../shared";
+import { inPhoto } from "../everyone/everyone-api";
+import { derived } from "./board-api";
+import { schema } from "../../store";
 import { derivedPage } from "dzql/rendering/derive";
 import type { Op } from "dzql/rendering/html";
 
-/** Opening something over the page the couple are on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
+/** Opening something over the page the couple are on -- a drawer, a modal -- and putting it away: both are going somewhere (../../html.ts). */
 const open_ = (v: BoardView, what: string, which: string | number = ""): string => openAt(over(v.session.ui).path, what, which);
 const close = (v: BoardView): string => go(over(v.session.ui).path);
 

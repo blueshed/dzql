@@ -4,7 +4,7 @@ A control says what it writes, and the kernel's client sends it. The messages ar
 [wire.md](wire.md); the line that says why is [refusal.md](refusal.md).
 
 ```ts
-// examples/wedding/views/household.ts: a field that edits one value of a document, in one call
+// examples/wedding/resources/household/household-view.ts: a field that edits one value of a document, in one call
 field({ doc: "household", path: "/message", value: h.message, label: "Our words", kind: "textarea", placeholder: "Say something to the couple", said: v.wordsTold })
 ```
 

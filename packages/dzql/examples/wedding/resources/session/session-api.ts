@@ -1,17 +1,20 @@
-import { db } from "../delta";
+import { defineDoc } from "@blueshed/delta/sqlite";
 import { read as readDoc } from "dzql/rendering/documents";
 import { address, collectionsWrite, parseAddress, type Collections } from "dzql/rendering/bento";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
-import { integer } from "./values";
+import { db, register } from "../../store";
+import { integer } from "../../values";
 import { refuse } from "dzql/rendering/refusal";
 
-// A visit, kept in delta (`session:<id>`, ../delta.ts): what one session is doing on the site.
+// A visit, kept in delta (`session:<id>`): what one session is doing on the site.
 // `code` is who they are; how its collections are read is theirs; `note` is what the welcome says
 // back to a resend. Where they are -- the page, and the drawer open over it -- is each tab's own
 // (dzql/rendering/tabs), given beside the visit to draw and to shape a write by. Nothing here goes on
 // the ledger: which page a tab is on, or which drawer it has open, is not the wedding's history, and
-// a household pressing Undo means "take back my last answer", never "go back a page".
+// a household pressing Undo means "take back my last answer", never "go back a page". It holds
+// every column of the visit's row but the cookie's hash.
+register([defineDoc("session:", { root: "visits", include: [], implied: true, columns: { visits: ["code", "reading", "filter", "hide", "note"] } })], { ledger: false });
 
 export type Kind = "household" | "couple";
 

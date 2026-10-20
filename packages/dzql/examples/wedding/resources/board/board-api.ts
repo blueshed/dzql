@@ -1,15 +1,23 @@
+import { defineDoc } from "@blueshed/delta/sqlite";
 import { read as readDoc } from "dzql/rendering/documents";
+import type { Declared } from "dzql/rendering/derive";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
-import { db, derived, schema } from "../delta";
-import { householdFrom, newId, type HouseholdDocument } from "./household";
-import { coursesOf, eventsOf, giftsOf, placesOf, weddingOf, WEDDING, type Course, type Event, type Gift, type Place, type Row, type Rows, type Wedding } from "./wedding";
-import { integer, text, yesNo } from "./values";
+import { db, LISTS, register, schema, WEDDING } from "../../store";
+import { householdFrom, newId, type HouseholdDocument } from "../household/household-api";
+import { coursesOf, eventsOf, giftsOf, placesOf, weddingOf, type Course, type Event, type Gift, type Place, type Row, type Rows, type Wedding } from "../wedding/wedding-api";
+import { integer, text, yesNo } from "../../values";
 
-// The couple's document, kept in delta (`board:<wedding>`, ../delta.ts): the wedding and
+// The couple's document, kept in delta (`board:<wedding>`), on the ledger: the wedding and
 // everything beneath it -- every household whole, the courses with their dishes and drinks, the
 // gifts, the events, where to stay -- and the totals the caterer needs, counted from it. The
 // couple own the ground, so every list is written here; a household only ever reads them.
+register([defineDoc("board:", { root: "weddings", include: ["households", "guests", "asks", "claims", ...LISTS, "venues"] })]);
+
+/** The couple's collections drawn from their shape (src/rendering/derive.ts): what each says beyond its columns. Text columns only: the board's shape takes them as text. */
+export const derived: Record<string, Declared> = {
+  venues: { noun: "venue", fields: { picture_key: { label: "Picture", applet: "picture-field" } } },
+};
 
 export type Totals = {
   households: number;
@@ -94,8 +102,8 @@ type Col = "text" | "text?" | "bool" | "seq";
 
 const ROOT: Record<string, Col> = { name1: "text", name2: "text", day: "text", deadline: "text?", venue: "text?", message: "text?", picture_key: "text?" };
 
-/** The lists: their columns, their parent (in the document, and on the wire), and the lists beneath them. */
-const LISTS: Record<string, { columns: Record<string, Col>; children?: string[]; parent?: string }> = {
+/** The lists' shapes: their columns, their parent (in the document, and on the wire), and the lists beneath them. */
+const SHAPES: Record<string, { columns: Record<string, Col>; children?: string[]; parent?: string }> = {
   courses: { columns: { name: "text", seq: "seq" }, children: ["dishes", "drinks"] },
   dishes: { columns: { name: "text", dietary: "text?", seq: "seq" }, parent: "courses" },
   drinks: { columns: { name: "text", seq: "seq" }, parent: "courses" },
@@ -227,7 +235,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
 
   /** A list's row added, removed, moved, or a field of it replaced -- `parentId` for a dish or a drink, its course. */
   function list(table: string, parentId: string | undefined, seg: string[], op: PatchOp): void {
-    const spec = LISTS[table]!;
+    const spec = SHAPES[table]!;
     const rows = d[table as keyof Doc] as Rows;
     const siblings = () => Object.values(rows).filter((r) => !spec.parent || same(r[`${spec.parent}_id`], parentId)).sort((a, b) => Number(a.seq) - Number(b.seq) || Number(a.id) - Number(b.id));
     const [key, col, ...more] = seg;

@@ -1,6 +1,6 @@
 // The kernel's HTML vocabulary (src/rendering/html.ts), and the one gesture that is the wedding's own.
 import { address } from "dzql/rendering/bento";
-import { go } from "./bento";
+import { go } from "./surfaces";
 export { go };
 
 export { esc, join, write, appletProps, appletWrites } from "dzql/rendering/html";
