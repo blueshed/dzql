@@ -114,8 +114,9 @@ Each of these is a page of the skill's [reference](.claude/skills/delta-doc/refe
   `bun create dzql my-app` makes one.
 
 `bunx @blueshed/delta install-skills` copies the skill into your project for Claude Code. In a
-clone of this repository, [`examples/`](examples/) has a kanban board and the sites inside a
-box on a map, each laid out as the recipe is. [CHANGELOG.md](CHANGELOG.md) says what changed in each release.
+clone of this repository, [`examples/`](examples/) has a kanban board, the sites inside a box
+on a map, shared lists (sign-in by link, who may open what, undo with two people, a migration over
+kept data) and a lobby of who is here, each laid out as the recipe is. [CHANGELOG.md](CHANGELOG.md) says what changed in each release.
 
 ## Why delta
 

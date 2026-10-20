@@ -44,12 +44,20 @@ provide(WS, connectWs("/ws"));
 const me = await call<Person | null>("me");          // null: nobody: show "Who are you?"
 ```
 
+Working, signed in by a link from the command or the page, with the picker in development:
+[examples/lists](../../../../examples/lists/README.md) (`routes.ts`, `app.tsx`, `resources/people/`).
+
 - **A link:** `call("link", { person, opens })` from anyone signed in (`mayLink` narrows it);
   the first person's from the server, `bunx @blueshed/delta link app.db 1 --origin https://my.app`.
 - **In development** `everyone()` lists people and `becomeAs(id)` signs in as one: a picker
   instead of a password. Tests: `await auth.signInAs(id)` is a cookie header. None of these
   answers in production.
 - **Sign out:** `signOut()` ends the session and reloads the page.
+- **Your `Person` is a `type`, not an `interface`**, for `everyone<P>()`: its constraint has an
+  index signature, which an interface does not meet.
+- **Outside a browser `connectWs` sends no cookie.** A script or test signed in by link opens
+  Bun's own `WebSocket` with a `cookie` header and speaks the wire (`signedIn` in
+  `tests/helpers/examples.ts`).
 
 ## Gotchas
 

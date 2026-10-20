@@ -1,0 +1,32 @@
+:root {
+  color-scheme: light dark;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  --line: color-mix(in oklch, currentColor 18%, transparent);
+  --soft: color-mix(in oklch, currentColor 6%, transparent);
+}
+
+body { margin: 1.5rem; }
+
+h1 { font-size: 1.4rem; margin: 0 0 1rem; }
+h2 { font-size: 1rem; margin: 0; }
+
+.here {
+  max-width: 24rem;
+  padding: .75rem;
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  background: var(--soft);
+}
+
+.here ul { list-style: none; padding: 0; margin: .5rem 0; }
+.person { display: flex; gap: .5rem; align-items: center; padding: .125rem 0; }
+.swatch { width: .9rem; height: .9rem; border-radius: 50%; }
+
+form { display: flex; gap: .5rem; }
+input, select, button { font: inherit; padding: .25rem .5rem; }
+input { flex: 1; min-width: 0; }
+
+.load, .meta { opacity: .55; font-size: .8rem; }
+.meta { margin-top: 1rem; }
+
+.pending { padding: 1rem; opacity: .55; }

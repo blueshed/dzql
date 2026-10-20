@@ -1,0 +1,55 @@
+:root {
+  color-scheme: light dark;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  --line: color-mix(in oklch, currentColor 18%, transparent);
+  --soft: color-mix(in oklch, currentColor 6%, transparent);
+}
+
+body { margin: 1.5rem; }
+
+h1 { font-size: 1.4rem; margin: 0 0 .5rem; }
+h2 { font-size: 1rem; margin: 0; }
+
+.me, .walk { display: flex; gap: .5rem; align-items: center; }
+
+.lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.list, .people, .who {
+  padding: .75rem;
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  background: var(--soft);
+}
+
+.list ul { list-style: none; padding: 0; margin: .5rem 0; }
+.item { display: flex; gap: .5rem; align-items: center; padding: .125rem 0; }
+.item .title { flex: 1; }
+.item.done .title { text-decoration: line-through; opacity: .6; }
+
+.list p.who { border: 0; padding: 0; background: none; font-size: .8rem; opacity: .6; margin: .25rem 0 0; }
+
+input[name="title"] { width: 100%; box-sizing: border-box; font: inherit; padding: .25rem .5rem; }
+
+button {
+  padding: .25rem .625rem;
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: .375rem;
+  background: transparent;
+  color: inherit;
+}
+
+.remove { border: 0; opacity: .5; }
+.remove:hover { opacity: 1; }
+
+#said, .note { opacity: .7; font-size: .9rem; }
+
+.meta { margin-top: 1rem; opacity: .55; font-size: .8rem; }
+
+.pending { padding: 1rem; opacity: .55; }

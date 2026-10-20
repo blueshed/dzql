@@ -40,8 +40,8 @@
   "scripts": {
     "prepare": "rm -rf .claude/skills/railroad && bun src/cli.ts install-skills --skip bun-route",
     "test": "bun run test:fast",
-    "test:fast": "bun check && bun check -p examples/kanban && DELTA_LAW_SEEDS=1 DELTA_LAW_STEPS=50 bun test tests/",
-    "test:slow": "bun check && bun check -p examples/kanban && bun test tests/"
+    "test:fast": "bun check && bun check -p examples/kanban && bun check -p examples/lists && bun check -p examples/lobby && DELTA_LAW_SEEDS=1 DELTA_LAW_STEPS=50 bun test tests/",
+    "test:slow": "bun check && bun check -p examples/kanban && bun check -p examples/lists && bun check -p examples/lobby && bun test tests/"
   },
   "peerDependencies": {
     "@blueshed/railroad": ">=0.11.0 <1.0.0"

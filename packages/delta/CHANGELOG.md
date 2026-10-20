@@ -40,6 +40,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `open_at` take the time itself. A database that has a `_snapshots` table keeps it, unread; drop
   it when you like.
 
+### Added
+
+- **Two examples, the skill's worked answers** (20 October, root #116): every rule delta-doc
+  teaches about undo, sign-in, migrations and the kinds is shown working in an app the tests run,
+  and the reference page links it.
+  - `examples/lists/`: shared lists on SQLite, with a page. People sign in by link
+    (`linkAuth`, `sqliteLinkStore`, the picker in development, `delta link` for the first);
+    `people:` is `shared: true`; a list is its members' (`owns: "@id->members[lists_id=$].person"`),
+    and `mine:<person>` one's own (`@person` over a scope). Every write is on the ledger: each
+    person's Undo walks back their own, and one with someone else's change in the way is refused.
+    Its tables are made by two histories of migrations, the second a rename that keeps every row
+    (`make` wrote a drop and an add; it is a `renameColumn`). `tests/examples.test.ts` runs it:
+    nobody 401, a link used once, Cy 404 on Ann and Bo's list; two browsers, Ann's undo leaving
+    Bo's item; a conflict refused on the wire; a database version one left, migrated at start-up,
+    every item under its new name, the earlier write not undoable.
+  - `examples/lobby/`: who is here now (memory), the colours to wear (static) and the server's
+    load (source), with a page. The server writes who is here as sockets join and go
+    (`registerMethod`, `onClientDrop`). Tested: two browsers, one joining and leaving as the other
+    watches; on the wire, a join told to every holder, a page's write 403, one shared reading.
+  - `ledger.md`, `auth.md`, `ownership.md`, `paths.md`, `migrations.md` and `kinds.md` link the
+    example that shows them; `kinds.md` says how a socket server writes its memory document, and
+    `auth.md` two traps (a `Person` interface, and no cookie from `connectWs` outside a browser),
+    each now an open item in `todo.jsonl` (#88-#91) with the change that would remove it.
+
 ### Fixed
 
 - **`install-skills` in development installs railroad's skill from railroad** (20 October): delta's

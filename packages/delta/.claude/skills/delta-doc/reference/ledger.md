@@ -15,6 +15,12 @@ Message shapes: `wire.md`. Every write is recorded in its own transaction: ops, 
 version, **who** (for the audit) and the **cursor** (what undo walks). SQLite keeps
 `delta_ledger`.
 
+From a page, undo is an action on its socket: `inject(WS).send({ action: "undo" })` (and
+`"redo"`); the answer says what it did, and the change itself arrives through the documents, as
+every write's does. Working, with two people signed in on one list, each undoing their own:
+[examples/lists](../../../../examples/lists/README.md) (`resources/lists/lists.ts`, Undo and Redo
+in `lists-view.tsx`).
+
 ## The cursor
 
 - In-process (`createLocal`, `data.local`): the caller names it, e.g. a session id.

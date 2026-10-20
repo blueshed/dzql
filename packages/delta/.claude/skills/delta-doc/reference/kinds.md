@@ -15,11 +15,19 @@ Options and handles: `MemoryOptions`, `SourceOptions`, `StaticOptions`, `Sourced
 browser opens it like any document. A document kept in a file is the JSON file's, with a schema
 (`backends.md`): settings, a scratchpad, one row of a table.
 
+Working, all three on one page: [examples/lobby](../../../../examples/lobby/README.md), who is
+here (memory), the colours to wear (static) and the server's load (source).
+
 ## Memory: the truth is this process
 
 Who is online, cursors, a lobby. Gone on restart, never on a ledger.
 
 - Written by a caller in this process; over a socket a `delta` is 403 unless `writable: "any"`.
+- **On a socket server the caller is a `createLocal()`**, and the document is registered on
+  both: the socket, where pages open it, and the caller, which writes it
+  (`registerMemory({ ...ws, on: (a, h) => (ws.on(a, h), local.server.on(a, h)) }, ...)`, then
+  `local.call("delta", ...)`). Who is here: a method (`registerMethod`) writes the person in,
+  `onClientDrop(client, ...)` out again when their socket goes (`examples/lobby/resources/here/here-api.ts`).
 - An op that does not land changes nothing: 404 for what is not there, 400 malformed.
 - `add /<coll>/-` on a map of rows names the row with a uuid (path and `id`); on an array, appends.
 - Open answers `{ ...value, _v }`; a write `{ ack, version, ops }`, broadcast with `v`.

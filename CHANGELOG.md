@@ -6,6 +6,15 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### delta's examples are its skill's worked answers (20 October, #116)
+
+- **Undo with two people, sign-in by link, a migration over kept data and the kinds are shown
+  working**, each in an app the tests run: delta's `examples/lists/` (shared lists, each person
+  signed in by a link, seeing only their lists, undoing their own; its history renames a column
+  and keeps every row) and `examples/lobby/` (who is here, the colours, the server's load). The
+  delta-doc reference pages that teach them link them; four API traps the examples dodge are open
+  in delta's `todo.jsonl` (#88-#91) for Peter. delta's CHANGELOG has the detail.
+
 ### A skill is tested as code is (20 October)
 
 - **Every shipped skill has its evaluations**: `evals/<skill>.json` beside it, a few scenarios each

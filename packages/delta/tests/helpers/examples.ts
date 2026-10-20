@@ -101,3 +101,33 @@ export async function bboxStory(writer: string, viewer: string, world: string): 
     for (const c of [w, v, late]) c.close();
   }
 }
+
+/** One browser on an example's page: `helper` (tests/helpers/) run from the example's folder, so Bun takes railroad's JSX from its tsconfig. */
+export function browserOn(example: string, helper: string, env: Record<string, string>): Proc {
+  return Bun.spawn(["bun", join(import.meta.dir, helper)], {
+    cwd: join(root, "examples", example), env: { ...process.env, ...env }, stdout: "pipe", stderr: "pipe",
+  });
+}
+
+/** The session a response's `Set-Cookie` begins, as a `cookie` header sends it back. */
+export const cookieOf = (res: Response): string => res.headers.get("set-cookie")!.split(";")[0]!;
+
+/**
+ * A socket to `site`'s `/ws` carrying `cookie`, as a browser sends it on the upgrade (connectWs
+ * cannot: delta's todo.jsonl), speaking the wire by hand: what each request answers, and what it
+ * was told unasked.
+ */
+export async function signedIn(site: string, cookie = "") {
+  const sock = new WebSocket(`${site.replace("http", "ws")}/ws`, { headers: cookie ? { cookie } : {} } as any);
+  await new Promise((ok, no) => ((sock.onopen = ok), (sock.onerror = no)));
+  let n = 0;
+  const waiting = new Map<number, (msg: any) => void>();
+  const told: { doc: string; ops?: DeltaOp[]; error?: unknown }[] = [];
+  sock.onmessage = (e) => {
+    const msg = JSON.parse(String(e.data));
+    if (msg.id === undefined) told.push(msg);
+    else waiting.get(msg.id)?.(msg);
+  };
+  const ask = (msg: object) => new Promise<any>((answer) => (waiting.set(++n, answer), sock.send(JSON.stringify({ id: n, ...msg }))));
+  return { ask, told, close: () => sock.close() };
+}
