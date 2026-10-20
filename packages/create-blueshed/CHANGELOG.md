@@ -54,6 +54,21 @@ section up.
 
 ### Added
 
+- **The evolve skill's last step: the page drawn on the server** (20 October, root #73):
+  `references/thin-client.md`, applied after two-documents, sqlite and postgres by
+  `tests/evolve.ts`, moves the order app to dzql's thin client in the shape `bun create dzql`
+  makes. `src/routes.ts` serves an `Example` with `appOf` and `compose`, `/api/status` beside it;
+  each `<name>.ts` is a `Resource` (the session, saying where a tab may stand; the message; the
+  catalogue and the order); each `<name>-view.ts` is drawn with `dzql/rendering/bento`;
+  `src/page.ts` is `render(sessionId, address)`; `src/store.ts` opens Postgres once, as the app
+  loads, the documents' definitions unchanged and the message beside the order, the rows kept
+  before carried in. The stories with a body are told by the harness (`bun run stories`, and
+  `tests/stories.test.ts`), the rest by tests named from them (`unproven`), at 100%. The page keeps
+  its HTML and each handler becomes a write, but the walk was not only that: what draws or holds
+  the page, the stories' form and most of the tests are rewritten (about 340 lines of app and 430
+  of tests), and the page changes for people in small ways the reference lists. Each stumble is
+  open at the root, #118-#130. `tests/evolve.ts` runs a `sh` block's `rm` lines too, so a step
+  can take files away; the skill's list and its description name the step.
 - **The bento, drawn by railroad** (`src/resources/bento.tsx`): the trail and the heading, the box
   and its cells, rows, runs and pins, the drawer, the modal, fields and tools, with the same HTML
   and classes as dzql's `bento.ts`, the page the server draws, so one stylesheet draws both and a

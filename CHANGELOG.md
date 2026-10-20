@@ -20,6 +20,18 @@ what is open across them. Newest first.
 - delta's kanban example builds its paths with `joinPath`, as the skill that links it says, and
   `writes.md` quotes it so.
 
+### A prototype walked into performance (20 October, root #73)
+
+- **The evolve skill moves the page to the server**: create-blueshed's
+  `references/thin-client.md` takes the order app built by two-documents, sqlite and postgres
+  onto dzql's thin client (an `Example`, a `Resource` per document, views drawn with
+  `dzql/rendering/bento`, `render(sessionId, address)`), its documents and Postgres unchanged and
+  its stories told by dzql's harness; `tests/evolve.ts` walks it at 100%. The walk was the test of
+  "one path": the data and the look carried across, the code around them did not. Thirteen
+  findings are open, #118-#130: the stories' form (#118), the store opened as the app loads, not
+  per server (#119), an implied document read as nothing by the harness (#120), the tests thrown
+  away (#121), and nine smaller ones in dzql's kernel, client, bento and harness, and the starters.
+
 ### The examples, linked from the skills where the skills go (20 October)
 
 - A skill ships without its package's examples, so its links to them name the files on GitHub
