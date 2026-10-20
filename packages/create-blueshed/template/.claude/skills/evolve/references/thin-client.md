@@ -462,6 +462,10 @@ page, so the routes and resources are the server's:
 
 - Start every feature with its story in `stories.ts`, watch `bun run stories` fail, build the
   least that makes it pass. A story with no body yet (`story(name)`) is unproven until it has one.
+- Asked to build or change something, build it; never stop to wait for an answer. `CHANGELOG.md`
+  and `todo.jsonl` are the project's memory between sessions: read both first. What lands goes
+  under `## [Unreleased]`; a question, or what you leave open, goes into `todo.jsonl` (one JSON
+  object a line: `n`, `status`, `summary`, `detail`, and a dated `note`) with the reading you took.
 - The gate before a commit: `bun check`, `bun test`, `bun run stories`.
 - Never edit dzql or delta in `node_modules`; move to a later one by bumping it in `package.json`.
 ````

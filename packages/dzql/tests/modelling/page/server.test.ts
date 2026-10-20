@@ -406,6 +406,10 @@ describe("modeling, served", () => {
     expect(out).toContain("\nReachability: 1 gap\n  unwatched-entity · logins: no document holds logins, so nobody is told when it changes\n");
     expect(out).toContain("\nPrecondition closure: not asked (no story says what it writes or what it presupposes (writes, requires))\n");
     expect(await cli.exited).toBe(0);
+    // and as an app runs it, `bun run model show`: `dzql model`'s second word
+    const model = Bun.spawn(["bun", `${import.meta.dir}/../../../src/cli/index.ts`, "model", "show", "--session", file], { env: { ...process.env, ETA_URL: ws }, stdout: "pipe" });
+    expect(await new Response(model.stdout).text()).toBe(out);
+    expect(await model.exited).toBe(0);
     await Bun.file(file).delete();
   }, 30000);
 

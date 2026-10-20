@@ -27,10 +27,12 @@ export function rawIn(file: string) {
 export function modelIn(file: string): Model & { name: string } {
   if (!existsSync(file)) throw new Error(`No model in ${file}: start the model's page with \`dzql model\`, and tell it the stories.`);
   const { tables } = JSON.parse(readFileSync(file, "utf8")) as { tables: Record<string, Record<string, unknown>[]> };
+  // delta's file keeps every version of a row; the model is the rows as they stand (no valid_to)
+  const now = (key: string) => (tables[key] ?? []).filter((row) => row.valid_to == null).map(({ valid_from: _f, valid_to: _t, ...row }) => row);
   return {
-    name: String(tables.models?.[0]?.name ?? basename(file, ".json")),
-    stories: (tables.stories ?? []) as unknown as Model["stories"],
-    documents: (tables.documents ?? []) as unknown as Model["documents"],
+    name: String(now("models")[0]?.name ?? basename(file, ".json")),
+    stories: now("stories") as unknown as Model["stories"],
+    documents: now("documents") as unknown as Model["documents"],
   };
 }
 
@@ -182,6 +184,12 @@ export async function run(argv: string[]): Promise<boolean> {
     const { ok, said } = await make(file, flag("--out", "model"), { drops: rest.includes("--drops") });
     process.stdout.write(`${said}\n`);
     process.exit(ok ? 0 : 1);
+  }
+  if (sub === "show") {
+    // a read, the page's own: the kernel's CLI finds it only as its first word, and here it is the second
+    const { sessionFile } = extractSessionFile(rest);
+    const { show } = await import("../modelling/page/cli");
+    process.exit(await show(process.env.ETA_URL ?? savedServer(sessionFile) ?? `ws://localhost:${port}/model`, sessionFile));
   }
   process.env.ETA_EXAMPLE = `${import.meta.dir}/../modelling/page`;
   if (!sub || sub.startsWith("--")) {

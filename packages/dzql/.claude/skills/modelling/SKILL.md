@@ -14,7 +14,10 @@ document is. `reference.md` has each part, with a contents table.
 
 Asked to build or change the app instead, this is not the skill: load **dzql-app** and build it.
 With nobody there to answer, never stop to wait: note the question, take the most natural reading,
-and go on.
+and go on. A server is a way of waiting too: the page never exits, and a session that leaves it
+running never ends. Start it in the background, keep each change one at a time all the same, stop
+it (`bun run stop`) before your last message, and never start it again; where a teller would be
+handed a link, say what to run to open the page (`bun dev`, or `bun run model`).
 
 ## The order
 

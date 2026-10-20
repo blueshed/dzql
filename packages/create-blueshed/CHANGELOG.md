@@ -148,6 +148,12 @@ section up.
 
 ### Changed
 
+- **Asked to build, an app builds** (20 October, found by the evolve evals, root #113). The
+  template's CLAUDE.md sent every new app's stories to the model's page first, so a session asked
+  for a whole app (a menu, orders, the kitchen) modelled it and stopped with questions. It, and the
+  evolve skill's order of work, now say the model's page is for someone there telling the stories;
+  asked to build, the stories go straight into `stories.ts`, and a question into `todo.jsonl`.
+
 - **The thin-client step writes no `main.ts`** (20 October, root #37; needs dzql's next release
   only to match its starter): `src/index.html`'s script is dzql's client itself,
   `<script type="module" src="dzql/rendering/client/app"></script>`, as `bun create dzql`'s

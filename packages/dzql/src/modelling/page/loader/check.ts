@@ -25,7 +25,9 @@ const p = rest.indexOf("--against-page");
 if (p >= 0) {
   const file = rest[p + 1];
   const session = (await Bun.file(sessionFile).text().catch(() => "")).trim();
-  const page = file && !file.startsWith("--") ? await Bun.file(file).json() : await readPage(process.env.ETA_URL ?? savedServer(sessionFile) ?? "ws://localhost:3005", session).catch((err: Error) => {
+  // a saved page, or the model's own file (`dzql model`'s model.json, delta's: read as it stands)
+  const saved = file && !file.startsWith("--") ? await Bun.file(file).json() : undefined;
+  const page = saved ? (saved.tables ? (await import("../../../cli/model")).rawIn(file!) : saved) : await readPage(process.env.ETA_URL ?? savedServer(sessionFile) ?? "ws://localhost:3005", session).catch((err: Error) => {
     console.error(err.message);
     process.exit(1);
   });

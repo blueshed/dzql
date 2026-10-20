@@ -323,6 +323,23 @@ describe("a name the app cannot take is caught before anything is made (cafe-c's
   });
 });
 
+test("the model is its rows as they stand: a version a later change replaced is not read", async () => {
+  const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { modelIn } = await import("../../../src/cli/model");
+  const dir = mkdtempSync(`${tmpdir()}/dzql-versions-`);
+  try {
+    const doc = (holds: string[], valid_to: string | null) => ({ id: 1, models_id: 1, name: "seat", root: "visits", own: 0, holds: { visits: { parent: null, fields: holds.map((name) => ({ name })) } }, held_by: ["ann"], stories: [1], valid_from: "2026-10-20T18:22:43.414Z", valid_to });
+    const model = { models: [{ id: 1, name: "Cafe", valid_to: "2026-10-20T18:22:43.440Z" }, { id: 1, name: "Café", valid_to: null }], stories: [], documents: [doc(["table"], "2026-10-20T18:22:43.440Z"), doc(["table", "seats"], null)] };
+    writeFileSync(`${dir}/model.json`, JSON.stringify({ tables: model }));
+    const read = modelIn(`${dir}/model.json`);
+    expect(read.name).toBe("Café");
+    expect(read.documents).toEqual([{ id: 1, models_id: 1, name: "seat", root: "visits", own: 0, holds: { visits: { parent: null, fields: [{ name: "table" }, { name: "seats" }] } }, held_by: ["ann"], stories: [1] }] as never);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("while modelling, the newest step not yet committed is rewritten in place; once committed, a change is the next step", async () => {
   const { mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");

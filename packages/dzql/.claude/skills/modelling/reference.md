@@ -25,6 +25,7 @@ the guards in `store.ts`, each person's own in `resources/visit/`, a resource pe
 | The page | `bunx dzql model`, port 3001 (`MODEL_PORT`), at `/model`, the model kept in `model.json`, named for the project; beside an app, its `routes.ts` composes `modelRoute()` (`dzql/model`) in development | `bun dev`, at `localhost:3000/model` beside the app (or `bun run model` alone, port 3001) | `bun run dev:modeling`, port 3005 |
 | A verb | `bunx dzql model <verb>` | `bun run model <verb>`: it talks to the server whose sign-in link it was given | `ETA_EXAMPLE=modeling ETA_URL=ws://localhost:3005 bun run cli <verb>` |
 | Sign in | `login <link>`: `dzql model` and `bun dev` print a sign-in link for each keeper as they start (Peter's for the person, Claude's for the CLI); no email or password. `login claude@modeling.example claude-password` (or `MODEL_PASSWORD`) still works | the same | the same |
+| Stop it | `bunx delta stop` where it was started (its `.server.pid`) | `bun run stop` | ctrl-c |
 | What it makes | after every change, while no check is open, into `model/` (`--out`): `types.ts`, `guards.ts`, `migrations/` and `model.test.ts`; `bunx dzql model check` once, exit 1 while one is open | the same | the same, `bun src/cli/index.ts model check` |
 
 The CLI keeps its session in `.eta-session`. A refused write prints `refused: <why>` and exits 1:
@@ -150,7 +151,8 @@ README walks it; here is what each part of it says about the model.
    asks the guards too (`may`, never written) before it calls a write no story tells a hidden verb.
 6. **Read back: is the app the model as told?** `bun run model:check --against-page` (in dzql,
    `model:check <example> --against-page`) reads the model page as the CLI is signed in
-   (`.eta-session`, `ETA_URL`; or a saved page, `--against-page <file.json>`) and the app as
+   (`.eta-session`, `ETA_URL`), or the model's file with no page running (`--against-page
+   model.json`), and the app as
    `model:load` would write it, and names each gap as a question for the teller: a story told and
    not built, or built and never told; a does or cannot that differs; a document whose root,
    holders, holdings or own-ness differ, or that serves other stories.

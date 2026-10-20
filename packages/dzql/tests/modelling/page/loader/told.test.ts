@@ -109,6 +109,14 @@ describe("the model as told, against the model as built", () => {
   });
 });
 
+test("the model's own file is read as it stands: the café's model.json against the café as built, no gaps", async () => {
+  const { rawIn } = await import("../../../../src/cli/model");
+  const page = rawIn(`${import.meta.dir}/../../../../examples/cafe/model.json`) as Raw;
+  const t = told(page);
+  const b = built(writesOf((await extract("cafe")).heart));
+  expect(gaps(t, b)).toEqual([]);
+}, 60000);
+
 describe("Peter tells leave's stories on the model page and Claude builds leave; model:check leave --against-page names each gap", () => {
   let load: Load;
   let server: Awaited<ReturnType<typeof createServer>>;

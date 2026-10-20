@@ -190,6 +190,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **A session with nobody there stops the model's page** (20 October, found by the modelling
+  evals, root #113): the page is a server that never exits, and two headless sessions waited on it
+  until they were killed. The modelling skill says to stop it (`bun run stop`) before the last
+  message and never start it again; its *Where it runs* table has the stop. create-dzql's starter
+  CLAUDE.md now names `CHANGELOG.md` and `todo.jsonl`, and says a question goes there, not into a
+  last message.
+
 - **The cafe's staff hold only what is open** (20 October, dzql #81): scope.md's rule, shown
   working. The floor held every table with every invoice and order the cafe ever took, the manager's
   and the cook's both. Now the model's `floor` is the tables alone (the manager's), and a new
@@ -505,6 +512,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   for the CLI and the model's page).
 
 ### Fixed
+
+- **`dzql model check` reads the model as it stands** (20 October, found by the evolve evals,
+  root #113). `model.json` is delta's file, which keeps every version of a row; `modelIn` read them
+  all, so a document changed four times was checked five times, its old versions reported unheld,
+  and nothing was made. It reads only the rows with no `valid_to`.
+
+- **`dzql model show` prints the model** (20 October, found by the modelling evals, root #113): an
+  app's `bun run model show` printed the usage and exited 1, since the page's CLI looked for `show`
+  as the first word and under `dzql model` it is the second. `dzql model` answers it itself.
+
+- **`model:check --against-page model.json` reads the model's file** (20 October, the same evals):
+  it took only a page saved by the CLI, and given `dzql model`'s file it read no stories and said
+  every one was never told. delta's file is read as it stands, as `dzql model check` reads it.
 
 - **A story that times out fails alone** (20 October, #78): the stories' SQLite store rolls back a
   transaction a cut-off story left open before it begins the next, so one slow story under load
