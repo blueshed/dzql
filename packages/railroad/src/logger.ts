@@ -13,6 +13,13 @@
  *   setLogLevel("debug");             // show everything
  *
  *   const handler = loggedRequest("[api]", myHandler);  // wrap a route with access logging
+ *
+ * loggedRequest is generic over the handler's arguments, a Request first: what
+ * the handler takes, the wrapper takes and passes on, so a Bun route keeps its
+ * typed `req.params` and its server argument (with no Bun type named here).
+ * The handler says its request's type (TypeScript infers it from the handler,
+ * not from where the wrapper goes):
+ *   loggedRequest("[api]", (req: BunRequest<"/api/jobs/:id">, server: Server) => …)
  */
 
 export type LogLevel = "silent" | "error" | "warn" | "info" | "debug";
@@ -92,15 +99,19 @@ export function createLogger(tag: string) {
   };
 }
 
-type Handler = (req: Request) => Response | Promise<Response>;
-
-/** Wrap a route handler with access logging. */
-export function loggedRequest(tag: string, handler: Handler): Handler {
+/** Wrap a route handler with access logging: the wrapper takes the handler's
+ *  arguments (a Request first, then whatever else it is given, a server say)
+ *  and passes them all on. */
+export function loggedRequest<A extends [Request, ...unknown[]]>(
+  tag: string,
+  handler: (...args: A) => Response | Promise<Response>,
+): (...args: A) => Promise<Response> {
   const log = createLogger(tag);
-  return async (req: Request) => {
+  return async (...args: A) => {
+    const [req] = args;
     const start = performance.now();
     try {
-      const res = await handler(req);
+      const res = await handler(...args);
       const ms = (performance.now() - start).toFixed(1);
       log.info(
         `${req.method} ${new URL(req.url).pathname} → ${res.status} (${ms}ms)`,

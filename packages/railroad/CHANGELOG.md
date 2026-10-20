@@ -67,6 +67,13 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **`loggedRequest` takes the handler's own arguments** (20 October, Peter's word; #11):
+  `loggedRequest<A extends [Request, ...unknown[]]>(tag, handler: (...args: A) => Response |
+  Promise<Response>): (...args: A) => Promise<Response>`. It took `(req: Request) => Response` and
+  passed the request alone, so a Bun route's typed `req.params` was read back by a cast and its
+  server argument was lost. A handler typed `(req: BunRequest<"/api/users/:id">, server) => …`
+  keeps both; a `(req: Request) => …` handler wraps as before. `examples/jobs`' `jobs-api.ts` types
+  its requests, and its `idOf` cast is gone.
 - **The skill says the new way, and only it** (20 October): SKILL.md's rules 3 and 9,
   `when-list.md`, `realtime.md` and `signals.md` teach a row taken apart into its fields and a
   `collection` for rows changed one at a time; `.touch()` and `{ equals: () => false }` are no

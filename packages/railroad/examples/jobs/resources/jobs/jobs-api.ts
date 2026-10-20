@@ -31,9 +31,8 @@ const NAMES = ["build api", "build web", "test unit", "test e2e (flaky)", "lint"
 
 const log = createLogger("[jobs]");
 
-// loggedRequest takes a plain Request, so a Bun route's typed `req.params` is read back by a cast
-// (railroad's todo.jsonl has it)
-const idOf = (req: Request) => Number((req as BunRequest<"/api/jobs/:id">).params.id);
+// A route's request, its params typed by its path: loggedRequest takes the handler's own arguments
+type JobRequest = BunRequest<"/api/jobs/:id">;
 
 export function jobsApi({ tick = 1000, seed = NAMES.length } = {}) {
   const jobs = new Map<number, Job>();
@@ -114,15 +113,15 @@ export function jobsApi({ tick = 1000, seed = NAMES.length } = {}) {
     },
 
     /** GET /api/jobs/:id: the job, and its command. */
-    get: loggedRequest("[api]", (req) => {
-      const job = jobs.get(idOf(req));
+    get: loggedRequest("[api]", (req: JobRequest) => {
+      const job = jobs.get(Number(req.params.id));
       if (!job) return new Response("no such job", { status: 404 });
       return Response.json({ ...job, command: `bun run ${job.name.split(" ")[0]} --runner=${job.runner}` } satisfies JobDetail);
     }),
 
     /** POST /api/jobs/:id `{ status?, progress? }`: a runner reports. */
-    report: loggedRequest("[api]", async (req) => {
-      const job = jobs.get(idOf(req));
+    report: loggedRequest("[api]", async (req: JobRequest) => {
+      const job = jobs.get(Number(req.params.id));
       if (!job) return new Response("no such job", { status: 404 });
       const { status, progress } = (await req.json()) as Partial<Job>;
       change(job, { ...(status && { status }), ...(progress !== undefined && { progress }) });
@@ -130,8 +129,8 @@ export function jobsApi({ tick = 1000, seed = NAMES.length } = {}) {
     }),
 
     /** GET /api/jobs/:id/log: answered once the job has ended, at once if it has. */
-    log: loggedRequest("[api]", async (req) => {
-      const job = jobs.get(idOf(req));
+    log: loggedRequest("[api]", async (req: BunRequest<"/api/jobs/:id/log">) => {
+      const job = jobs.get(Number(req.params.id));
       const done = !job || ended(job) ? job ?? null : await new Promise<Job | null>((answer) => {
         waiting.set(job.id, [...(waiting.get(job.id) ?? []), answer]);
       });

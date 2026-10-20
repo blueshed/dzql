@@ -156,6 +156,24 @@ describe("loggedRequest", () => {
     expect(output).toContain("/fail");
     errorSpy.mockRestore();
   });
+
+  // It took (req: Request) => Response and passed the handler the request alone, so a Bun
+  // route's typed req.params was read back by a cast and its server argument was lost (#11).
+  test("passes on every argument, and keeps the handler's types", async () => {
+    type Routed = Request & { params: { id: string } };
+    type Server = { upgrade(req: Request): boolean };
+    const server: Server = { upgrade: () => false };
+    const handler = loggedRequest("[api]", (req: Routed, s: Server) =>
+      Response.json({ id: req.params.id, upgraded: s.upgrade(req) }));
+    const req = Object.assign(new Request("http://localhost/api/jobs/7"), { params: { id: "7" } });
+    expect(await (await handler(req, server)).json()).toEqual({ id: "7", upgraded: false });
+    // the wrapper takes what the handler takes: a request with params (checked, never run)
+    // @ts-expect-error -- a plain Request has no params
+    const _untyped = () => handler(new Request("http://localhost/api/jobs/7"), server);
+    // A handler of a plain Request still wraps as it did
+    const plain: (req: Request) => Promise<Response> = loggedRequest("[api]", () => new Response("ok"));
+    expect((await plain(new Request("http://localhost/x"))).status).toBe(200);
+  });
 });
 
 describe("logger: color", () => {
