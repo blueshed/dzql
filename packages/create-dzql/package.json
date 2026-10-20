@@ -16,14 +16,16 @@
   "files": [
     "cli.ts",
     "template",
-    "starter",
+    "!template/node_modules",
+    "!template/data",
+    "!template/.server.pid",
+    "!template/db.sqlite*",
+    "!template/.eta-session*",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "prepack": "rm -rf starter && cp -R ../dzql/examples/starter starter",
-    "postpack": "rm -rf starter",
-    "test:fast": "bun test tests/",
+    "test:fast": "bun test ./tests/ && cd template && bun check && bun --env-file=env.test test",
     "test": "bun run test:fast"
   },
   "devDependencies": {

@@ -6,6 +6,30 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### The two starters follow one pattern (20 October, root #117)
+
+- **Each `create-*` package holds its template, a whole working app, tested where it lives**
+  (Peter's decision; breaking for a path that names either). paintbrush moved whole, with its
+  history, from `packages/paintbrush` to `packages/create-blueshed/template`; dzql's
+  `examples/starter` and create-dzql's skeleton are one app, `packages/create-dzql/template`
+  (`dzql-starter`), laid out exactly as a new app is. Both templates are workspaces
+  (`packages/*/template` in the root's `workspaces`), each `cli.ts` copies its template directly,
+  and the pack-time copies (`prepack`, `postpack`, `pack.ts`) are gone: `files` leaves out what a
+  new app never gets as each packs, and `cli.ts` the same as it copies. create-blueshed and its
+  template have one version and one changelog (create-blueshed's); an app records "Started from
+  create-blueshed x.y.z".
+- **The gate sees the templates**: `scripts/affected.ts` counts a template as part of its create
+  package (a file changed in either runs the package; the template's dependencies are the
+  package's, so a change in dzql, delta or railroad runs both starters), and each create package's
+  `test:fast` runs its template's type check and tests after its own; create-blueshed's `test:slow`
+  is the template's evolve walk. `bun run test:paintbrush` and `test:paintbrush:slow` are `bun run
+  test:create-blueshed` and `test:create-blueshed:slow`. `scripts/docs.ts` checks a project's `src/`
+  against the two templates, reads a template's docs as an app's, and finds a template's skill
+  (evolve) and its evaluations there; `scripts/ranges.ts` holds both templates' ranges and Bun. The
+  root CLAUDE.md, README, `/publish`, the session-start hook, `publish.yml`'s comment, `.gitignore`,
+  dzql's CLAUDE.md, the dzql-app skill and the docs follow. create-blueshed's and dzql's CHANGELOGs
+  have the detail.
+
 ### Every published package carries its licence (20 October)
 
 - dzql, create-dzql and create-blueshed now ship `LICENSE` (MIT, as railroad and delta do), and

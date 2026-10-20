@@ -4,7 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+create-blueshed and the app it makes, its `template/` (paintbrush), keep this one changelog and one
+version, create-blueshed's, from the first release after 0.4.0. Before, paintbrush was a package
+of its own with its own version, and this was its changelog: the sections headed `paintbrush x.y.z`
+are its releases (create-blueshed 0.4.0 carried paintbrush 0.8.0; 0.3.0 and earlier fetched it from
+its own repository). An app made before says "Started from paintbrush x.y.z": read from that
+section up.
+
 ## [Unreleased]
+
+### Breaking
+
+- **paintbrush is create-blueshed's `template/`** (20 October, Peter's decision: the two starters
+  follow one pattern). `packages/paintbrush` moved whole, with its history, to
+  `packages/create-blueshed/template`: a workspace still (`paintbrush`, private), tested where it
+  lives, and published inside create-blueshed as it is. The pack-time copy is gone (`prepack`,
+  `postpack`, `pack.ts`): what a new app never gets is left out by `files` in package.json as it
+  packs, and by `copyTemplate` (`UNCOPIED`) as `cli.ts` copies, and a test holds the two lists
+  together. One version, one changelog: paintbrush's `version` and this changelog fold into
+  create-blueshed's, `cli.ts` writes create-blueshed's version into the app as it copies, and a new
+  app's changelog starts "Started from create-blueshed x.y.z", linking here (it said paintbrush
+  before). The template keeps its `todo.jsonl` (the ledger) and its `CLAUDE.md` (a new app's entry
+  point, the template-only notes marked as before). create-blueshed's `test:fast` runs its own
+  tests, then the template's (`bun check && bun test`); its `test:slow` is the template's evolve
+  walk (`tests/evolve.ts`, which makes apps with `../cli.ts`). From the root, `bun run
+  test:paintbrush` and `test:paintbrush:slow` are `test:create-blueshed` and
+  `test:create-blueshed:slow`. To move across: a path that named `packages/paintbrush` names
+  `packages/create-blueshed/template`.
 
 ### Fixed
 
@@ -154,7 +180,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Shed's `expected.md`, run 1's record and the skill's evaluations match what shipped;
   `tsconfig.json` type-checks `scripts/`.
 
-## [0.8.0] - 2026-10-16
+## paintbrush 0.8.0 - 2026-10-16
 
 ### Added
 
@@ -195,7 +221,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **A slow browser start no longer fails the page tests after it** (`tests/browser.ts`): the first
   navigation has two minutes of its own, and navigations go one at a time.
 
-## [0.7.0] - 2026-10-12
+## paintbrush 0.7.0 - 2026-10-12
 
 ### Added
 
@@ -282,7 +308,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   web sandbox hook: a test shows it does nothing outside the sandbox; the install there is not
   tested. `CLAUDE.md` says the same.
 
-## [0.6.0] - 2026-10-11
+## paintbrush 0.6.0 - 2026-10-11
 
 ### Added
 
@@ -317,7 +343,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   app made by `bun create` has none until someone adds it (limakilo had none), and the release
   would otherwise fail at the push, after the commit and the tag.
 
-## [0.5.0] - 2026-10-03
+## paintbrush 0.5.0 - 2026-10-03
 
 Paintbrush is again what it was for: routes and resources, with railroad for the page and
 Railway for the deploy, that a resource can evolve from. It follows the Bun website conventions

@@ -20,11 +20,14 @@ packages/dzql/server.log
 .agents/
 .gemini/
 
-# paintbrush, run here as an app (its own ignores travel as gitignore, as npm publishes it in create-blueshed)
-packages/paintbrush/.server.pid
-packages/paintbrush/data/
-packages/paintbrush/tests/out/
-packages/create-blueshed/template/
+# the two templates, run here as apps (their own ignores travel as gitignore, as npm publishes them)
+packages/create-blueshed/template/.server.pid
+packages/create-blueshed/template/data/
+packages/create-blueshed/template/tests/out/
+packages/create-dzql/template/.server.pid
+packages/create-dzql/template/data/
+packages/create-dzql/template/db.sqlite*
+packages/create-dzql/template/.eta-session*
 
 # Bun's build artifacts, left by a test's bun build --compile
 *.bun-build

@@ -41,15 +41,16 @@ packages/
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
 │   ├── src/compile/     # the compiler from delta's definitions, a module per kind of function (generateSql runs them all)
 │   ├── src/cli/         # the bin (index.ts): dzql model (model.ts, model-tools.ts), then the Postgres commands
-│   ├── examples/<app>/  # the examples: cafe (the worked one, shipped beside the skills), chat, leave, starter, ticker, wedding;
+│   ├── examples/<app>/  # the examples: cafe (the worked one, shipped beside the skills), chat, leave, ticker, wedding;
 │   │                    #   each routes and resources: routes.ts, store.ts, page.ts, resources/<name>/ (<name>-api.ts,
-│   │                    #   <name>.ts, <name>-view.ts); the cafe and the starter on Postgres, the rest on SQLite
+│   │                    #   <name>.ts, <name>-view.ts); the cafe on Postgres, the rest on SQLite
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
 │   ├── .claude/skills/  # modelling (someone telling the stories), dzql-app (building an app on dzql/rendering)
 │   ├── bench/           # delta's bench (bun run bench), todo #25
 │   └── tests/           # modelling/ (its page/ too), rendering/, readme/ (bun run test:coverage, scripts/tests.ts);
 │                        #   compile/, delta/, delta-pg/ (bun run test:pg: the compiler, delta's cases on Postgres)
-└── create-dzql/         # bun create dzql: the starter (examples/starter) as an app, tests/ makes one and starts it
+└── create-dzql/         # bun create dzql: template/ is the starter, a whole app laid out as a new one is (a workspace,
+                         #   on Postgres, tested where it lives); tests/ makes one from it and starts it
 ```
 
 ## dzql as delta's Postgres step
@@ -87,8 +88,9 @@ What a change to them must not break. How the pieces work is in the skills; the 
 - **The shape.** `src/rendering` and `src/modelling` never import from `examples/` (their tests
   may). `examples/<name>/` is a whole app with a `routes.ts` exporting `app: Example` and serving it,
   importing dzql as an app does (`dzql/rendering/...`); examples never import from each other.
-  `examples/starter/` is laid out as `bun create dzql` makes an app (routes and resources); the
-  kernel finds any of them by `appIn` (`src/rendering/names.ts`).
+  The starter, `packages/create-dzql/template/`, is an app as `bun create dzql` makes one (its
+  `src/` routes and resources, beside its `stories.ts` and `tests/`); the kernel finds any of them
+  by `appIn` (`src/rendering/names.ts`).
   `src/modelling/page/` is the model's page, an app dzql ships (`dzql model` serves it); its `loader/` reads an app that exists.
 - railroad only in `src/rendering/applet.ts`; the examples add `lucide`; the kernel imports no icon set.
 - Documents are delta's: rendering owns people and pages, delta owns documents, their ledger and
@@ -122,11 +124,13 @@ What a change to them must not break. How the pieces work is in the skills; the 
 
 ### Testing the create-dzql Template
 
-`create-dzql` makes the starter an app: `template/` (its package.json, tsconfig, README) and
-`examples/starter` copied into `src/` (packed as `starter/` by `prepack`, read where it lives in
-the repository). `bun run --cwd packages/create-dzql test:fast` makes one in a temporary folder with
-the workspace's packages linked in, and checks it type-checks, passes its own tests, and starts on
-delta's one server (the page, drawn over the socket, and `/health`). By hand:
+`create-dzql`'s `template/` is the starter, a whole app laid out as a new one is (`stories.ts`,
+`src/`, `tests/`, its package.json, tsconfig, README and CLAUDE.md), a workspace of its own
+(`dzql-starter`), published as it is; `cli.ts` copies it and names the app. `bun run --cwd
+packages/create-dzql test:fast` type-checks and tests the template where it lives, then makes an
+app in a temporary folder with the workspace's packages linked in, and checks it type-checks,
+passes its own tests, and starts on delta's one server (the page, drawn over the socket, and
+`/health`). A change to dzql runs it (`bun run affected`). By hand:
 
 ```bash
 cd "$(mktemp -d)"

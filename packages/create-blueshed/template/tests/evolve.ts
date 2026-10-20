@@ -70,21 +70,21 @@ async function apply(app: string, name: string) {
 }
 
 // DELTA_SPEC and RAILROAD_SPEC install another delta or railroad in place of npm's: <name>@<a candidate's
-// tarball>. In paintbrush's home (blueshed/dzql) the packages beside it are the candidates, each packed
-// once, since the app may already need what they have and npm's do not.
+// tarball>. In the template's home (blueshed/dzql, packages/create-blueshed/template) the packages beside
+// create-blueshed are the candidates, each packed once, since the app may already need what they have and npm's do not.
 const sibling = (dir: string, name: string): string | undefined => {
-  if (!existsSync(`${root}/../${dir}/package.json`)) return undefined;
+  if (!existsSync(`${root}/../../${dir}/package.json`)) return undefined;
   const before = new Set(readdirSync(scratch));
-  run(`${root}/../${dir}`, ["bun", "pm", "pack", "--destination", scratch, "--quiet"]);
+  run(`${root}/../../${dir}`, ["bun", "pm", "pack", "--destination", scratch, "--quiet"]);
   const tarball = readdirSync(scratch).find((f) => f.endsWith(".tgz") && !before.has(f))!;
   return `${name}@${join(scratch, tarball)}`;
 };
 const candidates = [process.env.DELTA_SPEC ?? sibling("delta", "@blueshed/delta"), process.env.RAILROAD_SPEC ?? sibling("railroad", "@blueshed/railroad"), process.env.DZQL_SPEC ?? sibling("dzql", "dzql")].filter((s): s is string => s !== undefined);
 
-/** A new app, as bun create makes one: copied by create-blueshed (this folder is its template, its sibling), installed, then its setup. */
+/** A new app, as bun create makes one: copied by create-blueshed (this folder is its template), installed, then its setup. */
 function newApp(name: string) {
   const slug = name.toLowerCase().replace(/[^a-z]+/g, "-");
-  run(scratch, ["bun", join(root, "../create-blueshed/cli.ts"), slug, "--no-install", "--no-git"]);
+  run(scratch, ["bun", join(root, "../cli.ts"), slug, "--no-install", "--no-git"]);
   const app = join(scratch, slug);
   run(app, candidates.length ? ["bun", "add", ...candidates] : ["bun", "install"]);
   run(app, ["bun", "create/setup.ts"]);

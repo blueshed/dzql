@@ -2,10 +2,10 @@
 /**
  * create-blueshed: `bun create blueshed my-app` (or `bunx create-blueshed my-app`) makes a
  * paintbrush app: routes and resources, railroad for the page, delta for the documents, Railway
- * for the deploy. The app is `packages/paintbrush` in blueshed/dzql, a working app with its own
- * tests; publishing this package copies it in as `template/`. This copies it to the new folder,
- * installs, then runs paintbrush's own setup (`create/setup.ts`): the app's name, a fresh ledger
- * and changelog, the skills its packages ship, and one first commit.
+ * for the deploy. The app is `template/`, beside this file: a working app with its own tests, a
+ * workspace of blueshed/dzql, published as it is. This copies it to the new folder with this
+ * package's version, installs, then runs the template's own setup (`create/setup.ts`): the app's
+ * name, a fresh ledger and changelog, the skills its packages ship, and one first commit.
  *
  *   --no-install   copy only: then `bun install && bun create/setup.ts` in the new folder
  *   --no-git       no repository
@@ -28,11 +28,17 @@ if (existsSync(dest)) {
   process.exit(1);
 }
 
-// published, paintbrush is beside this file; in blueshed/dzql it is its sibling package
-const template = [join(import.meta.dir, "template"), join(import.meta.dir, "../paintbrush")].find((dir) => existsSync(dir))!;
-// all of it but what a new app never gets, as paintbrush's setup says it (copyTemplate, UNCOPIED)
+// all of the template but what a new app never gets, as its setup says it (copyTemplate, UNCOPIED)
+const template = join(import.meta.dir, "template");
 const { copyTemplate } = (await import(join(template, "create/setup.ts"))) as { copyTemplate: (from: string, to: string) => void };
 copyTemplate(template, dest);
+
+// The template has no version of its own: it is this package's, which setup writes into the app's
+// changelog ("Started from create-blueshed x.y.z") before it gives the app its own
+const pkgFile = join(dest, "package.json");
+const { version } = await Bun.file(join(import.meta.dir, "package.json")).json();
+const { name: named, ...rest } = await Bun.file(pkgFile).json();
+await Bun.write(pkgFile, JSON.stringify({ name: named, version, ...rest }, null, 2) + "\n");
 
 // --local: the app takes railroad, delta and dzql from this checkout's packages, and keeps them when a
 // step adds one again (`bun add dzql`): overrides win over what npm has
@@ -43,7 +49,6 @@ if (flags.has("--local") || process.env.BLUESHED_LOCAL) {
     console.error("Error: --local runs from a blueshed/dzql checkout (packages/create-blueshed), beside railroad, delta and dzql");
     process.exit(1);
   }
-  const pkgFile = join(dest, "package.json");
   const pkg = await Bun.file(pkgFile).json();
   const overrides: Record<string, string> = {};
   for (const [name, dir] of Object.entries(local)) {

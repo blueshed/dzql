@@ -2,9 +2,10 @@
   "name": "bluetools",
   "private": true,
   "type": "module",
-  "description": "The blueshed lineage in one repo: railroad, delta, dzql and their starters, as Bun workspaces",
+  "description": "The blueshed lineage in one repo: railroad, delta, dzql and their starters (each with its template, a workspace too), as Bun workspaces",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/*/template"
   ],
   "scripts": {
     "test": "bun scripts/affected.ts --all",
@@ -15,9 +16,8 @@
     "test:delta:slow": "bun run --cwd packages/delta test:slow",
     "test:dzql": "bun run --cwd packages/dzql test:fast",
     "test:dzql:slow": "bun run --cwd packages/dzql test:slow",
-    "test:paintbrush": "bun run --cwd packages/paintbrush test:fast",
-    "test:paintbrush:slow": "bun run --cwd packages/paintbrush test:slow",
     "test:create-blueshed": "bun run --cwd packages/create-blueshed test:fast",
+    "test:create-blueshed:slow": "bun run --cwd packages/create-blueshed test:slow",
     "test:create-dzql": "bun run --cwd packages/create-dzql test:fast"
   },
   "devDependencies": {

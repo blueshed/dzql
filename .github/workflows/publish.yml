@@ -28,8 +28,9 @@ jobs:
           echo "package=${tag%@*}" >> "$GITHUB_OUTPUT"
           echo "version=${tag##*@}" >> "$GITHUB_OUTPUT"
 
-  # The package's own gate: its fast tier, then its slow one where it has one (create-blueshed's runs
-  # paintbrush's, which it packs; create-dzql's fast tier makes a new app and starts it)
+  # The package's own gate: its fast tier, then its slow one where it has one (a starter's tiers run
+  # its template's, the app it carries: create-blueshed's slow one is the evolve walk; create-dzql's
+  # fast tier makes a new app and starts it)
   gate:
     needs: which
     runs-on: ubuntu-latest

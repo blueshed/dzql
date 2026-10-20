@@ -16,7 +16,7 @@ statement of how an app is made; each package's README says only its own part.
 | | `bun create blueshed` | `bun create dzql` |
 |---|---|---|
 | For | **prototyping**: light, and quick to change | **performance**: many pages kept live, cheaply |
-| The page | drawn in the browser by railroad ([paintbrush](packages/paintbrush)) | drawn on the server, with applets where a page holds state of its own |
+| The page | drawn in the browser by railroad ([paintbrush](packages/create-blueshed/template)) | drawn on the server, with applets where a page holds state of its own |
 | Storage | delta's: a JSON file, then SQLite | Postgres, compiled from the same documents' definitions |
 | Built with Claude by | the `evolve` skill | the `modelling` and `dzql-app` skills |
 
@@ -70,12 +70,12 @@ storage from a JSON file to SQLite to Postgres compiled by dzql.
 | [`packages/railroad`](packages/railroad) | `@blueshed/railroad` | Signals, JSX and routes for Bun's fullstack runtime; `/webview`, a page in a real browser for tests |
 | [`packages/delta`](packages/delta) | `@blueshed/delta` | Documents: open one and you're subscribed. JSON file and SQLite, the wire, the client, and the one server (`/serve`) |
 | [`packages/dzql`](packages/dzql) | `dzql` | Stories to documents to pages: `dzql/modelling`, `dzql/rendering`, and the compiled Postgres step |
-| [`packages/paintbrush`](packages/paintbrush) | (private) | The starting website: routes and resources, a railroad page, delta documents |
-| [`packages/create-blueshed`](packages/create-blueshed) | `create-blueshed` | `bun create blueshed my-app`: a paintbrush app, for prototyping |
-| [`packages/create-dzql`](packages/create-dzql) | `create-dzql` | `bun create dzql my-app`: the thin client, for performance |
+| [`packages/create-blueshed`](packages/create-blueshed) | `create-blueshed` | `bun create blueshed my-app`: a paintbrush app, for prototyping; `template/` is paintbrush, the starting website (routes and resources, a railroad page, delta documents) |
+| [`packages/create-dzql`](packages/create-dzql) | `create-dzql` | `bun create dzql my-app`: the thin client, for performance; `template/` is the starter |
 
-Each package keeps its npm name and its version, and but for the starters its CHANGELOG. In the workspace each uses its
-siblings' source, not npm's. `/publish` releases what has changed in one round, a tag per package
+Each package keeps its npm name, its version and its CHANGELOG (create-dzql's are dzql's). Each
+starter holds its template, the app a new one is copied from: a whole working app, a workspace of
+its own, tested where it lives. In the workspace each package uses its siblings' source, not npm's. `/publish` releases what has changed in one round, a tag per package
 (`railroad@x.y.z`, `delta@x.y.z`, `dzql@x.y.z`).
 
 ```sh

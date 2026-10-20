@@ -17,14 +17,17 @@ beforeAll(async () => {
 });
 afterAll(() => rmSync(parent, { recursive: true, force: true }));
 
-test("the app is eta's starter in src/, named, its dotfiles dotted", () => {
+test("the app is the template, laid out as it is, named, its dotfiles dotted", () => {
   for (const file of ["src/routes.ts", "stories.ts", "tests/routes.test.ts", "src/page.ts", "src/index.html", ".gitignore", ".env.test", "README.md", "CLAUDE.md", "CHANGELOG.md", "todo.jsonl", ".github/workflows/ci.yml"]) expect(existsSync(join(app, file))).toBe(true);
   expect(existsSync(join(app, "src/stories.ts")) || existsSync(join(app, "src/routes.test.ts"))).toBe(false); // laid out as a paintbrush app
-  expect(JSON.parse(readFileSync(join(app, "package.json"), "utf8")).name).toBe("my-app");
+  const pkg = JSON.parse(readFileSync(join(app, "package.json"), "utf8"));
+  expect(pkg.name).toBe("my-app"); // the template's own, dzql-starter, is the workspace's
+  expect(pkg.scripts.prepare).toBe("delta install-skills"); // the skills on every install: the app's, never the template's
+  expect(readFileSync(join(app, "CHANGELOG.md"), "utf8")).toContain(`- Started from create-dzql ${require("../package.json").version}.`);
   expect(readFileSync(join(app, "src/routes.ts"), "utf8")).toContain('name: "my-app"');
   expect(readFileSync(join(app, "src/page.ts"), "utf8")).toContain("My App");
   expect(readFileSync(join(app, "src/styles.css"), "utf8")).toContain('@import "dzql/rendering/bento-plain.css";');
-  expect(readFileSync(join(app, "README.md"), "utf8")).not.toContain("{{name}}");
+  expect(readFileSync(join(app, "README.md"), "utf8")).toStartWith("# My App\n");
   // the tests never touch the database `bun dev` keeps, and neither is committed (cafe-e's feedback)
   expect(readFileSync(join(app, ".env.test"), "utf8")).toContain("DB_PATH=:memory:");
   expect(readFileSync(join(app, ".gitignore"), "utf8")).toContain("db.sqlite*");

@@ -9,15 +9,20 @@
   "files": [
     "cli.ts",
     "template",
+    "!template/node_modules",
+    "!template/data",
+    "!template/tests/out",
+    "!template/.server.pid",
+    "!template/logo.png",
+    "!template/evals",
+    "CHANGELOG.md",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "prepack": "bun pack.ts ../paintbrush",
-    "postpack": "rm -rf template",
-    "test:fast": "bun test tests/",
+    "test:fast": "bun test ./tests/ && bun run --cwd template test:fast",
     "test": "bun run test:fast",
-    "test:slow": "bun run --cwd ../paintbrush test:slow"
+    "test:slow": "bun run --cwd template test:slow"
   },
   "keywords": [
     "create",

@@ -10,7 +10,7 @@ import { delta, open, stories } from "./store";
 // around it. The page is drawn here, on the server, from the documents the resources look after,
 // kept in Postgres (./store.ts: PGlite in this process, or a server at DATABASE_URL).
 //
-// Nothing yet but its page. Its stories come first (./stories.ts), modelled as they are told (the
+// Nothing yet but its page. Its stories come first (../stories.ts), modelled as they are told (the
 // modelling skill, and the model's page at /model), then built here, the least that makes each pass
 // (the dzql-app skill): each document a resource of its own in `resources/<name>/` -- its document
 // (`<name>-api.ts`, registered with the store, ./store.ts), its rules (`<name>.ts`, listed in `resources`) and

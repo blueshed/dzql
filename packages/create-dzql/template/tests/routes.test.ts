@@ -2,8 +2,8 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 import { run } from "dzql/modelling/harness";
 import { activeDocuments, settled } from "dzql/rendering/documents";
 import { open, pageOf } from "dzql/rendering/test-socket";
-import { stories } from "./stories";
-import { app, startServer } from "./routes";
+import { stories } from "../stories";
+import { app, startServer } from "../src/routes";
 
 let server: Awaited<ReturnType<typeof startServer>>;
 beforeAll(async () => {

@@ -71,9 +71,9 @@ the box, the whole thing when it is opened.
 
 One way to draw these, the same HTML in both: dzql's, drawn by the server
 (`packages/dzql/src/rendering/bento.ts`, laid out by `packages/dzql/src/rendering/grid.ts`), and
-paintbrush's, drawn in the browser by railroad (`packages/paintbrush/src/resources/bento.tsx`,
-held to dzql's by `packages/paintbrush/tests/bento.test.ts`). The parts: a box and its tray, a
-heading, a collection, the trail, readings, rows, runs and totals, pins, a drawer, a modal, find,
+paintbrush's, drawn in the browser by railroad
+(`packages/create-blueshed/template/src/resources/bento.tsx`, held to dzql's by
+`packages/create-blueshed/template/tests/bento.test.ts`). The parts: a box and its tray, a heading, a collection, the trail, readings, rows, runs and totals, pins, a drawer, a modal, find,
 and the page's undo and redo. A page moves from one client to the other with its look: a handler
 in the browser is a write on the server.
 

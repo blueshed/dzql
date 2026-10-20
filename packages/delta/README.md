@@ -106,7 +106,7 @@ Each of these is a page of the skill's [reference](.claude/skills/delta-doc/refe
   gives a document as a railroad signal, and `list()` renders its rows keyed.
 - **[dzql](https://github.com/blueshed/dzql)** is the Postgres step: the same definitions,
   compiled to stored functions, answering delta's cases.
-- **[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/paintbrush)** is a starting
+- **[paintbrush](https://github.com/blueshed/dzql/tree/main/packages/create-blueshed/template)** is a starting
   website, its page drawn in the browser. `bun create blueshed my-app` makes one.
 - **[dzql's rendering](https://github.com/blueshed/dzql/tree/main/packages/dzql)** makes live
   apps for a few people at once, told as stories and checked by them. delta keeps its documents,

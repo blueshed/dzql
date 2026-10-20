@@ -2,7 +2,7 @@
    white cells, black ink, 4px, no shadows), then the page around them. Say the app's own tokens
    here, after the import, as it grows. */
 
-@import "../../src/rendering/bento-plain.css";
+@import "dzql/rendering/bento-plain.css";
 
 :root { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
 

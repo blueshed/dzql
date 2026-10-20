@@ -12,6 +12,10 @@
  * A package says its tiers in its package.json: `test:fast`, and `test:slow`; a package runs its whole
  * fast tier, never a part chosen by path (dzql's two halves import each other: a split by folder
  * missed both ways).
+ *
+ * A starter's template (its `template/`, a workspace of its own: the app a new one is copied from) is
+ * part of its create package here: a file changed in it is the package's, its dependencies are the
+ * package's (a change in dzql runs create-dzql), and the package's tiers run the template's.
  */
 import { $ } from "bun";
 import { existsSync, readdirSync } from "node:fs";
@@ -25,15 +29,17 @@ const slow = args.has("--slow");
 // branch left origin/main
 const given = args.has("--base") ? argv[argv.indexOf("--base") + 1] : undefined;
 
-type Pkg = { dir: string; name: string; deps: string[]; scripts: Record<string, string> };
+type Pkg = { dir: string; names: string[]; deps: string[]; scripts: Record<string, string> };
+const depsOf = (json: Record<string, Record<string, string> | undefined>) => Object.keys({ ...json.dependencies, ...json.devDependencies, ...json.peerDependencies });
 const pkgs: Pkg[] = readdirSync(join(root, "packages")).filter((dir) => existsSync(join(root, "packages", dir, "package.json"))).map((dir) => {
   const json = require(join(root, "packages", dir, "package.json"));
-  // a package that packs a sibling's folder (`prepack`: create-blueshed copies ../paintbrush) depends on it too
-  const packs = [...String(json.scripts?.prepack ?? "").matchAll(/\.\.\/([\w-]+)/g)].map((m) => `packages/${m[1]}`);
-  const deps = [...Object.keys({ ...json.dependencies, ...json.devDependencies, ...json.peerDependencies }), ...packs];
-  return { dir, name: json.name, deps, scripts: json.scripts ?? {} };
+  // its template, where it has one: the template's name and dependencies are the package's too
+  const at = join(root, "packages", dir, "template", "package.json");
+  const template = existsSync(at) ? require(at) : undefined;
+  const deps = [...depsOf(json), ...(template ? depsOf(template) : [])];
+  return { dir, names: [json.name, ...(template ? [template.name] : [])], deps, scripts: json.scripts ?? {} };
 });
-const byName = new Map(pkgs.flatMap((p) => [[p.name, p], [`packages/${p.dir}`, p]] as const));
+const byName = new Map(pkgs.flatMap((p) => p.names.map((name) => [name, p] as const)));
 
 const changed = async (): Promise<string[]> => {
   const base = given ?? ((await $`git merge-base HEAD origin/main`.cwd(root).nothrow().quiet().text()).trim() || "HEAD");
@@ -64,10 +70,7 @@ while (grew) {
 
 /** The scripts a package runs for this change. */
 function plan(p: Pkg): string[] {
-  // a slow tier that is a sibling's (`bun run --cwd ../paintbrush test:slow`) runs once, as the sibling's, when it is in the run too
-  const sibling = /--cwd \.\.\/([\w-]+) test:slow$/.exec(p.scripts["test:slow"] ?? "")?.[1];
-  const once = !(sibling && touched.has(sibling));
-  return [...(p.scripts["test:fast"] ? ["test:fast"] : []), ...(slow && p.scripts["test:slow"] && once ? ["test:slow"] : [])];
+  return [...(p.scripts["test:fast"] ? ["test:fast"] : []), ...(slow && p.scripts["test:slow"] ? ["test:slow"] : [])];
 }
 
 // what people and Claude read, held to the code, whatever changed: under a second (scripts/docs.ts)
