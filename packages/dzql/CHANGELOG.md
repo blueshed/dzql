@@ -176,6 +176,34 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The cafe's staff hold only what is open** (20 October, dzql #81): scope.md's rule, shown
+  working. The floor held every table with every invoice and order the cafe ever took, the manager's
+  and the cook's both. Now the model's `floor` is the tables alone (the manager's), and a new
+  `kitchen`, a list of the orders, is scoped by the app as it registers it to what is not yet
+  placed (`kitchen:placed`, `{ status: "!=:id" }`): the cook's orders and the manager's ready to
+  take. Placing an order at its table takes it out, and every page that read it is told; paying
+  for it changes nothing there. A table's invoices are its own document's (`table:1`), which the
+  manager now holds too, to seat it and to place an order there; an order names its table
+  (`table: door:/tables`, `table_id`, migration `003-orders`), as a kitchen ticket does, so the
+  kitchen says where each goes by the door's names. Driven by the story "Ann pays her invoice
+  before her Soup comes, and Mo sees Table 1 free; Kit, still cooking it, is not told", which
+  failed while Kit held the floor; "Mo takes Ann's Soup ... and it leaves the kitchen" says the
+  rest. Still 24 stories, all done by hand too. `scope.md`'s `Working:` names it.
+
+- **An app with no applets and no tools has no `main.ts`** (20 October, root #37). Its
+  `index.html` loads the kernel's client itself, `<script type="module"
+  src="dzql/rendering/client/app"></script>` (Bun bundles a package's entry named there, in
+  development and in a build alike); a `main.ts` is kept only to register an app's applets or opt
+  into tools, the client imported last. The cafe's and create-dzql's template's `main.ts` are gone,
+  and the README's rendering app is two files; chat (tools), leave, ticker, wedding and the
+  model's page (applets) keep theirs. The dzql-app skill says it (`applets.md`, `example.md`,
+  `where-an-app-lives.md`). Nothing breaks: an app's `main.ts` that only imports the client may go
+  the same way, or stay.
+- **dzql's browser tests are on one kit, its own** (20 October, root #37): the README's browser
+  test moves from railroad's `browser()` to `dzql/rendering/webview` (Chrome, a host per window, a
+  press as a mouse makes one), as every other browser test of dzql's and its examples' is. railroad
+  stays a dev dependency, for `dzql/rendering/applet` alone, and no package needs another.
+
 - **Typing not yet sent is kept after the caret leaves it** (20 October, root #125). The morph
   kept what a field held only while someone was in it, so a save from another window drew over
   words typed and left in a box. Now a field (an input, a textarea) that differs from what was last
@@ -433,6 +461,17 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   for the CLI and the model's page).
 
 ### Fixed
+
+- **By hand, a refusal whose value no field can send is not tried** (20 October, root #128). A
+  `cannot` story whose write a field on the page offers, with a value that field cannot send (a
+  number to a date field or to words, words to a number field), was tried with what the field
+  sends, which landed, and failed (`the page sent replace /requests/2/starts ""`). By hand now asks
+  the field first, by the client's own rule (`sends`): one that cannot send the value is nobody's
+  way to it, so the refusal is the wire's, as the story says, not done by hand and never failed,
+  as a select without that choice already was; neither is counted as done by hand, but for the
+  way to it walked from its `from`. So a value of the wrong type is a `cannot` story again:
+  leave's "Ann cannot move her day in November to a number: a day is a date" (26 stories, from
+  25). `docs/stories.md` step 7 says it.
 
 - **A tab moved through a resource that keeps no document is answered, not refused** (20 October,
   found re-walking the evolve skill's thin-client step): a session with no row (the cookie is the

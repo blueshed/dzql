@@ -9,16 +9,21 @@ import { links } from "./links";
 // story starts from beyond that, its premise says. The first invoice opened is invoice 1, and the
 // first dish ordered onto it is order 1.
 
-const seat = (table: number): Write => ({ doc: "floor", ops: [{ op: "add", path: "/invoices/-", value: { tables_id: table } }] });
+const seat = (table: number): Write => ({ doc: `table:${table}`, ops: [{ op: "add", path: "/invoices/-", value: { paid: false } }] });
 const order = (invoice: number, item: number): Write => ({ doc: "table", ops: [{ op: "add", path: "/orders/-", value: { invoices_id: invoice, dish_id: item } }] });
 const status = (doc: string, id: number, value: "ready" | "placed"): Write => ({ doc, ops: [{ op: "replace", path: `/orders/${id}/status`, value }] });
 const pay = (doc: string, invoice: number): Write => ({ doc, ops: [{ op: "replace", path: `/invoices/${invoice}/paid`, value: true }] });
 const leave: Write = { doc: "visit", ops: [{ op: "remove", path: "/role" }] };
 const addItem = (name: string, price: number): Write => ({ doc: "menu", ops: [{ op: "add", path: "/items/-", value: { name, price } }] });
 
-const seated = { mo: [seat(1)] };
-const ordered = { mo: [seat(1)], ann: [order(1, 1)] };
-const ready = { mo: [seat(1)], ann: [order(1, 1)], kit: [status("floor", 1, "ready")] };
+/** Where someone stands, as one write to their visit. */
+const goTo = (address: string): Write => ({ doc: "visit", ops: [{ op: "replace", path: "/page", value: address }] });
+/** Mo seats a table from its drawer, which reads the table's own document, then goes back to his box. */
+const seats = (table: number): Write[] => [goTo(`tables?table=${table}`), seat(table), goTo("")];
+
+const seated = { mo: seats(1) };
+const ordered = { mo: seats(1), ann: [order(1, 1)] };
+const ready = { mo: seats(1), ann: [order(1, 1)], kit: [status("kitchen", 1, "ready")] };
 
 /** A member of staff's way in: their link. */
 const link = (name: string) => post(links.ways().find((w) => w.name.startsWith(`${name},`))!.path);
@@ -31,7 +36,7 @@ export const stories = {
     : name === "ann" ? post("/scan", { table: "1" })
     : name === "bo" ? post("/scan", { table: "2" })
     : undefined,
-  goTo: (address) => ({ doc: "visit", ops: [{ op: "replace", path: "/page", value: address }] }),
+  goTo,
   stories: {
     // ── what the cafe has ──
     moAddsTable: story("Mo adds Table 5, and sees it on the floor; Cy at the door sees a way in to it", { model: 1, as: "mo", from: "tables?new", does: { doc: "floor", ops: [{ op: "add", path: "/tables/-", value: "Table 5" }] }, seen: { mo: "tables", cy: "" } }),
@@ -48,19 +53,21 @@ export const stories = {
 
     // ── ordering, cooking, placing ──
     annOrdersSoup: story("Ann orders Soup onto her invoice, and Kit sees it in the kitchen and Mo at her table", { model: 6, premise: seated, as: "ann", from: "menu?item=1", does: order(1, 1), seen: { ann: "invoice", kit: "orders", mo: "tables?table=1" } }),
-    boOrdersCoffee: story("Bo orders Coffee at Table 2, and Kit sees it; Ann at Table 1 is not told", { model: 6, premise: { mo: [seat(2)] }, as: "bo", from: "menu?item=3", does: order(1, 3), seen: { bo: "invoice", kit: "orders" }, untold: ["ann"] }),
-    kitSaysAnn: story("Kit says Ann's Soup is ready, and Mo sees it ready to take", { model: 7, premise: ordered, as: "kit", from: "orders?order=1", does: status("floor", 1, "ready"), seen: { kit: "orders", mo: "ready", ann: "invoice" } }),
-    moTakesAnn: story("Mo takes Ann's Soup to her table and marks it placed", { model: 8, premise: ready, as: "mo", from: "ready?order=1", does: status("floor", 1, "placed"), seen: { mo: "ready", kit: "orders", ann: "invoice" } }),
+    boOrdersCoffee: story("Bo orders Coffee at Table 2, and Kit sees it; Ann at Table 1 is not told", { model: 6, premise: { mo: seats(2) }, as: "bo", from: "menu?item=3", does: order(1, 3), seen: { bo: "invoice", kit: "orders" }, untold: ["ann"] }),
+    kitSaysAnn: story("Kit says Ann's Soup is ready, and Mo sees it ready to take", { model: 7, premise: ordered, as: "kit", from: "orders?order=1", does: status("kitchen", 1, "ready"), seen: { kit: "orders", mo: "ready", ann: "invoice" } }),
+    moTakesAnn: story("Mo takes Ann's Soup to her table and marks it placed, and it leaves the kitchen: Kit sees it gone", { model: 8, premise: ready, as: "mo", from: "ready?order=1", does: status("table:1", 1, "placed"), seen: { mo: "ready", kit: "orders", ann: "invoice" } }),
 
     // ── paying ──
-    annPaysInvoice: story("Ann pays her invoice, and Mo sees it paid and Table 1 free", { model: 9, premise: ordered, as: "ann", from: "invoice", does: pay("table", 1), seen: { ann: "invoice", mo: "tables" } }),
-    annCannotAddInvoice: story("Ann cannot add to her invoice once it is paid", { model: 10, premise: { mo: [seat(1)], ann: [pay("table", 1)] }, as: "ann", from: "menu?item=1", cannot: order(1, 1), told: "A customer cannot add to a paid invoice" }),
+    // the kitchen holds only what is still to cook or to take, paid for or not: paying changes none of it
+    annPaysInvoice: story("Ann pays her invoice before her Soup comes, and Mo sees Table 1 free; Kit, still cooking it, is not told", { model: 9, premise: ordered, as: "ann", from: "invoice", does: pay("table", 1), seen: { ann: "invoice", mo: "tables" }, untold: ["kit"] }),
+    annCannotAddInvoice: story("Ann cannot add to her invoice once it is paid", { model: 10, premise: { mo: seats(1), ann: [pay("table", 1)] }, as: "ann", from: "menu?item=1", cannot: order(1, 1), told: "A customer cannot add to a paid invoice" }),
 
     // ── nobody does another's job ──
-    moCannotSayAnn: story("Mo cannot say Ann's Soup is ready: that is Kit's job", { model: 11, premise: ordered, as: "mo", from: "tables?table=1", cannot: status("floor", 1, "ready"), told: "The manager cannot order, pay or say an order is ready: that is the customer's and the cook's" }),
+    moCannotSayAnn: story("Mo cannot say Ann's Soup is ready: that is Kit's job", { model: 11, premise: ordered, as: "mo", from: "tables?table=1", cannot: status("kitchen", 1, "ready"), told: "The manager cannot order, pay or say an order is ready: that is the customer's and the cook's" }),
     moCannotPayAnn: story("Mo cannot pay Ann's invoice", { model: 11, premise: ordered, as: "mo", cannot: pay("table:1", 1) }),
     kitCannotSeatTable: story("Kit cannot seat Table 1: that is Mo's job", { model: 12, as: "kit", cannot: seat(1) }),
-    kitCannotMarkAnn: story("Kit cannot mark Ann's ready Soup placed: that is Mo's job", { model: 12, premise: ready, as: "kit", from: "orders?order=1", cannot: status("floor", 1, "placed"), told: "The cook cannot say what tables there are, seat, open invoices, order, pay or place an order: that is the manager's and the customer's" }),
+    // placing is a write to the table's own document, which Kit's page never reads: the kitchen takes only what Kit's page sends, an order ready
+    kitCannotMarkAnn: story("Kit cannot mark Ann's ready Soup placed: that is Mo's job", { model: 12, premise: ready, as: "kit", from: "orders?order=1", cannot: status("kitchen", 1, "placed") }),
     annCannotPutCake: story("Ann cannot put Cake on the menu", { model: 13, as: "ann", cannot: addItem("Cake", 4) }),
     moCannotPutCake: story("Mo cannot put Cake on the menu: that is Kit's", { model: 14, as: "mo", cannot: addItem("Cake", 4) }),
     annCannotSayOwn: story("Ann cannot say her own Soup is ready", { model: 13, premise: ordered, as: "ann", cannot: status("table", 1, "ready") }),

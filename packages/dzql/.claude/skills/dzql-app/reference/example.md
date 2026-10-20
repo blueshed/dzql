@@ -33,6 +33,10 @@ CLI's verbs (`cli.ts`), run against a server by `cli.test.ts`.
 - `who` is who a session is to delta (the ledger's who, row-level security); default the session.
 - `routes` are extra HTTP routes; a kernel route of the same path wins. `index` is served at `/` and
   at any path the kernel does not own: that path is a screen.
+- `index` is the app's `index.html`, whose one script is the kernel's client:
+  `<script type="module" src="dzql/rendering/client/app"></script>`. An app has a `main.ts` in its
+  place only to register its applets ([applets.md](applets.md)) or opt into tools
+  ([assistants.md](assistants.md)), and imports the client last.
 - `address` is the write that moves a tab ([bento.md](bento.md#where-you-are-the-address)): its
   op, once the session's resource has permitted and shaped it, moves the tab that sent it and is
   never written. A tab opened at `/2026-10?request=1` is put there through it before its first page

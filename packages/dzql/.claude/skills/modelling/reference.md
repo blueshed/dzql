@@ -138,7 +138,9 @@ README walks it; here is what each part of it says about the model.
    another (`sessionRows(delta, "visits", "cookie:")`).
 4. **A document, a resource: `resources/<name>/`.** `<name>-api.ts` registers the model's
    definition (`docs.filter((d) => d.prefix === "floor:")`), `<name>.ts` lets its holders see it
-   (`resolveDoc`; a `list` resolves `""`), `<name>-view.ts` draws it. *Whose copy* advice -- a
+   (`resolveDoc`; a `list` resolves `""`), `<name>-view.ts` draws it. A list whose rows would pile
+   up is scoped there to what is open (the cafe's `kitchen`, every order not yet placed: dzql-app's
+   `scope.md`); the model says the list, the app what is open in it. *Whose copy* advice -- a
    document a role holds whose root is one of many, not a `list` -- is answered by a story that
    gives it them, or their own document naming it (the visit's `table`).
 5. **The stories: `stories.ts`.** In the wire's words, each naming the model story it tells

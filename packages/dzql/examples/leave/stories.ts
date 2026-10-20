@@ -48,6 +48,9 @@ export const stories = {
     moMovesWeek: story("Mo moves the week he approved for himself, and the team sees it move", { as: "mo", from: "2026-10", does: move(4, "2026-10-26", "2026-10-30"), gesture: { drag: [bar(4), day("2026-10-28")] }, seen: { mo: "2026-10", ann: "2026-10", bo: "2026-10" } }), // grabbed at its middle, the Wednesday
     moTakesBack: story("Mo takes back the week he approved for himself", { as: "mo", from: "2026-10?confirm=4", does: withdraw(4), seen: { mo: "2026-10", ann: "2026-10", bo: "2026-10" } }),
 
+    // a value of the wrong type, refused by the permit as the schema would: no field on the page sends it, so by hand it is not tried
+    annNumberDay: story("Ann cannot move her day in November to a number: a day is a date", { as: "ann", from: "2026-11?request=2", cannot: { doc: "team", ops: [{ op: "replace", path: "/requests/2/starts", value: 20261120 }] } }),
+
     // ── answering ──
     moApprovesBo: story("Mo approves Bo's week from its drawer, and Bo sees it approved", { as: "mo", from: "2026-10?request=1", does: answer(1, "approved"), seen: { mo: "2026-10?request=1", bo: "2026-10", ann: "2026-10" } }),
     moDeclinesAnn: story("Mo declines Ann's day in November, and Ann sees it declined", { as: "mo", from: "2026-11?request=2", does: answer(2, "declined"), seen: { mo: "2026-11?request=2", ann: "2026-11", bo: "2026-11" } }),

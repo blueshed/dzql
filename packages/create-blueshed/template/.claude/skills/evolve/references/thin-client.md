@@ -332,13 +332,7 @@ export function render(sessionId: string, page: string): string {
 }
 ```
 
-The browser's script is dzql's client:
-
-```ts
-// src/main.ts
-// The browser: no applets of its own, so dzql's client, which morphs the page the server draws.
-import "dzql/rendering/client/app";
-```
+The browser's script is dzql's client, loaded by `index.html` itself: no `main.ts`, until an applet needs one:
 
 ```html
 // src/index.html: in place of <div id="app"></div>
@@ -347,7 +341,7 @@ import "dzql/rendering/client/app";
 
 ```html
 // src/index.html: in place of <script type="module" src="./app.tsx"></script>
-<script type="module" src="./main.ts"></script>
+<script type="module" src="dzql/rendering/client/app"></script>
 ```
 
 ## The routes
@@ -370,7 +364,7 @@ import { statusApi } from "./resources/status/status-api";
 // The app is its routes and its resources. The server is delta's: `serve` puts these routes and
 // the socket on Bun.serve (with /health), `run`, at the bottom, is the process around it. The page
 // is drawn here, on the server (./page.ts), from the documents the resources look after, kept in
-// Postgres (./store.ts); the browser runs dzql's client (./main.ts), which morphs what it is sent.
+// Postgres (./store.ts); the browser runs dzql's client (./index.html loads it), which morphs what it is sent.
 
 /** The page and its resources: one per document the page reads or writes, the session first. */
 export const app: Example = {

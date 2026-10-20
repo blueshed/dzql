@@ -8,6 +8,7 @@ import { delta, pool, store } from "./store";
 import { links } from "./links";
 import { render } from "./page";
 import { floor } from "./resources/floor/floor";
+import { kitchen } from "./resources/kitchen/kitchen";
 import { menu } from "./resources/menu/menu";
 import { table } from "./resources/table/table";
 import { visit } from "./resources/visit/visit";
@@ -41,7 +42,7 @@ export const app: Example = {
   name: "cafe",
   index: homepage,
   delta,
-  resources: [visit, floor, menu, table, door],
+  resources: [visit, floor, kitchen, menu, table, door],
   render,
   active: (sessionId) => visitOf(sessionId).role !== null, // staff signed in, or a customer at a table
   address: { doc: "visit", path: "/page" }, // a tab's URL is where it stands: the visit says where it may (./resources/visit/visit.ts), the kernel moves the tab

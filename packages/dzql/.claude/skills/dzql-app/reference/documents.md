@@ -34,8 +34,8 @@ again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server
 
 Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/store.ts), the tables said once (`store.ts`), a memory
 document (`resources/here/here-api.ts`) and a session read for the page
-(`resources/session/session-api.ts`); [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/resources/floor/floor-api.ts), a
-ref's surrogate (`orderOf`, `resources/floor/floor-api.ts`);
+(`resources/session/session-api.ts`); [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/resources/kitchen/kitchen-api.ts), a
+ref's surrogate (`orderOf`, `resources/kitchen/kitchen-api.ts`);
 [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/resources/team/team.ts), the draft that follows an ask and its Undo
 (`afterWrite`, `afterWalk`, `resources/team/team.ts`).
 
@@ -51,7 +51,7 @@ ref's surrogate (`orderOf`, `resources/floor/floor-api.ts`);
   keeps its **surrogate** beside the key when a story can remove what it names: what it shows of
   it, copied as it is written (`dish_name`, `dish_price`). Show the named row while it stands, and
   the copy once it is gone; whoever holds the order holds the menu too. The cafe's `orderOf`
-  (`examples/cafe/resources/floor/floor-api.ts`):
+  (`examples/cafe/resources/kitchen/kitchen-api.ts`):
 
   ```ts
   const dish = items.find((i) => i.id === String(o.dish_id));

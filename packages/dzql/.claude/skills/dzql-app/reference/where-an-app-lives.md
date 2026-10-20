@@ -26,7 +26,8 @@ src/          the app (begun as the starter, create-dzql's template/, laid out a
   store.ts                  where the documents are kept (PGlite, or a server at DATABASE_URL)
   page.ts                   the page, each resource's part in its place
   resources/<name>/         a document: <name>-api.ts, <name>.ts (its Resource), <name>-view.ts
-  index.html, main.ts, styles.css, icons.ts
+  index.html, styles.css, icons.ts   index.html's script is dzql's client (dzql/rendering/client/app);
+                            a main.ts in its place only to register applets or opt into tools
 model/        what `dzql model` makes: types.ts, guards.ts, model.test.ts, and migrations/ (a field
               renamed or dropped, data moved, is a step of its own; never edit one that has run)
 tests/        what the stories cannot say

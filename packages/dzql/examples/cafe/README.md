@@ -12,17 +12,25 @@ front of them:
 
 | Document | Root | Holds | Held by | |
 |---|---|---|---|---|
-| `floor` | tables | invoices, orders | manager, cook | a `list`: every table (`floor:`) |
+| `floor` | tables | | manager | a `list`: every table, free or seated (`floor:`) |
+| `kitchen` | orders | | manager, cook | a `list`, scoped by the app to what is open: the orders not yet placed (`kitchen:placed`) |
 | `menu` | items | | manager, cook, customer | a `list`: the whole menu (`menu:`) |
-| `table` | tables | invoices, orders | customer | one table (`table:1`) |
-| `door` | tables, its `name` only | | customer | a `list`: the ways in |
+| `table` | tables | invoices, orders | customer, manager | one table (`table:1`): the customer's, and the manager's to seat it and place an order there |
+| `door` | tables, its `name` only | | customer, manager, cook | a `list`: the ways in, and the name each order's table goes by |
 | `visit` | visits | | | `own`: each person's, the app's session |
+
+No document the staff hold piles up: the floor is its tables, and the kitchen holds only what is
+still to cook or to take (`scope: { status: "!=:id" }`, [resources/kitchen/kitchen-api.ts](resources/kitchen/kitchen-api.ts)), so
+placing an order takes it out and every page that read it is told, and paying changes nothing
+there. A table's invoices are its own document's.
 
 An order names its dish (`dish: menu:/items`, kept as `dish_id`) and keeps its **surrogate** beside
 it, the dish's name and price copied as it is ordered (`dish_name`, `dish_price`): while the dish
 is on the menu the order shows the menu's, and once the cook takes it off, its own copy
-(`orderOf`, [resources/floor/floor-api.ts](resources/floor/floor-api.ts)). So whoever holds the
-orders holds the menu too.
+(`orderOf`, [resources/kitchen/kitchen-api.ts](resources/kitchen/kitchen-api.ts)). So whoever holds the
+orders holds the menu too. It names its table too (`table: door:/tables`, kept as `table_id`), as
+a kitchen ticket does: the kitchen holds the orders alone, and says where each goes by the door's
+names.
 
 **2. The checks, and what they make: [model/](model/).** `dzql model check` (or `bun run
 dev:cafe`, which runs it after every change) closes every check, then writes `types.ts` (delta's
@@ -44,7 +52,8 @@ stories run on the same store (`Example.store`), put back after each.
 `<name>-api.ts` registers the model's definition and reads it for the page, with the pure rules a
 write follows; `<name>.ts` is its `Resource`; `<name>-view.ts` its part of the page. The visit is a
 `perSession` resource, found by its cookie through `cookie:` (the model already names a document
-`visit`). A list's resource resolves to the empty id (`floor:`).
+`visit`). A list's resource resolves to the empty id (`floor:`), or to what its scope reads
+(`kitchen:placed`).
 
 **5. The page and the routes: [page.ts](page.ts), [routes.ts](routes.ts).** The page is each
 person's box of the parts their resources draw. The staff come in by a link each (`signInLinks`,

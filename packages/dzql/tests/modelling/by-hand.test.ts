@@ -225,6 +225,11 @@ describe("the stories by hand", () => {
     const { example: ticker, stories: watching } = await load("ticker");
     const unquoted = named(watching, "Ann cannot watch a symbol the market does not quote, and is told so");
     expect((await run(ticker, { ...watching, stories: keyed(unquoted) }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual([]);
+    // so is a value of the wrong type: the day's date field sends no number, so it is walked to and not tried (root #128)
+    const typed = await run(leave, { ...among(told, "ann"), stories: keyed(named(told, "Ann cannot move her day in November to a number: a day is a date")) }, undefined, { byHand: true });
+    expect(typed.outcomes[0]!.failures).toEqual([]);
+    const walked = await run(leave, { ...among(told, "ann"), stories: keyed([{ name: "Ann opens her day in November", as: "ann", from: "2026-11?request=2", cannot: { doc: "team", ops: [{ op: "remove", path: "/requests/9" }] } }]) }, undefined, { byHand: true });
+    expect(typed.byHand).toMatchObject({ stories: 1, presses: walked.byHand!.presses }); // the way there, and nothing more
     // and a refusal that lands, sent from the page, fails when it is told and by hand
     const hello: Story = { name: "Ada cannot say hello", as: "ada", cannot: say };
     expect((await run(chat, { ...chatStories, stories: keyed([hello]) }, undefined, { byHand: true })).outcomes[0]!.failures).toContain("by hand, ada's write landed, and should have been refused");
