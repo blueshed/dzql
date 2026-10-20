@@ -50,6 +50,32 @@ options are `createDocListener` and `docTypeFromDef` in `packages/dzql/src/postg
 - Mount `init_db/` at `/docker-entrypoint-initdb.d`: Postgres applies it alphabetically on the
   first boot of an empty volume, then skips; `docker compose down -v` starts fresh.
 
+## Several apps on one database
+
+Each app in a Postgres schema of its own, named by `namespace` (`public` without one, as always):
+its tables, `_delta_*` tables, ledger and compiled functions are made there, and its changes are
+told on a channel of its own, `delta:<schema>` (`public`'s is `delta_changes`), so each listener
+hears its own app alone. Two apps may have the same table and document names.
+
+```ts
+const billing = await openStore({ schema, database: process.env.DATABASE_URL, namespace: "billing" });
+const rota = await openStore({ schema: rotaSchema, database: process.env.DATABASE_URL, namespace: "rota" });
+```
+
+`openStore` makes the schema when it is not there, opens the pool with it as every connection's
+search path, and runs the migrations, the framework and `generateSql` in it. By the steps:
+`openDatabase(url, { namespace })` (from `dzql/pglite`) is that pool (on PGlite, each query and
+transaction is given the path, so pools of several schemas share one PGlite);
+`applyFramework(pool, { namespace })` and `applySql(pool, sql, { namespace })` apply into the
+schema whatever path the pool has (an admin pool may apply, and the app's pool serve); and
+`createDocListener(ws, pool, { namespace })` refuses a pool that does not run in it. A namespace is
+lower-case letters, digits and `_`, 57 at most. The `SECURITY DEFINER` functions pin the schema
+they were applied in. Grant the app's role `USAGE` on its schema, not `public` (`rls.md`).
+
+The advisory locks a write takes on a row, a document or a cursor are the database's: two apps
+whose tables or documents share a name may wait on each other's writes for a moment, and neither
+sees the other's rows. A listener's own lock is keyed by its schema.
+
 ## Who may open a document
 
 A document is the permission: opening it is the read, a write goes only through what it holds,
@@ -102,10 +128,9 @@ Three rules follow:
   Re-apply it after `applyFramework` and after `init --upgrade`. Vendored, `003-tables.sql` sorts
   after `001*`, so a tool that re-applies the directory in order gets this right; one that
   re-applies only `001*` must re-apply `003` too.
-- **One app per database.** Each `generateSql` writes the whole set of an app's documents and
-  collections; a later one, with other definitions, takes their place. Two apps on one Postgres
-  server each have a database of their own (`CREATE DATABASE`), which keeps their changes apart too
-  (LISTEN/NOTIFY is per database). A schema per app is not supported yet (todo #29).
+- **One app per schema.** Each `generateSql` writes the whole set of an app's documents and
+  collections; a later one, with other definitions, takes their place. Two apps on one database
+  each have a Postgres schema of their own (below), or a database of their own.
 - **A document is what its definition compiles to.** Nothing registered by hand is read: add a
   document to your definitions and apply `generateSql`.
 

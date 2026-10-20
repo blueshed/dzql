@@ -25,6 +25,7 @@ import { isAuthError } from "@blueshed/delta/auth";
 import type { DeltaOp } from "@blueshed/delta/core";
 import { isEntryId, ledgerWho, socketCursor } from "@blueshed/delta/backend";
 import { assertOwned, createCustomDocs, NOT_FOUND, sendTo, type CustomDoc, type Owns, type Refusal } from "@blueshed/delta/backend";
+import { namespaceOf } from "./sql";
 
 const log = createLogger("[doc]");
 
@@ -159,6 +160,23 @@ async function fetchQuery(pool: Pool): Promise<string> {
   return FETCH_TOLD;
 }
 
+/**
+ * The channel the listener hears its app's changes on, asked of the pool (`_delta_channel`, 001c:
+ * `delta_changes` in `public`, `delta:<schema>` in a schema of an app's own), so it is the one the
+ * writes made through the pool are told on. Given a `namespace`, the pool must run in it (its search
+ * path's first schema), or the listener would read one app and hear another. Framework SQL older
+ * than the function tells every change on `delta_changes`.
+ */
+async function channelOf(pool: Pool, namespace: string | undefined): Promise<string> {
+  if (namespace !== undefined) {
+    const ns = namespaceOf(namespace);
+    const here: string | null = (await pool.query("SELECT current_schema() AS ns")).rows[0]?.ns ?? null;
+    if (here !== ns) throw new Error(`createDocListener: the pool runs in schema ${here ?? "(none there)"}, not ${ns} -- open it there: openDatabase(url, { namespace: "${ns}" })`);
+  }
+  const { rows } = await pool.query("SELECT to_regprocedure('_delta_channel()') IS NOT NULL AS ok");
+  return rows[0]?.ok ? (await pool.query("SELECT _delta_channel() AS channel")).rows[0].channel : "delta_changes";
+}
+
 export async function createDocListener<I = unknown>(
   ws: WsServer,
   pool: Pool,
@@ -183,6 +201,12 @@ export async function createDocListener<I = unknown>(
      * listener starts (`_delta_collections`, the last `generateSql` applied).
      */
     schema?: Schema;
+    /**
+     * The Postgres schema the app is in (todo #29), when it is not `public`: the pool must run in it
+     * (`openDatabase(url, { namespace })`), and the listener hears that schema's changes alone.
+     * Without it, those of the schema the pool runs in, as always.
+     */
+    namespace?: string;
   },
 ) {
   const auth = opts?.auth;
@@ -262,7 +286,8 @@ export async function createDocListener<I = unknown>(
     return type?.owns ? (identity, name) => type.owns!(identity, name) : undefined;
   };
 
-  // Single LISTEN connection with auto-reconnect
+  // Single LISTEN connection with auto-reconnect, on the app's own channel
+  const channel = await channelOf(pool, opts?.namespace);
   const fetchSql = await fetchQuery(pool);
   let listener: PoolClient = await pool.connect();
   let destroyed = false;
@@ -282,7 +307,7 @@ export async function createDocListener<I = unknown>(
 
   /** LISTEN on `client`, and keep this holder's lock on it. */
   async function setupListener(client: any): Promise<void> {
-    await client.query("LISTEN delta_changes");
+    await client.query(`LISTEN "${channel.replace(/"/g, '""')}"`);
     client.on("notification", heard);
     errorHandler = (err: Error) => {
       log.error(`listener error: ${err.message}`);
@@ -357,7 +382,7 @@ export async function createDocListener<I = unknown>(
 
   /** The custom documents told the one write a notification announces: its document's entry at that version. */
   async function hearCustom(msg: any) {
-    if (destroyed || msg.channel !== "delta_changes" || !msg.payload) return;
+    if (destroyed || msg.channel !== channel || !msg.payload) return;
     try {
       const { doc: docName, v } = JSON.parse(msg.payload);
       const rows = (await pool.query(fetchSql, [docName, v - 1])).rows.filter((row: any) => Number(row.version) === v);
@@ -371,7 +396,7 @@ export async function createDocListener<I = unknown>(
   // Notification handler — fans out LISTEN/NOTIFY to the document's WS subscribers.
   async function onNotification(msg: any) {
     if (destroyed) return;
-    if (msg.channel !== "delta_changes" || !msg.payload) return;
+    if (msg.channel !== channel || !msg.payload) return;
     try {
       const { doc: docName, v } = JSON.parse(msg.payload);
       const state = tracked.get(docName);

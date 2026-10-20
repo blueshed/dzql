@@ -107,6 +107,16 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **Several apps on one Postgres database, a schema each** (20 October, #29): `namespace` on
+  `openStore`, `openDatabase` (`dzql/pglite`), `applyFramework`, `applySql` and
+  `createDocListener` keeps an app's tables, ledger and compiled functions in a Postgres schema of
+  its own, made when it is not there, and its changes are told on a channel of its own,
+  `delta:<schema>` (001c's `_delta_channel`; `public` keeps `delta_changes`), so each listener
+  hears its own app alone. A listener's lock is keyed by its schema too. On PGlite each query is
+  given its pool's path, so several apps share one PGlite. Without `namespace`, nothing changes.
+  `tests/delta-pg/namespaces.test.ts`: two apps of one table and one document name, each writing
+  and undoing, each told only its own; `docs/postgres/postgres.md`, *Several apps on one database*.
+
 - **`openStore` is the one way to start a store on Postgres** (`dzql/postgres`, 20 October, root
   #108): it takes `database` (a URL or a PGlite folder; else `DATABASE_URL`, then `PGLITE_DIR`),
   `migrations` as a folder (`dir`) or a `list`, and `ws`, the socket to serve the documents on

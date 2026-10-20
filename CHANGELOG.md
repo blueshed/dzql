@@ -6,6 +6,11 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### dzql's Postgres step (20 October)
+
+- **Several apps on one Postgres database, a schema each** (dzql #29): `namespace` on dzql's
+  `openStore` and its steps; each app's changes on a channel of its own. dzql's CHANGELOG has the detail.
+
 ### The Bun, the hook and the root's statements, said once (20 October)
 
 - **/publish moves the sibling ranges `scripts/ranges.ts` names** (#78), rather than a list kept by

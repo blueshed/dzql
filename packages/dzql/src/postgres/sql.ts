@@ -25,6 +25,18 @@ export function distinctNames<T>(items: T[], nameOf: (item: T) => string, clash:
   }
 }
 
+/**
+ * An app's Postgres schema (todo #29), checked: a plain lower-case name, so it is written on a search
+ * path or a connection's options with no quoting, and short enough that its change channel
+ * (`delta:<schema>`, 001c's `_delta_channel`) is one Postgres takes (63 bytes).
+ */
+export function namespaceOf(namespace: string): string {
+  if (!/^[a-z_][a-z0-9_]{0,56}$/.test(namespace)) {
+    throw new Error(`namespace "${namespace}" is not a schema dzql can keep an app in: lower-case letters, digits and _, from a letter or _, 57 at most`);
+  }
+  return namespace;
+}
+
 export function lit(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
