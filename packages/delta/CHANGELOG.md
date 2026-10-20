@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- **The examples move to railroad's `when()`, which hands its branch the value as a keyed row is**
+  (20 October, railroad #13; railroad's own changelog has the change). A `when()` branch over an
+  object is handed its fields, each a signal, then `v$`. `examples/lobby`'s colours are
+  `({ colours }) => … colours.peek()`, and `examples/lists` hands the person on with
+  `(_, me$) => … me$.peek()`. To move across in an app over delta: `when(doc.data, (d$) => …)`
+  reading `d$.map((d) => d.x)` is `({ x }) => …`, and `d$.peek()` is `(_, d$) => … d$.peek()`. The
+  `rendering` reference no longer says to open a document inside an async component's thunk
+  (railroad #7 removed the thunk): open in the component's synchronous body, never after an
+  `await`.
 - **The free-form document is gone: delta keeps three stores and its kinds** (20 October, Peter's
   word on root todo #37). `registerDoc` (`@blueshed/delta/server`), with its `DocHandle` and
   `DocOptions`, was a fourth store: no schema, uuid ids, a JSON file of its own, off the path to

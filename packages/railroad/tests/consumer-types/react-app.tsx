@@ -17,6 +17,7 @@ const count = signal(0);
 type Row = { id: number; text: string };
 const rows = signal<Row[]>([{ id: 1, text: "a" }]);
 
+// an async component is not a JSX tag: a component returns a Node
 async function AsyncProfile(props: { id: number }) {
   await Promise.resolve();
   return () => <div>{props.id}</div>;
@@ -28,7 +29,8 @@ function App(): JSX.Element {
       <div class={count.map((n) => `n${n}`)}>{count}</div>
       <ul>{list(rows, (r) => r.id, ({ text }) => <li>{text}</li>)}</ul>
       {when(count, () => <p>positive</p>)}
-      <AsyncProfile id={1} fallback={() => <p>loading</p>} />
+      {/* @ts-expect-error -- an async component */}
+      <AsyncProfile id={1} />
     </>
   );
 }

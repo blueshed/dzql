@@ -30,7 +30,7 @@ export function HereView(): JSX.Element {
       <form id="join" onsubmit={joined}>
         <input name="name" autocomplete="off" placeholder="your name" />
         {/* the colours never change (a static document): drawn once, when they arrive */}
-        {when(colours.data, (c$) => <select name="colour">{c$.peek().colours.map((c) => <option value={c}>{c}</option>)}</select>)}
+        {when(colours.data, ({ colours }) => <select name="colour">{colours.peek().map((c) => <option value={c}>{c}</option>)}</select>)}
         <button>{me.map((m) => (m ? "Change" : "Join"))}</button>
       </form>
     </section>

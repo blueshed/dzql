@@ -53,8 +53,8 @@ card and closed with it (`resources/lists/lists-view.tsx`).
   opens stay for the life of the page.
 - **Never open inside an `effect()` body**: each run is a scope, so it closes and re-opens every
   run. Open in the component or module; read `doc.data` in the effect.
-- **In an async component, open inside the returned thunk**, not after an `await` in the body:
-  there is no scope after an `await`, and the handle never closes. If you must, `close()` it.
+- **Never open after an `await`**: there is no scope there, and the handle never closes. Open in
+  the component's synchronous body; data that comes later is railroad's `when(resolved(promise), …)`.
 - Repeated `openDoc(name)` on one client share one entry (the same signals), refcounted;
   `doc.close()` releases one, and the last sends the server `close`.
 - `openDoc(name, client?)`: browser code finds the client by `inject(WS)`; pass one explicitly

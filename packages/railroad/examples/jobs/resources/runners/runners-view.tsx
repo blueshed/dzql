@@ -19,8 +19,8 @@ export function RunnersPage(): JSX.Element {
              class={() => (at.get()?.name === name$.get() ? "picked" : "")}>{name$}</a>
         ))}
       </nav>
-      {/* rebuilt only when a runner is picked or unpicked: from one to another, at$ follows */}
-      {when(at, (at$) => <RunnerPanel name$={at$.map((a) => a.name)} />, () => <p class="pick">Pick a runner.</p>)}
+      {/* rebuilt only when a runner is picked or unpicked: from one to another, its fields follow */}
+      {when(at, ({ name }) => <RunnerPanel name$={name} />, () => <p class="pick">Pick a runner.</p>)}
     </section>
   );
 }
@@ -47,7 +47,7 @@ function RunnerPanel({ name$ }: { name$: ReadonlySignal<string> }): JSX.Element 
   return (
     <div class="runner">
       <h2>{name$}</h2>
-      {when(info, (i$) => <p class="host">{i$.map((i) => `${i.host} · ${i.slots} slots`)}</p>,
+      {when(info, ({ host, slots }) => <p class="host">{host} · {slots} slots</p>,
         () => <p class="host">looking it up…</p>)}
       <ul>
         {list(theirs, jobs.key, ({ id, name, status }) => (

@@ -1,5 +1,5 @@
 import { describe, test, expect, spyOn, beforeEach, afterEach } from "bun:test";
-import { signal, effect, pushDisposeScope, popDisposeScope, trackDispose } from "../src/signals";
+import { signal, effect, pushDisposeScope, popDisposeScope, trackDispose, resolved } from "../src/signals";
 import { createElement, when, Fragment } from "../src/jsx";
 import { routes, route, navigate, matchRoute } from "../src/routes";
 import { SVG_NS, tick, defer } from "./helpers";
@@ -147,37 +147,35 @@ describe("routes()", () => {
     dispose();
   });
 
-  test("async handler resolves and renders", async () => {
+  test("data that comes later: when(resolved()) shows the wait, then what it settled as", async () => {
     const target = document.createElement("div");
     document.body.append(target);
     location.hash = "#/slow";
     await tick();
 
-    const d = defer<() => Node>();
+    const d = defer<string>();
     const dispose = routes(target, {
-      "/slow": () => d.promise,
+      "/slow": () => when(resolved(d.promise), (r) => <span>{"error" in r ? "failed" : r.value}</span>, () => <i>wait</i>),
     });
-    expect(target.children.length).toBe(0);
+    expect(target.textContent).toBe("wait");
 
-    const el = document.createElement("span");
-    el.textContent = "loaded";
-    d.resolve(() => el);
-    await d.promise;
+    d.resolve("loaded");
     await tick();
     expect(target.textContent).toBe("loaded");
 
     dispose();
   });
 
-  test("async race — navigation during await discards stale result", async () => {
+  test("navigation before it settles: what comes later builds nothing", async () => {
     const target = document.createElement("div");
     document.body.append(target);
     location.hash = "#/slow";
     await tick();
 
-    const slow = defer<() => Node>();
+    const slow = defer<string>();
+    let built = 0;
     const dispose = routes(target, {
-      "/slow": () => slow.promise,
+      "/slow": () => when(resolved(slow.promise), () => { built++; return <span>slow</span>; }),
       "/fast": () => {
         const el = document.createElement("span");
         el.textContent = "fast";
@@ -185,18 +183,16 @@ describe("routes()", () => {
       },
     });
 
-    // Navigate away before the slow handler resolves.
+    // Navigate away before the slow one settles.
     navigate("/fast");
     await tick();
     expect(target.textContent).toBe("fast");
 
-    // Resolve the stale promise — it must NOT replace the current content.
-    const stale = document.createElement("span");
-    stale.textContent = "slow";
-    slow.resolve(() => stale);
-    await slow.promise;
+    // Settle it: it must NOT replace the current content.
+    slow.resolve("slow");
     await tick();
     expect(target.textContent).toBe("fast");
+    expect(built).toBe(0);
 
     dispose();
   });
@@ -254,37 +250,6 @@ describe("routes()", () => {
     );
 
     expect(target.textContent).toBe("Error: kaboom");
-    dispose();
-  });
-
-  test("async handler error boundary renders fallback view", async () => {
-    const target = document.createElement("div");
-    document.body.append(target);
-    location.hash = "#/slow-boom";
-    await tick();
-
-    const d = defer<() => Node>();
-    const dispose = routes(
-      target,
-      {
-        "/slow-boom": () => d.promise,
-      },
-      {
-        onError: (err) => {
-          const el = document.createElement("div");
-          el.textContent = `Error: ${(err as Error).message}`;
-          return el;
-        },
-      }
-    );
-
-    d.reject(new Error("async kaboom"));
-    try {
-      await d.promise;
-    } catch {}
-    await tick();
-
-    expect(target.textContent).toBe("Error: async kaboom");
     dispose();
   });
 
@@ -363,49 +328,16 @@ describe("routes()", () => {
   });
 });
 
-describe("routes(): async handlers, double dispose and onError", () => {
+describe("routes(): data that comes later, double dispose and onError", () => {
   beforeEach(async () => { document.body.innerHTML = ""; location.hash = "#/"; await tick(); });
   afterEach(() => { location.hash = ""; });
-  test("async first render inside a parent scope: no leak, no stack overflow", async () => {
-    const target = document.createElement("div");
-    document.body.append(target);
-    let parentSentinel = 0;
-
-    pushDisposeScope();
-    trackDispose(() => { parentSentinel++; });
-    const dispose = routes(target, {
-      "/": async () => {
-        const el = document.createElement("section");
-        el.textContent = "home";
-        return () => el;
-      },
-    });
-    const parentDispose = popDisposeScope();
-
-    await tick();
-    expect(target.textContent).toBe("home");
-
-    let overflowed = false;
-    try { dispose(); } catch (e) { overflowed = e instanceof RangeError; }
-    parentDispose();
-
-    expect(overflowed).toBe(false);
-    expect(parentSentinel).toBe(1); // parent disposer fired exactly once
-  });
-
-  test("async handler thunk resolution: post-await bindings die on navigation", async () => {
+  test("a when(resolved()) branch's bindings, made after it settles, die on navigation", async () => {
     const name = signal("a");
     const target = document.createElement("div");
     document.body.append(target);
     const dispose = routes(target, {
-      "/": async () => {
-        await Promise.resolve();
-        // Reactive binding built AFTER the first await — with a bare
-        // Promise<Node> resolution this had no owner scope and outlived the
-        // route (the pre-0.11 leak); the thunk gives railroad the moment to
-        // provide one.
-        return () => <span>{name}</span>;
-      },
+      // the branch is built after the promise settles, under the route's scope
+      "/": () => when(resolved(Promise.resolve()), () => <span>{name}</span>),
       "/other": () => <p>other</p>,
     });
     await tick();
@@ -439,56 +371,18 @@ describe("routes(): async handlers, double dispose and onError", () => {
     db();
   });
 
-  test("keyed: false — a same-pattern param change during a pending async render re-runs the handler", async () => {
-    const target = document.createElement("div");
-    document.body.append(target);
-    location.hash = "#/users/1";
-    await tick();
-
-    const calls: string[] = [];
-    const deferreds = new Map<string, ReturnType<typeof defer<() => Node>>>();
-    const dispose = routes(target, {
-      "/users/:id": { keyed: false, handler: (params) => {
-        const id = params.id!;
-        calls.push(id);
-        const d = defer<() => Node>();
-        deferreds.set(id, d);
-        return d.promise;
-      } },
-    });
-    expect(calls).toEqual(["1"]); // first render in flight
-
-    navigate("/users/2");
-    await tick();
-    expect(calls).toEqual(["1", "2"]); // re-ran with new params, not just params$.set
-
-    // Resolve the stale "1" render — it must be discarded.
-    const stale = document.createElement("span"); stale.textContent = "user 1";
-    deferreds.get("1")!.resolve(() => stale);
-    // Resolve "2" — it should paint.
-    const fresh = document.createElement("span"); fresh.textContent = "user 2";
-    deferreds.get("2")!.resolve(() => fresh);
-    await tick();
-    expect(target.textContent).toBe("user 2");
-    dispose();
-  });
-
-  test("a throwing onError on the async-reject path is contained (no unhandled rejection)", async () => {
+  test("a throwing onError is contained: logged, never thrown", async () => {
     const errSpy = spyOn(console, "error").mockImplementation(() => {});
     const target = document.createElement("div");
     document.body.append(target);
     location.hash = "#/x";
     await tick();
 
-    const d = defer<() => Node>();
     const dispose = routes(
       target,
-      { "/x": () => d.promise },
+      { "/x": () => { throw new Error("handler fail"); } },
       { onError: () => { throw new Error("boundary fail"); } },
     );
-    d.reject(new Error("handler fail"));
-    try { await d.promise; } catch {}
-    await tick();
 
     expect(
       errSpy.mock.calls.some((c) => String(c[0]).includes("onError boundary threw")),
@@ -501,7 +395,7 @@ describe("routes(): async handlers, double dispose and onError", () => {
 // onError's fallback is a render like a handler's: its bindings live while it is shown, and go
 // when the router moves on or is disposed.
 describe("routes(): an onError fallback's bindings go with it", () => {
-  const setup = (failing: () => Node | Promise<() => Node>) => {
+  const setup = (failing: () => Node) => {
     const label = signal("a");
     let reads = 0;
     const target = document.createElement("div");
@@ -517,7 +411,7 @@ describe("routes(): an onError fallback's bindings go with it", () => {
 
   for (const [path, failing] of [
     ["a sync handler that throws", () => { throw new Error("sync"); }],
-    ["an async handler that rejects", async () => { await null; throw new Error("async"); }],
+    ["an async handler", (async () => <p>never</p>) as unknown as () => Node],
   ] as const) {
     test(`${path}: on navigation, and on dispose`, async () => {
       location.hash = "#/fail";
@@ -570,23 +464,6 @@ describe("routes(): a sync handler that returns no Node is an error", () => {
       onError: (err) => <p>{String(err).includes("non-Node") ? "caught" : "?"}</p>,
     });
     expect(target.textContent).toBe("caught");
-    dispose();
-  });
-});
-
-describe("routes(): an async handler's thunk that returns no Node is an error", () => {
-  test("it reaches onError, and the router goes on", async () => {
-    location.hash = "#/";
-    await tick();
-    const target = document.createElement("div");
-    const dispose = routes(target, {
-      "/": async () => () => "text" as any,
-      "/b": () => <p>b</p>,
-    }, { onError: (err) => <p>{String(err).includes("non-Node") ? "caught" : "?"}</p> });
-    await tick();
-    expect(target.textContent).toBe("caught");
-    navigate("/b");
-    expect(target.textContent).toBe("b");
     dispose();
   });
 });
@@ -655,28 +532,30 @@ describe("routes(): a route is keyed, and re-runs its handler when the params ch
   });
 });
 
-describe("routes(): a handler resolving to a bare Node is an error", () => {
-  // What it built after its first await would have no owner scope and outlive the route; a
-  // thunk gives railroad a synchronous moment to own it. Deprecated in 0.14.0, removed in 0.16.0.
-  test("it doesn't compile, and at run time goes to onError with the fix named", async () => {
+describe("routes(): an async handler is an error", () => {
+  // What it built after its first await would have no owner scope and outlive the route. A handler
+  // resolving to a thunk, `return () => <div/>`, was run under a scope railroad owned (#7): a second
+  // way to show data that comes later, beside when(resolved()). It is gone: a Promise is not a Node.
+  test("it doesn't compile, and at run time goes to onError, naming resolved()", async () => {
     location.hash = "#/";
     await tick();
     const target = document.createElement("div");
     const errors: unknown[] = [];
     const name = signal("a");
     let effectRuns = 0;
+    let thunkRuns = 0;
     const dispose = routes(target, {
-      // @ts-expect-error -- a bare Promise<Node> is not a route handler (it compiled, deprecated, before)
+      // @ts-expect-error -- an async handler is not a route handler (a Promise of a thunk compiled before)
       "/": async () => {
         effect(() => { name.get(); effectRuns++; }); // made before the await: the handler's scope
         await null;
-        return <p>bare</p>;
+        return () => { thunkRuns++; return <p>late</p>; };
       },
     }, { onError: (err) => { errors.push(err); return <p>failed</p>; } });
     await tick();
-    expect(target.textContent).toBe("failed");
-    expect(String(errors[0])).toContain("resolved to a Node");
-    expect(String(errors[0])).toContain("return () => <div>…</div>");
+    expect(target.textContent).toBe("failed"); // before: "late", the thunk run
+    expect(thunkRuns).toBe(0);
+    expect(String(errors[0])).toContain("when(resolved(promise), …)");
     name.set("b");
     expect(effectRuns).toBe(1); // the handler's scope was disposed with the failure
     dispose();
@@ -883,16 +762,13 @@ describe("routes() into an <svg>: an adopted <a> keeps its props for as long as 
     dispose();
   });
 
-  test("an async handler's thunk, and gone on navigation", async () => {
+  test("a when(resolved()) branch built late, and gone on navigation", async () => {
     location.hash = "#/a";
     await tick();
     const href = signal("#1");
     const svg = document.createElementNS(SVG_NS, "svg");
     const dispose = routes(svg, {
-      "/a": async () => {
-        await null;
-        return () => createElement("a", { href }, "x");
-      },
+      "/a": () => when(resolved(Promise.resolve()), () => createElement("a", { href }, "x")),
       "/b": () => createElement("g", null),
     });
     await tick();
@@ -902,7 +778,7 @@ describe("routes() into an <svg>: an adopted <a> keeps its props for as long as 
     expect(a.getAttribute("href")).toBe("#2");
     navigate("/b");
     href.set("#3");
-    expect(a.getAttribute("href")).toBe("#2"); // before: "#3", it outlived the route
+    expect(a.getAttribute("href")).toBe("#2"); // went with the route
     dispose();
   });
 });

@@ -166,7 +166,7 @@ const { cell, row, tool, addModal } = bento();
 
 /** People on the box. Signed in: you, everyone here and anyone's link, someone new. Else: who are you? */
 export function PeopleCell() {
-  const body = <>{when(me, (m$) => <Everyone who={m$.peek() as Person} />, () => when(me.map((m) => m === null), () => <WhoAreYou />))}</>;
+  const body = <>{when(me, (_, m$) => <Everyone who={m$.peek() as Person} />, () => when(me.map((m) => m === null), () => <WhoAreYou />))}</>;
   return cell({ name: "People", body });
 }
 

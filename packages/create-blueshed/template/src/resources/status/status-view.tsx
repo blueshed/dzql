@@ -16,16 +16,16 @@ export function StatusCell() {
   const body = (
     <div id="status">
       {when(failed, () => <p class="help">The status could not be loaded.</p>)}
-      {when(status, (s$) => (
+      {when(status, ({ persistent, uptime, bun }) => (
         <>
           <p class="help">
-            {s$.map((s) =>
-              s.persistent
+            {persistent.map((p) =>
+              p
                 ? "Your data is on a mounted volume: it survives redeploys."
                 : "Your data is ephemeral: it resets on redeploy.",
             )}
           </p>
-          <p class="meta">{s$.map((s) => `Uptime ${s.uptime}s · Bun ${s.bun}`)}</p>
+          <p class="meta">Uptime {uptime}s · Bun {bun}</p>
         </>
       ))}
     </div>

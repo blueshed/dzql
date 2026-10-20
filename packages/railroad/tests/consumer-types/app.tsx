@@ -18,6 +18,7 @@ import {
   inject,
   createLogger,
   collection,
+  resolved,
 } from "@blueshed/railroad";
 import type { Dispose, JSX, Row } from "@blueshed/railroad";
 import type { JSX as RuntimeJSX } from "@blueshed/railroad/jsx-runtime";
@@ -44,8 +45,15 @@ void inject(STORE).name;
 const log = createLogger("[consumer]");
 log.info("typechecks");
 
-// Async component — must type-check as a JSX tag (JSX.ElementType admits the
-// thunk resolution) and accept the universal `fallback` IntrinsicAttribute.
+// Data that comes later is a signal: the component stays synchronous, and the
+// branch is handed what the promise settled as, its fields narrowed by `in`.
+function Profile(props: { id: number }) {
+  return when(resolved(Promise.resolve({ name: "ada" })), (r) => (
+    "error" in r ? <p>no profile</p> : <div data-id={props.id}>{r.value.map((u) => u.name)}</div>
+  ), () => <p>loading</p>);
+}
+
+// An async component doesn't compile: a component returns a Node.
 async function AsyncProfile(props: { id: number }) {
   await Promise.resolve();
   return () => <div>{props.id}</div>;
@@ -68,7 +76,8 @@ function App(): JSX.Element {
         ))}
         {/* a collection is a list's source, its key the keyFn; at(key) follows one row */}
         {list(jobs, jobs.key, (job: Row<Job>) => <li>{job.name}</li>)}
-        {when(jobs.at(1), (j$) => <li>{j$.map((j) => j.name)}</li>)}
+        {/* when() hands an object as list() hands a row: its fields */}
+        {when(jobs.at(1), ({ name }) => <li>{name}</li>)}
       </ul>
       {/* index-based overload — `item` is raw Item */}
       {list(rows, (item, i) => (
@@ -79,9 +88,13 @@ function App(): JSX.Element {
       {when(count.map((c) => c > 0), () => (
         <p>positive</p>
       ))}
-      {/* v$ is the current truthy value, narrowed: no `!` */}
-      {when(detail, (d$) => <p>{d$.map((d) => d.id)}</p>, () => <p>none</p>)}
-      <AsyncProfile id={1} fallback={() => <p>loading</p>} />
+      {/* the truthy value, narrowed (no `!`): its fields, then v$, its own signal */}
+      {when(detail, ({ id }, d$) => <p title={d$.map((d) => d.id)}>{id}</p>, () => <p>none</p>)}
+      {/* a primitive is its signal */}
+      {when(count, (n$) => <p>{n$.map((n) => n + 1)}</p>)}
+      <Profile id={1} />
+      {/* @ts-expect-error -- an async component is not a JSX tag */}
+      <AsyncProfile id={1} />
     </div>
   );
 }
@@ -125,12 +138,11 @@ if (root) {
     // keyed (the default): the handler re-runs when the params change; params are inferred
     "/sites/:id": ({ id }) => <p>{id}</p>,
     "/said/:id": { keyed: true, handler: ({ id }) => <p>{id}</p> },
-    "/load/:id": {
-      keyed: true,
-      handler: async ({ id }) => {
-        await Promise.resolve();
-        return () => <p>{id}</p>;
-      },
+    "/load/:id": ({ id }) => when(resolved(Promise.resolve(id)), (r) => <p>{"error" in r ? "?" : r.value}</p>),
+    // @ts-expect-error -- an async handler is not a route handler
+    "/async/:id": async ({ id }) => {
+      await Promise.resolve();
+      return () => <p>{id}</p>;
     },
     // keyed: false, a layout: runs once, and follows its params through params$
     "/users/:id": { keyed: false, handler: (_p, params$) => {

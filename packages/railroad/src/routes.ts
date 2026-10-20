@@ -23,13 +23,14 @@
  * (split on "?" yourself if you need it), and a trailing slash is a real
  * empty segment: "/users/42/" does NOT match "/users/:id".
  *
- * Handlers receive (params, params$) and return a Node, or a Promise of a
- * THUNK (() => Node): railroad runs the thunk under a scope it owns, so
- * reactive bindings built after the first await are disposed on navigation.
- * A promise that resolves to a bare Node is an error (onError, or the
- * console): what it built after its first await would have no owner scope.
- * A handler, like a component, runs untracked: a .get() in it is a one-shot
- * read that doesn't subscribe the router (and warns, in development).
+ * Handlers receive (params, params$) and return a Node, synchronously. Data
+ * that comes later is a signal, when(resolved(promise), …), so what its
+ * branch builds is in the handler's scope however late it comes:
+ *   "/users/:id": ({ id }) => when(resolved(load(id)), (r) => …, () => <p>…</p>)
+ * An async handler is an error (onError, or the console): what it built after
+ * its first await would have no owner scope. A handler, like a component, runs
+ * untracked: a .get() in it is a one-shot read that doesn't subscribe the
+ * router (and warns, in development).
  *
  * Routes are keyed: a handler runs again whenever the matched params change
  * (compared value by value), the previous run disposed, as Solid's
@@ -70,7 +71,7 @@
 
 import { Signal, signal, computed, effect, untrack, untrackRender, scoped, trackDispose } from "./signals";
 import type { Dispose, ReadonlySignal } from "./signals";
-import { adoptIntoSvg, renderThunk } from "./jsx";
+import { adoptIntoSvg } from "./jsx";
 
 // The hash as a signal, shared by every route() and routes() through one
 // hashchange listener, counted.
@@ -159,12 +160,11 @@ export function navigate(path: string): void {
   hashSignal?.set(location.hash.slice(1) || "/");
 }
 
-/** A route handler: returns a Node, or a Promise that resolves to a thunk
- *  (`() => Node`) railroad runs under a scope it owns. */
+/** A route handler: returns a Node, synchronously. */
 type RouteHandler = (
   params: Record<string, string>,
   params$: ReadonlySignal<Record<string, string>>,
-) => Node | Promise<() => Node>;
+) => Node;
 
 /** A table entry: a handler, or `{ handler, keyed }`. Keyed (the default) the
  *  handler runs again (a fresh scope, the old one disposed) whenever the
@@ -185,14 +185,8 @@ export function routes(
   let activePattern: string | null = null;
   let activeParams: Signal<Record<string, string>> | null = null;
   let activeDispose: Dispose | null = null;
-  let runId = 0;
-  let asyncPending = false;
 
   function teardown() {
-    // Bumping runId invalidates any in-flight async render: when its promise
-    // settles, the myRunId !== runId guard disposes that render's own scope.
-    runId++;
-    asyncPending = false;
     if (activeDispose) activeDispose();
     activeDispose = null;
     activePattern = null;
@@ -200,8 +194,8 @@ export function routes(
     target.replaceChildren();
   }
 
-  // Show onError's fallback for a failed render (one that threw, rejected or
-  // resolved to no thunk), or log it, and forget the route so the next
+  // Show onError's fallback for a failed render (one that threw, or returned
+  // no Node), or log it, and forget the route so the next
   // navigation runs it again. A throwing onError is logged, never thrown, so
   // it can't escape as an unhandled rejection. The fallback renders under a
   // scope of its own, disposed when the router moves on, as a handler's is.
@@ -226,65 +220,28 @@ export function routes(
   }
 
   function run(handler: RouteHandler, params: Record<string, string>) {
-    const myRunId = ++runId;
     const params$ = signal(params);
     activeParams = params$;
-    let ran: { value: Node | Promise<() => Node>; dispose: Dispose };
+    let ran: { value: Node; dispose: Dispose };
     try {
       ran = scoped(() => {
         const r: unknown = untrackRender("a route handler", handler, () => handler(params, params$));
-        if (r instanceof Promise) return r as Promise<() => Node>;
-        if (!(r instanceof Node)) throw new Error("[railroad] a route handler returned a non-Node — return DOM, or a Promise of a thunk.");
-        return adoptIntoSvg(r, target);
+        if (r instanceof Node) return adoptIntoSvg(r, target);
+        throw new Error(r instanceof Promise
+          ? "[railroad] a route handler is async: what it builds after an await has no scope. Return DOM " +
+            "synchronously, and show the data that comes later as a signal: when(resolved(promise), …)."
+          : "[railroad] a route handler returned a non-Node — return DOM.");
       });
     } catch (err) {
       return failed(err, "[railroad/routes] handler threw:");
     }
-    const { value: result, dispose: scopeDispose } = ran;
-    if (!(result instanceof Promise)) {
-      activeDispose = scopeDispose;
-      target.appendChild(result);
-      return;
-    }
-
-    // Async. The handler's scope has closed (never across an await) and holds
-    // what it made before its first one; the thunk it resolves to builds the
-    // rest under a scope of its own. A settlement after navigating away (a
-    // newer run) only disposes.
-    asyncPending = true;
-    // Run `step` only if this run is still the current one; a settlement
-    // after navigating away (a newer run) only disposes.
-    const settle = (step: () => void) => {
-      if (myRunId !== runId) return scopeDispose();
-      asyncPending = false;
-      step();
-    };
-    const asyncFailed = (err: unknown) => {
-      scopeDispose();
-      failed(err, "[railroad/routes] async handler failed:");
-    };
-    result.then(
-      (resolved) => settle(() => {
-        let built: { value: Node; dispose: Dispose };
-        try {
-          built = renderThunk(resolved, "a route handler", handler, target);
-        } catch (err) {
-          return asyncFailed(err);
-        }
-        activeDispose = () => {
-          built.dispose();
-          scopeDispose();
-        };
-        target.appendChild(built.value);
-      }),
-      (err) => settle(() => asyncFailed(err)),
-    );
+    activeDispose = ran.dispose;
+    target.appendChild(ran.value);
   }
 
   // Register the outer dispose into the caller's scope BEFORE creating the
   // effect, so dispose lands in the caller's scope (not the router's own
-  // internal one). run() keeps the dispose stack balanced across async first
-  // renders, so this is about attributing dispose to the right scope.
+  // internal one): this is about attributing dispose to the right scope.
   let disposeEffect: Dispose | null = null;
   let disposed = false;
   const dispose = () => {
@@ -307,13 +264,8 @@ export function routes(
       const { handler, keyed = true } = typeof entry === "function" ? { handler: entry } : entry;
       // Same pattern, new params: a keyed route (the default) runs again
       // whenever they differ. An unkeyed one has them pushed into params$, no
-      // teardown, unless a render for the old params is still in flight: its
-      // resolution would paint outdated content, and a handler that captured
-      // the initial `params` would never refresh, so tear down and run it again.
-      if (
-        pattern === activePattern && !asyncPending &&
-        !(keyed && !sameParams(params, activeParams!.peek()))
-      ) {
+      // teardown.
+      if (pattern === activePattern && !(keyed && !sameParams(params, activeParams!.peek()))) {
         activeParams!.set(params);
         return;
       }

@@ -6,6 +6,17 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### railroad: one way for a branch's value, one way for data that comes later (20 October, railroad #13, #7)
+
+- **A `when()` branch is handed its value as a keyed `list()` row is** (breaking): an object as its
+  fields, each a signal, then `v$`; `when(job, ({ status }) => …)` in place of
+  `(j$) => j$.map((j) => j.status)`. Moved across: railroad's example, tests and skill, delta's
+  lists and lobby examples, and create-blueshed's status view and evolve's auth reference; dzql
+  has no `when()`.
+- **An async component or route handler is no longer supported** (breaking): the thunk form and
+  the `fallback` prop are gone; data that comes later is `when(resolved(promise), …)`. Nothing
+  outside railroad's own tests used it; delta's rendering reference no longer mentions it.
+
 ### railroad's last workarounds (20 October, railroad #7-#11)
 
 - Data that comes later is `when(resolved(promise), ...)`; a route runs again when its params

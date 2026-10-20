@@ -384,7 +384,7 @@ describe.skipIf(noBrowser)("Bun.WebView — railroad fixture app", () => {
     expect(await evalStr(view, `said.join("\\n")`)).toContain(".get() in a render body (<View>)");
   });
 
-  test("async route resolves and renders", async () => {
+  test("a route's data that comes later: when(resolved()) shows it", async () => {
     await using view = new Bun.WebView({ width: 800, height: 600 });
     await view.navigate(url);
     await waitFor(
@@ -393,7 +393,7 @@ describe.skipIf(noBrowser)("Bun.WebView — railroad fixture app", () => {
     );
     await navHash(view, "#/slow");
 
-    // Handler resolves after 100ms — wait for it.
+    // The promise settles after 100ms — wait for it.
     const text = await waitFor(
       () => evalStr(view, `document.querySelector('[data-testid=slow-loaded]')?.textContent`),
       (v) => v === "loaded",

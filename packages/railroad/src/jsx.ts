@@ -3,13 +3,11 @@
  *
  * createElement(tag, props, ...children)
  *   - tag: string → creates HTML element (or SVG element inside <svg>)
- *   - tag: function → calls component function(props)
- *   - tag: async function → placeholder now, content when it resolves — the
- *     component must resolve to a THUNK (`return () => <div>…</div>`) so its
- *     post-await effects get an owner scope; optional `fallback` prop (a
- *     thunk) renders until settlement. See "Async components" below. Data that
- *     comes later is better a signal: when(resolved(promise), …) from a
- *     synchronous component needs neither the thunk nor the fallback.
+ *   - tag: function → calls component function(props), synchronously. Data
+ *     that comes later is a signal, when(resolved(promise), …): nothing made
+ *     after an await has a scope (browser JS has no AsyncContext), so an async
+ *     component (one returning a Promise) renders nothing, and in development
+ *     says so on the console.
  *   - props: attributes, event handlers (onclick etc), ref — applied after the
  *     children are appended, so a <select>'s value finds its <option>s and a
  *     ref sees the element whole
@@ -53,10 +51,13 @@
  *                                   them before a child of target
  *   when(signal, truthy, falsy?)  — conditional rendering; rebuilds the branch
  *                                   only when the condition's truthiness flips.
- *                                   truthy receives v$, a ReadonlySignal of the
- *                                   current truthy value (NonNullable<T>), so the
- *                                   branch follows a value change without a rebuild:
- *                                   when(detail, (d$) => <Site id={d$.map(d => d.id)} />)
+ *                                   truthy receives the current truthy value as a
+ *                                   list() row is (Row<NonNullable<T>>): an object
+ *                                   as its fields, each a ReadonlySignal, anything
+ *                                   else as its signal; then v$, the value's own
+ *                                   signal. So the branch follows a value change
+ *                                   without a rebuild:
+ *                                   when(detail, ({ id }) => <Site id={id} />)
  *   list(signal, keyFn, render)   — keyed reactive list; render receives the row as
  *                                   its fields, each a ReadonlySignal (Row<T>), so
  *                                   destructuring is right: ({ name }) => <li>{name}</li>;
@@ -74,8 +75,7 @@
  * error is rethrown. The throw leaves when()/list() on the first render (the
  * when() or list() still goes with the scope around it, with the rows made
  * beside it and whatever it builds later), and reaches the writer of the
- * condition or the items on an update. An async component's fallback that
- * throws has what it made disposed too, and the throw leaves the component.
+ * condition or the items on an update.
  *
  * A Signal made by another copy of railroad throws where it is given as a
  * child, a prop, a when() condition or a list() source: this copy can't track
@@ -232,14 +232,11 @@ export function createElement(
       // read and must not subscribe whatever effect is building it.
       const result = untrackRender("component", tag, () => tag(componentProps));
       if (!(result instanceof Promise)) return result;
-      // Async component. Its synchronous prefix (before the first await) ran
-      // under this component scope; the continuation's creations are owned via
-      // the thunk contract — see asyncComponent(). Called here, inside the
-      // scope, so its teardown registers with the component.
-      const name = tag.name || "anonymous";
-      const fb = componentProps.fallback;
-      if (fb != null && typeof fb !== "function") warn?.fallbackNotAThunk(name, fb);
-      return asyncComponent(tag, name, result, typeof fb === "function" ? fb : undefined);
+      // An async component. What it makes after its first await has no scope
+      // (browser JS has no AsyncContext), so nothing could tear it down: it
+      // renders nothing, and in development says to use resolved().
+      warn?.asyncComponent(tag.name || "anonymous");
+      return document.createComment("async");
     });
     trackDispose(dispose); // the component goes with the scope around it
     return value;
@@ -340,10 +337,10 @@ export function adoptIntoSvg(result: Node, parent: Node | null): Node {
 
 // === Bracket comments ===
 //
-// when(), an async component's placeholder and each list() row keep their
-// content between two comments rather than as a node array captured at render,
-// so removal stays correct when SVG adoption swaps node identities after
-// capture, and nodes a nested when()/list() inserts later go with it.
+// when() and each list() row keep their content between two comments rather
+// than as a node array captured at render, so removal stays correct when SVG
+// adoption swaps node identities after capture, and nodes a nested
+// when()/list() inserts later go with it.
 
 // Remove every node between two bracket comments, leaving the brackets.
 function clearBetween(start: Node, end: Node): void {
@@ -352,12 +349,11 @@ function clearBetween(start: Node, end: Node): void {
   }
 }
 
-// A when() branch, or an async component's fallback then content: one piece
-// of content at a time between brackets, with the scope that made it. Its
-// teardown, registered in the scope around it, latches `disposed` (nothing
-// rebuilds after it: the brackets can still sit in a detached-but-parented
-// subtree, so a parent check isn't enough) and clears. Returned with the
-// fragment holding the brackets, for the caller to return.
+// A when() branch: one piece of content at a time between brackets, with the
+// scope that made it. Its teardown, registered in the scope around it, latches
+// `disposed` (nothing rebuilds after it: the brackets can still sit in a
+// detached-but-parented subtree, so a parent check isn't enough) and clears.
+// Returned with the fragment holding the brackets, for the caller to return.
 interface Bracket {
   start: Comment;
   end: Comment;
@@ -391,96 +387,6 @@ function bracket(name: string): [Bracket, DocumentFragment] {
     b.clear();
   });
   return [b, frag];
-}
-
-// === Async components — thunk resolution ===
-//
-// A function component may be async. Its synchronous prefix (before the first
-// await) runs under the component's dispose scope like any component. The
-// continuation is the hard part: browser JS has no AsyncContext, so no library
-// can re-establish "current owner scope" around code that resumes after an
-// await — which is why a bare `Promise<Node>` resolution can never have its
-// post-await effects torn down. The contract that is correct today: the
-// component RESOLVES TO A THUNK, giving railroad a synchronous moment it owns:
-//
-//   async function Profile() {
-//     const user = await fetchUser();          // async work — no scope needed
-//     return () => <div>{user.name}</div>;     // runs under a railroad scope
-//   }
-//   <Profile fallback={() => <p>loading…</p>} />
-//
-// createElement returns a bracketed placeholder immediately (rendering the
-// optional `fallback` thunk until settlement). On resolution the thunk runs
-// inside a fresh scope whose disposer joins the component's cleanup, so
-// teardown is correct no matter when it happens — including before the
-// promise settles (the thunk then never runs). A resolution that is a bare
-// Node gets a pointed console.error naming the one-word fix. routes() runs an
-// async handler's resolution the same way.
-
-/**
- * @internal -- asyncComponent() and routes(): run what an async render
- * resolved to, a thunk, as a render body under a scope of its own, adopting
- * what it built into `parent`'s namespace there. Throws, having disposed what
- * it made, if `resolution` isn't a thunk, the thunk throws, or it returns no
- * Node. `where` names the render, as for untrackRender: "component" (then
- * by `body`'s name) or a phrase such as "a route handler".
- */
-export function renderThunk(
-  resolution: unknown,
-  where: string,
-  body: Function,
-  parent: Node,
-): { value: Node; dispose: Dispose } {
-  const who = where === "component" ? `<${body.name || "anonymous"}>` : where;
-  if (typeof resolution !== "function") {
-    throw new Error(
-      `[railroad] ${who} resolved to ${resolution instanceof Node ? "a Node" : "a non-thunk value"} — ` +
-        "it must resolve to a thunk: `return () => <div>…</div>`. " +
-        "Effects created after an await have no owner scope; the thunk gives railroad " +
-        "a synchronous moment to provide one.",
-    );
-  }
-  return scoped(() => {
-    const node = untrackRender(where, body, resolution as () => unknown);
-    if (!(node instanceof Node)) throw new Error(`[railroad] ${who}'s thunk returned a non-Node — return DOM from the thunk.`);
-    return adoptIntoSvg(node, parent);
-  });
-}
-
-function asyncComponent(
-  component: Function,
-  name: string,
-  pending: Promise<unknown>,
-  fallback: (() => Node) | undefined,
-): Node {
-  const [b, frag] = bracket(`async:${name}`);
-  if (fallback) {
-    // Own sub-scope so the fallback's effects die at the swap, not with the
-    // whole component. A fallback that throws has what it made disposed, and
-    // the throw leaves the component.
-    b.fill(scoped(() => untrackRender("a fallback", fallback, fallback)));
-  }
-
-  pending.then(
-    (resolution) => {
-      if (b.disposed) return;
-      b.clear(); // the fallback goes on every settlement path
-      const parent = b.end.parentNode;
-      if (!parent) return; // brackets removed out of contract: nowhere to render
-      try {
-        b.fill(renderThunk(resolution, "component", component, parent));
-      } catch (err) {
-        console.error(`[railroad/jsx] <${name}> async component failed:`, err);
-      }
-    },
-    (err) => {
-      if (b.disposed) return;
-      b.clear(); // a stuck fallback would hide the failure
-      console.error(`[railroad/jsx] <${name}> async component rejected:`, err);
-    },
-  );
-
-  return frag;
 }
 
 // === Child rendering ===
@@ -563,18 +469,72 @@ export function mount(target: Element, render: () => Node, options?: MountOption
   return dispose;
 }
 
+// === Rows: a value as its fields ===
+
+/**
+ * A value as a keyed list() row and a when() branch receive it: for an object,
+ * its fields, each a ReadonlySignal of that field (so `({ name, status }) => …`
+ * destructures it and binds each); for anything else (a primitive, an array),
+ * its signal.
+ */
+export type Row<T> = [T] extends [readonly unknown[]] ? ReadonlySignal<T>
+  : [T] extends [object] ? { readonly [K in keyof T]-?: ReadonlySignal<T[K]> }
+  : ReadonlySignal<T>;
+
+// The fields of a value: each a projection of value$, made the first time it
+// is read and kept, so every read of `row.name` is the one signal. They are
+// made under a scope of their own, not the reader's (a field first read in a
+// nested when() branch must outlive that branch), and go with `release`, which
+// the row or branch calls when it goes. Only keys the value has, or doesn't
+// share with Object.prototype, are fields: String(row) still works. Whether it
+// is fields is decided by the first value. `inWhen` says whose it is, for the
+// warning.
+function rowOf<T>(value$: ReadonlySignal<T>, inWhen: boolean): { row: Row<T>; release: Dispose } {
+  const own: Dispose[] = [];
+  const release = () => { for (const d of own.splice(0)) d(); };
+  const value = () => value$.peek() as object;
+  const first = value();
+  if (typeof first !== "object" || first === null || Array.isArray(first)) return { row: value$ as Row<T>, release };
+  const fields = new Map<string, ReadonlySignal<unknown>>();
+  const field = (k: string) => {
+    let s = fields.get(k);
+    if (!s) {
+      if (warn && (k === "get" || k === "peek" || k === "map") && !(k in value())) warn.rowAsSignal(k, inWhen);
+      const made = scoped(() => computed(() => (value$.get() as Record<string, unknown>)[k]));
+      own.push(made.dispose);
+      fields.set(k, (s = made.value));
+    }
+    return s;
+  };
+  const row = new Proxy({}, {
+    get: (target, k) =>
+      typeof k === "symbol" || (k in target && !Object.hasOwn(value(), k)) ? Reflect.get(target, k) : field(k),
+    has: (_, k) => k in value(),
+    ownKeys: () => Object.keys(value()),
+    getOwnPropertyDescriptor: (_, k) =>
+      typeof k === "string" && Object.hasOwn(value(), k)
+        ? { configurable: true, enumerable: true, writable: false, value: field(k) }
+        : undefined,
+    set: () => false, // a value is changed at its source, never through its fields
+  }) as Row<T>;
+  return { row, release };
+}
+
 // === when() — conditional rendering ===
 // Swaps DOM nodes only when truthiness transitions (falsy↔truthy).
 // Value changes within the same branch (e.g. "a" → "b") do NOT re-render;
-// they reach the truthy branch through its v$ argument, a ReadonlySignal of the
-// current truthy value that notifies whenever the condition does while truthy
-// (an in-place touch() included), so the branch binds to it:
+// they reach the truthy branch through its arguments: the value as a list()
+// row is (its fields for an object, its signal otherwise), then v$, a
+// ReadonlySignal of the current truthy value that notifies whenever the
+// condition does while truthy (an in-place touch() included). So the branch
+// binds to them:
 //   when(isLoggedIn, () => <Dashboard />, () => <Login />)
-//   when(detail, (d$) => <SiteDetail id={d$.map(d => d.id)} />)
+//   when(detail, ({ id, name }) => <SiteDetail id={id} name={name} />)
+//   when(count, (n$) => <p>{n$}</p>)
 
 export function when<T>(
   condition: ReadonlySignal<T> | (() => T),
-  truthy: (value$: ReadonlySignal<NonNullable<T>>) => Node,
+  truthy: (value: Row<NonNullable<T>>, value$: ReadonlySignal<NonNullable<T>>) => Node,
   falsy?: () => Node,
 ): Node {
   if (!hasActiveDisposeScope()) warn?.scopeless("when");
@@ -616,14 +576,22 @@ export function when<T>(
     b.clear();
     value$ = isTruthy ? signal(value as NonNullable<T>, { equals: () => false }) : null;
     const v$ = value$;
-    const branch = scoped(() => {
-      const node = v$
-        ? untrackRender("a when() branch", truthy, () => truthy(v$))
-        : falsy ? untrackRender("a when() branch", falsy, falsy) : null;
-      return node && adoptIntoSvg(node, parent);
-    });
+    // The value's fields, released with the branch, or at its throw.
+    const fields = v$ && rowOf(v$, true);
+    let branch: { value: Node | null; dispose: Dispose };
+    try {
+      branch = scoped(() => {
+        const node = fields
+          ? untrackRender("a when() branch", truthy, () => truthy(fields.row, v$!))
+          : falsy ? untrackRender("a when() branch", falsy, falsy) : null;
+        return node && adoptIntoSvg(node, parent);
+      });
+    } catch (err) {
+      fields?.release();
+      throw err;
+    }
     wasTruthy = isTruthy;
-    b.fill(branch);
+    b.fill(fields ? { value: branch.value, dispose: () => { branch.dispose(); fields.release(); } } : branch);
   }
 
   // Only the condition is tracked; the branch renders untracked, so a .get()
@@ -656,46 +624,6 @@ export function when<T>(
 // Each row is bracketed by <!--row--> / <!--/row--> comment markers, so nodes
 // that a when() (or nested list()) at the row's top level inserts beside its
 // anchor after render time still move and remove with the row.
-
-/**
- * A keyed list() row, as render receives it: for a row that is an object, its
- * fields, each a ReadonlySignal of that field (so `({ name, status }) => …`
- * destructures it and binds each); for a primitive, its signal.
- */
-export type Row<T> = [T] extends [object] ? { readonly [K in keyof T]-?: ReadonlySignal<T[K]> } : ReadonlySignal<T>;
-
-// The fields of a row: each a projection of row$, made the first time it is
-// read and kept, so every read of `row.name` is the one signal. They are made
-// under a scope of their own, not the reader's (a field first read in a when()
-// branch must outlive that branch), and disposed with the row through `own`.
-// Only keys the row's value has, or doesn't share with Object.prototype, are
-// fields: String(row) still works.
-function rowOf<T>(row$: ReadonlySignal<T>, own: Dispose[]): Row<T> {
-  const value = () => row$.peek() as object;
-  if (typeof value() !== "object" || value() === null) return row$ as Row<T>;
-  const fields = new Map<string, ReadonlySignal<unknown>>();
-  const field = (k: string) => {
-    let s = fields.get(k);
-    if (!s) {
-      if (warn && (k === "get" || k === "peek" || k === "map") && !(k in value())) warn.rowAsSignal(k);
-      const made = scoped(() => computed(() => (row$.get() as Record<string, unknown>)[k]));
-      own.push(made.dispose);
-      fields.set(k, (s = made.value));
-    }
-    return s;
-  };
-  return new Proxy({}, {
-    get: (target, k) =>
-      typeof k === "symbol" || (k in target && !Object.hasOwn(value(), k)) ? Reflect.get(target, k) : field(k),
-    has: (_, k) => k in value(),
-    ownKeys: () => Object.keys(value()),
-    getOwnPropertyDescriptor: (_, k) =>
-      typeof k === "string" && Object.hasOwn(value(), k)
-        ? { configurable: true, enumerable: true, writable: false, value: field(k) }
-        : undefined,
-    set: () => false, // a row is changed at its source, never through its fields
-  }) as Row<T>;
-}
 
 // Keyed form. Real overloads (not a union-typed param) so the keyFn's item
 // parameter is inferred from T; the bare-arrow form `list(rows, r => r.id, ...)`
@@ -821,9 +749,7 @@ export function list<T>(
         if (hasKeyFn) {
           const itemSig = signal(arr[i]!);
           const indexSig = signal(i);
-          const own: Dispose[] = []; // the row's fields
-          const fields = rowOf(itemSig, own);
-          const release = () => { for (const d of own.splice(0)) d(); };
+          const { row: fields, release } = rowOf(itemSig, false);
           row = scopedRow(() => untrackRender("a list() row", maybeRender!, () => maybeRender!(fields, indexSig, itemSig)));
           if (!row) { // left out: the next sync finds it new
             release();
@@ -1006,15 +932,8 @@ type SvgTags = {
 export declare namespace createElement {
   export namespace JSX {
     export type Element = globalThis.Node;
-    // Admits async components (thunk resolution) as JSX tags — TS 5.1+.
-    export type ElementType =
-      | string
-      | ((props: any) => globalThis.Node | Promise<() => globalThis.Node>);
-    export interface IntrinsicAttributes {
-      /** Loading view for an async component — rendered immediately, swapped
-       *  out when the component's promise settles. Sync components ignore it. */
-      fallback?: () => globalThis.Node;
-    }
+    // A component returns a Node, synchronously: an async one doesn't compile.
+    export type ElementType = string | ((props: any) => globalThis.Node);
     /** Every HTML and SVG tag, typed from the DOM's element types; a custom
      *  element (a name with a hyphen) takes any attribute. */
     export interface IntrinsicElements extends HtmlTags, SvgTags {
@@ -1028,6 +947,5 @@ export declare namespace createElement {
 export declare namespace JSX {
   export type Element = createElement.JSX.Element;
   export type ElementType = createElement.JSX.ElementType;
-  export interface IntrinsicAttributes extends createElement.JSX.IntrinsicAttributes {}
   export interface IntrinsicElements extends createElement.JSX.IntrinsicElements {}
 }

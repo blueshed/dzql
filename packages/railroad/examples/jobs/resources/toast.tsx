@@ -22,7 +22,7 @@ function Toast({ id, dismiss }: { id: number; dismiss: () => void }): JSX.Elemen
   trackDispose(() => clearTimeout(timer)); // a cleanup of the toast's own scope
   return (
     <div class="toast" role="status" data-id={id}>
-      {when(jobs.at(id), (j$) => <span class="what">{j$.map((j) => `#${j.id} ${j.name}: ${j.status}`)}</span>,
+      {when(jobs.at(id), ({ name, status }) => <span class="what">#{id} {name}: {status}</span>,
         () => <span class="what">#{id} has been removed</span>)}
       <button class="retry" onclick={() => feed.send({ op: "retry", id })}>retry</button>
       <button class="dismiss" onclick={dismiss}>dismiss</button>

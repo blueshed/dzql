@@ -7,6 +7,7 @@ import {
   routes,
   navigate,
   when,
+  resolved,
   list,
   provide,
   inject,
@@ -143,15 +144,15 @@ function SvgPage() {
   );
 }
 
-// === Slow async route ===
-async function SlowPage(): Promise<() => Node> {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  return () => (
+// === Slow route: data that comes later, a signal ===
+function SlowPage() {
+  const later = new Promise<string>((resolve) => setTimeout(() => resolve("loaded"), 100));
+  return when(resolved(later), (r) => (
     <section data-route="slow">
-      <h1 data-testid="slow-loaded">loaded</h1>
+      <h1 data-testid="slow-loaded">{"error" in r ? "failed" : r.value}</h1>
       <a data-testid="back-home" href="#/">home</a>
     </section>
-  );
+  ), () => <p data-testid="slow-wait">loading</p>);
 }
 
 const root = document.getElementById("root")!;
@@ -160,6 +161,6 @@ routes(root, {
   "/list": () => <ListPage />,
   "/users/:id": { keyed: false, handler: usersHandler }, // stays mounted: params$ follows
   "/svg": () => <SvgPage />,
-  "/slow": () => SlowPage(),
+  "/slow": () => <SlowPage />,
 });
 

@@ -23,7 +23,7 @@ mount(document.getElementById("root")!, () => (
     <h1>Lists</h1>
     <p class="note">{said}</p>
     {when(me,
-      (me$) => <><Me /><ListsView me={me$.peek()} /><PeopleView /></>,
+      (_, me$) => <><Me /><ListsView me={me$.peek()} /><PeopleView /></>,
       () => when(me.map((m) => m === null), () => <WhoAreYou />, () => <div class="pending">connecting…</div>))}
   </>
 ));

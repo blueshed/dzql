@@ -1129,11 +1129,12 @@ describe("an app's production build drops the development warnings", () => {
     "A second copy of @blueshed/railroad",
     "effect callbacks must be synchronous",
     "expects a function but got", // an on* prop
-    "fallback must be a thunk",
+    "is async, and renders nothing", // an async component
     "A reactive child held a DOM Node",
     "created outside a dispose scope",
     "duplicate keys detected",
     "the effect run that made it was disposed", // a computed kept from an effect's run
+    "each a signal ({ name, status })", // a row or a when() value read as a signal
   ];
 
   test("their text is in a development bundle and not in a production one", async () => {

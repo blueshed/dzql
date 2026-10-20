@@ -7,19 +7,18 @@ type User = { name: string };
 const load = (url: string) => fetch(url).then((r) => r.json() as Promise<User>);
 
 function Profile() {
-  return when(resolved(load("/api/me")), (r$) => {
-    const r = r$.peek();                          // settled: it never changes again
-    return "error" in r ? <p class="error">no profile</p> : <div>{r.value.name}</div>;
+  return when(resolved(load("/api/me")), (r) => {
+    if ("error" in r) return <p class="error">no profile</p>;
+    const user = r.value.peek();                  // settled: it never changes again
+    return <div>{user.name}</div>;
   }, () => <p>loading…</p>);
 }
 
 mount(document.getElementById("profile")!, () => <Profile />);
 
 routes(document.getElementById("root")!, {
-  "/users/:id": ({ id }) => when(resolved(load(`/api/users/${id}`)), (r$) => {
-    const r = r$.peek();
-    return "error" in r ? <p class="error">no such user</p> : <h1>{r.value.name}</h1>;
-  }),
+  "/users/:id": ({ id }) => when(resolved(load(`/api/users/${id}`)), (r) =>
+    "error" in r ? <p class="error">no such user</p> : <h1>{r.value.peek().name}</h1>),
 });
 ```
 
@@ -30,10 +29,10 @@ it comes (`JobLog`), and `NewJobPage`, which waits for the runners, in
 `resources/jobs/jobs-view.tsx`; async work started from an effect in
 `resources/runners/runners-view.tsx`.
 
-- `resolved()` settles once and never changes again, so the branch reads it with `r$.peek()`. `"error" in r` tells the two apart; TypeScript won't let `r.value` be read until the error is ruled out. A rejection is that `{ error }`, never an unhandled rejection.
+- `when()` hands the branch what it settled as, `{ value }` or `{ error }`, as its fields ([when-list](when-list.md)). `"error" in r` tells the two apart; TypeScript won't let `r.value` be read until the error is ruled out. It settles once and never changes again, so `r.value.peek()` reads it. A rejection is that `{ error }`, never an unhandled rejection.
 - `when()`'s falsy branch is the wait; it goes when the promise settles.
 - Left before it settles (a navigation, a branch swapped out), nothing is built.
 - A route is keyed, so `({ id }) => when(resolved(load(id)), …)` loads again for each id. A handler that throws goes to `routes()`' `onError`.
 - For streams or several stages rather than one swap, an effect writes a signal and `when()` shows it.
 - `effect(async () => …)` is an error (logged in development): start the async work from a synchronous effect and write the result to a signal.
-- An `async` component or handler is still accepted, for code written before `resolved()`: it must resolve to a thunk (`return () => <div/>`), with a `fallback` thunk prop for the wait. Write new ones with `resolved()`.
+- An `async` component or handler doesn't compile (a component returns a Node). Run anyway, a component renders nothing and says why in development; a handler goes to `onError`.

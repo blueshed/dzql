@@ -21,15 +21,15 @@ The contract is each source file's JSDoc header and its types: `signals.ts`, `js
 
 ## What bites
 
-1. No `.get()` in JSX or a render body (component, `when()` branch, `list()` row, route handler, `mount()`'s render): it reads once and subscribes nothing. Bind `{count}` or `{() => …}`; `.peek()` for a deliberate one-shot. → jsx
+1. No `.get()` in JSX or a render body (component, `when()` branch, `list()` row, route handler, `mount()`'s render): it reads once and subscribes nothing. Bind `{count}` or `{() => …}`; `.peek()` for a one-shot. → jsx
 2. A function child returns text, not a Node: `when()` for an element, `list()` for many. → jsx
-3. A keyed `list()` row is its fields, each a signal: `({ name }) => <li>{name}</li>`. Keys unique and stable. → when-list
+3. A keyed `list()` row, or a `when()` value, is its fields, each a signal: `({ name }) => <li>{name}</li>`; a primitive is its signal. Keys unique and stable. → when-list
 4. An array that changes needs `list()`; a plain `.map()` is for a static array. → when-list
-5. `when()` rebuilds only when truthiness flips: read the value through `v$`. A route runs again when its params change, so `({ id }) => …` is right; a layout is `{ keyed: false, handler }`. → when-list, routes
+5. `when()` rebuilds only when truthiness flips; its branch binds what it is handed. A route runs again when its params change, so `({ id }) => …` is right; a layout is `{ keyed: false, handler }`. → when-list, routes
 6. Effects, `when()` and `list()` are disposed only inside a scope (component, route handler, branch, row, `mount()`); an event handler is not one. An effect run owns what its body makes: what must outlive it is made outside. → scopes
 7. Handlers are lowercase functions: `onclick={() => …}`, never `onClick`, a call, or a Signal. `oninput` per keystroke; `onchange` on commit. → jsx
-8. Data that comes later is a signal: `when(resolved(promise), (r$) => …, () => <p>wait</p>)` in a synchronous component; never `await` first. `effect(async …)` is an error. → async
-9. Rows changed one at a time (a feed) are a `collection(key)`: it replaces the row it changes, so `list()` updates that row alone, and `at(id)` follows one. Never change a row in place. → realtime
+8. Data that comes later is a signal: `when(resolved(promise), (r) => …, () => <p>wait</p>)`. Components, handlers and effects are never `async`. → async
+9. Rows changed one at a time are a `collection(key)`: it replaces the row it changes, so `list()` updates that row alone, and `at(id)` follows one. Never change a row in place. → realtime
 10. Routes match in declaration order, on segments only: no query strings, a trailing slash is a segment. → routes
 11. One copy of railroad per page, or signals silently stop crossing. → [one-copy](reference/one-copy.md)
 

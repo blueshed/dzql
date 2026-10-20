@@ -436,15 +436,15 @@ describe("an adopted SVG <a> keeps its props for as long as its render, and no l
     expect(a.getAttribute("href")).toBe("#2"); // before: "#3", it outlived the mount
   });
 
-  test("an async component's thunk: gone with the component", async () => {
+  test("a when(resolved()) branch built late: gone with the component", async () => {
     const href = signal("#1");
-    async function Link() {
-      await Promise.resolve();
-      return () => <a href={href}>x</a>;
+    const d = defer<string>();
+    function Link() {
+      return when(resolved(d.promise), () => <a href={href}>x</a>);
     }
     const svg = document.createElementNS(SVG_NS, "svg");
     const dispose = mount(svg, () => <g><Link /></g>);
-    await flush();
+    d.resolve("ok");
     await flush();
     const a = svg.querySelector("a")!;
     expect(a.namespaceURI).toBe(SVG_NS);
@@ -452,7 +452,7 @@ describe("an adopted SVG <a> keeps its props for as long as its render, and no l
     expect(a.getAttribute("href")).toBe("#2");
     dispose();
     href.set("#3");
-    expect(a.getAttribute("href")).toBe("#2"); // before: "#3", it outlived the component
+    expect(a.getAttribute("href")).toBe("#2"); // went with the component
   });
 });
 
@@ -962,7 +962,8 @@ describe("component error handling", () => {
 
 // An async component had to resolve to a thunk, `return () => <div/>`, for what it built after
 // its await to have a scope (#7). A promise as a signal keeps the component synchronous: when()
-// shows it, and its branch is built under when()'s scope however late the promise settles.
+// shows it, and its branch is built under when()'s scope however late the promise settles. The
+// branch is handed what it settled as, as when() hands any object: its fields, `value` or `error`.
 describe("resolved(): a promise as a signal, shown by when()", () => {
   test("null until it settles, then { value } or { error }, once", async () => {
     const ok = defer<number>();
@@ -983,11 +984,10 @@ describe("resolved(): a promise as a signal, shown by when()", () => {
     const theme = signal("light");
     let runs = 0;
     function Profile() {
-      return when(resolved(d.promise), (r$) => {
-        const r = r$.peek();
+      return when(resolved(d.promise), (r) => {
         if ("error" in r) return <p>failed</p>;
         effect(() => { theme.get(); runs++; }); // made after the promise settled
-        return <p class={theme}>{r.value.name}</p>;
+        return <p class={theme}>{r.value.peek().name}</p>;
       }, () => <p>loading</p>);
     }
     const root = document.createElement("div");
@@ -1009,10 +1009,9 @@ describe("resolved(): a promise as a signal, shown by when()", () => {
     const failing = defer<string>();
     const late = defer<string>();
     let built = 0;
-    const show = (p: Promise<string>) => () => when(resolved(p), (r$) => {
+    const show = (p: Promise<string>) => () => when(resolved(p), (r) => {
       built++;
-      const r = r$.peek();
-      return <p>{"error" in r ? `failed: ${(r.error as Error).message}` : r.value}</p>;
+      return <p>{"error" in r ? `failed: ${(r.error.peek() as Error).message}` : r.value}</p>;
     });
     const root = document.createElement("div");
     const one = mount(root, show(failing.promise));
@@ -1029,190 +1028,32 @@ describe("resolved(): a promise as a signal, shown by when()", () => {
   });
 });
 
-describe("async components: thunk resolution + fallback", () => {
-  beforeEach(() => { document.body.innerHTML = ""; });
-  test("renders via its thunk; fallback shows until resolution, then swaps out", async () => {
-    const d = defer<string>();
-    async function Profile() {
-      const name = await d.promise;
-      return () => <div class="profile">{name}</div>;
-    }
-    const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mount(root, () => (
-      <main>
-        <Profile fallback={() => <p>loading…</p>} />
-      </main>
-    ));
-    expect(root.textContent).toBe("loading…");
-    d.resolve("Ada");
-    await tick();
-    expect(root.textContent).toBe("Ada");
-    expect(root.querySelector("p")).toBeNull(); // fallback removed
-    dispose();
-    expect(root.textContent).toBe("");
-  });
-
-  test("thunk-created effects are owned and die on teardown", async () => {
+// An async component resolved to a thunk, `return () => <div/>`, run under a scope railroad owned,
+// with a `fallback` thunk prop for the wait: a second way to show data that comes later, beside
+// when(resolved()) (#7). It is gone: an async component renders nothing, and in development says
+// to use resolved(). (Its type is an error too: a component returns a Node.)
+describe("an async component renders nothing, and says to use resolved()", () => {
+  test("nothing is rendered, before or after it settles; what its body made goes with it", async () => {
+    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
     const dep = signal(0);
     let runs = 0;
-    async function Live() {
-      await Promise.resolve();
-      return () => {
-        effect(() => { dep.get(); runs++; });
-        return <b>x</b>;
-      };
-    }
-    const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mount(root, () => <Live />);
-    await tick();
-    expect(runs).toBe(1);
-    dep.set(1);
-    expect(runs).toBe(2);
-    dispose();
-    dep.set(2);
-    expect(runs).toBe(2); // disposed with the component — the whole contract
-  });
-
-  test("pre-await effects are scoped; dispose before resolution drops the thunk", async () => {
-    const dep = signal(0);
-    let preRuns = 0;
     let thunkRuns = 0;
-    const d = defer<void>();
-    async function Widget() {
-      effect(() => { dep.get(); preRuns++; }); // sync prefix — component scope
-      await d.promise;
-      return () => { thunkRuns++; return <i>late</i>; };
-    }
+    const Old = (async () => {
+      effect(() => { dep.get(); runs++; }); // before its await: in the component's scope
+      await Promise.resolve();
+      return () => { thunkRuns++; return <p>late</p>; };
+    }) as unknown as () => Node;
     const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mount(root, () => <Widget fallback={() => <p>…</p>} />);
-    expect(preRuns).toBe(1);
-    expect(root.textContent).toBe("…");
-    dispose(); // before resolution
+    const dispose = mount(root, () => <div><Old /></div>);
+    await flush();
+    await flush();
+    expect(root.textContent).toBe(""); // before: the thunk's "late"
+    expect(thunkRuns).toBe(0);
+    expect(errorSpy.mock.calls.some(([m]) => String(m).includes("when(resolved(promise)"))).toBe(true);
+    dispose();
     dep.set(1);
-    expect(preRuns).toBe(1); // pre-await effect died with the scope
-    d.resolve();
-    await tick();
-    expect(thunkRuns).toBe(0); // resolution after dispose builds nothing
-    expect(root.textContent).toBe("");
-  });
-
-  test("a bare-Node resolution errors pointedly and renders nothing", async () => {
-    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-    async function Wrong() {
-      await Promise.resolve();
-      return (<div>oops</div>) as any; // Node, not a thunk — the old footgun
-    }
-    const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mount(root, () => <Wrong fallback={() => <p>…</p>} />);
-    await tick();
-    expect(root.textContent).toBe(""); // fallback cleared, node not inserted
-    expect(
-      // the error, which names the fix, is logged after the component's name
-      errorSpy.mock.calls.some((c) => c.some((arg) => String(arg).includes("resolve to a thunk"))),
-    ).toBe(true);
+    expect(runs).toBe(1);
     errorSpy.mockRestore();
-    dispose();
-  });
-
-  test("a thunk that returns no Node is reported and renders nothing", async () => {
-    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-    async function Wrong() {
-      await Promise.resolve();
-      return () => "text" as any; // a thunk, but of a string
-    }
-    const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mount(root, () => <Wrong fallback={() => <p>…</p>} />);
-    await tick();
-    expect(root.textContent).toBe("");
-    expect(errorSpy.mock.calls.some((c) => c.some((arg) => String(arg).includes("returned a non-Node")))).toBe(true);
-    errorSpy.mockRestore();
-    dispose();
-  });
-
-  test("a rejecting async component clears its fallback and reports", async () => {
-    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
-    const d = defer<never>();
-    async function Doomed() {
-      await d.promise;
-      return () => <span>never</span>;
-    }
-    const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mount(root, () => <Doomed fallback={() => <p>loading…</p>} />);
-    expect(root.textContent).toBe("loading…");
-    d.reject(new Error("boom"));
-    await tick();
-    expect(root.textContent).toBe(""); // no stuck spinner hiding the failure
-    expect(
-      errorSpy.mock.calls.some((c) => String(c[0]).includes("rejected")),
-    ).toBe(true);
-    errorSpy.mockRestore();
-    dispose();
-  });
-
-  test("async components as keyed list() rows: resolved content travels on reorder", async () => {
-    const rows = signal([{ id: 1, label: "one" }, { id: 2, label: "two" }]);
-    async function Title(props: { label: string }) {
-      await Promise.resolve();
-      return () => <span>{props.label}</span>;
-    }
-    const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mount(root, () =>
-      list(rows, (r) => r.id, ({ label }) => <Title label={label.peek()} />),
-    );
-    await tick(); // list sync, then each row's resolution
-    expect(root.textContent).toBe("onetwo");
-    rows.set([{ id: 2, label: "two" }, { id: 1, label: "one" }]);
-    expect(root.textContent).toBe("twoone"); // row brackets carry async content
-    dispose();
-    expect(root.textContent).toBe("");
-  });
-
-  // The fallback renders under a scope of its own, and one that threw kept what it made; the
-  // throw left the component before its teardown was registered, so nothing ever disposed it.
-  // Now what it made is disposed at the throw, which goes on as before.
-  test("a fallback that throws has what it made disposed, and the throw goes on", () => {
-    const probe = signal(0);
-    let partial = 0;
-    async function Slow() {
-      await new Promise(() => {});
-      return () => <p>never</p>;
-    }
-    const fallback = () => {
-      effect(() => { probe.get(); partial++; });
-      throw new Error("fallback failed");
-    };
-    pushDisposeScope();
-    expect(() => <Slow fallback={fallback} />).toThrow("fallback failed");
-    popDisposeScope()();
-    partial = 0;
-    probe.set(1);
-    expect(partial).toBe(0);
-  });
-
-  test("a non-thunk fallback warns and is ignored", async () => {
-    const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
-    async function P() {
-      await Promise.resolve();
-      return () => <span>ok</span>;
-    }
-    const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mount(root, () => <P fallback={(<p>eager</p>) as any} />);
-    expect(root.textContent).toBe(""); // eager Node ignored, not inserted
-    expect(
-      warnSpy.mock.calls.some((c) => String(c[0]).includes("fallback must be a thunk")),
-    ).toBe(true);
-    await tick();
-    expect(root.textContent).toBe("ok");
-    warnSpy.mockRestore();
-    dispose();
   });
 });
 
@@ -1803,54 +1644,96 @@ describe("when(): a branch that throws", () => {
   });
 });
 
-describe("when(cond, (v$) => …): the branch reads the current truthy value", () => {
+describe("when(cond, (value, v$) => …): the branch is handed the value as a list() row is", () => {
   // when() rebuilds only when truthiness flips, so a branch that read the value once kept the first
-  // one: /sites/42 → /sites/99 showed 42. The branch now gets the value as a signal.
-  test("a value change inside the truthy branch reaches v$ without a rebuild", () => {
-    const detail = signal<{ id: string } | null>({ id: "42" });
+  // one: /sites/42 → /sites/99 showed 42. The branch then got the value as one signal, v$, read
+  // field by field as v$.map((v) => v.x), where a keyed list() row is its fields (todo #13). Now it
+  // is handed the value as a row is: an object as its fields, each a signal, anything else as its
+  // signal; then v$.
+  test("an object is its fields: a value change reaches them without a rebuild", () => {
+    const detail = signal<{ id: string; name: string } | null>({ id: "42", name: "a" });
     let builds = 0;
     const root = document.createElement("div");
     const dispose = mount(root, () => (
       <div>
-        {when(detail, (d$) => {
+        {when(detail, ({ id, name }) => {
           builds++;
-          // No `!`: v$ is narrowed to the truthy value.
-          return <p>{d$.map((d) => d.id)}</p>;
+          // No `!`: the value is narrowed to the truthy one.
+          return <p>{id}:{name}</p>;
         }, () => <i>none</i>)}
       </div>
     ));
     const p = root.querySelector("p");
-    expect(root.textContent).toBe("42");
-    detail.set({ id: "99" });
-    expect(root.textContent).toBe("99");
+    expect(root.textContent).toBe("42:a"); // before: ":", a signal has no id
+    detail.set({ id: "99", name: "b" });
+    expect(root.textContent).toBe("99:b");
     expect(root.querySelector("p")).toBe(p); // same branch, not rebuilt
     detail.set(null);
     expect(root.textContent).toBe("none");
-    detail.set({ id: "7" });
-    expect(root.textContent).toBe("7");
+    detail.set({ id: "7", name: "c" });
+    expect(root.textContent).toBe("7:c");
     expect(builds).toBe(2);
     dispose();
   });
 
-  test("v$ follows an in-place touch(), as the condition does", () => {
+  test("a field is one signal; v$ comes second, and follows an in-place touch()", () => {
     const doc = signal<{ title: string } | null>({ title: "a" });
+    let same = false;
     const root = document.createElement("div");
-    const dispose = mount(root, () => <div>{when(doc, (d$) => <p>{d$.map((d) => d.title, { equals: () => false })}</p>)}</div>);
+    const dispose = mount(root, () => <div>{when(doc, (d, d$) => {
+      same = d.title === d.title && "title" in d;
+      return <p>{d$.map((v) => v.title, { equals: () => false })}</p>;
+    })}</div>);
+    expect(same).toBe(true);
     doc.peek()!.title = "b";
     doc.touch();
     expect(root.textContent).toBe("b");
     dispose();
   });
 
-  test("a function condition passes its value, narrowed", () => {
+  test("a primitive, or an array, is its signal", () => {
     const n = signal(1);
+    const rows = signal<string[] | null>(["x", "y"]);
+    let same = false;
     const root = document.createElement("div");
-    const dispose = mount(root, () => <div>{when(() => n.get() > 0 && `n=${n.get()}`, (v$) => <p>{v$}</p>)}</div>);
-    expect(root.textContent).toBe("n=1");
+    const dispose = mount(root, () => <div>
+      {when(() => n.get() > 0 && `n=${n.get()}`, (v, v$) => { same = v === v$; return <p>{v}</p>; })}
+      {when(rows, (rows$) => <ul>{list(rows$, (r) => r, (r$) => <li>{r$}</li>)}</ul>)}
+    </div>);
+    expect(same).toBe(true);
+    expect(root.textContent).toBe("n=1xy");
     n.set(2);
-    expect(root.textContent).toBe("n=2");
+    rows.set(["z"]);
+    expect(root.textContent).toBe("n=2z");
     n.set(0);
-    expect(root.textContent).toBe("");
+    expect(root.textContent).toBe("z");
+    dispose();
+  });
+
+  test("the fields go with the branch", () => {
+    const detail = signal<{ id: string } | null>({ id: "1" });
+    let id: ReadonlySignal<string> | undefined;
+    let value$: ReadonlySignal<{ id: string }> | undefined;
+    const dispose = mount(document.createElement("div"), () => <div>{when(detail, (d, d$) => {
+      id = d.id;
+      value$ = d$;
+      return <p />;
+    })}</div>);
+    detail.set(null);
+    (value$ as Signal<{ id: string }>).set({ id: "after" }); // nothing writes a gone branch's v$; if it did
+    expect(id!.peek()).toBe("1");
+    dispose();
+  });
+
+  test("value.map on an object with no field \"map\" warns: v$ is the second argument", () => {
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
+    const detail = signal({ id: "1" });
+    const dispose = mount(document.createElement("div"), () => <div>{when(detail, (d) => {
+      void (d as unknown as Record<string, unknown>).map; // the old (v$) => v$.map(…)
+      return <p />;
+    })}</div>);
+    expect(warnSpy.mock.calls.some(([m]) => String(m).includes("the branch's second argument"))).toBe(true);
+    warnSpy.mockRestore();
     dispose();
   });
 });
@@ -2265,9 +2148,9 @@ describe("list(): a row that disposes the list's owner mid-sync", () => {
   });
 });
 
-// when() and an async component latch `disposed` in their teardown, so nothing rebuilds after it:
-// nested in an element, their brackets keep a (detached) parent, so a parent check can't tell.
-describe("when() and async components: nothing builds after dispose", () => {
+// when() latches `disposed` in its teardown, so nothing rebuilds after it: nested in an element,
+// its brackets keep a (detached) parent, so a parent check can't tell.
+describe("when(): nothing builds after dispose", () => {
   test("a when() branch cleanup that writes the condition during teardown rebuilds nothing", () => {
     const cond = signal(1);
     const dep = signal(0);
@@ -2290,29 +2173,11 @@ describe("when() and async components: nothing builds after dispose", () => {
     expect(runs).toBe(r);
     root.remove();
   });
-
-  test("an async component disposed before it resolves never runs its thunk", async () => {
-    let thunkRuns = 0;
-    const d = defer<void>();
-    async function Widget() {
-      await d.promise;
-      return () => { thunkRuns++; return <i>late</i>; };
-    }
-    const root = document.createElement("div");
-    document.body.append(root);
-    const dispose = mount(root, () => <div><Widget /></div>);
-    dispose();
-    d.resolve();
-    await flush();
-    await flush();
-    expect(thunkRuns).toBe(0);
-    root.remove();
-  });
 });
 
-// The same for a when() branch and an async component's thunk: a render that disposes the scope
-// owning it (a navigation, say) ran after the teardown, so it was inserted and stayed live.
-describe("when() and async components: a render that disposes its owner", () => {
+// The same for a when() branch: a render that disposes the scope owning it (a navigation, say) ran
+// after the teardown, so it was inserted and stayed live.
+describe("when(): a render that disposes its owner", () => {
   test("a when() branch is not inserted, and nothing it made outlives the owner", () => {
     const cond = signal(0);
     const probe = signal(0);
@@ -2322,10 +2187,10 @@ describe("when() and async components: a render that disposes its owner", () => 
     pushDisposeScope();
     root.append(
       <div>
-        {when(cond, (v$) => {
+        {when(cond, (v) => {
           effect(() => { probe.get(); runs++; });
-          if (v$.peek() === 2) disposeOwner();
-          return <p>{v$.peek()}</p>;
+          if (v.peek() === 2) disposeOwner();
+          return <p>{v.peek()}</p>;
         })}
       </div>,
     );
@@ -2335,30 +2200,6 @@ describe("when() and async components: a render that disposes its owner", () => 
     probe.set(1);
     expect(runs).toBe(0); // before: 1, the branch's effect ran on
     expect(root.querySelector("p")).toBeNull(); // before: inserted after the teardown
-  });
-
-  test("an async component's thunk is not inserted, and nothing it made outlives the owner", async () => {
-    const probe = signal(0);
-    let runs = 0;
-    let disposeOwner = () => {};
-    async function A() {
-      await Promise.resolve();
-      return () => {
-        effect(() => { probe.get(); runs++; });
-        disposeOwner();
-        return <p>a</p>;
-      };
-    }
-    const root = document.createElement("div");
-    pushDisposeScope();
-    root.append(<div><A /></div>);
-    disposeOwner = popDisposeScope();
-    await flush();
-    await flush();
-    runs = 0;
-    probe.set(1);
-    expect(runs).toBe(0);
-    expect(root.querySelector("p")).toBeNull();
   });
 });
 

@@ -224,9 +224,17 @@ const warnings = {
   asyncEffect(): void {
     console.error(
       "[railroad/signals] effect callbacks must be synchronous: an async function returns a " +
-        "Promise, not a cleanup, and nothing after its first await is tracked or owned. Do the " +
-        "async work in an async component or route handler (resolve to a thunk), or start it from " +
-        "the effect and write the result into a signal.",
+        "Promise, not a cleanup, and nothing after its first await is tracked or owned. Start the " +
+        "async work from the effect and write the result into a signal, or show a promise with " +
+        "when(resolved(promise), …).",
+    );
+  },
+  // An async component: nothing it makes after an await has a scope.
+  asyncComponent(name: string): void {
+    console.error(
+      `[railroad/jsx] <${name}> is async, and renders nothing: what a component makes after an ` +
+        "await has no scope, so nothing could tear it down. Keep the component synchronous and " +
+        "show the data that comes later as a signal: when(resolved(promise), (r) => …, () => <p>loading…</p>).",
     );
   },
   handlerNotAFunction(key: string, value: unknown): void {
@@ -236,12 +244,6 @@ const warnings = {
           ? "a Signal — event handlers are not reactive; pass a function that reads it"
           : typeof value) +
         ". No listener was attached.",
-    );
-  },
-  fallbackNotAThunk(name: string, fallback: unknown): void {
-    console.warn(
-      `[railroad/jsx] <${name}> fallback must be a thunk ` +
-        `(fallback={() => <p>…</p>}) — got ${fallback instanceof Node ? "a Node" : `a ${typeof fallback}`}; ignoring.`,
     );
   },
   nodeAsText(): void {
@@ -278,13 +280,16 @@ const warnings = {
         `body, beside it. The run: ${run.length > 120 ? `${run.slice(0, 117)}...` : run}`,
     );
   },
-  // A keyed row read as the signal it once was: row.map(…) is the row's
-  // field "map", a signal of undefined, not a function.
-  rowAsSignal(name: string): void {
+  // A keyed row, or a when() branch's value, read as the signal it once was:
+  // row.map(…) is the field "map", a signal of undefined, not a function.
+  // `inWhen` says which.
+  rowAsSignal(name: string, inWhen: boolean): void {
     console.warn(
-      `[railroad/list] row.${name} on a keyed list() row, which has no field "${name}": a keyed row ` +
-        "is its fields, each a signal ({ name, status }) => …; the row's own signal is render's " +
-        "third argument: (row, index$, row$) => row$.map(…).",
+      `[railroad] .${name} on ${inWhen ? "a when() branch's value" : "a keyed list() row"}, which has no ` +
+        `field "${name}": an object is handed as its fields, each a signal ({ name, status }) => …; its ` +
+        `own signal is ${inWhen
+          ? "the branch's second argument: (value, v$) => v$.map(…)"
+          : "render's third argument: (row, index$, row$) => row$.map(…)"}.`,
     );
   },
 };
@@ -897,14 +902,17 @@ export type Settled<T> = { value: T } | { error: unknown };
  * settles (after an await there is none: browser JS has no AsyncContext):
  *
  *   function Profile() {
- *     return when(resolved(load("/api/me")), (r$) => {
- *       const r = r$.peek(); // settled: it never changes again
- *       return "error" in r ? <p>no profile</p> : <p>{r.value.name}</p>;
+ *     return when(resolved(load("/api/me")), (r) => {
+ *       if ("error" in r) return <p>no profile</p>;
+ *       const user = r.value.peek(); // settled: it never changes again
+ *       return <p>{user.name}</p>;
  *     }, () => <p>loading…</p>);
  *   }
  *
- * A rejection is the `{ error }` it settles as, not an unhandled rejection. A
- * branch that was disposed first (a navigation) is never built.
+ * The branch is handed the settled value as its fields, as when() hands any
+ * object: `r.value` or `r.error`, each a signal. A rejection is the `{ error }`
+ * it settles as, not an unhandled rejection. A branch that was disposed first
+ * (a navigation) is never built.
  */
 export function resolved<T>(promise: PromiseLike<T>): ReadonlySignal<Settled<T> | null> {
   const s = new Signal<Settled<T> | null>(null);
@@ -929,7 +937,7 @@ export function resolved<T>(promise: PromiseLike<T>): ReadonlySignal<Settled<T> 
  *   jobs.set(snapshot);
  *   jobs.patch(3, { status: "running" });   // row 3 is a new object; the rest are as they were
  *   list(jobs, jobs.key, ({ status }) => <li>{status}</li>);
- *   when(jobs.at(3), (j$) => <p>{j$.map((j) => j.status)}</p>, () => <p>gone</p>);
+ *   when(jobs.at(3), ({ status }) => <p>{status}</p>, () => <p>gone</p>);
  */
 export class Collection<T, K extends string | number = string | number> implements ReadonlySignal<readonly T[]> {
   private readonly rows: T[] = [];

@@ -8,6 +8,38 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Breaking
 
+- **A `when()` branch is handed its value as a keyed `list()` row is** (20 October, Peter's word;
+  #13). The truthy branch got one `v$`, a `ReadonlySignal` of the value, read field by field as
+  `v$.map((v) => v.x)`, where a keyed row is its fields: two shapes for the same thing. Now
+  `truthy(value, v$)`: `value` is `Row<NonNullable<T>>`, for an object its fields, each a signal
+  (made on first read, one per field, disposed with the branch), for anything else its signal, as
+  before; `v$`, the value's own signal, comes second. So
+  `when(jobs.at(id), ({ name, status }) => <p>{name}: {status}</p>)`. To move across: over an
+  object, `(v$) => <p>{v$.map((v) => v.name)}</p>` is `({ name }) => <p>{name}</p>`;
+  `v$.peek().id` is `id.peek()`; where the whole value is wanted (handed on, or read once),
+  `(v$) => …` is `(_, v$) => …`. A branch over `resolved()` is handed `{ value }` or `{ error }`
+  as fields: `(r$) => { const r = r$.peek(); … r.value … }` is
+  `(r) => { if ("error" in r) …; const v = r.value.peek(); … }`. Over a number, a string, a
+  boolean or an array nothing changes: `(n$) => …` is still its signal. A row, of `list()` or
+  `when()`, that is an array is its signal now, not a proxy of its indices. TypeScript names each
+  place over an object (`Property 'map' does not exist`), and in development `.map`, `.get` or
+  `.peek` on a value with no such field warns, naming the second argument. Moved across in this
+  repository: `examples/jobs` (`JobLive`'s three `j$.map(…)` and `Toast`'s one are its fields; the
+  runners panel's two; `JobPage`, `JobLog` and `NewJobPage` read `r.value.peek()`), and in delta's
+  examples and the create-blueshed template (their changelogs).
+- **An async component or route handler is no longer supported** (20 October, Peter's word; #7).
+  One that resolved to a thunk (`return () => <div/>`) was run under a scope railroad owned, with a
+  `fallback` thunk prop for the wait: a second way, beside `when(resolved(promise), …)`, to show
+  data that comes later. It is gone, with the `fallback` prop and `JSX.IntrinsicAttributes`. An
+  async component no longer compiles (`JSX.ElementType` is a function returning a `Node`); run
+  anyway, it renders nothing, and in development logs an error saying to use `resolved()`. An async
+  handler no longer compiles either (`RouteHandler` returns a `Node`); run anyway, it goes to
+  `onError` (or the console) with the same advice. To move across:
+  `async function P() { const d = await load(); return () => <div>{d.name}</div>; }` with
+  `<P fallback={() => <p>loading</p>} />` is
+  `function P() { return when(resolved(load()), (r) => "error" in r ? <p>failed</p> : <div>{r.value.peek().name}</div>, () => <p>loading</p>); }`
+  with `<P />`; a handler the same, its body returned from a synchronous handler. Nothing in this
+  repository used the thunk form but railroad's own tests and fixture, moved across.
 - **A route is keyed by default** (20 October, Peter's word; #8). A bare handler ran once per
   pattern, so `"/users/:id": ({ id }) => …` kept the first id after `/users/1` → `/users/2`, unless
   the route said `{ keyed: true, handler }`. Now every route is keyed: when the matched params
@@ -50,11 +82,11 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 - **`resolved(promise)`: data that comes later, as a signal** (20 October, Peter's word; #7). It is
   `null` until the promise settles, then `{ value }` or `{ error }` (the `Settled<T>` type), once,
-  and `when()` shows it: `when(resolved(load(id)), (r$) => …, () => <p>loading…</p>)` from a
+  and `when()` shows it: `when(resolved(load(id)), (r) => …, () => <p>loading…</p>)` from a
   component or route handler that stays synchronous, so everything the branch builds is in a scope
   however late the promise settles, and nothing is built if it was left first. An async component
   or handler had to resolve to a thunk (`return () => <div/>`) for that, with a `fallback` prop for
-  the wait; both are still accepted, and the skill teaches `resolved()` in their place. Exported
+  the wait; that form is gone (Breaking, above). Exported
   from the root and `./signals`. `examples/jobs`' `JobPage`, `JobLog` and `NewJobPage` are
   synchronous (no thunk, no `fallback`, and `NewJobPage`'s `inject()` is back in its body); a job
   the server has not got is the `{ error }` its page shows, and a malformed id throws to `onError`.

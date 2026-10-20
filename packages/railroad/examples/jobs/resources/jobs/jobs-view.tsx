@@ -49,6 +49,7 @@ export function JobsPage(): JSX.Element {
           clear
         </button>
       </form>
+      {/* a number is handed as its signal */}
       {when(failedCount, (n$) => <p class="banner">{n$.map((n) => `${n} failed`)}</p>)}
       <p class="summary">{() => `${shown.get().length} of ${jobs.get().length} jobs`}</p>
       <ul class="rows">
@@ -82,17 +83,21 @@ function JobRow({ job }: { job: Row<Job> }): JSX.Element {
 /**
  * `#/jobs/:id`: keyed, as a route is, so each id runs it again and the last run is disposed.
  * The job comes later, so it is a signal: `resolved()` is null until it settles, and `when()`
- * shows it. The handler stays synchronous, so what the branch builds is in the route's scope
- * however late the job comes. Routes match segments only, so `#/jobs/3?log` gives the id `3?log`:
+ * shows it, handing the branch what it settled as, `{ value }` or `{ error }`, as its fields. The
+ * handler stays synchronous, so what the branch builds is in the route's scope however late the
+ * job comes. Routes match segments only, so `#/jobs/3?log` gives the id `3?log`:
  * the query is split off here.
  */
 export function JobPage({ id: param = "" }: Record<string, string>): JSX.Element {
   const [id = "", query] = param.split("?");
   if (!/^\d+$/.test(id)) throw new Error(`#${id} is not a job's number.`); // routes()' onError draws it
-  return when(resolved(detail(id)), (r$) => {
-    const r = r$.peek(); // settled: it never changes again
-    if ("error" in r) return <p class="error">{r.error instanceof Error ? r.error.message : "Something went wrong."}</p>;
-    const d = r.value;
+  return when(resolved(detail(id)), (r) => {
+    // settled: it never changes again, so each field is read once
+    if ("error" in r) {
+      const e = r.error.peek();
+      return <p class="error">{e instanceof Error ? e.message : "Something went wrong."}</p>;
+    }
+    const d = r.value.peek();
     return (
       <article class="detail" data-id={d.id}>
         <h2>#{d.id} {d.name}</h2>
@@ -106,11 +111,11 @@ export function JobPage({ id: param = "" }: Record<string, string>): JSX.Element
 
 /** The job as the feed has it now, or word that it has gone. */
 function JobLive({ id }: { id: number }): JSX.Element {
-  // told when this job changes, and not when another does
-  return when(jobs.at(id), (j$) => (
-    <div class="live" style={j$.map((j) => ({ "--accent": `var(--${j.status})` }))}>
-      <Ring progress$={j$.map((j) => j.progress)} />
-      <p class="status">{j$.map((j) => j.status)}</p>
+  // told when this job changes, and not when another does; handed as a row is, its fields
+  return when(jobs.at(id), ({ status, progress }) => (
+    <div class="live" style={status.map((s) => ({ "--accent": `var(--${s})` }))}>
+      <Ring progress$={progress} />
+      <p class="status">{status}</p>
     </div>
   ), () => <p class="gone">This job has been removed.</p>);
 }
@@ -129,11 +134,10 @@ function Ring({ progress$ }: { progress$: ReadonlySignal<number> }): JSX.Element
 
 /** The log, once the job has ended: waiting until the server answers, then the lines. */
 function JobLog({ id }: { id: number }): JSX.Element {
-  return when(resolved(logOf(id)), (r$) => {
-    const r = r$.peek();
+  return when(resolved(logOf(id)), (r) => {
     if ("error" in r) return <p class="error">The log is not there.</p>;
     // fetched once and never changed: a plain .map is right for a static array
-    return <pre class="log" tabindex="0">{r.value.map((l) => <div>{l}</div>)}</pre>;
+    return <pre class="log" tabindex="0">{r.value.peek().map((l) => <div>{l}</div>)}</pre>;
   }, () => <p class="waiting">The log comes when the job ends…</p>);
 }
 
@@ -142,10 +146,9 @@ export function NewJobPage(): JSX.Element {
   const feed = inject(FEED);
   let name!: HTMLInputElement;
   let runner!: HTMLSelectElement;
-  return when(resolved(runners()), (r$) => {
-    const r = r$.peek();
+  return when(resolved(runners()), (r) => {
     if ("error" in r) return <p class="error">The runners could not be loaded.</p>;
-    const all = r.value;
+    const all = r.value.peek();
     const roomiest = all.reduce((a, b) => (b.slots > a.slots ? b : a)).name;
     return (
       <form class="new" onsubmit={(e) => {

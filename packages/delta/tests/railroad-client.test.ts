@@ -232,12 +232,12 @@ describe("railroad ↔ delta", () => {
     doc.close();
     clearProviders();
   });
-  // railroad 0.11.0 makes async components a supported shape (resolve to a
-  // thunk). There is no dispose scope after an `await` — browser JS has no
-  // AsyncContext to carry one across suspension — so an openDoc past the first
-  // await never auto-closes, while one inside the thunk does. The skill's
+  // There is no dispose scope after an `await` — browser JS has no AsyncContext
+  // to carry one across suspension — so an openDoc past the first await never
+  // auto-closes, which is why a component stays synchronous and shows data that
+  // comes later with railroad's when(resolved(promise), …). The skill's
   // reference documents that rule; this pins the mechanism it rests on.
-  test("no dispose scope survives an await; the thunk gets a fresh one", async () => {
+  test("no dispose scope survives an await", async () => {
     const seen: Record<string, boolean> = {};
     const root = document.createElement("div");
     document.body.appendChild(root);
@@ -260,6 +260,6 @@ describe("railroad ↔ delta", () => {
     root.remove();
 
     expect(seen.sync).toBe(true);        // synchronous body IS owned
-    expect(seen.afterAwait).toBe(false); // post-await is NOT — hence the thunk rule
+    expect(seen.afterAwait).toBe(false); // post-await is NOT — hence resolved()
   });
 });

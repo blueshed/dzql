@@ -26,7 +26,7 @@ mount(document.getElementById("root")!, () => (
         </li>
       ))}
     </ul>
-    {when(rows.at(1), (r$) => <p>first: {r$.map((r) => r.text)}</p>, () => <p>no first row</p>)}
+    {when(rows.at(1), ({ text }) => <p>first: {text}</p>, () => <p>no first row</p>)}
   </>
 ));
 ```

@@ -15,6 +15,14 @@ section up.
 
 ### Breaking
 
+- **The app moves to railroad's `when()`, which hands its branch the value as a keyed row is**
+  (20 October, railroad #13; railroad's own changelog has the change). A `when()` branch over an
+  object is handed its fields, each a signal, then `v$`, its own signal. `StatusCell`
+  (`src/resources/status/status-view.tsx`) takes the status apart,
+  `({ persistent, uptime, bun }) => …`, and the evolve skill's `auth` reference hands the person on
+  with `(_, m$) => <Everyone who={m$.peek() as Person} />`. To move an app across: over an object,
+  `(v$) => …v$.map((v) => v.x)…` is `({ x }) => …x…`, and `v$.peek()` is `(_, v$) => … v$.peek()`;
+  over a string or a number (`when(sent, (s$) => …)`) nothing changes.
 - **The Postgres step opens its store on the data folder** (20 October, root #129; needs dzql's
   next release): `store.open({ dataDir })`, PGlite in its `pg/` unless `DATABASE_URL` names a
   server, where the step said `database: process.env.DATABASE_URL || \`${dataDir}/pg\``. dzql's
