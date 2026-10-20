@@ -12,6 +12,11 @@ defineDoc("fo-slots-upto:", { root: "slots", include: [], scope: { price: "<=:ma
 One rule on every backend: `resolveScope` (`src/server/scope.ts`), for SQLite and the JSON
 file; dzql answers the same cases on Postgres.
 
+Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/resources/lists/lists-api.ts), `mine:<person>`, a list
+by its scope (`{ person: ":id" }`: every membership of that person), in
+`resources/lists/lists-api.ts`; [examples/kanban](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/kanban/resources/board/board-api.ts)'s
+`board:<id>`, a single one (`{ id: ":id" }`, `resources/board/board-api.ts`).
+
 ## The values
 
 `scope` maps a root column to a value read from the name, after the prefix, split on `:`.

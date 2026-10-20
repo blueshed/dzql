@@ -13,6 +13,12 @@ const room = defineDoc("room:", { root: "rooms", include: ["messages"], implied:
 
 `DocDef` in `src/schema.ts` is the contract. Name and scope rules: `scope.md`.
 
+Working: [create-blueshed/template](https://github.com/blueshed/dzql/blob/main/packages/create-blueshed/template/src/resources/message/message-api.ts), an implied single
+document, `message:1`, Hello before anyone writes and its row made by the first save
+(`src/resources/message/message-api.ts`);
+[examples/kanban](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/kanban/resources/board/board-api.ts), a single one whose cards reach the
+board through their columns (`resources/board/board-api.ts`).
+
 ## The shapes
 
 - **List**: `defineDoc("items:", { root: "items", include: [] })`; `items:` opens every row,

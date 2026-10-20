@@ -17,6 +17,10 @@ export const app: Example = {
 };
 ```
 
+Working: [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/routes.ts), each piece by its name: the app (`routes.ts`),
+its page (`page.ts`), its documents (`store.ts`) and a resource for each, the visit first
+(`resources/<name>/`).
+
 ## Words
 
 - A **resource** looks after one type of document: which one a page is on, who may write to it,

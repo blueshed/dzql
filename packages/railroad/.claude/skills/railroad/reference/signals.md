@@ -33,6 +33,11 @@ dispose();
 
 The methods and options are typed in `signals.ts` (`Signal`, `ReadonlySignal`, `SignalOptions`); its header is the contract. What a body creates, and when it is disposed: [scopes](scopes.md).
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a `computed` beside what reads it, `.update` and `.mutate`
+on a small object and `batch` for two writes (`resources/jobs/jobs-view.tsx`); `.peek`, a change
+in place and `.touch` (`resources/jobs/jobs.ts`); an effect's cleanup
+(`resources/runners/runners-view.tsx`).
+
 - `effect(fn)` returns its disposer. Only a returned function is a cleanup; any other return is ignored (tsc still rejects an expression body that returns a value: use a block).
 - `fn` must be synchronous. `effect(async () => …)` logs an error in development: its Promise is no cleanup and nothing after the first `await` is tracked. Start the async work from the effect and write the result to a signal.
 - `set()` notifies at once; railroad is synchronous.
@@ -41,5 +46,3 @@ The methods and options are typed in `signals.ts` (`Signal`, `ReadonlySignal`, `
 - An effect that writes a signal, then reads a computed of it that it read before, sees the old value and re-runs once the write settles; a computed it reads for the first time in the pass is brought up to date first.
 - `.touch()` re-runs effects and computeds that return primitives. A computed that returns the same reference bails: project to fresh values (`Object.values(...)`, primitives) or give `.map()` `{ equals: () => false }`.
 - `.mutate()` uses `structuredClone`: plain data only, no functions, class instances or DOM nodes.
-
-Worked example: [`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx) (`computed` beside what reads it, `.update` and `.mutate` on a small object, `batch` for two writes) and [`jobs.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs.ts) (`.peek`, change in place, `.touch`).

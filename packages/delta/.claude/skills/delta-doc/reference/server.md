@@ -23,6 +23,11 @@ process: a pid file (`.server.pid`, `PID_FILE`) refusing a second start, `bun --
 An app writes no `Bun.serve` of its own. `WsOptions` and `WsServer` in `src/server/server.ts` are the socket's contract (`path`
 defaults to `/ws`).
 
+Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/routes.ts), `serve` with the sign-in's
+routes, the socket and the page, the database in its `close`, and `run` around it (`routes.ts`);
+[examples/lobby](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lobby/resources/here/here-api.ts)'s `join`, a `registerMethod`
+(`resources/here/here-api.ts`).
+
 ## Rules
 
 - **`serve` tells the socket its server** (`ws.setServer`): by hand, without it nothing is broadcast.

@@ -32,6 +32,13 @@ include the same rows, and a write reaches both. `defineSchema` and `defineDoc` 
 synchronous; it throws `Pending` when the document is not held yet, and the kernel loads it and draws
 again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server.
 
+Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/store.ts), the tables said once (`store.ts`), a memory
+document (`resources/here/here-api.ts`) and a session read for the page
+(`resources/session/session-api.ts`); [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/resources/floor/floor-api.ts), a
+ref's surrogate (`orderOf`, `resources/floor/floor-api.ts`);
+[examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/resources/team/team.ts), the draft that follows an ask and its Undo
+(`afterWrite`, `afterWalk`, `resources/team/team.ts`).
+
 - Prefix tables with the app's name (`chat_`). Seed only into empty tables.
 - At start-up `store.ts` makes its tables (on SQLite `openTables`, `dzql/rendering/db`; on Postgres
   `openStore`): the app's migrations,

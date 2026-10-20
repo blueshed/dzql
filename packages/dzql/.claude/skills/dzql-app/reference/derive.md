@@ -18,6 +18,10 @@ It gives a collection of rows, a drawer that changes one (`?row=<id>`), and the 
 (`?new`) and take one off (`?confirm=<id>`). `rows` are the document's, as the page read them; `may(op,
 path)` is the resource's permit ([resource.md](resource.md)), asked for each control.
 
+Working: [examples/wedding](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/wedding/resources/board/board-view.ts), the couple's venues:
+declared in `resources/board/board-api.ts`, drawn by `derivedPage` in
+`resources/board/board-view.ts`, the picture a field naming an applet (`applets/picture-field.ts`).
+
 The ladder, and where it stops:
 
 1. **Derived.** A field is typed by its column (a number for an integer or a real, else text; json is

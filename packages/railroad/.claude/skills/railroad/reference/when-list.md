@@ -28,6 +28,10 @@ mount(document.getElementById("root")!, () => <Todos />);
 
 Both are typed in `jsx.ts`. Both render synchronously (in the DOM when `mount()` or the append returns), keep their content between bracket comments, need a [scope](scopes.md), and never rebuild after disposal.
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a keyed `list()` over rows changed in place, `when()` over a
+count and over a function, and a static `.map` (`resources/jobs/jobs-view.tsx`); `when()`
+following its value through `v$`, and rows keyed by name (`resources/runners/runners-view.tsx`).
+
 ## when(condition, truthy, falsy?)
 
 - `condition` is a signal or a function.
@@ -42,5 +46,3 @@ Both are typed in `jsx.ts`. Both render synchronously (in the DOM when `mount()`
 - `options` (keyed form) are `SignalOptions` for each row's signal. The default `Object.is` is right when a changed row is a new object (delta's client gives one). Rows mutated in place then `.touch()`ed need `{ equals: () => false }`: [realtime](realtime.md).
 - The index form, `list(items, (item, i) => …)`, passes raw values and rebuilds every row on every change: static lists only.
 - Any array derived from a signal goes through `list()`. A plain `.map()` bakes its rows in once; it is right only for a static array (`COLUMNS.map(c => <Column col={c} />)`).
-
-Worked example: [`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx) (a keyed `list()` over rows changed in place, `when()` over a count and over a function, a static `.map`) and [`runners-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/runners/runners-view.tsx) (`when()` following its value through `v$`, rows keyed by name).

@@ -35,6 +35,11 @@ All notable changes to `@blueshed/railroad`. The format follows
 
 ### Changed
 
+- **Each reference page says where its rules are shown working** (20 October, root #114): a line
+  starting `Working:`, linking `examples/jobs` on GitHub (bun-route's `server.md` also the
+  create-blueshed template, `webview-recipes.md` dzql's leave); `one-copy.md` says `none` and why.
+  The old "Worked example" paragraphs became these lines, and their relative links to
+  `tests/webview-examples.test.ts`, which lead nowhere in an app, are gone.
 - **The realtime reference keeps its board in delta's JSON file** (20 October): the server is
   `registerDocs` from `@blueshed/delta/json` with a schema (`defineSchema`, `defineDoc`), and a new
   card is `add /cards/-`, named by the server. delta has no free-form document any more.

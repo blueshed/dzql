@@ -22,6 +22,10 @@ return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' :
 A message said goes as its one `<li>`, put in after the last; were the messages not parts, every
 message would send the whole conversation again. `part(key, html)` is `src/rendering/parts.ts`.
 
+Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/page.ts), one `render` composing each resource's part
+(`page.ts`), each message a part of its own (`resources/room/room-view.ts`), who is here another
+(`resources/here/here-view.ts`).
+
 - `render` is the only renderer: it decides which screen, from the tab's address, and reads
   whichever documents it must. It must `read()` what it shows, or its page is not told of a change
   ([resource.md](resource.md#who-sees-what)). Never keep the address in a document: two tabs of one

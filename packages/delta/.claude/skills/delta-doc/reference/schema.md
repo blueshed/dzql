@@ -20,6 +20,11 @@ export const docs = [
 
 The contract is `TableDef`, `ColumnDef`, `ColumnShorthand` and `DocDef` in `src/schema.ts`.
 
+Working: [examples/kanban](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/kanban/resources/board/board-api.ts), the tables above and
+their parent keys (`resources/board/board-api.ts`);
+[examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/resources/lists/lists-api.ts), a list's members and items as
+rows under it, and a column with a default (`done`), in `resources/lists/lists-api.ts`.
+
 ## Rules
 
 - Column types: `text`, `integer`, `real`, `boolean`, `json`, `timestamptz`; append `?` for

@@ -24,6 +24,12 @@ registerDocs(ws, db, schema, [listDoc]);   // , customDocs?, { ledger, auth, sha
 Options: `RegisterOptions` in `src/server/sqlite.ts`. It returns `{ evict }` (the JSON file's
 also `persisted()`, resolving once every change so far is in the file).
 
+Working: [examples/sites-bbox](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/sites-bbox/README.md), the tables made and the
+world's document registered (`resources/world/world-api.ts`), and on the same database the box's,
+told of every write through the world (`resources/box/box-api.ts`, `routes.ts`);
+[examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), a shared set (`people:`) and a set by
+paths (the lists) on one file (`resources/people/people-api.ts`, `resources/lists/lists-api.ts`).
+
 ## Gotchas
 
 - `createTables(db, schema)` before the first open; a missing table's error says so.

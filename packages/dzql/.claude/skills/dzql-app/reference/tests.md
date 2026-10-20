@@ -21,6 +21,11 @@ test("a drag across days is a draft, its drawer saying what it would mean; asked
 
 `webview`, `urlFor`, `waitFor` and `press` are `src/rendering/webview.ts`.
 
+Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/client/app.test.ts), a browser test that drags and presses
+(`client/app.test.ts`) and a server test of its rules and its sign-in (`server.test.ts`);
+[examples/ticker](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/ticker/resources/desk/desk.test.ts), a document's rules called directly
+(`resources/desk/desk.test.ts`), beside writes over a socket (`server.test.ts`).
+
 - The fast loop: `ETA_EXAMPLE=<name> bun run stories` and the app's own test files
   (`bun test examples/<name>`); the full gate before a commit.
 - A test for each document's rules and shapes, called directly, without a server.

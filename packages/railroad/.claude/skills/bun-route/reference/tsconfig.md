@@ -17,6 +17,9 @@
 }
 ```
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), whose `tsconfig.json` is the tsx-railroad block (with
+`noEmit`), type checked by railroad's `test:examples`.
+
 - **tsx-react**: the same block with `"jsxImportSource": "react"`.
 - **ts** (no JSX): the same block without `jsx` and `jsxImportSource`.
 - **js**: no tsconfig.

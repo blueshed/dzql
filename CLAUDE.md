@@ -101,6 +101,14 @@ without). The answer is a rate, not a pass, so a run is recorded (`evals/runs/<d
 the model, each scenario's lines held or not) and a change is measured against the last. They run
 when a skill changes in substance, and before its package is released (`/publish`).
 
+**A package's examples are its skill's worked answers** (Peter, 20 October). Each is an app in the
+one shape (routes and resources), with a README, run as written by its package's tests. Each
+reference page says where its rules are shown working, in a line starting `Working:`: an example,
+the test that runs the page as written, or `none` and why (`scripts/docs.ts` fails the gate on a
+page without). A skill links an example on GitHub, since examples do not ship. Where an example
+only looks right because a rule dodges a trap in the API, the API changes: an item for Peter, not
+more words in the skill.
+
 ## Releasing
 
 **The law of this repo: nothing is released without Peter's explicit say-so.** Never a version

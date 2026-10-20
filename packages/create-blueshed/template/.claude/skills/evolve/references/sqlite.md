@@ -182,6 +182,8 @@ test(`${stories.moved.name} -- from the JSON file to SQLite: order 1, a tea and 
 });
 ```
 
+Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md) and runs its type check and tests (`bun run test:evolve`).
+
 - How a change reaches each document holding its rows, and what the client is told: delta-doc's `reference/fanout.md`. A view draws from the document, never from what it was told.
 - `{ ledger: true }` keeps each change with what undoes it: delta-doc's `reference/ledger.md`.
 - Seed only an empty table.

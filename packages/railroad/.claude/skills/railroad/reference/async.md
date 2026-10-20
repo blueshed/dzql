@@ -23,6 +23,11 @@ routes(document.getElementById("root")!, {
 
 After an `await` there is no scope (browser JS has no AsyncContext). The thunk gives railroad a synchronous moment to run your bindings under a scope it owns, so they are torn down however late the promise settles.
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a keyed async route (`JobPage`), an async component with a
+fallback, disposed before it settles (`JobLog`), and `NewJobPage`, in
+`resources/jobs/jobs-view.tsx`; async work started from an effect in
+`resources/runners/runners-view.tsx`.
+
 - A bare Node after an `await` is a console error and renders nothing; in `routes()` it goes to `onError` if given.
 - Effects made before the first `await` belong to the component as usual.
 - Disposed before it settles, the thunk never runs.
@@ -30,5 +35,3 @@ After an `await` there is no scope (browser JS has no AsyncContext). The thunk g
 - An async route handler's bindings die on navigation.
 - For streams or several stages rather than one swap, an effect writes a signal and `when()` shows it.
 - `effect(async () => …)` is an error (logged in development): start the async work from a synchronous effect and write the result to a signal.
-
-Worked example: `JobPage` (a keyed async route handler), `JobLog` (an async component with a fallback, disposed before it settles) and `NewJobPage` in [`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx); async work started from an effect in [`runners-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/runners/runners-view.tsx).

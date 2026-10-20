@@ -20,6 +20,11 @@ await ada.call("undo", { cursor: "tab-1" });
 `Local` and `Caller` in `src/server/local.ts` are the contract. Any backend registers on
 `local.server` as on `createWs()`: `registerDocs`, the kinds.
 
+Working: [examples/lobby](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lobby/resources/here/here-api.ts), a `createLocal()` beside the
+socket, the server's own caller writing who is here (`resources/here/here-api.ts`); dzql's
+[examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/store.ts), a server that draws its own pages, its documents
+registered on `createLocal().server` (`store.ts`).
+
 ## Rules
 
 - **`call(action, msg)` is async on every backend**: always `await`. It resolves with

@@ -16,6 +16,11 @@ store.register(docs);
 await store.open();   // each document compiled, then served on `ws`; `store.close` on shutdown
 ```
 
+Working: dzql's [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/store.ts), `openStore` with its migrations,
+each resource registering its documents, then `open` (`store.ts`, `resources/table/table-api.ts`);
+dzql's [examples/delta/sites-bbox](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/delta/sites-bbox/server-pg.ts), delta's sites-bbox on
+Postgres, its schema and documents unchanged (`server-pg.ts`).
+
 Carry the rows with `exportTables` / `importTables` (`backends.md`). Link sign-in keeps its links
 and sessions in Postgres with dzql's `postgresLinkStore` (`dzql/auth-link`). From a shell,
 `dzql sql` writes the app's SQL, `dzql init` vendors the framework SQL, `dzql migrate` runs the

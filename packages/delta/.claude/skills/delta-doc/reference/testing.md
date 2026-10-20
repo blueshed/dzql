@@ -20,6 +20,11 @@ test("opens, writes and hears the broadcast", async () => {
 });
 ```
 
+Working: [examples/kanban](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/kanban/run.ts)'s `run.ts`, a server on port 0 and
+two clients in one process, each passed to `openDoc` and closed before the server stops;
+[create-blueshed/template](https://github.com/blueshed/dzql/blob/main/packages/create-blueshed/template/tests/message.test.ts)'s `message.test.ts`, an app's own
+test, its document held from Bun and its page in a browser, on a real server.
+
 ## Other harnesses
 
 - **A real server**: `serve({ ws, routes }, { port: 0 })` (`@blueshed/delta/serve`), then

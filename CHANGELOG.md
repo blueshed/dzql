@@ -6,6 +6,20 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### Each reference page says where its rules are shown working (20 October, root #114)
+
+- **A package's examples are its skill's worked answers** (Peter's decision), said once in the
+  root CLAUDE.md (*The shape of a package*). Every reference page of the six shipped skills (68)
+  has a line starting `Working:`: 57 link an example on GitHub (railroad's jobs; delta's kanban,
+  sites-bbox, lists and lobby; dzql's apps and `examples/delta`; the two templates), 10 name the
+  test that runs the page as written (delta-doc's `recipe.md`; evolve's nine, by the template's
+  `tests/evolve.ts`), and one says `none` and why (railroad's `one-copy.md`: how an app installs a
+  linked checkout). dzql-app's `scope.md` shows only part of its rule working, and names dzql #81
+  for the rest. railroad's old "Worked example" paragraphs became its `Working:` lines.
+- `scripts/docs.ts` fails the gate on a reference page with no `Working:` line.
+- delta's kanban example builds its paths with `joinPath`, as the skill that links it says, and
+  `writes.md` quotes it so.
+
 ### The examples, linked from the skills where the skills go (20 October)
 
 - A skill ships without its package's examples, so its links to them name the files on GitHub

@@ -65,6 +65,8 @@ section up.
 
 ### Changed
 
+- **Each of evolve's references says where it is shown working** (20 October, root #114): a line
+  starting `Working:`, naming `tests/evolve.ts`, which applies the page to a new app and runs it.
 - **The evolve skill's Postgres page registers documents with signing in as SQLite does**
   (20 October, root #37): dzql's `registerDocs(ws, pool, schema, docs, [], { auth })`, in place of
   a `docTypeFromDef` for each and a `createDocListener`.

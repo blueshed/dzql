@@ -21,6 +21,11 @@ export function up(db: Database) { dropColumn(db, "leave_requests", "days"); }
 leave's stories on it. The helpers are delta's (`@blueshed/delta/sqlite`: `renameColumn`,
 `dropColumn`, `renameTable`).
 
+Working: [examples/leave](https://github.com/blueshed/dzql/tree/main/packages/dzql/examples/leave/upgrade), its next version's migrations
+(`upgrade/001-reason.ts` to `upgrade/004-numbered.ts`: a column added and filled, one renamed, one
+dropped), run by `upgrade.test.ts` on the database the version before left, with an undo from
+before, then leave's stories on it.
+
 - `store.ts` runs them first, then the schema: `await openTables(schema, app, folder)`
   (`dzql/rendering/db`) is delta's `migrate`, then `createTables`, then `migrateSchema`. Change the
   schema to its new shape in the same commit.

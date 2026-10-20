@@ -15,6 +15,13 @@ function everyonePhoto(props: CrowdProps): string {
 `watch(doc, under)` (`src/rendering/documents.ts`) reads the document for the page and says the version held;
 `appletProps(props, watch?)` (`src/rendering/html.ts`) is the one helper that quotes props into an attribute.
 
+Working: [examples/wedding](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/wedding/resources/household/household-view.ts), the photo of
+everyone watching `everyone:1` (`resources/household/household-view.ts`), drawn by one pure
+`crowd()` in the server and the browser (`applets/photo.ts`, `applets/photo-applet.ts`);
+[examples/ticker](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/ticker/resources/watchlist/watchlist-view.ts), a row applet per symbol,
+each watching its own `quote:<id>` (`resources/watchlist/watchlist-view.ts`,
+`applets/board-applet.ts`).
+
 - The props hold the document whole at `under` (the root when not given), rows by id as delta holds
   them. The rest is small: who is looking, what is open.
 - The client lays each patch on the props and calls `update(el, props)`: draw from props, whether they

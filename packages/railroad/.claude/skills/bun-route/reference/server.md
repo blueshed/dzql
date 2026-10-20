@@ -29,6 +29,10 @@ console.log(`Listening on ${server.url}`);
 
 An imported HTML file is a route: Bun scans its `<script>` and `<link>` tags, bundles them, rewrites the paths with content hashes and serves the assets. The route and handler types are Bun's (`Bun.serve` in `@types/bun`).
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a Bun app without delta: its `routes.ts` gives `Bun.serve`
+the page, method handlers, `:id` routes and a socket, `development` gated on `NODE_ENV`. A delta
+app: [create-blueshed/template](https://github.com/blueshed/dzql/tree/main/packages/create-blueshed/template) (paintbrush), whose `src/routes.ts` gives its routes to delta's `serve`, run by `run`.
+
 - Always turn on `hmr` (`import.meta.hot`) and `console` (browser `console.*` mirrored to the terminal) in development, and gate them on `NODE_ENV` yourself: Bun serves the HMR client under `NODE_ENV=production` if `development.hmr` is set.
 - Use `Bun.serve`. An existing `import { serve } from "bun"` also works; leave it.
 - A handler that returns `Bun.file(...)` gets `Range` requests (`206 Partial Content`) for free, so `<video>` and `<audio>` seek (Bun 1.3.13+).
@@ -43,5 +47,3 @@ bun build --compile server.ts --outfile myapp       # server, client and runtime
 
 - `--compile` follows the HTML imports in `server.ts`; cross-compile with `--target=bun-linux-x64` and the like.
 - `--target=bun` keeps `using`/`await using` native (Bun 1.3.14+), so the tests' `await using view` compiles.
-
-Worked example (a Bun app without delta): railroad's jobs, [`routes.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/routes.ts).

@@ -16,6 +16,10 @@ import "dzql/rendering/client/tools"; // one line, for this app alone
 
 After each drawing the client reads the page into tools (`src/rendering/client/tools.ts`).
 
+Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/client/tools.test.ts), whose labelled form is a tool
+(`resources/room/room-view.ts`, `client/main.ts`): in `client/tools.test.ts` an assistant says
+something, the person says something after it, and the assistant undoes its own.
+
 - A tool is each labelled control a person could press now ([stories.md](stories.md) says which), so
   an open modal's controls are the tools and the ground behind it offers none: a form that creates;
   an editing form (one tool, any of its fields, by name); the buttons of one label (one tool, told

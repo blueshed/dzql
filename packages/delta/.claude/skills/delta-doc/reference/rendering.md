@@ -26,6 +26,11 @@ Without JSX, `applyOpsToCollection` (`DomCollection` in `src/client/dom-ops.ts`)
 (`render([{ op: "replace", path: "", value: doc.data.get() }])` after `await doc.ready`), every
 `doc.onOps`, and the reconnect's whole-document replace.
 
+Working: [examples/kanban](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/kanban/resources/board/board-view.tsx), the rows derived and
+rendered keyed, a moved card redrawn and the rest kept (`resources/board/board-view.tsx`,
+`app.tsx`); [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/resources/lists/lists-view.tsx), each list opened by its
+card and closed with it (`resources/lists/lists-view.tsx`).
+
 ## Rules
 
 - **One keyed path per project**: `list()` with JSX, `applyOpsToCollection` without. Never both,

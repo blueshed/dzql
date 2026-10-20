@@ -26,6 +26,11 @@ const text = await view.evaluate<string>(
 );
 ```
 
+Working: dzql's [examples/leave/client/app.test.ts](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/client/app.test.ts), which drags across a calendar's days by
+`pointerdown`, `pointermove` and `pointerup` at each day's centre, wraps several statements as one
+expression and polls for each update; railroad's `tests/webview.test.ts` has this `waitFor` and
+`Function("…")`.
+
 - A multi-statement string passed to `evaluate` throws `SyntaxError: Unexpected token ';'`.
 - Escape a double-quoted attribute selector inside `Function("…")` as `\\"`: `'g[data-id=\\"s1\\"]'`.
 - Pointer drag (canvas, SVG): dispatch `pointerdown`, `pointermove`, `pointerup` from `evaluate`, built as `new PointerEvent(t, { bubbles: true, cancelable: true, clientX, clientY, pointerId: 1, pointerType: "mouse", isPrimary: true })` at the element's centre from `getBoundingClientRect()`.

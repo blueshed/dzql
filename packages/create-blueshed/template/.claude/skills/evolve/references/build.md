@@ -51,6 +51,8 @@ test(`${stories.built.name} -- built, started from dist/, the page has no hot re
 });
 ```
 
+Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md and sqlite.md) and runs its type check and tests (`bun run test:evolve`).
+
 - `--production` matters: without it the built server runs with hot reload on.
 - **Migrations travel in the bundle**: a resource imports its history as one module (`migrations/index.ts`, which `delta migrations make` writes), never reads a folder beside its source, which a bundle has none of.
 - `dist/` is git-ignored. In `.railway/railway.ts`: `build: "bun install && bun run build"`, `start: "bun run serve:dist"`.

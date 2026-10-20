@@ -129,6 +129,8 @@ test(`${stories.upgrade.name} -- a migration runs once: started again, the order
 
 The kitchen's test, on a new data folder, shows the other side: a new database runs the whole history, `001-order` then `002-quantity`, and ends as an upgraded one does.
 
+Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md and sqlite.md) and runs its type check and tests (`bun run test:evolve`).
+
 - **Change the schema, then `make`.** Never write a migration's changes by hand, and never edit one that has run anywhere, nor rename its file: write the next one.
 - What `make` cannot know it says as `// By hand:` lines (a rename, a changed type); data is an `up`, the backend's SQL. How a history runs (once, in order, each in its own transaction, under its `app`), where undo stops, expand and contract, and `bunx @blueshed/delta migrate ... --status`: delta-doc's `reference/migrations.md`.
 - The JSON file has no migrations: it is for documents you can reset.

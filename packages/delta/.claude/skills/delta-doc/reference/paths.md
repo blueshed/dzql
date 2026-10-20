@@ -11,6 +11,11 @@ const ack = await doc.send([{ op: "add", path: "/rooms/-", value: { name: "attic
 
 `DeltaOp` is in `src/core.ts`: `add`, `replace`, `remove`, RFC 6902's meanings, on every backend.
 
+Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), an item the server names
+(`add /items/-`) and each path to one built with `joinPath`, in `resources/lists/lists-view.tsx`;
+nobody is 401 there, and a list someone is not on is 404, to open or to write.
+[examples/lobby](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lobby/README.md) is 403 to a page's write of who is here or of the colours.
+
 ## Paths
 
 RFC 6901 JSON Pointers: `/coll/id` a row, `/coll/id/field` a field, `/coll/-` a new row the
@@ -48,8 +53,7 @@ server names (on an array, append). The parsers are `splitPath` / `joinPath` in 
 backend (`errorCodeCases` in `src/cases/writes.ts`):
 
 - **400** malformed: no leading `/`, unknown field, missing required field, bad id.
-- **401** not signed in (an `auth` gate said no). [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md)
-  answers both: nobody is 401, and a list someone is not on is 404, to open or to write.
+- **401** not signed in (an `auth` gate said no).
 - **403** read-only: custom, static and source documents; memory over a socket; a past (`at:`) name.
 - **404** not there: a document, row or path; a document the identity does not `own`.
 - **409** already there (an id taken, or a unique constraint's values: `schema.md`).

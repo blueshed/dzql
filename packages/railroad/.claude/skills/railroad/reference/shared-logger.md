@@ -22,11 +22,14 @@ Bun.serve({
 
 Signatures: `shared.ts` and `logger.ts`.
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), one exported key each (`FEED`, `FAILED`) and `tryInject` for
+what a unit test leaves out (`resources/jobs/jobs.ts`), provided in `app.tsx` and cleared between
+its unit tests; the logger and `loggedRequest` on the server (`resources/jobs/jobs-api.ts`,
+`routes.ts`).
+
 - `key()` returns a fresh symbol each call: two `key("store")` are different keys. Share the exported one.
 - The registry is one process-global map: right for client apps and app-wide services; on a server it is shared by every request, so never per-request state.
 - Presence is by key: `provide(k, undefined)` is a real registration, which `inject(k)` returns without throwing. `tryInject` can't tell it from absent.
 - `clearProviders()` resets the registry between tests.
 - `LOG_LEVEL` (in `.env`, or `setLogLevel()`) is `silent`, `error`, `warn`, `info` or `debug`; an unknown value falls back to `info`.
 - `loggedRequest(tag, handler)` logs method, path, status and time; a throw is logged and re-thrown.
-
-Worked example: `FEED` and `FAILED` in [`jobs.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs.ts) (one exported key each; `tryInject` for what a unit test leaves out), provided in [`app.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/app.tsx); the logger on the server in [`jobs-api.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-api.ts) and [`routes.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/routes.ts).

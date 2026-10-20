@@ -20,6 +20,11 @@ dispose();                                                 // effects stop, node
 
 A scope is opened by a component (`createElement`), a `routes()` handler, a `when()` branch, a `list()` row and `mount()`, which returns the disposer (`routes()` returns one too). Everything made inside goes with it.
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), a custom root for each toast, built in a socket's handler,
+with `trackDispose` (`resources/toast.tsx`); a fresh request each run, cleaned up, and a computed
+made beside the effect (`resources/runners/runners-view.tsx`); a module-level effect's disposer
+kept (`watchTitle` in `resources/jobs/jobs.ts`).
+
 - Every `effect()` and `computed()` run is a scope too: what its body creates (computeds and `.map()`s, nested effects, `when()`, `list()`, components, `trackDispose()`s) is disposed before the next run and on dispose. So what must outlive one run is made outside the body:
 
   ```tsx
@@ -35,5 +40,3 @@ A scope is opened by a component (`createElement`), a `routes()` handler, a `whe
 - `route()` (singular) opens no scope; at module level it lives for the app, which is allowed.
 - A custom root is `const { value, dispose } = scoped(() => build())`: what `build` makes is in a scope of its own, closed on every path, a throw included. It is synchronous: never across an `await`. `trackDispose(fn)` registers a cleanup; `hasActiveDisposeScope()` says whether one is open.
 - After an `await` there is no scope: that is why async components resolve to a thunk ([async](async.md)).
-
-Worked example: [`toast.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/toast.tsx) (a custom root built from a socket's handler, `trackDispose`), [`runners-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/runners/runners-view.tsx) (a fresh request each run, cleaned up; a computed made beside the effect) and `watchTitle` in [`jobs.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs.ts) (a module-level effect's disposer).

@@ -22,6 +22,11 @@ export function render(sessionId: string, page: string): string { // page: where
 `docs/bento/README.md` says what a page is for: where am I, what can I do. `bento()` (`src/rendering/bento.ts`)
 binds the app's icons, its session's docType and the last tool, once. These are defaults, not rules.
 
+Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/page.ts), a collection with its drawers and modals at an
+address (`page.ts`, `surfaces.ts`), a write moving the writer's tab (`resources/team/team.ts`);
+[examples/ticker](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/ticker/page.ts), a box of cells (`page.ts`), whose desk takes find and the
+reading switch (`resources/desk/desk.ts`).
+
 - A page is a **box** (`boxPage`: cells in a tray, one may grow into the window; laid out by
   `grid()`, `src/rendering/grid.ts`) or a **collection** (`collectionPage`: the window alone).
   Pick the example by kind: ticker (`examples/ticker/page.ts`) for a box, leave for a

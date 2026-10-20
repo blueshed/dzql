@@ -15,6 +15,10 @@ const sitesInBbox = defineCustomDoc<BBox>("sites-in-bbox:", {
 registerDocs(ws, db, schema, [], [sitesInBbox]);   // beside world-api.ts's [worldDoc], on the same db
 ```
 
+Working: [examples/sites-bbox](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/sites-bbox/README.md), a membership
+document over the world's rows, told of the sites that come into the box, move in it and leave
+it (`resources/box/box-api.ts`; `parse` and `matches` in `resources/schema.ts`).
+
 `CustomDoc` in `src/server/custom.ts` is the contract. Clients open it like any document; writes
 go through the documents over the watched collections. Pick by shape, and never mix the two:
 

@@ -25,6 +25,12 @@ import "dzql/rendering/client/app";
 
 The contract is `Applet` in `src/rendering/applets.ts`; `appletWrites` and `appletProps` are `src/rendering/html.ts`.
 
+Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/applets/calendar-applet.ts), the calendar's drags: drawn
+by `calendar.ts` for the server and the browser alike, mounted by `applets/calendar-applet.ts`,
+its writes named in `resources/team/team-view.ts`; and
+[examples/ticker](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/ticker/applets/city-picker-applet.tsx), an applet drawn by railroad
+(`applets/city-picker-applet.tsx`).
+
 - An applet is not "the view for X": plain `data-write` HTML is the default.
 - Register it in `client/main.ts` before importing `dzql/rendering/client/app`. `client/index.html` has an
   element with `id="app"`.

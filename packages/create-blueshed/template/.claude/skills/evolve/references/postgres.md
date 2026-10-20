@@ -144,6 +144,8 @@ test(`${stories.moved.name} -- from SQLite to Postgres: order 1, a cake`, async 
 });
 ```
 
+Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md and sqlite.md) and runs its type check and tests (`bun run test:evolve`).
+
 - `@types/pg` is for the typecheck only: dzql ships TypeScript source that names `pg`'s types.
 - One process owns the folder: `startServer` runs the close pushed onto `closing` when it stops (and before `bun --hot` starts again).
 - Unclosed, Postgres recovers the folder as after a crash and skips the 32 ids it set aside: the second line is 34, not 2.

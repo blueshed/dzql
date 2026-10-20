@@ -23,6 +23,10 @@ export const app: Example = {
 
 The fields are `Example` in `src/rendering/example.ts`.
 
+Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/routes.ts), a whole `Example` (`routes.ts`: `active`, `who`,
+`address`, `identify`, `/login`, a session by its cookie); [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/cli.ts), the
+CLI's verbs (`cli.ts`), run against a server by `cli.test.ts`.
+
 - One resource per document type, the session's first; the kernel adds its ledger.
 - `active` is there because only the app knows what "signed in" means (chat: "has a name"). A tab
   left open after signing out may not write, nor undo a write made before.

@@ -21,6 +21,12 @@ judged on who held the row before and after the op:
 - a root: `replace /<root>/<field>` while it stays, `replace /<root>` with the row when it
   arrives, `null` when it leaves (an implied document: its empty root).
 
+Working: [examples/sites-bbox](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/sites-bbox/README.md), a box told of a site
+written through the world as it arrives, moves in it (the fields that changed) and leaves
+(`resources/world/world-api.ts`, `resources/box/box-api.ts`);
+[examples/kanban](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/kanban/run.ts)'s `run.ts` prints what Bob is told of Alice's
+batch: a rename and a move as the fields that changed, a new card whole.
+
 ## Gotchas
 
 - **Never assume a replace carries a whole row.** Apply what you are told with `applyOps`

@@ -7,6 +7,12 @@ ever is the same. Before a document's rows pile up, say what the page needs open
 that. How documents are declared is [documents.md](documents.md); the scope's syntax is delta's
 (`delta-doc` skill, *`scope` syntax*).
 
+Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/resources/room/room-api.ts), a list scoped by a column
+(`room:general`, every message whose `room` it is: `resources/room/room-api.ts`), read back in a
+window by a keyset (`/before`, `resources/session/session.ts`). The day as the root, and a list of
+only what is open, none yet: leave's `team:1` and the cafe's `floor:` still hold every row; dzql
+todo #81.
+
 ## Today's, or one shift's: make the day the root
 
 A single document is one root row and its children, by their parent keys

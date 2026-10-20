@@ -82,6 +82,8 @@ test(`${stories.notesRefused.name} -- the server refuses every write`, async () 
 });
 ```
 
+Working: `tests/evolve.ts` makes a new app from this template, applies this page (after document.md) and runs its type check and tests (`bun run test:evolve`).
+
 - `tests/stories.test.ts` fails a story no test names (`stories.<key>.name`), so a story cannot be dropped or renamed away from its test.
 - The page helpers are railroad's (`@blueshed/railroad/webview`): `open`, `waitFor`, `replaceText`, `failFetch`, `withOtherWindow`; `tests/browser.ts` adds `refuseWrites` (the server refuses what the page sends).
 - The Bun.WebView rules are at the top of railroad's `webview.ts` (`node_modules/@blueshed/railroad/webview.ts`): follow them exactly.

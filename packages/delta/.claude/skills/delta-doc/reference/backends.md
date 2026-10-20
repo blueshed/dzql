@@ -14,6 +14,12 @@ importTables(db, schema, exportTables("./chat.json", schema));   // once, into e
 registerDocs(ws, db, schema, docs);
 ```
 
+Working: [create-blueshed/template](https://github.com/blueshed/dzql/blob/main/packages/create-blueshed/template/src/resources/message/message-api.ts), a document kept in the JSON file
+(`src/resources/message/message-api.ts`), moved to SQLite with `exportTables` and `importTables`
+by its evolve skill's `references/sqlite.md`, applied to a new app and tested;
+[examples/sites-bbox](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/sites-bbox/README.md), one schema and its documents
+(`resources/schema.ts`) on SQLite, and on Postgres in dzql's `server-pg.ts`.
+
 ## Pick the smallest that fits
 
 - **JSON file** (`registerDocs(ws, file, …)`, `./json`): starting out, one process, a file you can read.

@@ -7,6 +7,9 @@
  * `examples/`, `tests/` or `scripts/` path it names exists in that package. And every skill a
  * package ships (`.claude/skills/<name>/SKILL.md`, in git) has its evaluations beside it
  * (`evals/<name>.json`): a skill is tested by a fresh session led by it, as code is by its tests.
+ * And each of a shipped skill's reference pages (`reference/*.md`, `references/*.md`, `reference.md`)
+ * has a line starting `Working:`, saying where its rules are shown working: an example its package's
+ * tests run, the test that runs the page as written, or `none` and why.
  * `bun run affected` runs it.
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -46,9 +49,15 @@ for (const skill of skills) {
   const [, pkg, name] = /^(packages\/[^/]+(?:\/template)?)\/\.claude\/skills\/([^/]+)\//.exec(skill)!;
   if (!existsSync(join(root, pkg!, "evals", `${name}.json`))) wrong.push(`${pkg}: ships the ${name} skill with no evaluations (evals/${name}.json)`);
 }
+// a shipped skill's reference pages: each says where its rules are shown working
+const globs = skills.map(dirname).flatMap((d) => [`${d}/reference/*.md`, `${d}/references/*.md`, `${d}/reference.md`]);
+const pages = (await $`git ls-files ${globs}`.cwd(root).quiet().text()).split("\n").filter(Boolean);
+for (const page of pages) {
+  if (!/^Working: /m.test(readFileSync(join(root, page), "utf8"))) wrong.push(`${page}: says nowhere where its rules are shown working (a line starting "Working:")`);
+}
 if (wrong.length) {
   console.error(wrong.join("\n"));
   console.error(`\n${wrong.length} place${wrong.length === 1 ? "" : "s"} where the docs and the code disagree`);
   process.exit(1);
 }
-console.log(`docs: ${files.length} files, every link and path there; ${skills.length} skills, each with its evaluations`);
+console.log(`docs: ${files.length} files, every link and path there; ${skills.length} skills, each with its evaluations; ${pages.length} reference pages, each saying where it works`);

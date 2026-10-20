@@ -123,6 +123,10 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **Each reference page of dzql-app and modelling says where its rules are shown working** (20
+  October, root #114): a line starting `Working:`, linking an example on GitHub (cafe, chat, leave,
+  ticker, wedding, create-dzql's template). `scope.md` shows only part of its rule working and
+  names #81 for the rest.
 - **Every app is routes and resources** (20 October, Peter's decision): the examples on SQLite are
   laid out as the cafe is, as `bun create dzql` lays an app out. Chat first: `delta.ts` is
   `store.ts` (the tables, said once, the database, `delta`, `migrating`, a `register` for each

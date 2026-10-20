@@ -9,6 +9,10 @@ cd ../app   && bun remove @blueshed/delta && bun add ../delta/blueshed-delta-<ve
 
 Each copy has its own `Signal` class, scopes and provider registry, and railroad does not bridge them.
 
+Working: none: the page is how an app installs a checkout of delta, which no code here does (the
+workspace links one railroad for every package); the warning and the throw it names are railroad's
+`tests/signals.test.tsx` and `tests/jsx.test.tsx`.
+
 - Symptoms: the UI stops updating, an effect reading delta's `doc.data` never re-runs, `inject(WS)` finds no provider, `openDoc()` in a component never auto-closes.
 - In development a second copy logs `A second copy of @blueshed/railroad has loaded (…)`, naming both. In any build, a Signal from the other copy throws where JSX, `when()` or `list()` is given it.
 - The usual cause is a `file:` link or `bun link` to a checkout.

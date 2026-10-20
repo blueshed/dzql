@@ -64,6 +64,10 @@ bun build --compile server.ts                        # one binary
 
 The server step adds `"types": ["bun"]` to the tsconfig, which needs `@types/bun` (`bun init` adds it; else `bun add -d @types/bun`).
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), its `tsconfig.json`, `index.html`, `routes.ts` (`development`
+gated on `NODE_ENV`) and `app.tsx` (`routes()` in place of `mount()`), served, and built for
+production without railroad's warnings, by railroad's `tests/webview-examples.test.ts`.
+
 - A routed app calls `routes(root, table)` in place of `mount()`: see [routes](routes.md). Adding pages to an app, server entries and `Bun.WebView` tests: the `bun-route` skill.
 - `bun create blueshed my-app` makes a paintbrush app (Bun 1.4): Bun routes and resources, railroad for the page; its `evolve` skill adds a delta document when a resource needs one.
 - Bun or another bundler only: railroad ships TypeScript source with extensionless imports, so it needs `moduleResolution: "bundler"` (or `"bun"`), never Node's `node16`/`nodenext`.
@@ -71,5 +75,3 @@ The server step adds `"types": ["bun"]` to the tsconfig, which needs `@types/bun
 - To annotate: `import type { JSX } from "@blueshed/railroad"`. `JSX.Element` is a DOM `Node`.
 - Warnings are development-only. A build that defines `process.env.NODE_ENV` as `"production"` drops them: `bun build --production`, `Bun.serve` with `development: false`, esbuild, Vite. `bun build --minify` alone does not, nor does `--production` under a `NODE_ENV` set otherwise in the environment (`bun test` sets `test`), which wins. Served unbundled (no `process`), railroad warns. What throws still throws.
 - Each module stands alone: `@blueshed/railroad/signals`, `/shared`, `/logger` need no DOM and no JSX config (server, CLI, worker); `/jsx` needs signals; `/routes` needs signals and jsx, and loads without a DOM.
-
-Worked example (in railroad's repository; examples don't ship): [jobs](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/README.md), whose `tsconfig.json`, `index.html` and [`routes.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/routes.ts) are served, built for production and tested as its README says.

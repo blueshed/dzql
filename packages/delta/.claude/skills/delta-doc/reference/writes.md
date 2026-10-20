@@ -4,8 +4,13 @@ From `examples/kanban/resources/board/board-view.tsx`: moving a card is writing 
 that holds both columns.
 
 ```ts
-await board.send([{ op: "replace", path: `/kanban_cards/${card.id}/kanban_columns_id`, value: next.id }]);
+await board.send([{ op: "replace", path: joinPath("kanban_cards", card.id, "kanban_columns_id"), value: next.id }]);
 ```
+
+Working: [examples/kanban](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/kanban/resources/board/board-view.tsx), a card moved by
+its parent key through the board (`resources/board/board-view.tsx`), and a rename, a move and an
+add in one batch (`run.ts`); [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/resources/lists/lists-view.tsx), an
+item removed by its ×, through the list (`resources/lists/lists-view.tsx`).
 
 ## A batch
 

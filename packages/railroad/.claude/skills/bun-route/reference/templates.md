@@ -35,6 +35,9 @@ function Page() {
 mount(document.getElementById("root")!, () => <Page />);
 ```
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), in tsx-railroad mode: `index.html` (relative paths, a module
+script), its own `index.css`, and `app.tsx`, which calls `routes()` rather than `mount()`.
+
 - `mount()` opens the page's dispose scope. A bare `.append(<Page />)` works but leaves top-level `when()`/`list()` undisposable (railroad warns). For an interactive page prefer `routes(root, { "/": () => <Page /> })`: navigation, params and scopes come with it.
 - **js / ts** mode, plain DOM:
 

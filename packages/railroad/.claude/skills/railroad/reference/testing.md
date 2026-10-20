@@ -29,11 +29,14 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 GlobalRegistrator.register();
 ```
 
+Working: [examples/jobs/tests/jobs.test.tsx](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/tests/jobs.test.tsx),
+which mounts each test under a scope of its own, asserts straight after a click, waits a macrotask
+for a hash set by hand and clears the providers, on happy-dom preloaded by the example's
+`bunfig.toml`; railroad's `tests/webview-examples.test.ts` runs the app in a real browser.
+
 - Unit tests run on happy-dom for fast reactivity checks; `mount()` gives each test a scope to dispose.
 - Writes notify synchronously: assert straight after a `.set()` or a click.
 - Setting `location.hash` yourself, or a `#/…` link, lands on the next `hashchange`, a macrotask: `await new Promise((r) => setTimeout(r, 0))`.
 - `clearProviders()` resets `provide`/`inject` between tests.
 - Real-browser tests use `Bun.WebView` against the real `Bun.serve`: the `bun-route` skill has the server factory, the patterns and the footguns.
 - Keep browser tests in their own file and run them by explicit path too: with no browser found they skip with a warning, so a green bare `bun test` doesn't prove they ran.
-
-Worked example: [`jobs.test.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/tests/jobs.test.tsx), the app's unit tests on happy-dom, and [`webview-examples.test.ts`](../../../../tests/webview-examples.test.ts), the app in a real browser.

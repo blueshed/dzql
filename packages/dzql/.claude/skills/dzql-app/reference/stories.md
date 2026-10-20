@@ -21,6 +21,11 @@ export const stories: Stories = {
 
 The shape is `Story` and `Stories` in `src/modelling/stories.ts`; `docs/stories.md` says why.
 
+Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/stories.ts), the stories above, whole (`stories.ts`);
+[examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/stories.ts), a cast signed in by a form, and tabs opened at a URL
+(`opensTab`); [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/stories.ts), each story naming its model story
+(`model: n`), the cast in by its links. `bun run stories:all` tells every example's.
+
 A story with no body yet, `story(name)`, goes in `Stories.unproven`: the harness reports it
 unproven, never failed, and a test named from it tells it until it has a body
 (`` test(`${stories.x.name} -- ...`) ``; `untold(stories, sources)` lists any no test names). That is

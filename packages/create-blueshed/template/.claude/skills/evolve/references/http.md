@@ -102,6 +102,8 @@ test(`${stories.files.name} -- a file that is not there is a 404`, async () => {
 });
 ```
 
+Working: `tests/evolve.ts` makes a new app from this template, applies this page and runs its type check and tests (`bun run test:evolve`).
+
 - Any other route copies `status` (`src/resources/status/`): a handler returning a `Response`; a signal and a `load()` that fetches; a view that calls `load()` in its body, keeps a `failed` signal, and draws with `when()` once there is data.
 - `/health` is a route in `src/routes.ts`.
 - Validate what a client sends and answer 400 with `{ error }`. Test every route and method, a 400 included. The view says when a load fails.

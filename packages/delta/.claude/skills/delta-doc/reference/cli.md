@@ -8,6 +8,10 @@ DELTA_TOKEN=$T bunx @blueshed/delta watch items: --json --until "add /items" --f
 
 Always the scoped name: `bunx delta` runs an unrelated npm package. The code is `src/cli.ts`.
 
+Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), the first person's link and
+the next migration made from a shell, as its README gives them (`link`, `migrations make`) and
+its tests run them; the rest as `tests/cli.test.ts` drives them against a running server.
+
 ## Talking to a running server
 
 ```bash

@@ -166,3 +166,5 @@ test(`${stories.ordering.name} -- two windows order and remove`, async () => {
   });
 });
 ```
+
+Working: `tests/evolve.ts` makes a new app from this template, applies this page and runs its type check and tests (`bun run test:evolve`).

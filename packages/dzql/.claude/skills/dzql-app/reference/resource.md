@@ -28,6 +28,11 @@ export const room: Resource = {
 
 The hooks, in the order they run: see `Resource` in `src/rendering/resources/resource.ts`.
 
+Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/resources/room/room.ts), a room's `resolveDoc`, `permit`,
+`shape` and `afterChange` (`resources/room/room.ts`), its memory documents kept true one run at a
+time (`presence.ts`); [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/resources/team/team.ts), `afterWrite` moving the
+writer's tab, and `afterWalk` (`resources/team/team.ts`).
+
 ## Who sees what
 
 - A page sees what it read: every `read("<docType>:<id>")` while drawing, and the one of each type

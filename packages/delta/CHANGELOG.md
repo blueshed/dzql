@@ -80,6 +80,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Each delta-doc reference page says where its rules are shown working** (20 October, root
+  #114): a line starting `Working:`, linking an example on GitHub (kanban, sites-bbox, lists, lobby,
+  the create-blueshed template, dzql's), or for `recipe.md`, `tests/recipe.test.ts`. kanban's
+  `board-view.tsx` builds its paths with `joinPath`, as `writes.md` (which quotes it) and
+  `paths.md` say, not with a template.
 - **The kanban example is routes and resources** (20 October, Peter's word: every app is routes
   and resources, joined by documents, as paintbrush is). `examples/kanban/` is `routes.ts` (the
   page and the socket given to `serve`; run, it is the server, by `run`), the page (`index.html`,

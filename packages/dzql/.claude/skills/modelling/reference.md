@@ -4,6 +4,11 @@ The model's page is dzql's modeling app (`src/modelling/page`, shipped in the pa
 model is one delta document: its stories, and the documents they need. `SKILL.md` is the order to
 work in.
 
+Working: [examples/cafe](https://github.com/blueshed/dzql/tree/main/packages/dzql/examples/cafe), a model told (`model.json`) and made (`model/`:
+`types.ts`, `guards.ts`, `migrations/`, `model.test.ts`), then built until every story passes:
+the guards in `store.ts`, each person's own in `resources/visit/`, a resource per document, and
+`stories.ts`, each naming its model story.
+
 ## Contents
 
 - [Where it runs](#where-it-runs)

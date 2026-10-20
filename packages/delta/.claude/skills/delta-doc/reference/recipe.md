@@ -115,4 +115,7 @@ mount(document.getElementById("app")!, () => <RoomView />);
 `bun routes.ts` and open <http://localhost:3100> in two tabs. Bun's fullstack bundler handles
 the TypeScript automatically.
 
+Working: `tests/recipe.test.ts` saves each block at its heading's path, starts the server, and
+has a message typed in one browser show in the other's log.
+
 **Moving to SQLite** changes `room-api.ts` and nothing else: its imports come from `@blueshed/delta/sqlite`, and `roomApi` opens `const db = new Database("chat.db")` (`bun:sqlite`), carries the rows once, into empty tables, with `createTables(db, schema); importTables(db, schema, exportTables(file, schema))`, and registers on it: `registerDocs(ws, db, schema, docs)`. `exportTables` alone is from `@blueshed/delta/json` (`file` is the JSON file). Ids carry, so the next message named follows on; `routes.ts`, the room's handle and view, and the page stay as they are.

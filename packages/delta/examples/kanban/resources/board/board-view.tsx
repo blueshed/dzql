@@ -12,6 +12,7 @@
  *
  * No useState, no fetch, no subscription config. The doc IS the state.
  */
+import { joinPath } from "@blueshed/delta/core";
 import { list, type JSX, type ReadonlySignal } from "@blueshed/railroad";
 import type { Card, Column } from "./board-api";
 import { board } from "./board";
@@ -27,13 +28,13 @@ async function moveCardRight(card: Card): Promise<void> {
   const idx = cols.findIndex((c) => c.id === card.kanban_columns_id);
   const next = cols[(idx + 1) % cols.length];                 // wrap at the end
   if (!next || next.id === card.kanban_columns_id) return;
-  await board.send([{ op: "replace", path: `/kanban_cards/${card.id}/kanban_columns_id`, value: next.id }]);
+  await board.send([{ op: "replace", path: joinPath("kanban_cards", card.id, "kanban_columns_id"), value: next.id }]);
 }
 
 async function renameColumn(col: Column): Promise<void> {
   const next = prompt("Column title", col.title);
   if (!next || next === col.title) return;
-  await board.send([{ op: "replace", path: `/kanban_columns/${col.id}/title`, value: next }]);
+  await board.send([{ op: "replace", path: joinPath("kanban_columns", col.id, "title"), value: next }]);
 }
 
 async function addCard(columnId: number): Promise<void> {

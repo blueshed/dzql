@@ -14,6 +14,12 @@ await room.send([{ op: "add", path: "/messages/-", value: m }]);
 `doc.send(ops)` does not change your view. The server applies the ops and broadcasts them to
 every holder, the sender included. `Doc` in `src/client/client.ts` is the contract.
 
+Working: [create-blueshed/template](https://github.com/blueshed/dzql/blob/main/packages/create-blueshed/template/src/resources/message/message-view.tsx), Save sends
+and says Saved once the change has come back, Not saved on a refusal, and the page follows
+again after the server restarts (`src/resources/message/message-view.tsx`, its
+`message.test.ts`); [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/resources/lists/lists-view.tsx), every change one
+`send`, drawn by its echo on every page (`resources/lists/lists-view.tsx`).
+
 ## What the client does with a broadcast
 
 1. Calls every `doc.onOps` handler (DOM patchers run here).

@@ -15,6 +15,10 @@ that send writes are [controls.md](controls.md).
 
 The shapes are `src/rendering/json-patch.ts` (`WIRE`, `LONGEST_ID`) and `src/rendering/server.ts`.
 
+Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/server.test.ts), writes over a real socket
+(`server.test.ts`): the echo naming the bare type of a session, a refused write answered by its
+id, `inspect` naming the documents a page sees.
+
 - A document is named whole, `<docType>:<docId>` (`room:general`), so one socket holds any documents.
   A bare type in a write is the one of that type the page is on (`resolveDoc`).
 - A `perSession` document is named by its type alone, since the id is a credential. A document keyed

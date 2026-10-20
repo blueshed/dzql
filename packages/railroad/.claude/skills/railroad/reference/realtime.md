@@ -29,6 +29,12 @@ mount(document.getElementById("root")!, () => (
 ));
 ```
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), whose feed changes a job in place and touches
+(`resources/jobs/jobs.ts`) and whose rows are a keyed `list()` with `{ equals: () => false }`
+(`resources/jobs/jobs-view.tsx`), over a plain `Bun.serve` socket (`resources/jobs/jobs-api.ts`).
+Over delta: delta's [examples/kanban](https://github.com/blueshed/dzql/tree/main/packages/delta/examples/kanban), a board opened by `openDoc` (`resources/board/board.ts`) and drawn by
+`when()` and `list()` (`app.tsx`, `resources/board/board-view.tsx`).
+
 - Don't `.set({ ...doc.peek(), … })` a fresh clone per patch on a large document: mutate it, then `.touch()`. `.mutate(fn)` (clone, mutate, notify) is the safer middle ground for small ones.
 - `{ equals: () => false }` is needed because an in-place patch re-delivers the same row reference, which `Object.is` swallows; the row's own `.map()`s still bail on unchanged values, so DOM writes stay minimal.
 - A projection that returns the same reference (`doc.map((d) => d.settings)`) bails after `.touch()`: project to fresh values or pass `{ equals: () => false }`.
@@ -83,5 +89,3 @@ await run(() => serve({ ws, routes: { "/": home } }));
 On a page dzql's server draws, the one piece with state of its own is an applet, and railroad can
 draw it: `applet(render, reduce?)` from `dzql/rendering/applet`, its props a signal. How, with the
 ticker's example, is dzql's `dzql-app` skill (`reference/applets.md`).
-
-Worked example, your own patch stream: [`jobs.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs.ts) and [`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx), over a plain `Bun.serve` feed ([`jobs-api.ts`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-api.ts)). Over delta: delta's kanban example.

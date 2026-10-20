@@ -51,6 +51,11 @@ package): one view per file, `evaluate` takes a string expression, `await` every
 appends (`replaceText` replaces), a second window by `withOtherWindow`. Read them there; what
 follows is what the kit does not say.
 
+Working: [create-blueshed/template/tests/site.test.ts](https://github.com/blueshed/dzql/blob/main/packages/create-blueshed/template/tests/site.test.ts),
+paintbrush's, a delta app: it starts the app's own routes on port 0 with a throwaway data folder
+and drives the page with the kit (through `browser.ts` beside it); railroad's
+`tests/webview-examples.test.ts` drives its jobs example so.
+
 The methods and options are Bun's types (`Bun.WebView` in `@types/bun`); read them, not a table. Recipes for what it lacks: [webview-recipes](webview-recipes.md).
 
 - Bun 1.3.12+ for `Bun.WebView`; 1.3.14+ for `clickCount`, the per-call `timeout` and the constructor's `console` and `dataStore`. Check `bun --version` and tell the user if theirs is older.
@@ -61,5 +66,3 @@ The methods and options are Bun's types (`Bun.WebView` in `@types/bun`); read th
 - Use `server.url.href`, never a hard-coded `localhost:3000`; never start the server with a shell command in `beforeAll`.
 - Give the factory a throwaway data path: `mkdtempSync(join(tmpdir(), "app-test-"))` in `beforeAll`, `rmSync(dir, { recursive: true, force: true })` in `afterAll`.
 - `cdp(method, params)` (DevTools Protocol) works only on the `chrome` backend.
-
-Worked example: railroad's [`webview-examples.test.ts`](../../../../tests/webview-examples.test.ts), which runs its jobs example as its README says and drives it with the kit.

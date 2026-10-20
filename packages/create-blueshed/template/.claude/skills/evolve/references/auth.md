@@ -328,6 +328,8 @@ test(`${stories.invite.name} -- on the page: pick who you are, add someone new, 
 });
 ```
 
+Working: `tests/evolve.ts` makes a new app from this template, applies this page and runs its type check and tests (`bun run test:evolve`).
+
 - How a link, a session and `mayLink` work: delta-doc's `reference/auth.md`. Who may open a document once there is sign-in: `owns`, a path in the document's definition from its row to the person (`@person` for one's own), or `shared: true`; its `reference/ownership.md` has each shape. Documents registered without `auth`, like `message`, stay open to anyone.
 - **In production** nobody is listed: set `ORIGIN` (the site's address, which links name; Railway sets `RAILWAY_PUBLIC_DOMAIN`), and give the first person their link with `bun run link <name>` on the server.
 - On Postgres, the links and sessions are dzql's: `postgresLinkStore` from `dzql/auth-link`, and `bunx dzql link`.

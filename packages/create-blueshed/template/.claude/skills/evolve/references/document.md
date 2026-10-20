@@ -101,6 +101,8 @@ NotesCell(),
 if (at.what === "new-note" || at.what === "remove-note") return NoteModal(at);
 ```
 
+Working: `tests/evolve.ts` makes a new app from this template, applies this page and runs its type check and tests (`bun run test:evolve`).
+
 - Never set a document in the page: `send` the change; it comes back to every window holding it, this one included, and draws there. Adding it locally as well draws it twice.
 - A new row is `add /<collection>/-`: the server names it, in the path and as the row's `id`. Address a row by its id, never its position.
 - The page is the bento's (`src/resources/bento.tsx`): a document is a cell on the box, changed in a drawer, made or removed in a modal, each opened by where you are (`go("", "<what>", id)`), so Back closes it. A list is `rowsOf`, keyed by id. Say "Not saved" when a `send` rejects, and leave the modal open with what was typed.

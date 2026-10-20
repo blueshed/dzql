@@ -8,6 +8,12 @@ A control says what it writes, and the kernel's client sends it. The messages ar
 field({ doc: "household", path: "/message", value: h.message, label: "Our words", kind: "textarea", placeholder: "Say something to the couple", said: v.wordsTold })
 ```
 
+Working: [examples/wedding](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/wedding/resources/household/household-view.ts), a `field()` for
+the household's words (`resources/household/household-view.ts`);
+[examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/resources/room/room-view.ts), a form that creates and a button, by hand
+(`resources/room/room-view.ts`); [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/resources/team/team-view.ts), a form
+that edits in place (`data-write-on="change"`, `resources/team/team-view.ts`).
+
 ## A field: one call (`field()`, `src/rendering/bento.ts`)
 
 Use `field()` for a field that edits a document: it cannot be wired wrong. Its options are

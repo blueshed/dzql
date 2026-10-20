@@ -22,6 +22,10 @@ mount(document.getElementById("root")!, () => <Greeting />);
 
 A component runs once and returns real DOM. A Signal or a function, as a child or a prop, is reactive; anything else is applied once. Each tag's props are typed from the DOM (`jsx.ts`, "Intrinsic element props"): read the types, not a table.
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), whose `resources/jobs/jobs-view.tsx` binds projections,
+`oninput` and `onchange`, `disabled`, a `<select value>` after its options, `ref`, `readonly`, a
+style string and an object, `null` rendering nothing, and SVG with an adopted `<title>` (`Ring`).
+
 - No `.get()` in JSX or a render body (a component, a `when()` branch, a `list()` row, a route handler, `mount()`'s render): they run once, untracked, so it reads once and subscribes nothing. It warns once per render body in development; `.peek()` and `untrack()` are the silent one-shot reads.
 - A function child returns text, not a Node: `{() => ok ? <A/> : <B/>}` renders the element as a string (and warns). Use `when()` for an element, `list()` for a collection ([when-list](when-list.md)).
 - `null`, `undefined`, `true`, `false` render nothing, static or reactive.
@@ -42,5 +46,3 @@ SVG tags (`circle`, `g`, `linearGradient`, `foreignObject`, `fe*`…) are made i
 - An SVG element renders only under an `<svg>` ancestor (SVG's rule). Prefer `href` to `xlink:href`.
 
 Async components: [async](async.md).
-
-Worked example: `JobRow` and `Ring` in [`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx): bound projections, `oninput` and `onchange`, `disabled`, a `<select value>` after its options, `ref`, `readonly`, a style string and object, `null` rendering nothing, SVG with an adopted `<title>`.

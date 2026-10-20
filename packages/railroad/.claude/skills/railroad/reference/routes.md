@@ -31,6 +31,11 @@ navigate("/users/42");   // route() and the router are current as it returns
 
 `routes(target, table, options?)` returns its disposer (idempotent); `matchRoute(pattern, path)` is the pure matcher, for tests and servers. Types and the contract: `routes.ts`.
 
+Working: [examples/jobs](https://github.com/blueshed/dzql/tree/main/packages/railroad/examples/jobs), whose `app.tsx` has the order (`/jobs/new` before
+`/jobs/:id`), a keyed async route, a wildcard layout, a catch-all reading `params$` and `onError`;
+`JobPage` splits the query off (`resources/jobs/jobs-view.tsx`) and the layout picks its runner by
+`route()` (`resources/runners/runners-view.tsx`).
+
 - The first match wins, in declaration order: `/users/new` before `/users/:id`.
 - Segments only: no query strings (`#/users/42?tab=1` gives `id` `"42?tab=1"`; split `?` yourself), and a trailing slash is a segment (`/users/42/` doesn't match `/users/:id`).
 - A handler runs once per **pattern**, untracked, so `({ id }) => …` keeps the first id after `/users/1` → `/users/2`. Read `params$`, or mark the route `{ keyed: true, handler }`, which disposes the old run and runs again when the params change (local state and focus reset).
@@ -38,5 +43,3 @@ navigate("/users/42");   // route() and the router are current as it returns
 - An async handler resolves to a thunk, as an async component does; a bare Node is an error. Bindings made in the thunk die on navigation.
 - `onError` runs when a handler throws or rejects (`err` is `unknown`); a returned Node renders in the target. Without it the error goes to `console.error`.
 - `navigate()` is synchronous. Setting `location.hash`, or following a `#/…` link, lands on the next `hashchange`, a macrotask later.
-
-Worked example: [`app.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/app.tsx) (the order, a keyed async route, a wildcard layout, a catch-all reading `params$`, `onError`), with the query split off in `JobPage` ([`jobs-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/jobs/jobs-view.tsx)) and `route()` inside the layout ([`runners-view.tsx`](https://github.com/blueshed/dzql/blob/main/packages/railroad/examples/jobs/resources/runners/runners-view.tsx)).

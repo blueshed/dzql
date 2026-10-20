@@ -26,6 +26,11 @@ your app needs (`login`, `authenticate`, `logout` as its `actions`). On Postgres
 is one, and `asSqlArg` names who row-level security sees (`postgres.md`). Who may open which
 document: `ownership.md`.
 
+Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md), the four places wired for
+link sign-in, signed in by a link from the command or the page, with the picker in development:
+`resources/people/people-api.ts` (`linkAuth`, `wireAuth`), `routes.ts` (the socket upgraded by
+its cookie), `app.tsx` (`takeLink`, `onConnect`).
+
 ## Link sign-in: no passwords
 
 `@blueshed/delta/auth-link` is a `DeltaAuth` delta ships: a link is someone, its tap a session
@@ -43,9 +48,6 @@ await takeLink();                                   // opened at <site>/#/in/<to
 provide(WS, connectWs("/ws"));
 const me = await call<Person | null>("me");          // null: nobody: show "Who are you?"
 ```
-
-Working, signed in by a link from the command or the page, with the picker in development:
-[examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/README.md) (`routes.ts`, `app.tsx`, `resources/people/`).
 
 - **A link:** `call("link", { person, opens })` from anyone signed in (`mayLink` narrows it);
   the first person's from the server, `bunx @blueshed/delta link app.db 1 --origin https://my.app`.

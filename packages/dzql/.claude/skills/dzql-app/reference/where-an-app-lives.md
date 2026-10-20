@@ -11,6 +11,12 @@ bun dev                  # the app, and the model's page at /model, where the st
 bun test                 # bun run stories and bun run cli work on src/ too
 ```
 
+Working: [create-dzql's template](https://github.com/blueshed/dzql/tree/main/packages/create-dzql/template), the starter `bun create dzql` copies: `stories.ts`,
+`src/routes.ts` (delta's `serve`, the model's page composed only with `--model`), `src/store.ts`,
+and `package.json`'s `dev`, `stories`, `cli` and `model`;
+[create-dzql's test](https://github.com/blueshed/dzql/blob/main/packages/create-dzql/tests/create.test.ts)
+makes an app from it, type-checks it, runs its tests and starts it.
+
 ## A project made with `bun create dzql`
 
 ```

@@ -19,6 +19,10 @@ const server = serve(compose(appOf(app), modelling), { port });
 console.log(["Signed in by a link:", ...links.say(server.url.origin).map((l) => `  ${l}`)].join("\n"));
 ```
 
+Working: [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/links.ts), the staff in by a link each (`links.ts`; the route,
+and the links said as it starts, in `routes.ts`; a way in for each on the door, `page.ts`);
+[examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/signin.ts), passwords, a CLI token and a trusted proxy (`signin.ts`).
+
 - A link opened starts a **fresh** session as that person (never the visit's own, which a stranger
   could have planted) holding their `value`, and sends the browser home with its cookie. A link
   that is no link (the server restarted) goes home signed out. Links last as long as the server and

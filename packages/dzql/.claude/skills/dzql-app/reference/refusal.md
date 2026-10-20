@@ -26,6 +26,12 @@ async afterWalk(ws, id, { way, ops, inverse }) {
 
 `refuse`, `tell` and `toldAt` are `src/rendering/refusal.ts`.
 
+Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/resources/session/session-api.ts), a rule in `shape`
+(`resources/session/session-api.ts`) told beside the field that sent it
+(`resources/team/team-view.ts`); [examples/wedding](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/wedding/resources/household/household.ts),
+answers closed against Undo too (`permitUndo`) and what a walk did, told (`afterWalk`), in
+`resources/household/household.ts`.
+
 - Throw `refuse(reason)` from `permit` or `shape`. A plain `false` refuses without a word: right for
   a write no control offers, where there is nowhere to say why.
 - `toldAt(sessionId, doc, path)`, where `doc` and `path` are the control's `data-write`, draws
