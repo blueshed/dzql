@@ -3,7 +3,7 @@
  * in happy-dom, its app.tsx over Bun's own WebSocket to the server on PORT
  * (run from examples/kanban, so Bun takes railroad's JSX from its tsconfig).
  * It says "ready" once the board shows; with CLICK, clicks that card; then it
- * exits once card SEE is in column IN, or fails after 5 s.
+ * exits once card SEE is in column IN, or fails after 15 s (a cold start beside every package's tests can take five).
  */
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
@@ -20,7 +20,7 @@ await import(new URL("app.tsx", page).pathname);   // not a literal, so bun chec
 const board = () => Object.fromEntries([...document.querySelectorAll(".column")].map((c) =>
   [c.querySelector("h3")!.textContent, [...c.querySelectorAll(".card")].map((x) => x.textContent)]));
 const cards = () => [...document.querySelectorAll<HTMLElement>(".card")];
-const wait = async (done: () => boolean) => { for (let i = 0; i < 500 && !done(); i++) await Bun.sleep(10); };
+const wait = async (done: () => boolean) => { for (let i = 0; i < 1500 && !done(); i++) await Bun.sleep(10); };
 
 await wait(() => cards().length > 0);
 console.log("ready");

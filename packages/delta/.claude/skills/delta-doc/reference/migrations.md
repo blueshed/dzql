@@ -24,6 +24,10 @@ const result = await migrate(db, await fromFolder("migrations"), { app: "team", 
 // result.drift: what the definitions say beyond the history (empty: they agree)
 ```
 
+Working: [examples/lists](../../../../examples/lists/README.md), whose history renames a column
+on a database that holds data (`resources/lists/migrations/002-title.ts`: `make` wrote a drop and
+an add, made a `renameColumn` by hand), run at start-up, with undo fenced across it.
+
 - **Changes:** `createTable(key, def)` (a `defineSchema` entry), `dropTable`, `renameTable(key, to)`,
   `addColumn(key, column, def)`, `dropColumn`, `renameColumn(key, from, to)`,
   `addUnique(key, columns, { whereNull })`, `dropUnique(key, columns)`, from

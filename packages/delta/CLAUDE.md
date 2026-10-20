@@ -36,7 +36,7 @@ Bun only: never `npm`, `npx` or `node`.
 | Task | Command |
 |---|---|
 | Install | `bun install` |
-| Typecheck | `bun check` (Bun's type check, TypeScript 7; no `check` script, which would shadow it), and `bun check -p examples/kanban` for its JSX |
+| Typecheck | `bun check` (Bun's type check, TypeScript 7; no `check` script, which would shadow it), and `bun check -p examples/<name>` for each example with JSX (kanban, lists, lobby) |
 | Tests | `bun run test`: the fast tier (fewer law seeds); `bun run test:slow`: every test, every seed (no database server, no Docker; about 17 s) |
 | One file | `bun test tests/local.test.ts` |
 | **The gate** | **`bun run affected`** at the root (this tier and what depends on delta); **`bun run test:slow`** before a release. `package.json` says what each tier runs |
@@ -186,8 +186,11 @@ exact version, or the setup stops reading it).
   own tests import it as `@blueshed/delta/testing`, as a consumer would; what is a backend's own
   (SQLite's adapters, the stand-ups in `tests/helpers/case-backends.ts`) stays beside the tests.
   `createLocal()` is the lighter harness for SQLite and the kinds.
-- `examples/`: `sites-bbox`, `kanban`, each run as its README says by
-  `tests/recipe.test.ts` and `tests/examples.test.ts` (`tests/helpers/examples.ts`).
+- `examples/`: `sites-bbox`, `kanban`, `lists` (sign-in by link, `owns`, undo with two people, a
+  migration over kept data), `lobby` (the kinds), each run as its README says by
+  `tests/examples.test.ts` (`tests/helpers/examples.ts`, a browser helper each for the pages); the
+  recipe by `tests/recipe.test.ts`. They are the skill's worked answers: a reference page links the
+  example that shows its rules.
 
 ## Notes
 
