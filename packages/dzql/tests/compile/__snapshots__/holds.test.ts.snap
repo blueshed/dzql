@@ -909,11 +909,11 @@ exports[`on the seed, every name holds what the framework says it holds fo-menu-
     false,
     false,
     true,
-    true,
-    true,
-    true,
-    true,
-    true,
+    false,
+    false,
+    false,
+    false,
+    false,
     false,
     false,
     false,
@@ -4102,12 +4102,12 @@ exports[`after writes of every kind, still fo-menu-like:So 1`] = `
     false,
     false,
     true,
+    false,
     true,
-    true,
-    true,
-    true,
-    true,
-    true,
+    false,
+    false,
+    false,
+    false,
     false,
     false,
     false,
@@ -6738,7 +6738,7 @@ BEGIN
       IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
       RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%'));
     WHEN 'drinks' THEN
-      IF NOT v_single THEN RETURN TRUE; END IF;
+      IF NOT v_single THEN RETURN EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = (p_row->>'courses_id')::BIGINT AND (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%')); END IF;
       RETURN (p_row->>'courses_id')::BIGINT IS NOT DISTINCT FROM v_id;
   END CASE;
 END;
@@ -7470,7 +7470,7 @@ BEGIN
       RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
     WHEN 'notes' THEN
       IF p_at <= now() THEN RETURN FALSE; END IF;
-      IF NOT v_single THEN RETURN TRUE; END IF;
+      IF NOT v_single THEN RETURN EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = (p_row->>'weddings_id')::BIGINT AND (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END))); END IF;
       RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
   END CASE;
 END;

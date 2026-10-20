@@ -35,12 +35,21 @@ by its scope (`{ person: ":id" }`: every membership of that person), in
 - A scope that binds `id`, or no scope and a non-empty id, is **single**: one root row and its
   children. The rest of the scope must hold too (`guest:1:a@x` is household 1 only while its
   email is `a@x`, else 404). Omit `scope` for a plain `WHERE id = <id>`.
-- Anything else is **list**: every root row the conditions admit, keyed by id, each included
-  collection **in full**. `items:` is every item; `by-status:active` over `{ status: ":id" }` is
-  every active row (`:id` names the param, not the row).
+- Anything else is **list**: every root row the conditions admit, keyed by id, and of each
+  included collection the rows that hang under those roots (through its parent chain, as a single
+  document's do), never a row under a root the list does not admit. `items:` is every item;
+  `by-status:active` over `{ status: ":id" }` is every active row (`:id` names the param, not the
+  row); `fo-menu-like:So` over courses, with their drinks, is the courses whose name starts "So"
+  and only their drinks (`src/cases/path/fanout.ts`, "a scoped list holds what hangs under the
+  roots it admits"). An included collection that hangs from no root row (no parent, or a chain that
+  ends short of the root) comes whole.
+- **A list is told as it reads**: a row added, written or removed under a root it admits reaches
+  it, one under another root does not; a root written into its conditions arrives with the rows
+  under it, and one written out of them leaves with them.
 - **A list writes only within its scope**: an add gets the equality values and must meet the
-  rest (else 404); a replace that would take a root row out of scope is 404 and undone. A single
-  document's root is held to its scope the same way.
+  rest (else 404); a replace that would take a root row out of scope is 404 and undone; a row
+  under a root it does not admit is not there to it (404), and one is added or moved only under a
+  root it admits. A single document's root is held to its scope the same way.
 
 ## How values are read
 

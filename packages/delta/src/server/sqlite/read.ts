@@ -1,5 +1,5 @@
 /** A document read from the tables: as they stand (open) or as they stood (open_at). */
-import { q, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { hangsFrom, q, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { toMap } from "../custom";
 import { resolveScope, rowId, whereOf, type Scope } from "../scope";
 import { keeping } from "./keep";
@@ -25,8 +25,9 @@ export function impliedDoc(schema: Schema, def: DocDef, docId: string): any {
 /**
  * A document as its scope reads it from the tables -- as they stand, or as they
  * stood at `at` (SQLite's own time form; by default, the time in its name, `at:`): single mode, one root row and its
- * children; list mode, every root row the scope admits and each included
- * collection in full.
+ * children; list mode, every root row the scope admits and the rows that hang
+ * under those (a collection that hangs from no root row -- no parent, or a
+ * chain that ends short of the root -- in full).
  */
 export function readDoc(db: any, schema: Schema, def: DocDef, scope: Scope, at = scope.at === undefined ? undefined : sqliteTime(scope.at)): any | null {
   const rootTable = schema.tables[def.root];
@@ -44,9 +45,13 @@ export function readDoc(db: any, schema: Schema, def: DocDef, scope: Scope, at =
     );
   }
   const doc: any = { [def.root]: list ? toMap(rows) : rows[0] };
+  const rootIds = list ? rows.map((r: any) => r.id) : [rows[0].id];
   for (const collKey of def.include) {
     const table = schema.tables[collKey];
-    if (table) doc[collKey] = toMap(list ? readRows(db, table, "1 = 1", [], at) : readCollection(db, schema, table, def, rows[0].id, at));
+    if (!table) continue;
+    // a list with no condition admits every root row: what hangs under them is all there is; one that hangs from no root row is whole
+    const whole = list && (scope.conds.length === 0 || !hangsFrom(schema, collKey, def.root));
+    doc[collKey] = toMap(whole ? readRows(db, table, "1 = 1", [], at) : readCollection(db, schema, table, def, rootIds, at));
   }
   return doc;
 }
@@ -60,20 +65,21 @@ function readRows(db: any, table: ResolvedTable, where: string, params: any[], a
   return rows;
 }
 
-/** A single document's rows of `table`, under its root row `rootId`, walking up the parent keys to it. */
-function readCollection(db: any, schema: Schema, table: ResolvedTable, def: DocDef, rootId: unknown, at?: string): any[] {
+/** A document's rows of `table`, under its root rows `rootIds` (a single document's one; a list's, those its scope admits), walking up the parent keys to them. */
+function readCollection(db: any, schema: Schema, table: ResolvedTable, def: DocDef, rootIds: unknown[], at?: string): any[] {
   // No parent: no key ties a row of it to one document. Included, it is
   // loaded in full: every document of the
   // prefix holds every row, and the fan-out (holds) says the same.
   if (!table.parent) return readRows(db, table, "1 = 1", [], at);
   const fk = q(table.parent.fkColumn);
-  if (table.parent.collection === def.root) return readRows(db, table, `${fk} = ?`, [rootId], at);
+  // the ids as one JSON parameter: a list may admit more roots than SQLite takes parameters
+  if (table.parent.collection === def.root) return rootIds.length ? readRows(db, table, `${fk} IN (SELECT value FROM json_each(?))`, [JSON.stringify(rootIds)], at) : [];
   // Grandchild: its parent rows first, then the rows under them. A parent the
   // document need not include: its rows are walked all the same. One with no
   // parent of its own ends the chain short of the root, so nothing under it is
   // in the document, as the fan-out's chainRoot judges it.
   const parentTable = schema.tables[table.parent.collection];
   if (!parentTable?.parent) return [];
-  const ids = readCollection(db, schema, parentTable, def, rootId, at).map((r: any) => r.id);
-  return ids.length ? readRows(db, table, `${fk} IN (${ids.map(() => "?").join(", ")})`, ids, at) : [];
+  const ids = readCollection(db, schema, parentTable, def, rootIds, at).map((r: any) => r.id);
+  return ids.length ? readRows(db, table, `${fk} IN (SELECT value FROM json_each(?))`, [JSON.stringify(ids)], at) : [];
 }

@@ -153,6 +153,15 @@ DO $$ BEGIN
   EXECUTE format('ALTER FUNCTION _delta_holders(TEXT, JSONB, TEXT) SET search_path = %s, pg_temp', COALESCE(NULLIF(current_setting('search_path'), ''), 'public'));
 END $$;
 
+-- _delta_rescopes: does `p_value`, written over a row of `p_coll` as it was
+-- (`p_was`), change a column a list document rooted there scopes by, where it
+-- holds rows that hang under its roots? Then those rows may arrive in a list or
+-- leave one, and are carried as a row moved to another parent carries them
+-- (delta_apply). generateSql writes it (compileRescopes); before it is
+-- applied no list scopes by any.
+CREATE OR REPLACE FUNCTION _delta_rescopes(p_coll TEXT, p_was JSONB, p_value JSONB)
+RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$ SELECT FALSE; $$;
+
 -- ---------------------------------------------------------------------------
 -- _delta_govern: a table's row-level security, as generateSql derives it from
 -- the documents' paths (compilePolicies, todo #19). Given `p_may`, the table's

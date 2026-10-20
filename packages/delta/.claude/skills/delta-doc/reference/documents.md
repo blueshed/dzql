@@ -23,9 +23,10 @@ board through their columns (`resources/board/board-api.ts`).
 
 - **List**: `defineDoc("items:", { root: "items", include: [] })`; `items:` opens every row,
   `{ items: { "1": {…}, "2": {…} } }`.
-- **Catalog**: a list root with includes, each loaded **in full** (list mode has no root id to
-  filter by): `defineDoc("catalog:", { root: "products", include: ["parts", "faces"] })`, for
-  collections read side by side.
+- **Catalog**: a list root with includes, each the rows that hang under the roots the list
+  admits (every root, with no scope: then every row): `defineDoc("catalog:", { root: "products",
+  include: ["parts", "faces"] })`, for collections read side by side. Scoped, it holds only what
+  hangs under the roots its scope admits ([scope.md](scope.md)).
 - **Single**: `board:1` is one root row; each include travels its `parent` chain to that root.
 
 ## The parent chain

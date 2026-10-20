@@ -13,10 +13,13 @@ exports[`permissions: the rows each person reads on the seed 1`] = `
     "people": [
       "1",
       "2",
-      "3",
     ],
     "posts": [
       "1",
+    ],
+    "tasks": [
+      "1",
+      "2",
     ],
     "venues": [
       "1",
@@ -34,9 +37,12 @@ exports[`permissions: the rows each person reads on the seed 1`] = `
     "people": [
       "1",
       "2",
-      "3",
     ],
     "posts": [
+      "2",
+    ],
+    "tasks": [
+      "1",
       "2",
     ],
     "venues": [
@@ -53,11 +59,12 @@ exports[`permissions: the rows each person reads on the seed 1`] = `
     ],
     "orgs": [],
     "people": [
-      "1",
-      "2",
       "3",
     ],
     "posts": [],
+    "tasks": [
+      "3",
+    ],
     "venues": [
       "2",
     ],
@@ -65,12 +72,9 @@ exports[`permissions: the rows each person reads on the seed 1`] = `
   "null": {
     "members": [],
     "orgs": [],
-    "people": [
-      "1",
-      "2",
-      "3",
-    ],
+    "people": [],
     "posts": [],
+    "tasks": [],
     "venues": [],
   },
 }
@@ -90,10 +94,13 @@ exports[`permissions: the rows each person reads after writes: a membership let 
     "people": [
       "1",
       "2",
-      "3",
     ],
     "posts": [
       "1",
+    ],
+    "tasks": [
+      "1",
+      "2",
     ],
     "venues": [],
   },
@@ -109,9 +116,12 @@ exports[`permissions: the rows each person reads after writes: a membership let 
     "people": [
       "1",
       "2",
-      "3",
     ],
     "posts": [
+      "2",
+    ],
+    "tasks": [
+      "1",
       "2",
     ],
     "venues": [
@@ -129,11 +139,12 @@ exports[`permissions: the rows each person reads after writes: a membership let 
     ],
     "orgs": [],
     "people": [
-      "1",
-      "2",
       "3",
     ],
     "posts": [],
+    "tasks": [
+      "3",
+    ],
     "venues": [
       "2",
     ],
@@ -141,12 +152,9 @@ exports[`permissions: the rows each person reads after writes: a membership let 
   "null": {
     "members": [],
     "orgs": [],
-    "people": [
-      "1",
-      "2",
-      "3",
-    ],
+    "people": [],
     "posts": [],
+    "tasks": [],
     "venues": [],
   },
 }
@@ -276,7 +284,30 @@ exports[`a board: the rows each person reads after writes: a membership let go, 
 `;
 
 exports[`the compiled text is the same for the same definitions, and pinned 1`] = `
-"SELECT _delta_govern('people', NULL);
+"CREATE OR REPLACE FUNCTION dzql_may__people(p_row "people", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- mine:
+    COALESCE(((p_row)."id" = v_person), FALSE)
+    OR -- team:
+    COALESCE(EXISTS (SELECT 1 FROM "people" _p_people WHERE _p_people."team_id" = (CASE WHEN ((p_row)."team_id")::text ~ '^\\s*[+-]?[0-9]+\\s*$' THEN ((p_row)."team_id")::text::BIGINT END) AND _p_people."id" = v_person), FALSE);
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__people("people", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('people', 'dzql_may__people');
 
 CREATE OR REPLACE FUNCTION dzql_may__orgs(p_row "orgs", p_check BOOLEAN)
 RETURNS BOOLEAN AS $$
@@ -373,6 +404,31 @@ BEGIN
   EXECUTE format('ALTER FUNCTION dzql_may__posts("posts", boolean) SET search_path = %s', v_path);
 END $$;
 SELECT _delta_govern('posts', 'dzql_may__posts');
+
+CREATE OR REPLACE FUNCTION dzql_may__tasks(p_row "tasks", p_check BOOLEAN)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user   TEXT := current_setting('app.user_id', true);
+  v_person BIGINT := CASE WHEN v_user ~ '^\\s*[+-]?[0-9]+\\s*$' THEN v_user::BIGINT END;
+  v_may    BOOLEAN;
+  v_was_past TEXT := current_setting('dzql.definer', true);
+BEGIN
+  PERFORM set_config('dzql.definer', 'on', true);
+  v_may := -- mine:
+    COALESCE(((p_row)."people_id" = v_person), FALSE)
+    OR -- team:
+    COALESCE(EXISTS (SELECT 1 FROM "people" _p_people WHERE _p_people."team_id" = (CASE WHEN ((SELECT r."team_id" FROM "people" r WHERE r.id = (p_row)."people_id"))::text ~ '^\\s*[+-]?[0-9]+\\s*$' THEN ((SELECT r."team_id" FROM "people" r WHERE r.id = (p_row)."people_id"))::text::BIGINT END) AND _p_people."id" = v_person), FALSE);
+  PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
+  RETURN v_may;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION dzql_may__tasks("tasks", boolean) SET search_path = %s', v_path);
+END $$;
+SELECT _delta_govern('tasks', 'dzql_may__tasks');
 "
 `;
 

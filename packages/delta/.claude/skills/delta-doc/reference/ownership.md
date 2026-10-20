@@ -45,6 +45,22 @@ defineDoc("notices:", { root: "notices", include: [], owns: "AUTHENTICATED",
   `projects`, with `person_id`). What the project has hangs under the project, and its path runs
   through the memberships: `@id->memberships[projects_id=$].person_id`. One more table, never a
   function.
+- **A person's own rows, which their group sees too** (each person's tasks, which their team's
+  members see; someone on no team sees only their own): people at the root, their rows under them,
+  and the team a person is on a column of their row (`team_id`, empty for no team). The person's
+  own document is single, `mine:` (`owns: "@id"`); the team's is a list of people scoped by that
+  column, with their rows: a scoped list holds only what hangs under the roots it admits
+  ([scope.md](scope.md)), so no one else's rows come with it.
+
+  ```ts
+  defineDoc("mine:", { root: "people", include: ["tasks"], owns: "@id" });
+  defineDoc("team:", { root: "people", include: ["tasks"], scope: { team_id: ":team" },
+    owns: "people[team_id=@team_id].id" });   // team:3: its members and their tasks, for them
+  ```
+
+  A person who joins the team, or leaves it, arrives in its list with their rows, or leaves
+  with them. No function. (`src/cases/permissions.ts`, "a person's own rows, which their team
+  sees".)
 - **Everything, for some people** (the staff, the admins): a list has no row to start from, so
   its path starts at a table with a filter: `people[admin=true].id`.
 - **Anyone signed in**: `AUTHENTICATED`; nobody: `FALSE`.

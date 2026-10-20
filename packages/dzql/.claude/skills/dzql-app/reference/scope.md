@@ -56,7 +56,9 @@ defineDoc("leave-from:", { root: "requests", include: [], scope: { ends: ">=:id"
 register(docs.filter((d) => d.prefix === "kitchen:").map((d) => ({ ...d, scope: { status: "!=:id" } }))); // kitchen:placed
 ```
 
-- A list includes its collections **in full**: give it none, or every order ever comes with it.
+- A list includes only what hangs under the roots it admits: `bills-by:false` with `include:
+  ["orders"]` (orders under bills) is the unpaid bills and their orders, never a paid bill's. With
+  no condition it admits every root, so every order ever comes with it: scope it, or give it none.
 - An add through it takes the scope's values (`paid: false`); a write that takes a row out of its
   scope through it is refused. Pay the bill through a document that holds it (`bill:<id>`, or the
   shift): it leaves `bills-by:false`, and every page that read that list is told.

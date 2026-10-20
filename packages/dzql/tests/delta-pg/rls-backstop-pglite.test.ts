@@ -78,9 +78,9 @@ describe("row-level security beneath the compiled functions", () => {
     expect(await seen(app)).toEqual([]);
     expect(await seen(admin)).toEqual([1, 2]);
     const { rows } = await admin.query("SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname IN ('posts', 'venues', 'people') ORDER BY relname");
-    // posts and venues every document holding them says by a path; people none holds
+    // posts, venues and people every document holding them says by a path (people: mine: and team:); a table with no path is the policies test's
     expect(rows).toEqual([
-      { relname: "people", relrowsecurity: false, relforcerowsecurity: false },
+      { relname: "people", relrowsecurity: true, relforcerowsecurity: true },
       { relname: "posts", relrowsecurity: true, relforcerowsecurity: true },
       { relname: "venues", relrowsecurity: true, relforcerowsecurity: true },
     ]);

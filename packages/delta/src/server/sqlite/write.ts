@@ -16,7 +16,7 @@ import { type DeltaOp, splitPath, joinPath, changedFields } from "../../core";
 import { createLogger } from "../logger";
 import { rowAt, type Ledger } from "../ledger";
 import { meets, resolveScope, rowId, sameId, type Scope } from "../scope";
-import { holdsField, isServerTime, q, refusedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { hangsFrom, holdsField, isServerTime, q, refusedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { keeping, scopeValue } from "./keep";
 import { impliedDoc, readDoc } from "./read";
 import { carryUndeclared, closeRow, columnsOf, undeclaredColumns, undeclaredOf, current, decodeRow, insertCollectionRow, insertRow, leftOut, named, now, refuse, sqliteTime, updateRow } from "./rows";
@@ -36,6 +36,8 @@ export type Fanout = {
   showing(coll: string, row: any, writer?: string): string[];
   /** Tell the documents open here what a write through another registration changed. */
   announce(touched: Touched[], applied: DeltaOp[]): void;
+  /** The columns of `coll` a list document here scopes its roots by, where it includes rows that hang under them: a row whose value of one changes may carry those rows into a list or out of one. */
+  rescopedBy(coll: string): string[];
 };
 
 /** The registrations over each database handle: a JSON file's registrations on a server share one. */
@@ -62,6 +64,8 @@ export interface Registration<I> {
   ws: WsServer;
   db: any;
   schema: Schema;
+  /** The documents registered here. */
+  docs: DocDef[];
   options: RegisterOptions<I>;
   auth: DeltaAuth<I> | undefined;
   ledger: Ledger | undefined;
@@ -103,7 +107,7 @@ export function createWriter<I>(r: Registration<I>) {
   const { ws, db, schema, options, auth, ledger, custom, cache, implied, subscriptions } = r;
   const { findDoc, load, rootless, heardElsewhere, reloadEvicted, keepsReach, ownsOf, unheld } = r;
 
-  const me: Fanout = { holders, showing, announce };
+  const me: Fanout = { holders, showing, announce, rescopedBy };
   const fanouts = fanoutsOn.get(db) ?? new Set<Fanout>();
   fanoutsOn.set(db, fanouts);
   fanouts.add(me);
@@ -211,8 +215,33 @@ export function createWriter<I>(r: Registration<I>) {
       try { return meets(scope, row, keeping(db, schema.tables[coll]!)); }
       catch (err: any) { if (typeof err.code === "number") return false; throw err; }
     }
-    if (scope.mode === "list" || !schema.tables[coll]?.parent) return true;   // in full
+    if (!schema.tables[coll]?.parent) return true;   // in full
+    if (scope.mode === "list") {
+      // a list holds a row that hangs from its root only under a root row it admits; one that hangs from none, in full
+      if (scope.conds.length === 0 || !hangsFrom(schema, coll, def.root)) return true;
+      return admits(def, scope, chainRoot(coll, row, def.root));
+    }
     return sameId(chainRoot(coll, row, def.root), scope.id);
+  }
+
+  /** Does a list (`def`, read by `scope`) admit the root row `id`, as the tables hold it now? */
+  function admits(def: DocDef, scope: Scope, id: unknown): boolean {
+    if (id == null) return false;
+    if (scope.conds.length === 0) return true;   // every root row: one the chain reached is there
+    const root = readRow(schema.tables[def.root]!, id as string | number);
+    if (!root) return false;
+    try { return meets(scope, root, keeping(db, schema.tables[def.root]!)); }
+    catch (err: any) { if (typeof err.code === "number") return false; throw err; }
+  }
+
+  /** The columns of `coll` a list document here scopes by, where it holds rows that hang under its roots (`Fanout`). */
+  function rescopedBy(coll: string): string[] {
+    const cols = new Set<string>();
+    for (const def of r.docs) {
+      if (def.root !== coll || !def.include.some((c) => hangsFrom(schema, c, coll))) continue;
+      for (const [col, binding] of Object.entries(def.scope)) if (col !== "id" && !binding.startsWith("at:")) cols.add(col);
+    }
+    return [...cols];
   }
 
   /** The open documents -- and the writer's own -- that hold `row` of `coll`. */
@@ -402,9 +431,12 @@ export function createWriter<I>(r: Registration<I>) {
       if (!run) return;
       const { table, id, root, key, before, was, row } = run;
       run = undefined;
-      // a row moved to another parent takes the rows under it along: who holds each, asked before it moves
+      // a row moved to another parent takes the rows under it along, as does a root row written
+      // into a list's condition or out of one: who holds each, asked before it moves
       const fk = table.parent?.fkColumn;
-      const moved = fk != null && !sameId(row[fk], readRow(table, id)[fk]);
+      const stood = readRow(table, id);
+      const moved = (fk != null && !sameId(row[fk], stood[fk]))
+        || [...fanouts].some((f) => f.rescopedBy(table.docKey).some((col) => JSON.stringify(row[col] ?? null) !== JSON.stringify(stood[col] ?? null)));
       const carried: Touched[] = moved ? hanging(table, id).map(({ table: t, row: r }) => ({ coll: t.docKey, id: r.id, before: heldBy(t.docKey, r, docName), after: r, carried: true })) : [];
       if (table.temporal && !made.has(key)) {
         closeRow(db, table, id, ts);
@@ -433,19 +465,27 @@ export function createWriter<I>(r: Registration<I>) {
     /** Is row `id` of `coll` there now? A parent a row is added or moved under must be. */
     const there = (coll: string, id: unknown): boolean => readRow(schema.tables[coll]!, rowId(id as string | number)) != null;
 
-    // Does a parent the document does not include hang from its root? Asked of the tables.
+    // Does a parent the document does not include hang from its root -- a list's, one it admits? Asked of the tables.
     const reaches = (coll: string, id: unknown): boolean => {
       const parent = readRow(schema.tables[coll]!, rowId(id as string | number));
-      return !!parent && sameId(chainRoot(coll, parent, def.root), rootId);
+      if (!parent) return false;
+      return list ? admits(def, scope, chainRoot(coll, parent, def.root)) : sameId(chainRoot(coll, parent, def.root), rootId);
+    };
+
+    // Is a row of `coll` judged by the parent it names? A single document's always; a list's root
+    // row by its scope instead, and a list's collection that hangs from no root row is whole.
+    const judged = (coll: string): boolean => {
+      const parent = schema.tables[coll]?.parent;
+      return !list || (coll !== def.root && !!parent && (parent.collection === def.root || hangsFrom(schema, parent.collection, def.root)));
     };
 
     /**
      * Does the document hold `id` of `coll`, the parent a row is added or moved
      * under, as the tables stand now? One of a collection it does not include
-     * is asked of `reaches` (single mode; a list holds none such).
+     * is asked of `reaches`.
      */
     const parentHeld = (coll: string, id: unknown): boolean =>
-      id != null && (coll === def.root || def.include.includes(coll) ? held(schema.tables[coll]!, rowId(id as string | number)) != null : !list && reaches(coll, id));
+      id != null && (coll === def.root || def.include.includes(coll) ? held(schema.tables[coll]!, rowId(id as string | number)) != null : reaches(coll, id));
 
     /**
      * Replace fields of a row the document holds -- the root (`root`), or a row
@@ -469,13 +509,14 @@ export function createWriter<I>(r: Registration<I>) {
       // document holds, as an add names one: through it, a row is never moved
       // into another document (you may write what you may read). A single
       // document's own root too: it holds no parent of it, so the root moves
-      // through a list that holds both (0.10.0 review). A list's included
-      // collection is whole; a key written as it is, is no move.
+      // through a list that holds both (0.10.0 review). A list's root row is
+      // held to its scope (below), and its collection that hangs from no root
+      // row is whole; a key written as it is, is no move.
       const parent = table.parent;
       const to = parent ? fields[parent.fkColumn] : undefined;
       const from = parent ? run.row[parent.fkColumn] : undefined;   // as this write has it so far
       if (parent && to != null && !(from != null && sameId(rowId(to as string | number), rowId(from as string | number)))
-          && ((!(list && parent.collection !== def.root) && !parentHeld(parent.collection, to)) || !there(parent.collection, to))) {
+          && ((judged(collKey) && !parentHeld(parent.collection, to)) || !there(parent.collection, to))) {
         noParent(parent.collection, to);
       }
       // (of the columns this document holds: it leaves the rest as they are)
@@ -591,9 +632,10 @@ export function createWriter<I>(r: Registration<I>) {
           // new row onto another doc's parent — a cross-doc write. Require the named
           // parent to be in THIS doc's scope, as it stands now. (The root's own
           // parent is not in the document: its value names it, as a list's root
-          // row's does; a list's included collection is whole.)
+          // row's does. A list's row goes only under a root row it admits;
+          // its collection that hangs from no root row is whole.)
           const parent = table.parent;
-          if (!isRoot && !outside && parent && (list ? parent.collection === def.root : parent.collection !== def.root)) {
+          if (!isRoot && !outside && parent && (list ? judged(collKey) : parent.collection !== def.root)) {
             const fk = row[parent.fkColumn];
             if (!parentHeld(parent.collection, fk)) noParent(parent.collection, fk);
           }

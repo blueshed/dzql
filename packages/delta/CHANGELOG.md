@@ -20,6 +20,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `libraryApp`, and drops `case_books`, `case_readers` and `case_holds` where it dropped the old
   tables; a text column defaulting to the word "now" gives it another default.
 
+- **A scoped list holds what hangs under the roots it admits** (20 October, root #137). A list
+  document (a scope that binds no `id`) with includes held each included collection in full,
+  whatever its conditions admitted: `team:3` over people, with each person's tasks, opened, was
+  told and could write every task. Now it holds its root rows and the rows that hang under those,
+  through the parent chain as a single document's do, on SQLite and the JSON file (`readDoc`, and
+  `holds` in the write path); a row under a root it does not admit is neither read, told nor
+  written (404), and is added or moved only under a root it admits. A root written into its
+  conditions arrives with the rows under it, and one written out of them leaves with them, as a row
+  moved to another parent carries them (`rescopedBy`, asked of every registration on the
+  database). A list with no condition, and an included collection that hangs from no root row (no
+  parent, or a chain that ends short of the root), are as they were. So a group some people are not
+  in, whose members see each other's rows, is people at the root with the group a column of their
+  row, and a list scoped by it: no `owns` function (`ownership.md`, `scope.md`). delta's cases
+  ask it (`src/cases/path/fanout.ts`, "a scoped list holds what hangs under the roots it admits";
+  `permissionCases`, "a person's own rows, which their team sees"; the law opens
+  `fo-menu-like:S`). **To move across**: a scoped list that was read for every row of an included
+  collection reads it through a list with no condition, or a document rooted there.
+
 - **A connection writes only what it has opened, and a time is only what Postgres's timestamptz
   holds** (20 October, root #136). Two writes that used to land are now refused, on every backend:
   - A `delta` from a socket for a document that socket has not opened (or has closed, or was let

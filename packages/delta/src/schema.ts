@@ -357,6 +357,20 @@ function ownsPath(prefix: string, path: string): string {
   return path;
 }
 
+/**
+ * Does a row of `coll` hang from a row of `root`: does its chain of parents, walked up the
+ * schema, reach `root`? A list document holds such a collection's rows only under the root rows
+ * its scope admits; one that does not (no parent, or a chain that ends short of the root) whole.
+ */
+export function hangsFrom(schema: Schema, coll: string, root: string): boolean {
+  let table = schema.tables[coll];
+  for (let depth = 0; depth < 32 && table?.parent; depth++) {
+    if (table.parent.collection === root) return true;
+    table = schema.tables[table.parent.collection];
+  }
+  return false;
+}
+
 /** Does a document hold `field` of a row of `coll`? Its id and parent key always; else, where it names that collection's columns, those. */
 export function holdsField(def: DocDef, schema: Schema, coll: string, field: string): boolean {
   const table = schema.tables[coll];
