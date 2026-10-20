@@ -42,6 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A socket server writes its own memory document** (20 October, #88): `registerMemory` returns
+  `write(name, ops)` beside `peek` and `forget`, applied, versioned and told to every holder as a
+  `delta` from this process is, and answered as one is (`MemoryAnswer`: `{ result: { ack,
+  version, ops } }`, or `{ error }`, 404 or 400, nothing changed). Before, only a `createLocal()`
+  caller could write one, so a server on `createWs()` registered it on a tee of the socket and a
+  local caller; `examples/lobby` and `kinds.md` did, and now write with `here.write(...)`.
 - **Two examples, the skill's worked answers** (20 October, root #116): every rule delta-doc
   teaches about undo, sign-in, migrations and the kinds is shown working in an app the tests run,
   and the reference page links it.

@@ -5,8 +5,8 @@
  * (SQLite, or dzql's Postgres), stored. These three do not:
  *
  * - **memory** — live: the truth is this process (who is online). Held in
- *   memory, gone on restart, never on a ledger. Written by a caller in this
- *   process (the server that knows who is connected), not over the socket.
+ *   memory, gone on restart, never on a ledger. Written by the server that
+ *   knows who is connected (`write`), not over the socket.
  * - **static** — the truth is the repository (SI units, countries). A value
  *   fixed for the release; a change is a deploy. Every write refused.
  * - **source** — the truth is outside (a thermometer, an API). One reading,
@@ -63,12 +63,17 @@ const refuse = (respond: Respond, why: string) => respond({ error: { code: 403, 
 // memory
 // ---------------------------------------------------------------------------
 
+/** What a memory document's `write` answers, as a `delta` is answered: the ops as applied, or why not. */
+export type MemoryAnswer =
+  | { result: { ack: true; version: number; ops: DeltaOp[] }; error?: undefined }
+  | { error: { code: number; message: string }; result?: undefined };
+
 export interface MemoryOptions<T> {
   /** The prefix the documents are named by, e.g. `here:`. */
   prefix: string;
   /** A document's value before anything has been written to it. */
   empty: (id: string) => T;
-  /** Who may write: a caller in this process only (default), or anyone who has it open. */
+  /** Who may write a `delta`: a caller in this process only (default), or anyone who has it open. The server writes with `write`. */
   writable?: "local" | "any";
 }
 
@@ -89,27 +94,39 @@ export function registerMemory<T>(ws: WsServer, options: MemoryOptions<T>) {
     respond({ result: { ...(d.value as object), _v: d.v } });
   });
 
-  ws.on("delta", (msg, client, respond) => {
-    const name = f.owns(msg);
-    if (!name) return;
-    if (options.writable !== "any" && !client?.data?.local) return refuse(respond, "a live document is written by the server, not over the socket");
+  /** Applies `ops` to `name`, versions it and tells its channel; or answers why not, and changes nothing. */
+  const apply = (name: string, raw: unknown): MemoryAnswer => {
     const d = doc(name);
     const next = structuredClone(d.value);
     let ops: DeltaOp[];
     try {
-      ops = mintIds(next, msg.ops as DeltaOp[]); // add /<coll>/- names the row (a uuid), as a stored document's names it (a serial)
+      ops = mintIds(next, raw as DeltaOp[]); // add /<coll>/- names the row (a uuid), as a stored document's names it (a serial)
       applyOps(next, ops);
     } catch (err: any) {
       // the code applyOps gives it (404 not there, 400 malformed), as every backend answers; else malformed
-      return respond({ error: { code: typeof err?.code === "number" ? err.code : 400, message: err.message } });
+      return { error: { code: typeof err?.code === "number" ? err.code : 400, message: err.message } };
     }
     d.value = next;
     d.v += 1;
     ws.publish(name, { doc: name, ops, v: d.v });
-    respond({ result: { ack: true, version: d.v, ops } });
+    return { result: { ack: true, version: d.v, ops } };
+  };
+
+  ws.on("delta", (msg, client, respond) => {
+    const name = f.owns(msg);
+    if (!name) return;
+    if (options.writable !== "any" && !client?.data?.local) return refuse(respond, "a live document is written by the server, not over the socket");
+    respond(apply(name, msg.ops));
   });
 
   return {
+    /**
+     * The server's write: `ops` applied to `name`, versioned and told to everyone holding it, as a
+     * `delta` from this process is, and answered as one is: `{ result: { ack, version, ops } }`, or
+     * `{ error }` (404 not there, 400 malformed or a name not of this prefix) with nothing changed.
+     */
+    write: (name: string, ops: DeltaOp[]): MemoryAnswer =>
+      f.owns({ doc: name }) ? apply(name, ops) : { error: { code: 400, message: `${name} is not a ${options.prefix} document` } },
     /** A copy of the document as it is now, or undefined if nothing has made it. */
     peek: (name: string): T | undefined => {
       const d = docs.get(name);

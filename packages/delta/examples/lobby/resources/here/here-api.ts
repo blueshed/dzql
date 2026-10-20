@@ -8,7 +8,6 @@
  */
 import { joinPath } from "@blueshed/delta/core";
 import { registerMemory, registerStatic } from "@blueshed/delta/kinds";
-import { createLocal } from "@blueshed/delta/local";
 import { onClientDrop, registerMethod, type WsServer } from "@blueshed/delta/server";
 
 export type Person = { name: string; colour: string };
@@ -21,22 +20,18 @@ export const COLOURS = ["tomato", "goldenrod", "seagreen", "steelblue", "orchid"
 
 /** The lobby, its colours, and `join`. */
 export function hereApi(ws: WsServer): void {
-  // A memory document takes writes from a caller in this process alone, and only createLocal()
-  // makes one: so it is registered on both, the socket (who opens it) and the caller (who writes it)
-  const local = createLocal();
-  const both: WsServer = { ...ws, on: (action, handler) => (ws.on(action, handler), local.server.on(action, handler)) };
-  registerMemory<Here>(both, { prefix: "here:", empty: () => ({ people: {} }) });
+  // The pages open it; the server, which knows who is connected, writes it
+  const here = registerMemory<Here>(ws, { prefix: "here:", empty: () => ({ people: {} }) });
 
   registerStatic<Colours>(ws, { prefix: "colours:", value: (id) => (id === "" ? { colours: COLOURS } : undefined) });
 
   /** Out of the lobby: the socket has gone. */
-  const leave = (client: any) => void local.call("delta", { doc: "here:lobby", ops: [{ op: "remove", path: joinPath("people", client.data.clientId) }] });
+  const leave = (client: any) => void here.write("here:lobby", [{ op: "remove", path: joinPath("people", client.data.clientId) }]);
 
   // `join { name, colour }`: this socket is someone in the lobby until it goes (again: renamed)
-  registerMethod(ws, "join", async ({ name, colour }, client) => {
+  registerMethod(ws, "join", ({ name, colour }, client) => {
     const person: Person = { name: String(name ?? "").trim() || "someone", colour: COLOURS.includes(colour) ? colour : COLOURS[0]! };
-    const path = joinPath("people", client.data.clientId);
-    await local.call("delta", { doc: "here:lobby", ops: [{ op: "add", path, value: person }] });   // an add over one there replaces it
+    here.write("here:lobby", [{ op: "add", path: joinPath("people", client.data.clientId), value: person }]);   // an add over one there replaces it
     onClientDrop(client, leave);
     return { id: client.data.clientId };
   });

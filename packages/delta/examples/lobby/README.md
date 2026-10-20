@@ -46,9 +46,9 @@ it: you go from the other.
 
 ```ts
 // here-api.ts: the lobby, written by the server as sockets join and go
-registerMemory<Here>(both, { prefix: "here:", empty: () => ({ people: {} }) });
-registerMethod(ws, "join", async ({ name, colour }, client) => {
-  await local.call("delta", { doc: "here:lobby", ops: [{ op: "add", path: joinPath("people", client.data.clientId), value: person }] });
+const here = registerMemory<Here>(ws, { prefix: "here:", empty: () => ({ people: {} }) });
+registerMethod(ws, "join", ({ name, colour }, client) => {
+  here.write("here:lobby", [{ op: "add", path: joinPath("people", client.data.clientId), value: person }]);
   onClientDrop(client, leave);   // out again when the socket goes
   ...
 });
@@ -61,10 +61,8 @@ registerSource<number>(ws, { prefix: "load:", read: () => loadavg()[0], every: 2
 provide(WS, connectWs("/ws", { onConnect: rejoin }));
 ```
 
-A memory document takes writes from a caller in this process alone, and only `createLocal()`
-makes one, so `here-api.ts` registers it on both: the socket, where pages open it, and a local
-caller, which writes it (`both`). delta's `todo.jsonl` has the change that would make this one
-line.
+The pages open `here:lobby` on the socket, and the server writes it with the `write` its
+registration gives: told to everyone holding it, as any write is.
 
 ## How it is tested
 

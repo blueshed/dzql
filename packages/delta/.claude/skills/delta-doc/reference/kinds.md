@@ -3,9 +3,9 @@
 From `tests/kinds.test.ts`: who is here, live, written by the server.
 
 ```ts
-const here = registerMemory(local.server, { prefix: "here:", empty: () => ({ people: {} }) });
-await local.call("open", { doc: "here:general" });   // → { people: {}, _v: 0 }
-await local.call("delta", { doc: "here:general", ops: [{ op: "add", path: "/people/p1", value: "Ada" }] });
+const here = registerMemory(ws, { prefix: "here:", empty: () => ({ people: {} }) });
+// a page opens "here:general" → { people: {}, _v: 0 }
+here.write("here:general", [{ op: "add", path: "/people/p1", value: "Ada" }]);   // → { result: { ack, version: 1, ops } }
 // told { doc: "here:general", ops: [...], v: 1 }
 here.peek("here:general");                            // { people: { p1: "Ada" } }; forget(name) empties it
 ```
@@ -23,13 +23,13 @@ here (memory) and the colours to wear (static) in `resources/here/here-api.ts`, 
 
 Who is online, cursors, a lobby. Gone on restart, never on a ledger.
 
-- Written by a caller in this process; over a socket a `delta` is 403 unless `writable: "any"`.
-- **On a socket server the caller is a `createLocal()`**, and the document is registered on
-  both: the socket, where pages open it, and the caller, which writes it
-  (`registerMemory({ ...ws, on: (a, h) => (ws.on(a, h), local.server.on(a, h)) }, ...)`, then
-  `local.call("delta", ...)`). Who is here: a method (`registerMethod`) writes the person in,
-  `onClientDrop(client, ...)` out again when their socket goes (`examples/lobby/resources/here/here-api.ts`).
-- An op that does not land changes nothing: 404 for what is not there, 400 malformed.
+- **Written by the server**: `write(name, ops)`, from the handle `registerMemory` returns, on
+  `createWs()` or `createLocal()` alike (a `createLocal()` caller's `delta` writes it too). Over
+  a socket a `delta` is 403 unless `writable: "any"`. Who is here: a method (`registerMethod`)
+  writes the person in, `onClientDrop(client, ...)` out again when their socket goes
+  (`examples/lobby/resources/here/here-api.ts`).
+- An op that does not land changes nothing: 404 for what is not there, 400 malformed (and a
+  name not of the prefix, to `write`). `write` answers as a `delta` does, never throws.
 - `add /<coll>/-` on a map of rows names the row with a uuid (path and `id`); on an array, appends.
 - Open answers `{ ...value, _v }`; a write `{ ack, version, ops }`, broadcast with `v`.
 

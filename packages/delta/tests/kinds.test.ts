@@ -34,6 +34,31 @@ describe("memory: live documents", () => {
     expect(answer.error.code).toBe(403);
   });
 
+  test("a socket server writes its own with write: applied, versioned and told as a local delta is, answering its error codes (#88)", async () => {
+    // a socket server: nothing in this process to call delta through, and a page's delta is 403
+    const heard: any[] = [];
+    const handlers = new Map<string, any>();
+    const server = { on: (a: string, h: any) => handlers.set(a, h), publish: (_c: string, d: any) => heard.push(d) } as any;
+    const here = registerMemory(server, { prefix: "here:", empty: () => ({ people: {} as Record<string, string> }) });
+
+    expect(here.write("here:lobby", [{ op: "add", path: "/people/c1", value: "Ada" }])).toEqual({ result: { ack: true, version: 1, ops: [{ op: "add", path: "/people/c1", value: "Ada" }] } });
+    expect(heard).toEqual([{ doc: "here:lobby", ops: [{ op: "add", path: "/people/c1", value: "Ada" }], v: 1 }]);
+    let opened: any;
+    handlers.get("open")({ doc: "here:lobby" }, { data: { clientId: "c2" }, subscribe() {} }, (r: any) => (opened = r));
+    expect(opened.result).toEqual({ people: { c1: "Ada" }, _v: 1 });
+
+    // a row the server names, as a delta's add /<coll>/- is
+    const { result } = here.write("here:lobby", [{ op: "add", path: "/people/-", value: { name: "Bo" } }]);
+    expect(result!.ops[0]!.path).not.toBe("/people/-");
+
+    // refused as a delta is, and nothing changed or told
+    expect(here.write("here:lobby", [{ op: "remove", path: "/people/c9" }]).error?.code).toBe(404);
+    expect(here.write("here:lobby", [{ op: "remove", path: "people" }]).error?.code).toBe(400);
+    expect(here.write("there:lobby", [{ op: "add", path: "/people/c3", value: "Cy" }]).error?.code).toBe(400);   // not this prefix's
+    expect(heard).toHaveLength(2);
+    expect(Object.keys(here.peek("here:lobby")!.people)).toHaveLength(2);
+  });
+
   test("an op that does not land is refused and changes nothing; forget starts it again", async () => {
     const { local } = setup();
     const here = registerMemory(local.server, { prefix: "here:", empty: () => ({ people: {} }) });
