@@ -42,12 +42,12 @@ async function holding(run: (doc: Holding<MessageDoc>) => Promise<void>) {
 test("the message is Hello until someone changes it, and a change the schema does not take is refused", async () => {
   await holding(async (doc) => {
     expect(doc.value()).toEqual({ messages: { id: 1, text: "Hello" } });
-    // what each says, in the words every store says it (one on SQLite also names the path)
+    // what each says, the whole sentence: every store says it in delta's words
     const refused: [unknown[], RegExp][] = [
-      [[{ op: "replace", path: "/messages/1/text", value: 1 }], /text must be a string/],
-      [[{ op: "remove", path: "/messages/1/text" }], /invalid op: remove \/messages\/1\/text/i],
-      [[{ op: "replace", path: "/messages/1/other", value: "x" }], /Unknown field: other/],
-      [[{ op: "add", path: "/other", value: "x" }], /unknown collection: other/i],
+      [[{ op: "replace", path: "/messages/1/text", value: 1 }], /^\/messages\/1\/text: text must be a string$/],
+      [[{ op: "remove", path: "/messages/1/text" }], /^\/messages\/1\/text: Invalid op: remove \/messages\/1\/text$/],
+      [[{ op: "replace", path: "/messages/1/other", value: "x" }], /^\/messages\/1\/other: Unknown field: other$/],
+      [[{ op: "add", path: "/other", value: "x" }], /^\/other: Unknown collection: other$/],
       [[null], /^An op is an object: \{ op, path, value \}$/],
       ["not ops" as unknown as unknown[], /^ops must be an array$/],
     ];
