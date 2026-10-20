@@ -53,7 +53,7 @@ function listSkillsIn(skillsRoot: string, origin: string): SkillSource[] {
   if (!existsSync(skillsRoot)) return [];
   const out: SkillSource[] = [];
   for (const entry of readdirSync(skillsRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
+    if (!isDir(skillsRoot, entry)) continue;
     const dir = join(skillsRoot, entry.name);
     if (existsSync(join(dir, "SKILL.md"))) {
       out.push({ name: entry.name, srcDir: dir, origin });
@@ -92,6 +92,14 @@ function isDir(parent: string, entry: Dirent): boolean {
   if (entry.isDirectory()) return true;
   if (!entry.isSymbolicLink()) return false;
   try { return statSync(join(parent, entry.name)).isDirectory(); }
+  catch { return false; }
+}
+
+/** A file, or a link to one: a package installed from a checkout (`file:`, a workspace) may be links, file by file. */
+function isFile(parent: string, entry: Dirent): boolean {
+  if (entry.isFile()) return true;
+  if (!entry.isSymbolicLink()) return false;
+  try { return statSync(join(parent, entry.name)).isFile(); }
   catch { return false; }
 }
 
@@ -165,11 +173,11 @@ function copyDirWithBackup(
     const srcPath = join(src, entry.name);
     const destPath = join(dest, entry.name);
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (entry.isDirectory()) {
+    if (isDir(src, entry)) {
       copyDirWithBackup(srcPath, destPath, dryRun, onFile, rel);
       continue;
     }
-    if (!entry.isFile()) continue;
+    if (!isFile(src, entry)) continue;
     if (existsSync(destPath)) {
       const a = readFileSync(srcPath);
       const b = readFileSync(destPath);

@@ -45,6 +45,9 @@ for (const src of sources)
     list.forEach((s, i) => runs.push({ id: `${src.pkg}-${skill}-${i + 1}`, pkg: src.pkg, skill, n: i + 1, s, start: s.start ?? src.start }));
   }
 
+/** The package that ships each skill. */
+const OWNER: Record<string, string> = { railroad: "railroad", "bun-route": "railroad", "delta-doc": "delta", "dzql-app": "dzql", modelling: "dzql", evolve: "create-blueshed/template" };
+
 const sh = (cmd: string[], cwd: string) => Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, CI: "" } });
 
 /** A project as the scenario starts it, committed. */
@@ -53,18 +56,17 @@ async function make(r: (typeof runs)[number], dir: string): Promise<void> {
   const bare = (names: string[], skills: string[]) => {
     mkdirSync(dir, { recursive: true });
     const deps = local(names);
-    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "app", type: "module", private: true, dependencies: deps, overrides: deps }, null, 2) + "\n");
+    // an empty start is empty: no package.json, as the skills define one
+    if (names.length) writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "app", type: "module", private: true, dependencies: deps, overrides: deps }, null, 2) + "\n");
     if (names.length) sh(["bun", "install"], dir);
-    for (const s of skills) for (const pkg of ["railroad", "delta"]) {
-      const from = join(root, "packages", pkg, ".claude/skills", s);
-      if (existsSync(join(from, "SKILL.md"))) cpSync(from, join(dir, ".claude/skills", s), { recursive: true });
-    }
+    // each skill from the package that ships it, never a copy another keeps (delta's of railroad's is git-ignored and may be stale)
+    for (const s of skills) cpSync(join(root, "packages", OWNER[s]!, ".claude/skills", s), join(dir, ".claude/skills", s), { recursive: true });
   };
   if (r.s.after) {
     const from = join(out, `${r.pkg}-${r.skill}-${r.s.after}`);
     sh(["cp", "-R", from, dir], out);
     sh(["git", "add", "-A"], dir);
-    sh(["git", "commit", "-qm", `start: from ${r.pkg}-${r.skill}-${r.s.after}`], dir);
+    sh(["git", "commit", "-qm", `start: from ${r.pkg}-${r.skill}-${r.s.after}`, "--allow-empty"], dir);
   } else if (r.start === "empty") bare([], r.s.skills);
   else if (r.start === "railroad") bare(["railroad"], ["railroad", "bun-route"]);
   else if (r.start === "delta") bare(["railroad", "delta"], ["delta-doc", "railroad"]);
@@ -81,8 +83,10 @@ async function make(r: (typeof runs)[number], dir: string): Promise<void> {
     else cpSync(join(root, c.from), to, { recursive: true });
   }
   if (!existsSync(join(dir, ".git"))) sh(["git", "init", "-q"], dir);
+  if (!existsSync(join(dir, ".gitignore"))) writeFileSync(join(dir, ".gitignore"), "node_modules/\n");
   sh(["git", "add", "-A"], dir);
   sh(["git", "commit", "-qm", "start", "--allow-empty"], dir);
+  sh(["git", "tag", "-f", "start"], dir); // what the session did is start..HEAD, however many commits it made
 }
 
 /** One scenario: its project, the session, then what it left. */
@@ -104,8 +108,8 @@ async function run(r: (typeof runs)[number]): Promise<Result> {
   const minutes = +((performance.now() - started) / 60000).toFixed(1);
   sh(["git", "add", "-A"], dir);
   sh(["git", "commit", "-qm", "the session"], dir);
-  const files = sh(["git", "diff", "--name-only", "HEAD~1", "HEAD"], dir).stdout.toString().split("\n").filter(Boolean);
-  await Bun.write(join(out, `${r.id}.diff`), sh(["git", "diff", "HEAD~1", "HEAD", "--", ".", ":!bun.lock", ":!**/bun.lock"], dir).stdout);
+  const files = sh(["git", "diff", "--name-only", "start", "HEAD"], dir).stdout.toString().split("\n").filter(Boolean);
+  await Bun.write(join(out, `${r.id}.diff`), sh(["git", "diff", "start", "HEAD", "--", ".", ":!bun.lock", ":!**/bun.lock"], dir).stdout);
   const check = sh(["bun", "check"], dir).exitCode === 0;
   const t = existsSync(join(dir, "package.json")) ? sh(["bun", "test"], dir) : null;
   const text = t ? t.stdout.toString() + t.stderr.toString() : "";

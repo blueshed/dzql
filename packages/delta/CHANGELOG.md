@@ -158,6 +158,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`install-skills` copies a skill whose files are links** (20 October): a package installed from
+  a checkout (`file:`, a workspace, `bun create dzql --local`) lays its files out as links, and they
+  were skipped, so the skill arrived as empty folders. A link counts as what it points at. Found by
+  the evals (root #113): the dzql-app and modelling skills came out empty in every local project.
+
 - **A write through a single document whose root is not there says so** (20 October, root
   #135): SQLite and the JSON file answered a write through a document not open here, whose root
   is not there (never there, or taken out since), `Doc not loaded: open <doc> before writing to it`

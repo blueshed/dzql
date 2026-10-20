@@ -173,6 +173,24 @@ describe("install-skills", () => {
     expect(existsSync(join(dir, ".claude/skills/linked-skill/SKILL.md"))).toBe(true);
   });
 
+  test("installs a skill whose folders and files are each a link, as a package installed from a checkout lays them out", async () => {
+    // the real skill, in a checkout
+    const real = join(dir, "checkout", "files");
+    mkdirSync(join(real, "reference"), { recursive: true });
+    writeFileSync(join(real, "SKILL.md"), "# from the checkout");
+    writeFileSync(join(real, "reference", "page.md"), "a page");
+    // the package in node_modules: its skill folder real, every file in it a link (bun's file: install)
+    const skill = join(dir, "node_modules", "filed", ".claude", "skills", "filed-skill");
+    mkdirSync(skill, { recursive: true });
+    symlinkSync(join(real, "SKILL.md"), join(skill, "SKILL.md"));
+    symlinkSync(join(real, "reference"), join(skill, "reference")); // and a folder that is a link
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ claudeSkills: ["filed"] }));
+    const res = await runInstall(dir);
+    expect(res.code).toBe(0);
+    expect(readFileSync(join(dir, ".claude/skills/filed-skill/SKILL.md"), "utf8")).toBe("# from the checkout");
+    expect(readFileSync(join(dir, ".claude/skills/filed-skill/reference/page.md"), "utf8")).toBe("a page");
+  });
+
   test("skips, and says so, a package that ships a skill nobody asked for (F5)", async () => {
     // A dependency of a dependency that ships "instructions" is a prompt
     // injection waiting for install-skills --user to spread it.

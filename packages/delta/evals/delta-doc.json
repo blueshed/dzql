@@ -21,13 +21,21 @@
       "delta-doc"
     ],
     "query": "Our Bun app keeps a shared board in delta on SQLite (registerDocs with a board: document). Add Undo and Redo buttons to each browser. Two people edit the same board at once: my Undo must take back only my own last change, never someone else's, and must not overwrite an edit someone made after mine.",
-    "files": [],
+    "files": [
+      "packages/delta/examples/kanban: a board on SQLite, registerDocs with a board: document, its page"
+    ],
     "expected_behavior": [
       "Turns on the ledger with { ledger: true } in registerDocs' options; no undo stack, inverse ops or previous values kept by hand on the client or the server",
       "The buttons send { action: \"undo\" } and { action: \"redo\" } over the socket (the WS client's send or call) with no cursor: over a socket the connection is the cursor, so each browser walks only its own writes",
       "Treats a null answer as nothing to undo or redo",
       "Treats an answer with conflict as the walk refused (nothing changed) and says so, rather than forcing the old values back with its own replace ops",
       "Does not apply the undo's ops to the page itself: the change arrives through onOps or doc.data like any other write"
+    ],
+    "copy": [
+      {
+        "from": "packages/delta/examples/kanban",
+        "to": "."
+      }
     ]
   },
   {
