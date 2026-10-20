@@ -22,7 +22,9 @@ statement of how an app is made; each package's README says only its own part.
 
 It is one path, not a choice made once: a prototype grows into performance. The documents are
 delta's all along, so they carry over unchanged, and the `evolve` skill takes a paintbrush app's
-storage from a JSON file to SQLite to Postgres compiled by dzql.
+storage from a JSON file to SQLite to Postgres compiled by dzql, then its page to the server
+([thin-client.md](packages/create-blueshed/template/.claude/skills/evolve/references/thin-client.md)):
+the page keeps its look, and the code that draws and tests it is rewritten.
 
 ## How an app is made
 

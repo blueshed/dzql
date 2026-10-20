@@ -1,6 +1,6 @@
 ---
 name: evolve
-description: "Grows this app from its stories: a new shared document, two documents on one page, documents over the same rows and undo, keeping documents in SQLite or Postgres, a schema change on a database that holds data (a migration), sign-in by link with no passwords, HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for a change to a schema in use, for people signing in, for files, or for a build."
+description: "Grows this app from its stories: a new shared document, two documents on one page, documents over the same rows and undo, keeping documents in SQLite or Postgres, a schema change on a database that holds data (a migration), sign-in by link with no passwords, HTTP routes for what isn't communication (health, status, files in S3), a production build, and the page drawn on the server (dzql's thin client). Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for a change to a schema in use, for people signing in, for files, for a build, or for the page drawn on the server."
 ---
 
 # Growing the app
@@ -11,7 +11,7 @@ description: "Grows this app from its stories: a new shared document, two docume
 
 **Three stores, one page.** A JSON file, SQLite or Postgres keep the same documents, and the page stays the same on each. Every document is a schema and a `defineDoc` from the start, so moving changes the import, never the definitions. The only reason to move is ease or performance: the JSON file is the easiest, and holds documents over the same rows, undo and history; SQLite when the file is too much to rewrite after every change, or the schema must change on data in use; Postgres when servers share the data, or people should see only their own.
 
-**This is the light client, for prototyping**: the browser draws the page with railroad, as a bento, in the same look as the thin client's. The thin one, for performance, is dzql's (`bun create dzql`), where the server draws it and the documents are compiled to Postgres; an applet (a railroad component) works in either. It is one path: a prototype grows into performance, its documents unchanged, and this skill takes their storage there.
+**This is the light client, for prototyping**: the browser draws the page with railroad, as a bento, in the same look as the thin client's. The thin one, for performance, is dzql's (`bun create dzql`), where the server draws it and the documents are compiled to Postgres; an applet (a railroad component) works in either. It is one path: a prototype grows into performance, its documents unchanged: this skill takes their storage there, then the page ([references/thin-client.md](references/thin-client.md)).
 
 ## Order of work
 
@@ -28,7 +28,7 @@ description: "Grows this app from its stories: a new shared document, two docume
 
 - Anything people share is a document from the start, as `message` is. HTTP routes serve only what isn't communication: health, files, `status`.
 - A resource is `src/resources/<name>/`: `<name>-api.ts` (server side, and the type both sides share), `<name>.ts` (the document it opens, or what it fetches), `<name>-view.tsx`. Wire the server side in `src/routes.ts`, the view into the page in `src/app.tsx`: its cell in `cells`, a deed of the page's in `actions`, its drawer in `drawerOf`, its new-or-delete in `modalOf`.
-- The page is the bento's (`src/resources/bento.tsx`): a box of cells; a thing is changed in a drawer, made or removed in a modal, each opened by where you are (`go`), so Back closes it; a list is `rowsOf`. It is the HTML the thin client's server draws (dzql's `bento.ts`), in the same stylesheet, so a page moves to the server by turning each handler into a write. Say the look in `styles.css`'s tokens, never a rule over the bento's.
+- The page is the bento's (`src/resources/bento.tsx`): a box of cells; a thing is changed in a drawer, made or removed in a modal, each opened by where you are (`go`), so Back closes it; a list is `rowsOf`. It is the HTML the thin client's server draws (dzql's `bento.ts`), in the same stylesheet, so a page keeps its look as it moves to the server, each handler turned into a write ([references/thin-client.md](references/thin-client.md), which says what else is rewritten). Say the look in `styles.css`'s tokens, never a rule over the bento's.
 - A document is never set in the page: `send` the change, and the change that comes back draws it, in this window too.
 - A row is addressed by its id, never its position.
 - The schema is the contract: a database may hold more than it declares, never less. Its tables are made by its migrations, from empty: every change to the schema is the next migration, written by `bunx @blueshed/delta migrations make`; one that has run is never edited.
@@ -49,8 +49,9 @@ Each leads with its example: code and tests, proven by applying them to a new ap
 - [references/sqlite.md](references/sqlite.md): the move to SQLite, with the kitchen (documents over the same rows) and undo
 - [references/migrations.md](references/migrations.md): a schema that changes on a database holding data
 - [references/postgres.md](references/postgres.md): servers that share data; people who see only their own (dzql, delta's Postgres)
+- [references/thin-client.md](references/thin-client.md): the page drawn on the server, the order app on dzql's thin client (after postgres.md)
 - [references/auth.md](references/auth.md): sign-in with no passwords: a link is someone; in development, pick who you are
 - [references/http.md](references/http.md): HTTP routes, and files in S3
 - [references/build.md](references/build.md): a production build (optional)
 
-A block's first line names its file: `// src/x.ts` is the whole file; `// src/x.ts: after <text>` (or `before`, `in place of`) goes at the first line holding that text, at its indent.
+A block's first line names its file: `// src/x.ts` is the whole file; `// src/x.ts: after <text>` (or `before`, `in place of`) goes at the first line holding that text, at its indent. A `sh` block's `bun add` and `rm` lines are run.

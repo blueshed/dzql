@@ -25,6 +25,7 @@ const SECTIONS: Record<string, string[]> = {
   "sqlite.md": ["two-documents.md"],
   "migrations.md": ["two-documents.md", "sqlite.md"],
   "postgres.md": ["two-documents.md", "sqlite.md"],
+  "thin-client.md": ["two-documents.md", "sqlite.md", "postgres.md"], // the order app, its page moved to the server
   "auth.md": [],
   "http.md": [],
   "build.md": ["two-documents.md", "sqlite.md"], // built with a history of migrations: they travel in the bundle
@@ -43,12 +44,13 @@ async function blocks(name: string) {
   return [...text.matchAll(/^```(\w*)\n([\s\S]*?)^```$/gm)].map(([, lang, body]) => ({ lang, lines: body!.trimEnd().split("\n") }));
 }
 
-/** Apply a section to an app: run its `bun add` lines, and write each block whose first line names a file. */
+/** Apply a section to an app: run its `bun add` and `rm` lines, and write each block whose first line names a file. */
 async function apply(app: string, name: string) {
   for (const { lang, lines } of await blocks(name)) {
     if (lang === "sh") {
       // DZQL_SPEC installs another dzql in place of npm's, as DELTA_SPEC does delta: dzql@<a candidate's tarball>
       for (const line of lines.filter((l) => l.startsWith("bun add "))) run(app, (line === "bun add dzql" && process.env.DZQL_SPEC ? `bun add ${process.env.DZQL_SPEC}` : line).split(/\s+/));
+      for (const line of lines.filter((l) => l.startsWith("rm "))) run(app, line.split(/\s+/)); // what a step takes away
       continue;
     }
     const where = lines[0]!.match(/^\/\/ ([\w./-]+)(?:: (after|before|in place of) (.+))?$/);
