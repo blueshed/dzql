@@ -19,11 +19,13 @@ import { createWs } from "@blueshed/delta/server";
 import { assemble, type Inspection } from "../../src/rendering/resources";
 import { onFailure } from "../../src/rendering/failed";
 import { refuse, tell, toldAt } from "../../src/rendering/refusal";
-import { connect, expectMessage, expectQuiet, heard, htmlOf, nextMessage, open, opened, rawOf, write, type WireMessage } from "../../src/rendering/test-socket";
+import { moveTab } from "../../src/rendering/tabs";
+import { connect, expectMessage, expectQuiet, heard, htmlOf, nextMessage, open, opened, pageOf, rawOf, write, type WireMessage } from "../../src/rendering/test-socket";
 
 // A tiny, self-contained example -- not chat, not anything under the examples directory -- so
 // this file proves the kernel on its own: a note per session (its own document), and months of
-// appointments (documents named by criteria), kept in a delta of this file's own.
+// appointments (documents named by criteria), kept in a delta of this file's own. Where a tab
+// stands is written as the note's `/at`, which the note never holds: the tab does.
 const db = new Database(":memory:");
 const schema = defineSchema({
   notes: { columns: { text: { type: "text", nullable: false, default: "" } as never }, temporal: false },
@@ -62,7 +64,7 @@ const noteResource: Resource = {
     if (ws.data.sessionId === "opens-badly") throw new Error("an open that fails");
   },
   permit(_ws, op) {
-    return op.path === "/text" && op.op === "replace";
+    return (op.path === "/text" || op.path === "/at") && op.op === "replace";
   },
   shape(_ws, _id, ops) {
     if (ops.some((op) => op.value === "boom")) throw new Error("boom"); // a write whose handling fails
@@ -72,6 +74,7 @@ const noteResource: Resource = {
   afterWrite(ws, _id, ops) {
     if (ops.some((op) => op.value === "then boom")) throw new Error("then boom"); // a write that lands, then fails what follows
     if (ops.some((op) => op.value === "said")) return tell(ws.data.sessionId, { doc: "note", path: "/text", said: "Noted." }); // what it did, beside the control that sent it
+    if (ops.some((op) => op.value === "move me")) moveTab(ws, "moved"); // where it leaves the tab that wrote it
   },
   // what a walk of "said" took back, or put back, said over the page, where Undo is
   afterWalk(ws, _id, walk) {
@@ -119,18 +122,19 @@ function makeExample(name: string): Example {
   return {
     name,
     resources: [noteResource, monthResource, tickResource],
-    render: (sessionId) => {
+    render: (sessionId, address) => {
       if (readNote(sessionId) === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
       // one typing in the note draws it in a field
       const field = sessionId.startsWith("typing") ? `<textarea data-write='{"doc":"note","op":"replace","path":"/text"}'>\n${readNote(sessionId)}</textarea>` : "";
-      return `<p class="note">${readNote(sessionId)}</p>` + field + toldAt(sessionId, "note", "/text") +
+      // where the tab stands, when it stands anywhere but the page alone
+      return `<p class="note">${readNote(sessionId)}</p>` + (address && `<p class="at">${address}</p>`) + field + toldAt(sessionId, "note", "/text") +
         (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a) => part(`a-${a.id}`, `<li>${a.what}</li>`)).join("")}</ul>`)).join("");
     },
     active: () => true,
     index,
     delta,
-    // the note is this example's address: a tab opened at one puts the session's note there
-    address: { doc: "note", path: "/text" },
+    // where a tab stands is written as the note's `/at`: the note says where it may, and the tab goes there
+    address: { doc: "note", path: "/at" },
     // who a request is, by a header of this test's own: a session, a refusal, or a visit
     identify: (req) => {
       const who = req.headers.get("x-test-who");
@@ -201,7 +205,7 @@ describe("createServer, generically (no example from the examples directory invo
     expect(await answer("Cookie: session_id=a-visit\r\n")).not.toMatch(/^set-cookie:/im); // nobody said: the visit's own
   });
 
-  test("a tab opened at an address is routed there before its page is drawn, by the example's own write of it; a refused route leaves the session where it was", async () => {
+  test("a tab opened at an address is routed there before its page is drawn, by the example's own write of it, which moves the tab and never the session; a refused route leaves it at the page alone", async () => {
     const at = async (sessionId: string, address?: string): Promise<string> => {
       const ws = connect(server, sessionId, address);
       await opened(ws);
@@ -209,17 +213,46 @@ describe("createServer, generically (no example from the examples directory invo
       ws.close();
       return page;
     };
-    expect(await at("routed", "guests?guest=2")).toContain('<p class="note">guests?guest=2</p>'); // the first page drawn is the route's
-    expect(await at("routed")).toContain('<p class="note">guests?guest=2</p>'); // a socket that names none (the CLI's) stays where the session is
-    expect(await at("routed", "")).toContain('<p class="note">guests?guest=2</p>'); // refused ("A note needs words."): where it was
+    expect(await at("routed", "guests?guest=2")).toBe('<p class="note"></p><p class="at">guests?guest=2</p>'); // the first page drawn is the route's, and the note holds none of it
+    expect(await at("routed")).toBe('<p class="note"></p>'); // a socket that names none (the CLI's) stands at the page alone: where another tab went is that tab's
+    expect(await at("routed", "")).toBe('<p class="note"></p>'); // refused ("A note needs words."): at the page alone
     const failures: string[] = [];
     const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
     try {
-      expect(await at("routed", "boom")).toContain('<p class="note">guests?guest=2</p>'); // a route whose write fails is the server's failure, and the page is drawn all the same
+      expect(await at("routed", "boom")).toBe('<p class="note"></p>'); // a route whose write fails is the server's failure, and the page is drawn all the same
       expect(failures).toEqual(["handling an event: boom"]);
     } finally {
       stop();
     }
+  });
+
+  test("two tabs of one session stand on two screens: a tab moves alone, answered by an echo of nothing; a change reaches both, wherever they stand; what follows a write moves its writer's tab alone", async () => {
+    const [up, down] = [connect(server, "two-tabs", "upstairs"), connect(server, "two-tabs", "downstairs")];
+    await Promise.all([opened(up), opened(down)]);
+    expect(htmlOf(await expectMessage(up, "render"))).toBe('<p class="note"></p><p class="at">upstairs</p>');
+    expect(htmlOf(await expectMessage(down, "render"))).toBe('<p class="note"></p><p class="at">downstairs</p>');
+
+    // going somewhere changes no document: its writer is answered by an echo of nothing, and the other tab is sent nothing
+    write(up, "note", [{ op: "replace", path: "/at", value: "attic" }], "go");
+    expect(await heard(up)).toMatchObject([{ type: "patch", doc: "note", ops: [], id: "go" }, { type: "render" }]);
+    expect(pageOf(up)).toBe('<p class="note"></p><p class="at">attic</p>');
+    expect(await heard(down)).toEqual([]);
+
+    // a write that goes somewhere too: the note is written, and told to both tabs; the writer's tab alone goes
+    write(down, "note", [{ op: "replace", path: "/text", value: "both" }, { op: "replace", path: "/at", value: "cellar" }], "both");
+    expect((await heard(down)).filter((m) => m.type === "patch")).toMatchObject([{ doc: "note", ops: [{ op: "replace", path: "/text", value: "both" }], id: "both" }]);
+    expect(pageOf(down)).toBe('<p class="note">both</p><p class="at">cellar</p>');
+    expect((await heard(up)).filter((m) => m.type === "patch")).toMatchObject([{ doc: "note", ops: [{ op: "replace", path: "/text", value: "both" }] }]);
+    expect(pageOf(up)).toBe('<p class="note">both</p><p class="at">attic</p>');
+
+    // what follows a write (`moveTab`) moves the tab that wrote it, never the session's other
+    write(up, "note", [{ op: "replace", path: "/text", value: "move me" }]);
+    await heard(up);
+    expect(pageOf(up)).toBe('<p class="note">move me</p><p class="at">moved</p>');
+    await heard(down);
+    expect(pageOf(down)).toBe('<p class="note">move me</p><p class="at">cellar</p>');
+    up.close();
+    down.close();
   });
 
   test("a non-upgrade request to /ws is rejected", async () => {

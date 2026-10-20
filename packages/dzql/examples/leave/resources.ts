@@ -1,11 +1,12 @@
 import type { Resource } from "dzql/rendering/resources/resource";
 import { serverWrite } from "dzql/rendering/documents";
+import { addressOf, moveTab } from "dzql/rendering/tabs";
 import { address, parseAddress } from "dzql/rendering/bento";
 import { splitPath } from "@blueshed/delta/core";
 import { may, session as sessionOf, shape, shapeSession, team as teamOf, TEAM, type Request } from "./documents";
 
-// leave's two resources. The session: where you are, your draft, and who -- but who is written
-// only by the sign-in page (./signin.ts); over the wire a session may move about, draft, and sign
+// leave's two resources. The session: your draft, and who -- but who is written only by the sign-in
+// page (./signin.ts); over the wire a session's tab may move about, and the session draft and sign
 // out. The team is everyone's, and what a person may write to it is who they are (./documents.ts).
 
 export const session: Resource = {
@@ -21,7 +22,7 @@ export const session: Resource = {
     if (op.path === "/draft") return op.op === "replace" || op.op === "remove";
     return op.op === "replace" && (op.path === "/page" || op.path === "/draft/starts" || op.path === "/draft/ends");
   },
-  shape: (_ws, id, ops) => shapeSession(sessionOf(id), ops),
+  shape: (ws, id, ops) => shapeSession({ ...sessionOf(id), page: addressOf(ws) }, ops), // from where the tab that sent it stands
 };
 
 export const team: Resource = {
@@ -35,14 +36,15 @@ export const team: Resource = {
     const { person, draft } = sessionOf(ws.data.sessionId);
     return shape(person!, ops, teamOf(), draft);
   },
-  // Where the write leaves its writer: asked for, a draft is gone and its drawer shows the request
-  // it became, by the id it landed with; the modal that asked to take a request back closes.
+  // Where the write leaves its writer's tab: asked for, a draft is gone and its drawer shows the
+  // request it became, by the id it landed with; the modal that asked to take a request back closes.
   async afterWrite(ws, _id, ops, landed) {
-    const { path, what } = parseAddress(sessionOf(ws.data.sessionId).page);
+    const { path, what } = parseAddress(addressOf(ws));
     const asked = ops.some((op) => op.op === "add" && op.value === undefined); // the draft, asked for
     const made = landed.find((op) => op.op === "add");
     const page = made ? address(path, "request", splitPath(made.path)[1]) : what === "confirm" && ops.some((op) => op.op === "remove") ? path : undefined;
-    if (page !== undefined) await serverWrite(`session:${ws.data.sessionId}`, [{ op: "replace", path: "/sessions/page", value: page }, ...(asked ? [{ op: "replace" as const, path: "/sessions/draft", value: null }] : [])]);
+    if (page !== undefined) moveTab(ws, page);
+    if (asked) await serverWrite(`session:${ws.data.sessionId}`, [{ op: "replace", path: "/sessions/draft", value: null }]);
   },
   // An ask undone gives its draft back, as it was; asked again by Redo, that draft goes again.
   async afterWalk(ws, _id, { way, ops, inverse }) {

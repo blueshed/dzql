@@ -39,6 +39,7 @@
     "./rendering/icons": "./src/rendering/icons.ts",
     "./rendering/applet": "./src/rendering/applet.ts",
     "./rendering/sessions": "./src/rendering/sessions.ts",
+    "./rendering/tabs": "./src/rendering/tabs.ts",
     "./rendering/scope": "./src/rendering/scope.ts",
     "./rendering/names": "./src/rendering/names.ts",
     "./rendering/links": "./src/rendering/links.ts",

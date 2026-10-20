@@ -28,8 +28,13 @@ export type Example = {
    * appends its own ledger resource.
    */
   resources: Resource[];
-  /** The whole page for this session, as HTML. The server is the only renderer, and this is all of it: which screen, in what order, reading whichever documents it must. */
-  render(sessionId: string): string;
+  /**
+   * The whole page for this session where one of its tabs stands (`address`: `list?request=3`, ""
+   * for the page alone), as HTML. The server is the only renderer, and this is all of it: which
+   * screen, in what order, reading whichever documents it must. The address is the tab's, not the
+   * session's: two tabs of one session are drawn apart, each where it is.
+   */
+  render(sessionId: string, address: string): string;
   /**
    * May this session write at all right now? Chat's: once it has a name. Leave's: once it is signed in.
    * A tab left open after signing out may not write, nor undo what it wrote before.
@@ -50,11 +55,14 @@ export type Example = {
    */
   session?(cookie: string): Promise<string>;
   /**
-   * Where a session's address is written: the document and path a page's `data-page-write` names
-   * (src/rendering/bento.ts's `site`), as `{ doc: "session", path: "/page" }`. A screen's address is its URL
-   * (`/list?request=3`): the server routes it, putting the session there through this write --
-   * permitted and shaped as any write -- before a tab's first page is drawn, so a link, a bookmark
-   * or a reload opens on that screen. Omitted: a page with no address, and its URL is only "/".
+   * The write that moves a tab: the document and path a page's `data-page-write` names
+   * (src/rendering/bento.ts's `site`), as `{ doc: "session", path: "/page" }`. Where a tab is, is
+   * the tab's own (src/rendering/tabs.ts), its URL (`/list?request=3`): a write to this path is
+   * permitted and shaped by the document's resource as any write -- where this session may stand,
+   * and what going there puts away -- and then the kernel takes it off the write and moves the tab
+   * that sent it, never the session: another tab of it stays where it is. A tab opened at a URL is
+   * routed there through the same write before its first page is drawn, so a link, a bookmark or
+   * a reload opens on that screen. Omitted: a page with no address, and its URL is only "/".
    */
   address?: { doc: string; path: string };
   /** Who a session is, as delta sees them -- for the ledger's `who` and for row-level security. Default: the session. */

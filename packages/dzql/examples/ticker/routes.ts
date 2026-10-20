@@ -17,7 +17,7 @@ export const app: Example = {
   // No sign-in: a visitor's watchlist is their session's, and anyone may type a tick.
   active: () => true,
   index,
-  address: { doc: "desk", path: "/page" }, // a screen's URL is where the desk goes (the server routes it)
+  address: { doc: "desk", path: "/page" }, // a tab's URL is where it stands: the desk says where it may, the kernel moves the tab
   delta, // the documents are delta's (./delta.ts)
   session: sessions.of, // a visit is a desk
 };

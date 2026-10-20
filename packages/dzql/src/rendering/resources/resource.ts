@@ -20,7 +20,7 @@ export type Walk = { way: "undo" | "redo"; ops: PatchOp[]; inverse: PatchOp[] };
 
 /**
  * A resource looks after one type of document: which one a page is on, who may write to it, and
- * what a write becomes. It has no place on the page: the page is the example's `render(sessionId)`.
+ * what a write becomes. It has no place on the page: the page is the example's `render(sessionId, address)`.
  *
  * Its hooks, in the order they run: `permit` and `shape` before a write; `permitUndo` before an
  * undo or redo; `afterWrite` after a fresh write, and `afterWalk` after an undo or redo, for the
@@ -31,8 +31,9 @@ export type Resource = {
   docType: string;
   /**
    * Which document of this type this person is on, or undefined: chat's is the room the session is
-   * in. A write naming the type alone (`{doc: "room"}`) means this one. A page may also read, and
-   * write, any other document named whole (`room:kitchen`).
+   * in. The session's, never the tab's: where a tab stands changes what its page reads, not this. A
+   * write naming the type alone (`{doc: "room"}`) means this one. A page may also read, and write,
+   * any other document named whole (`room:kitchen`).
    */
   resolveDoc(ws: ServerWebSocket<ConnectionData>): string | undefined;
   /**

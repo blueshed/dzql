@@ -182,7 +182,20 @@ story("Ann drags across two days in Bo's week, and sees the clash before she ask
 A story with a gesture is done by hand whenever it is told (the harness, step 7), and the drag
 must send its `does`.
 
-A story is one of the three -- `does`, `cannot`, `closesTab` -- with only that one's keys. The
+A link opening is a story with no write too: `opensTab: "<address>"`. The author opens another tab
+of their session at that URL, as a link, a bookmark or a reload does: it must be drawn standing
+there, and the tab they already had (`from`) stays where it was -- each tab its own screen. `seen`
+names who notices the tab opening; the new tab closes after. Leave's:
+
+```ts
+story("Mo follows a link to Bo's request, and his new tab opens on its drawer; the tab he had open stays where it was", {
+  as: "mo",
+  opensTab: "2026-10?request=1",
+  seen: [],
+});
+```
+
+A story is one of the four -- `does`, `cannot`, `closesTab`, `opensTab` -- with only that one's keys. The
 harness refuses one that mixes them, or carries a key it does not read, before it runs: a story
 file is not type-checked when it runs, and a key nobody reads would be dropped without a word.
 
@@ -249,6 +262,8 @@ in `packages/dzql` (`packages/dzql/src/modelling/stories-run.ts`; `ETA_EXAMPLE` 
    wire to go quiet, and it must have landed: its author echoed the change with that id, whoever
    else wrote meanwhile. A `closesTab` has no control to find: the author's
    socket closes, the server is waited for, and something must land for someone still looking.
+   An `opensTab` has none either: a socket of the author's session opens at the address, and must
+   be drawn standing there; by hand, a browser opens that URL and must stand there too.
 3. Canon 1. Render every member again, from the same copy. For each name in `seen`, that
    member's page must differ from before -- the author's without what they were told (step 4):
    "Saved." is no change they can see; for everyone else, nothing of theirs may differ; and
@@ -294,9 +309,9 @@ in `packages/dzql` (`packages/dzql/src/modelling/stories-run.ts`; `ETA_EXAMPLE` 
    another story's write drew is not one this story starts with. A page that says nowhere it
    stands (a welcome before a code) has nowhere to go, and is not asked. The URL and the back
    button are not controls: a place only they reach is one a person must be told about. Where
-   they are told about it -- a link in an email, a shared URL -- the cast says so in its own
-   writes: a member the cast puts at an address arrived there as the link brings them, and their
-   ways start from it.
+   they are told about it -- a link in an email, a shared URL -- an `opensTab` story says the link
+   opens there, and the cast's own writes may put a member at the address it brings them to, their
+   ways starting from it.
 6. Then the other way round: a write the server takes that no story tells and no page offers, a
    hidden verb. Each member of the cast walks everywhere their pages lead from where the cast
    starts, and every document a page of theirs read, in the stories or the walk, and every

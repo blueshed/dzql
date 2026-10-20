@@ -33,8 +33,8 @@ export { anyOne, holds, pathsIn, valueAt } from "./harness/paths";
 // size of a phone; and what each step hands each page is counted (src/modelling/costs.ts `tap`) and held to
 // a budget. Each story runs in a transaction rolled back after it.
 
-/** What a story handed each member's page: the write's own size (none when a tab closes), and each member handed anything by its step, by its undo, and by its redo, when it has them. */
-export type Wire = { write?: number; handed: Handed[]; undo?: Handed[]; redo?: Handed[] };
+/** What a story handed each member's page: the write's own size (none when a tab opens or closes; `opens` when it opens), and each member handed anything by its step, by its undo, and by its redo, when it has them. */
+export type Wire = { write?: number; opens?: true; handed: Handed[]; undo?: Handed[]; redo?: Handed[] };
 /** What one member's page was handed: its bytes as the page takes them, as they crossed the wire (compressed), and the biggest part of them. */
 export type Handed = { member: string; bytes: number; sent: number; most: Part };
 /** A piece of what a page was handed, by what it is (`largest`), and its bytes before compression. */
@@ -45,9 +45,9 @@ export type Outcome = { name: string; failures: string[]; wire?: Wire };
 /** One step of a story's run, for `run`'s observer: who wrote what (or closed their tab), what every member was sent, and what the ledger took. For a sequence drawn from a real run. */
 export type Trace = {
   story: string;
-  phase: "does" | "cannot" | "undo" | "redo" | "closesTab";
+  phase: "does" | "cannot" | "undo" | "redo" | "closesTab" | "opensTab";
   as: string;
-  /** None when a tab closes. */
+  /** None when a tab opens or closes. */
   write?: Write | Post;
   heard: { member: string; messages: Heard[] }[];
   /** What each member's page read as the step was taken: the documents in front of them, as `<docType>:<docId>` (src/reading.ts). */
@@ -62,7 +62,10 @@ export type Report = { outcomes: Outcome[]; passed: number; failed: number; warn
 /** The stories done by hand in a browser (`byHand`, or a story's own `gesture`): how many, how many presses (a button pressed, a form typed into and sent, a drag), how many writes sent as an applet declares them, and how long it took. */
 export type ByHand = { stories: number; presses: number; applets: number; ms: number };
 
-type Member = { name: string; cookie: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
+/** A tab as the server holds it. */
+type Tab = ReturnType<typeof allOpenSockets>[number];
+/** A member of the cast: a tab of a session (`ws`), the socket the server holds for it (`socket`), and the name the tap knows it by (`tap`). */
+type Member = { name: string; cookie: string; sessionId: string; ws: WebSocket; socket: Tab; tap: string; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
 type Snapshot = Map<string, string>;
 
 
@@ -178,11 +181,12 @@ const listed = (names: string[]): string => (names.length < 2 ? names.join("") :
 function misshapen(story: Story): string[] {
   const given = Object.entries(story).filter(([, value]) => value !== undefined).map(([key]) => key);
   const kinds = (Object.keys(STORY_KEYS) as (keyof typeof STORY_KEYS)[]).filter((kind) => given.includes(kind));
-  if (kinds.length !== 1) return [`a story is one of does, cannot or closesTab, and this one has ${kinds.length ? kinds.join(" and ") : "none"}`];
+  if (kinds.length !== 1) return [`a story is one of does, cannot, closesTab or opensTab, and this one has ${kinds.length ? kinds.join(" and ") : "none"}`];
   const kind = kinds[0]!;
   const takes: readonly string[] = ["name", "as", "premise", ...STORY_KEYS[kind]];
   const why = given.filter((key) => !takes.includes(key)).map((key) => `a ${kind} story takes no ${key}`);
   if (kind === "closesTab" && story.closesTab !== true) why.push(`closesTab is true, or left out: this one is ${JSON.stringify(story.closesTab)}`);
+  if (kind === "opensTab" && typeof story.opensTab !== "string") why.push(`opensTab is the address the tab opens at: this one is ${JSON.stringify(story.opensTab)}`);
   if (story.gesture !== undefined && !isGesture(story.gesture)) why.push(`a gesture is { press: selector } or { drag: [from, to] }: this one is ${JSON.stringify(story.gesture)}`);
   else if (story.gesture !== undefined && story.offPage) why.push("a story from no page (offPage) has no gesture");
   const posted = story.does ?? story.cannot;
@@ -200,7 +204,7 @@ const unbudgeted = (budget: unknown, whose: string): string[] =>
 
 const count = (bytes: number): string => bytes.toLocaleString("en");
 /** Each step of a story, as a budget's failure names it. */
-const STEP: Record<Trace["phase"], string> = { does: "write", cannot: "refusal", closesTab: "tab closing", undo: "undo", redo: "redo" };
+const STEP: Record<Trace["phase"], string> = { does: "write", cannot: "refusal", closesTab: "tab closing", opensTab: "tab opening", undo: "undo", redo: "redo" };
 
 /**
  * One run of an example's stories, as each step of it needs it: the example, its stories, the server
@@ -240,6 +244,10 @@ type Run = {
   miswired: Map<string, Warning>;
   /** How many writes the cast has sent: each its own id. */
   writes: number;
+  /** How many tabs the cast has opened: each its own name at the tap. */
+  opened: number;
+  /** The server's sockets that are the cast's tabs, while open: a tab opening is the one of its session not among them. */
+  owned: Set<Tab>;
 };
 
 /** Where a person can go (`reach`): every page a member is drawn while a walk is under way, kept by where it stands: member → place → controls, by what each writes. */
@@ -274,7 +282,7 @@ function keep(r: Run, m: Member): void {
  * resource's `memory`, `source` or `static` kind, kept where delta keeps it -- is the server's copy. The page reads the
  * active copy, so this one is made active while it draws, and only then: a drawing is synchronous.
  */
-async function fresh(r: Run, sessionId: string): Promise<string> {
+async function fresh(r: Run, m: Member): Promise<string> {
   const stored = new Map<string, unknown>();
   const copy: Documents = {
     ...r.documents,
@@ -291,16 +299,22 @@ async function fresh(r: Run, sessionId: string): Promise<string> {
       else stored.set(doc, result);
     },
   };
-  return drawFrom(r, copy, sessionId);
+  return drawFrom(r, copy, m);
 }
 
+/** Where a member's tab stands, as the server holds it: what its page is drawn at. */
+const addressOf = (m: Member): string => m.socket.data.address ?? "";
+
+/** A member's page as the server draws it: their session's, where their tab is. */
+const drawn = (r: Run, m: Member): Promise<string> => r.draw(m.sessionId, addressOf(m));
+
 /** A page drawn from `copy`, made the active documents while it draws, and only then: a drawing is synchronous. */
-function drawFrom(r: Run, copy: Documents, sessionId: string): Promise<string> {
+function drawFrom(r: Run, copy: Documents, m: Member): Promise<string> {
   return settled(copy, () => {
     const serving = activeDocuments();
     setActiveDocuments(copy);
     try {
-      return r.page(sessionId);
+      return r.page(m.sessionId, addressOf(m));
     } finally {
       setActiveDocuments(serving);
     }
@@ -308,11 +322,11 @@ function drawFrom(r: Run, copy: Documents, sessionId: string): Promise<string> {
 }
 
 /** A member's page as though they had been told nothing (src/rendering/refusal.ts), as a snapshot has it (`unversioned`): what they were told, left out, is checked on its own. */
-const unsaid = async (r: Run, sessionId: string): Promise<string> => unversioned(await drawFrom(r, toldNothing(r.documents, sessionId), sessionId));
+const unsaid = async (r: Run, m: Member): Promise<string> => unversioned(await drawFrom(r, toldNothing(r.documents, m.sessionId), m));
 
 /** Every member's page, drawn as a page is and without its watching mounts' versions (`unversioned`): `quiet`'s as though they had been told nothing, since what they are told is checked on its own (`checkTold`). */
 async function snapshot(r: Run, cast: Member[], quiet?: Member): Promise<Snapshot> {
-  return new Map(await Promise.all(cast.map(async (m) => [m.name, m === quiet ? await unsaid(r, m.sessionId) : unversioned(await r.draw(m.sessionId))] as const)));
+  return new Map(await Promise.all(cast.map(async (m) => [m.name, m === quiet ? await unsaid(r, m) : unversioned(await drawn(r, m))] as const)));
 }
 
 /** Posts a form to a route as a browser posts it: from the page's own site, with the session's cookie if it has one. The route's answer, not followed. */
@@ -351,11 +365,16 @@ async function connect(r: Run, name: string): Promise<Member> {
   return member;
 }
 
-/** Opens a tab of `member`'s session, as a page loading does: a socket of its own, and the page it is drawn. */
-async function open(r: Run, member: Member): Promise<void> {
+/**
+ * Opens a tab of `member`'s session, as a page loading does: a socket of its own, at the address
+ * its URL names (`at`; none, a socket that names none), and the page it is drawn.
+ */
+async function open(r: Run, member: Member, at?: string): Promise<void> {
+  const tap = `${member.name.replace(/\W/g, "-")}-${++r.opened}`;
+  const url = at === undefined ? r.tapped.url : `${r.tapped.url}?at=${encodeURIComponent(at)}`;
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-  const ws: WebSocket = new WebSocket(r.tapped.url, { headers: { Cookie: `${cookieNameFor(r.example.at)}=${member.cookie}` } });
-  Object.assign(member, { ws, page: "", taken: new Map() });
+  const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `${cookieNameFor(r.example.at)}=${member.cookie}`, "X-Tap": tap } });
+  Object.assign(member, { ws, tap, page: "", taken: new Map() });
   const name = member.name;
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(String(event.data)) as Heard;
@@ -370,6 +389,9 @@ async function open(r: Run, member: Member): Promise<void> {
     if (message.type === "patch") taking(member.taken, message as unknown as { doc: string; version: number; ops: PatchOp[] });
   });
   await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
+  // the server opened it as it answered: its socket, the one of the session's the cast does not hold
+  member.socket = allOpenSockets().find((s) => s.data.sessionId === member.sessionId && !r.owned.has(s))!;
+  r.owned.add(member.socket);
 }
 
 /** What a session is told now (src/rendering/refusal.ts). */
@@ -399,7 +421,8 @@ async function posting(r: Run, cast: Member[], who: Member, how: Post, from: Map
     const cookie = cookieOf(r, res);
     if (cookie) Object.assign(who, { cookie, sessionId: await sessionOf(r, cookie) });
     from.set(who, who.inbox.length);
-    await open(r, who);
+    const to = new URL(res.headers.get("location") ?? "", r.server.url); // the tab opens where the route sends it
+    await open(r, who, decodeURI(to.pathname.slice((r.example.at ?? "").length).replace(/^\//, "") + to.search));
     await settle(r, cast);
   }
   return { status: res.status, ...(line?.reason !== undefined && JSON.stringify(line) !== toldBefore && { reason: line.reason }) };
@@ -421,28 +444,25 @@ async function settle(r: Run, cast: Member[]): Promise<void> {
   for (const m of cast) await checkWire(r, m); // quiet: each page is the one last drawn, and what it read is that drawing's
 }
 
-/** The socket the server holds for `m`'s tab. */
-const socketOf = (r: Run, m: Member) => allOpenSockets().find((ws) => ws.data.sessionId === m.sessionId);
-
 // The wire, checked: a control the server will not take leaves its page still, with no
 // word why. So every control on every page drawn is held to what the server asks of its write.
 
 /** Every control on `m`'s page, as it stands, held to the wire (`miswritten`): one that fails is a warning, on the page it was first drawn on. */
 async function checkWire(r: Run, m: Member): Promise<void> {
-  const ws = socketOf(r, m);
-  const key = ws && Bun.hash(`${m.page}\0${shownTo(ws).join()}`);
-  if (key === undefined || r.wired.has(key)) return;
+  const ws = m.socket;
+  const key = Bun.hash(`${m.page}\0${shownTo(ws).join()}`);
+  if (r.wired.has(key)) return;
   r.wired.add(key);
   const at = placeOf(m.page);
   for (const w of writesOn(m.page)) {
-    const wrong = await miswritten(r, ws!, w);
+    const wrong = await miswritten(r, ws, w);
     const says = wrong && `${w.control}, ${w.op} ${w.path} on ${w.doc}: ${wrong}`;
     if (says && !r.miswired.has(says)) r.miswired.set(says, { story: `a control the wire refuses, on ${at === undefined ? `${m.name}'s page` : JSON.stringify(at)}`, says });
   }
 }
 
 /** Why the server would refuse what a control writes from the page `ws` holds, if it would: its op, its path, a document the page did not read, or a replace of nothing. */
-async function miswritten(r: Run, ws: ReturnType<typeof allOpenSockets>[number], w: Writing): Promise<string | undefined> {
+async function miswritten(r: Run, ws: Tab, w: Writing): Promise<string | undefined> {
   if (!isVerb(w.op) && w.op !== "test") return `${w.op} is not add, replace, remove or test`;
   if (!keysOf(w.path)) return `${w.path} is not a JSON Pointer`;
   const target = await settled(r.documents, () => resolveName(r.byDocType, w.doc, ws));
@@ -499,9 +519,8 @@ function past(r: Run, where: string): Write | undefined {
   return { doc: all.doc, ops: all.ops.filter((op) => !going.includes(JSON.stringify(op))) };
 }
 
-/** The documents in front of each member: what the page last drawn for their socket read. */
-const inFront = (r: Run, cast: Member[]): Trace["holds"] =>
-  cast.map((m) => ({ member: m.name, docs: allOpenSockets().filter((ws) => ws.data.sessionId === m.sessionId).flatMap(shownTo) }));
+/** The documents in front of each member: what the page last drawn for their tab read. */
+const inFront = (r: Run, cast: Member[]): Trace["holds"] => cast.map((m) => ({ member: m.name, docs: shownTo(m.socket) }));
 
 /** Where each member's inbox stands now, to ask later what they were sent since. */
 const mark = (r: Run, cast: Member[]): Map<Member, number> => new Map(cast.map((m) => [m, m.inbox.length]));
@@ -546,13 +565,13 @@ function spent(r: Run, story: Story, outcome: Outcome, phase: Trace["phase"], ca
   const handed = cast.flatMap((m): Handed[] => {
     const raws = m.inbox.slice(from.get(m));
     if (raws.length === 0) return [];
-    const heard = r.tapped.heard(m.cookie, raws);
+    const heard = r.tapped.heard(m.tap, raws);
     return [{ member: m.name, bytes: sum(heard, "bytes"), sent: sum(heard), most: largest(raws) }];
   });
   if (phase === "undo" || phase === "redo") outcome.wire![phase] = handed;
   else {
     const write = story.does ?? story.cannot;
-    outcome.wire = { ...(write && { write: Buffer.byteLength(JSON.stringify(write)) }), handed };
+    outcome.wire = { ...(write && { write: Buffer.byteLength(JSON.stringify(write)) }), ...(phase === "opensTab" && { opens: true as const }), handed };
   }
   const [budget, whose] = story.budget !== undefined ? [story.budget, "story's"] : [r.stories.budget, "example's"];
   if (budget === undefined) return;
@@ -582,7 +601,7 @@ async function checkTold(r: Run, who: Member, when: string, expected: string | u
   const words = line?.said ?? line?.reason;
   if (line && before && JSON.stringify(line) === JSON.stringify(before.line)) failures.push(`${when}, ${who.name} is still told "${words}", what ${before.what} told them`);
   else if (expected !== undefined && line?.said !== expected) failures.push(`${when}, ${who.name} was not told "${expected}"${words === undefined ? "" : `: they were told "${words}"`}`);
-  else if (words !== undefined && !shows(r, unversioned(await r.draw(who.sessionId)), await unsaid(r, who.sessionId), words)) failures.push(`${when}, ${who.name} was told "${words}", and their page does not show it`);
+  else if (words !== undefined && !shows(r, unversioned(await drawn(r, who)), await unsaid(r, who), words)) failures.push(`${when}, ${who.name} was told "${words}", and their page does not show it`);
   return line;
 }
 
@@ -608,6 +627,7 @@ const naming = (r: Run, what: string, docs: string[]): string => (docs.length ==
 
 /** Closes a member's tab, as a browser does: resolved once it is closed. The server has then been told, and what it sets going is `server.idle()`'s to wait for. */
 function closeTab(r: Run, m: Member): Promise<unknown> {
+  r.owned.delete(m.socket);
   if (m.ws.readyState === WebSocket.CLOSED) return Promise.resolve();
   const closed = new Promise((resolve) => m.ws.addEventListener("close", resolve, { once: true }));
   m.ws.close();
@@ -617,7 +637,7 @@ function closeTab(r: Run, m: Member): Promise<unknown> {
 /** Canon 2: what each member's applets hold (the patch stream), then what their open page holds, must be what a fresh render gives them. */
 async function stale(r: Run, cast: Member[], when: string, failures: string[]): Promise<void> {
   const pages: string[] = [];
-  for (const m of cast) pages.push(await fresh(r, m.sessionId));
+  for (const m of cast) pages.push(await fresh(r, m));
   cast.forEach((m, i) => failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, pages[i]!)));
   for (const [i, m] of cast.entries()) {
     const drawn = comparable(pages[i]!);
@@ -703,7 +723,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
       const after = await snapshot(r, cast);
       if (story.told !== undefined) {
         // told why: by the refusal of their own write, and on their page, the one change it may show
-        const without = await unsaid(r, who.sessionId);
+        const without = await unsaid(r, who);
         if (reason !== story.told) failures.push(`refused, but ${who.name} was not told "${story.told}"${reason === undefined ? "" : `: they were told "${reason}"`}`);
         else if (onPage && !shows(r, after.get(who.name)!, without, story.told)) failures.push(`refused and told "${story.told}", but ${who.name}'s page does not show it`);
         after.set(who.name, without);
@@ -742,6 +762,33 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
       return outcome;
     }
 
+    if (story.opensTab !== undefined) {
+      // No write: a tab of the author's session opens at an address, as a link, a bookmark or a
+      // reload does, and must be drawn standing there. Whoever is looking -- the author's tab
+      // already open among them, which stays where it is -- sees only what the server tells of it.
+      // No control is looked for, and there is nothing to undo; the new tab closes after.
+      const at = story.opensTab;
+      const tab = { name: `${who.name}'s new tab`, cookie: who.cookie, sessionId: who.sessionId, inbox: [], answered: [] } as Partial<Member> as Member;
+      if (story.from !== undefined) await put(r, cast, who, story.from, failures);
+      const before = await snapshot(r, cast);
+      const { from } = await step("opensTab", undefined, cast, async () => {
+        await open(r, tab, at);
+        await settle(r, [...cast, tab]);
+      });
+      try {
+        const stands = placeOf(tab.page);
+        if (stands !== at) failures.push(`${who.name}'s tab, opened at ${JSON.stringify(at)}, stands at ${JSON.stringify(stands)}`);
+        checkUntold(r, cast, story.untold, from, "after the tab opened", failures);
+        const after = await snapshot(r, cast);
+        await stale(r, [...cast, tab], "after the tab opened", failures);
+        noticed(r, before, after, cast, seen, failures, naming(r, "the tab opening changed", changedSince(r, cast, from)));
+      } finally {
+        await closeTab(r, tab);
+        await r.server.idle();
+      }
+      return outcome;
+    }
+
     if (story.from !== undefined) await put(r, cast, who, story.from, failures);
     const does = story.does;
     // P1: the author's page offers a control for it -- unless it comes from no page (`offPage`)
@@ -774,7 +821,7 @@ async function tell(r: Run, story: Story): Promise<Outcome> {
     checkUntold(r, cast, story.untold, from, "after the story", failures);
     const after = await snapshot(r, cast);
     const wrote = await checkTold(r, who, "after the story", undefined, failures);
-    const quietAfter = new Map(after).set(who.name, await unsaid(r, who.sessionId)); // what the undo and the redo are compared with
+    const quietAfter = new Map(after).set(who.name, await unsaid(r, who)); // what the undo and the redo are compared with
     const entries = await r.store.since(ledgerBefore);
     await stale(r, cast, "after the story", failures);
 
@@ -968,8 +1015,8 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
   if (story.closesTab || !r.stories.cast[story.as]) return [];
   const tried = story.does !== undefined ? (story.offPage ? undefined : story.does) : r.tryable.has(story) ? story.cannot : undefined;
   const seenAt = story.does !== undefined && story.seen && !Array.isArray(story.seen) ? story.seen[story.as] : undefined;
-  const target = story.from ?? seenAt;
-  if (!tried && target === undefined) return [];
+  const target = story.opensTab === undefined ? (story.from ?? seenAt) : undefined; // a tab opening is entered at its address, and nothing more
+  if (!tried && target === undefined && story.opensTab === undefined) return [];
   tally.stories++;
   const failures: string[] = [];
   const by = (what: string): string[] => (failures.push(`by hand, ${what}`), failures);
@@ -980,7 +1027,7 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
     await gather(r, cast);
     const who = cast.find((m) => m.name === story.as)!;
     if ((await premise(r, cast, story)).length > 0) return []; // the story says so when it is told
-    const start = placeOf(who.page);
+    const start = story.opensTab ?? placeOf(who.page); // a tab opened at an address: the browser opens there, and must stand there
     opened = true;
     const wrong = await hand.enter(who.cookie, start);
     if (wrong) return by(wrong);
@@ -991,7 +1038,8 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
       const own = controlsOn(who.page).filter((c) => write.ops.some((op) => offers(c, write.doc, op)));
       if (!gesture && own.length > 0 && own.every((c) => c.pattern)) {
         tally.applets++;
-        await send(r, cast, who, write);
+        await hand.declare(write); // from the browser's tab, as its applet would send it
+        await settle(r, cast);
         return undefined;
       }
       tally.presses++;
@@ -1013,7 +1061,10 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
           const why = await press(r.stories.goTo(step.to));
           const stands = why === undefined ? await hand.standsAt(step.to) : await hand.here();
           at = stands ?? step.from;
-          if (why === undefined && stands === step.to) continue;
+          if (why === undefined && stands === step.to) {
+            await send(r, cast, who, r.stories.goTo(step.to)); // the harness's own tab of theirs goes there too: the page it holds is the one they press on
+            continue;
+          }
           blocked.add(stepKey(step));
           first ??= `the way to ${JSON.stringify(step.to)} from ${JSON.stringify(step.from)}: ${why ?? `pressed, it left their page at ${JSON.stringify(stands)}`}`;
           break;
@@ -1042,7 +1093,7 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
       const why = await press(tried, story.gesture);
       if (why !== undefined && story.cannot && none) return failures; // nobody could send it from the page: the refusal is for the wire's, as the story says
       if (why !== undefined) return by(`${who.name} could not ${tried.ops.map((op) => `${op.op} ${op.path}`).join(", ")} on ${tried.doc}: ${why}`);
-      const landed = landedSince(r, cast, from);
+      const landed = landedSince(r, cast, from) || (await hand.echoed()); // their tab's own echo: a write that moves only it is told to nobody else
       if (story.does && !landed) return by(`nothing landed: ${who.name}'s write was refused`);
       if (story.cannot && landed) return by(`${who.name}'s write landed, and should have been refused`);
       if (story.gesture) await hand.quiet(); // an applet's own code: after its write it must be still
@@ -1062,7 +1113,7 @@ async function byHand(r: Run, story: Story, hand: Hand, tally: ByHand, state: St
 }
 
 /** Which of `owner`'s checks refuses `ops` to `docId` from `ws`, if one does: its `permit`, or its `shape`, shaping them to nothing. One that throws refuses. Nothing is written. */
-async function refuser(r: Run, owner: Resource, ws: ReturnType<typeof allOpenSockets>[number], ops: PatchOp[], docId: string): Promise<"permit" | "shape" | undefined> {
+async function refuser(r: Run, owner: Resource, ws: Tab, ops: PatchOp[], docId: string): Promise<"permit" | "shape" | undefined> {
   try {
     if (!(await settled(r.documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return "permit";
   } catch {
@@ -1079,7 +1130,7 @@ async function refuser(r: Run, owner: Resource, ws: ReturnType<typeof allOpenSoc
  * Would the server take `op` to `docId` from `ws`: permitted, shaped to something, and let by
  * whatever stands in front of the store (the model's guards answer `may`; with none, nothing does).
  */
-async function takes(r: Run, owner: Resource, ws: ReturnType<typeof allOpenSockets>[number], op: PatchOp, docId: string): Promise<boolean> {
+async function takes(r: Run, owner: Resource, ws: Tab, op: PatchOp, docId: string): Promise<boolean> {
   if ((await refuser(r, owner, ws, [op], docId)) !== undefined) return false;
   const shaped = owner.shape ? await settled(r.documents, () => owner.shape!(ws, docId, [op])) : [op];
   const identity = r.example.who ? r.example.who(ws.data.sessionId) : ws.data.sessionId;
@@ -1093,7 +1144,7 @@ async function takes(r: Run, owner: Resource, ws: ReturnType<typeof allOpenSocke
  * write, or its resource's `permit` or `shape`; past them both, delta. Nothing is written.
  */
 async function refusedBy(r: Run, m: Member, write: Write): Promise<string> {
-  const ws = socketOf(r, m)!;
+  const ws = m.socket;
   const target = await settled(r.documents, () => resolveName(r.byDocType, write.doc, ws));
   if (!target || !(await settled(r.documents, () => sees(target.owner, ws, target.docId)))) return `, as ${m.name}'s page did not read ${write.doc}: it read ${readBy(r, m)}`;
   const { owner, docId } = target;
@@ -1114,7 +1165,7 @@ async function refusedBy(r: Run, m: Member, write: Write): Promise<string> {
 async function hiddenVerbs(r: Run): Promise<Warning[]> {
   const found = new Map<string, Map<string, string[]>>(); // document → verb → who may
   // what goTo writes is the URL bar's, anyone's: for each place a story names
-  const places = r.stories.stories.flatMap((s) => [s.from, ...(s.seen && !Array.isArray(s.seen) ? Object.values(s.seen) : [])]);
+  const places = r.stories.stories.flatMap((s) => [s.from, s.opensTab, ...(s.seen && !Array.isArray(s.seen) ? Object.values(s.seen) : [])]);
   const anyone = r.stories.goTo ? ["", ...places].filter((p) => typeof p === "string").map(r.stories.goTo) : [];
   /** Is `n` who is asked about: `name`, or anyone when it names none? */
   const whose = (n: string, name?: string): boolean => name === undefined || n === name;
@@ -1128,7 +1179,7 @@ async function hiddenVerbs(r: Run): Promise<Warning[]> {
   try {
     await gather(r, cast);
     for (const m of cast) {
-      const ws = socketOf(r, m)!;
+      const ws = m.socket;
       for (const doc of r.met.get(m.name)!.reads) {
         const { docType, docId } = doc.includes(":") ? splitDoc(doc) : { docType: doc, docId: m.sessionId };
         const owner = r.byDocType.get(docType)!;
@@ -1194,6 +1245,8 @@ export async function run(
     wired: new Set(),
     miswired: new Map(),
     writes: 0,
+    opened: 0,
+    owned: new Set(),
   };
   const outcomes: Outcome[] = [];
   let byHandTally: ByHand | undefined;
@@ -1265,9 +1318,9 @@ export function print(report: Report, { wire = false }: { wire?: boolean } = {})
  * bytes, as they crossed the wire, and the biggest part; and after it, the bytes its undo and redo
  * handed them, where it has them.
  */
-function cost({ write, handed, undo, redo }: Wire): string[] {
+function cost({ write, opens, handed, undo, redo }: Wire): string[] {
   const members = [...new Set([...handed, ...(undo ?? []), ...(redo ?? [])].map((h) => h.member))];
-  const step = write === undefined ? "a tab closing handed" : `a ${count(write)}-byte write handed`;
+  const step = write === undefined ? `a tab ${opens ? "opening" : "closing"} handed` : `a ${count(write)}-byte write handed`;
   if (members.length === 0) return [`${step} nothing`];
   const width = Math.max(...members.map((m) => m.length));
   const bytes = (phase: Handed[], member: string): string => count(phase.find((h) => h.member === member)?.bytes ?? 0);

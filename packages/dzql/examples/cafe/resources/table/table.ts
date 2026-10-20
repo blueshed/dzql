@@ -13,5 +13,5 @@ export const table: Resource = {
   },
   permit: (_ws, op) => may(op),
   shape: (_ws, id, ops) => shape(ops, read(id), menu()),
-  afterWrite: (ws) => backToPage(ws.data.sessionId),
+  afterWrite: (ws) => backToPage(ws),
 };

@@ -25,6 +25,32 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **Each tab has its own screen, and a page has a real URL** (20 October, #53, #57, Peter's yes):
+  where you are is the tab's, not the session's. `Example.render(sessionId)` is
+  `render(sessionId, address)`: the address of the tab being drawn (`list?request=3`, "" for the
+  page alone), so two tabs of one session stand on two screens, and a write in one still reaches
+  the other wherever it is. `Example.address` (`{ doc: "session", path: "/page" }`) is still the
+  write that moves a tab, and `go()`, `site()`, `data-page-write`, the client's history and the
+  stories' `goTo` are unchanged: the session's resource permits and shapes it as before (where this
+  session may stand), then the kernel takes that op off the write and moves the tab that sent it,
+  never writing it; a write that only moved its tab is answered by an echo of nothing, and no
+  `afterWrite` follows it. A GET of a page's path is that tab's first page: the socket names the
+  address (`/ws?at=`), and the tab -- not the session -- is put there before it is drawn, so a
+  link, a bookmark or a reload opens on its screen and leaves the session's other tabs where they
+  are; a refused one stands at the page alone. New, `dzql/rendering/tabs`: `addressOf(ws)` (where a
+  tab stands) and `moveTab(ws, address)` (what follows a write: a modal answered put away, a made
+  request's drawer opened), and `Tab`. What is per tab and what per session is in the dzql-app
+  skill's `reference/bento.md`: what a page reads follows its tab's address; `resolveDoc`, who you
+  are and what is yours (a draft, a watchlist, how you read a list, what you were last told) are
+  the session's. The wire carries the same messages (`WIRE` stays 4).
+  To move an app across: give `render` the address and draw from it, never from the session (`site(
+  address, ...)`); drop `page` from the session's document and its table (an existing database may
+  keep the column, unused, or drop it with a migration of its own); pass the tab's address to the
+  session's `shape` where it compares with where you are (`{ ...read(id), page: addressOf(ws) }`);
+  and where `afterWrite` or `afterWalk` wrote the session's `/page` with `serverWrite`, call
+  `moveTab(ws, address)`. Every example, the model's page and the starter have moved; the kernel's
+  `Assembled.page` and `draw` take the address too.
+
 - **The model's page signs in by link alone** (20 October, #62): the email and password form, its
   `/login` route, the `mdl_logins` table and `MODEL_PASSWORD` are gone. Each keeper's link is
   printed as `dzql model` starts; the CLI signs in with it (`bun run cli login <link>`).
@@ -49,6 +75,16 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   needed by that module alone.
 
 ### Changed
+
+- **A story may open a tab** (20 October, #53, #57): `opensTab: "<address>"`, the fourth kind of
+  story, as a link, a bookmark or a reload: another tab of the author's session opens at that URL
+  and must be drawn standing there, while the tab they had (`from`) stays where it was; by hand, a
+  browser opens the URL and must stand there. Leave's two: Ann opens November in a second tab and
+  her first stays on October; Mo follows a link to Bo's request and his new tab opens on its
+  drawer. The harness holds each member's own socket (one session may have several), the tap names
+  each socket apart (`X-Tap`), a post's redirect opens its tab where the route sends it, and by hand
+  an applet's declared write is sent from the browser's own tab, the harness's tab of the author
+  following where the browser goes. The model's loader counts `opensTab` stories.
 
 - **The stories say the client's rules for a control once each** (20 October, #60, the review):
   the harness walks a page's controls once for what each offers (`controlsOn`) and what each is

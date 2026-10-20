@@ -2,17 +2,18 @@ import { read as readDoc } from "dzql/rendering/documents";
 import { address, collectionsWrite, parseAddress, type Collections } from "dzql/rendering/bento";
 import type { PatchOp } from "dzql/rendering/json-patch";
 
-// The desk, kept in delta (`desk:<id>`, ../delta.ts): where this session is on the page -- one
-// address (src/rendering/bento.ts): the cell grown into the window, and the one thing open over it,
-// a symbol's drawer or the clock's, or the modal that asks -- and how the board is read and what
-// find says. Nothing here is history: it is never on the ledger, and Undo passes over it.
+// The desk, kept in delta (`desk:<id>`, ../delta.ts): how this session reads the board and what
+// find says. Nothing here is history: it is never on the ledger, and Undo passes over it. Where a
+// tab is on the page -- one address (src/rendering/bento.ts): the cell grown into the window, and
+// the one thing open over it, a symbol's drawer or the clock's, or the modal that asks -- is the
+// tab's own (dzql/rendering/tabs), given beside the desk to draw and to shape a write by.
 
 export type Ui = {
-  /** "" the desk, "board" or "market" a window; then "?symbol=ALPH", "?clock", "?new", "?confirm=ALPH". */
+  /** Where the tab stands: "" the desk, "board" or "market" a window; then "?symbol=ALPH", "?clock", "?new", "?confirm=ALPH". */
   page?: string;
 } & Collections; // how the board is read, what find says
 
-const FIELDS = ["page", "reading", "filter", "hide"] as const;
+const FIELDS = ["reading", "filter", "hide"] as const;
 
 export function read(sessionId: string): Ui {
   const row = readDoc<{ desks?: Record<string, unknown> }>(`desk:${sessionId}`)?.desks ?? {};
@@ -32,7 +33,7 @@ function placed(value: unknown): string | undefined {
   return undefined;
 }
 
-/** What a write to the desk becomes, applied to `ui` an op at a time: an address it keeps, or a reading, find's word or the eye (src/rendering/bento.ts), each field it moves replaced whole. */
+/** What a write to the desk becomes, applied to `ui` (the desk, where the tab that sent it stands) an op at a time: an address the tab goes to (the kernel moves it), or a reading, find's word or the eye (src/rendering/bento.ts), each field it moves replaced whole. */
 export function shape(ui: Ui, ops: PatchOp[]): PatchOp[] {
   return ops.flatMap((op): PatchOp[] => {
     const bento = collectionsWrite(op, ui);

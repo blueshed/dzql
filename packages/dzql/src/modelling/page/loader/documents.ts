@@ -21,6 +21,7 @@ import type { PatchOp } from "dzql/rendering/json-patch";
 import { controlsOn, run, type Control, type Heard, type Trace } from "dzql/modelling/harness";
 import { allOpenSockets } from "dzql/rendering/resources/audience";
 import { activeDocuments } from "dzql/rendering/documents";
+import { addressOf } from "dzql/rendering/tabs";
 import { appDir, appIn, storiesIn } from "dzql/rendering/names";
 
 /** One actor's dealings with one document, counted in stories: held (in front of them), written, refused, told of a change. */
@@ -28,7 +29,7 @@ export type Cell = { held: number; written: number; refused: number; told: numbe
 /** How one member was told of one change: its patch, the parts of their page (or a whole page) that followed, and the bytes. */
 export type Told = { member: string; how: string; bytes: number; seen: boolean };
 /** One story, and for each document it changed, who was told and how. */
-export type StoryRow = { n: number; name: string; as: string; kind: "does" | "cannot" | "closesTab"; doc?: string; changes: { doc: string; told: Told[] }[] };
+export type StoryRow = { n: number; name: string; as: string; kind: "does" | "cannot" | "closesTab" | "opensTab"; doc?: string; changes: { doc: string; told: Told[] }[] };
 /** One op the server's permit lets through: a document, the op and a path's shape (a row's id as `*`), and who it lets. */
 export type Let = { doc: string; op: string; path: string; who: string[] };
 /** What permit lets through at one path of a document, with the verbs: an `add` on a field it also lets be replaced acts as that replace, and is not said apart from it. */
@@ -218,7 +219,7 @@ export function watch(example: Example): Watched & { observe: (t: Trace) => void
     for (const { member, docs } of t.holds) {
       const ws = allOpenSockets().find((w) => docs.some((d) => d.endsWith(`:${w.data.sessionId}`)));
       if (!ws) continue;
-      drawn(attempt(() => example.render(ws.data.sessionId)) ?? "");
+      drawn(attempt(() => example.render(ws.data.sessionId, addressOf(ws))) ?? "");
       for (const doc of docs) {
         const c = byType.get(typeOf(doc));
         const permit = c?.permit;
@@ -239,7 +240,7 @@ export function watch(example: Example): Watched & { observe: (t: Trace) => void
 }
 
 const blank = (): Cell => ({ held: 0, written: 0, refused: 0, told: 0 });
-const kindOf = (s: Story): StoryRow["kind"] => (s.does ? "does" : s.cannot ? "cannot" : "closesTab");
+const kindOf = (s: Story): StoryRow["kind"] => (s.does ? "does" : s.cannot ? "cannot" : s.closesTab ? "closesTab" : "opensTab");
 const seenBy = (s: Story): string[] => (Array.isArray(s.seen) ? s.seen : Object.keys(s.seen ?? {}));
 
 /** A document as a page about it may name it: a session's own (`perSession`) by its type alone, since its id is a credential. */
@@ -458,7 +459,7 @@ export function format(name: string, r: Reading): string {
   }
   out(`## Each story's changes, and who was told`);
   for (const s of r.stories) {
-    out(`${s.n}. ${s.kind === "cannot" ? "cannot · " : s.kind === "closesTab" ? "closes a tab · " : ""}${s.name}`);
+    out(`${s.n}. ${{ does: "", cannot: "cannot · ", closesTab: "closes a tab · ", opensTab: "opens a tab · " }[s.kind]}${s.name}`);
     for (const c of s.changes) out(`    ${c.doc} → ${c.told.map((t) => `${t.member}${t.seen || s.kind === "cannot" ? "" : " (not in seen)"}${r.ran ? ` ${t.how} ${t.bytes} B` : ""}`).join("; ")}`);
   }
   return lines.join("\n");

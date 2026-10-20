@@ -32,7 +32,11 @@ how a paintbrush app keeps its stories, so one format grows from there to here.
 - `undone` and `redone` say what an Undo or Redo must tell its author (`undone: "Undone: your
   answer."`); the harness compares pages without the line, and checks it alone.
 - `from` is where a person does it, and a control must lead there: build the button that opens the
-  drawer, or the story fails (`no control leads ...`). Places are addresses ([bento.md](bento.md#where-you-are-the-address)).
+  drawer, or the story fails (`no control leads ...`). Places are addresses, each member's tab's
+  own ([bento.md](bento.md#where-you-are-the-address)).
+- A link, a bookmark or a reload is `opensTab: "<address>"`: the author opens another tab of their
+  session at that URL, which must stand there, while the tab they had (`from`) stays where it was;
+  `seen` names who notices it opening. Leave's: `{ as: "mo", opensTab: "2026-10?request=1", seen: [] }`.
 - A control counts only where a person could press it: not drawn `disabled`, `inert` (behind an
   open window or modal), `hidden`, in a `<template>`, or in a disabled fieldset (but for its first
   legend), itself or by what it is in, which ends where HTML says it does, end tag or none (a `<li>`

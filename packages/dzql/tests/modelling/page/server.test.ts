@@ -384,7 +384,7 @@ describe("modeling, served", () => {
     const raw = await readPage(ws, (await Bun.file(file).text()).trim());
     const page = plain(raw);
     expect(page).toContain("\n21. visitor does, posts to /login: Bo signs in on another phone, and sees the team's calendar\n");
-    expect(page).toContain("\n2. session, each person's own, held by ann, bo, mo and visitor; serves 1, 3, 20 and 23\n   sessions: person_id, page, draft:json");
+    expect(page).toContain("\n2. session, each person's own, held by ann, bo, mo and visitor; serves 1, 3, 20 and 23\n   sessions: person_id, draft:json");
 
     const printed = spyOn(console, "log").mockImplementation(() => {});
     const said = spyOn(console, "error").mockImplementation(() => {});

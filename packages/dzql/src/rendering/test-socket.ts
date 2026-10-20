@@ -32,12 +32,12 @@ const raws = new WeakMap<WireMessage, string>();
 /** A message as it came, for counting its bytes. */
 export const rawOf = (m: WireMessage): string => raws.get(m)!;
 
-/** A socket to `server` -- or to anything with its address, a proxy that measures the wire -- as the session `sessionId` (a fresh visit without one). */
+/** A socket to `server` -- or to anything with its address, a proxy that measures the wire -- as the session `sessionId` (a fresh visit without one), a tab opened at `at` (none: a socket that names no address). */
 export function connect(server: { url: URL | string }, sessionId?: string, at?: string): WebSocket {
   // the socket itself (a tap's), or an app's, at its root or under its path
   const base = String(server.url).replace(/\/$/, "");
   const url = new URL(base.endsWith("/ws") ? base : `${base}/ws`);
-  if (at !== undefined) url.searchParams.set("at", at); // the screen a tab's URL names, as the client sends it
+  if (at !== undefined) url.searchParams.set("at", at); // the address a tab's URL names, as the client sends it
   url.protocol = "ws:";
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
   const ws: WebSocket = sessionId ? new WebSocket(url, { headers: { Cookie: `${cookieNameForUrl(url)}=${sessionId}` } }) : new WebSocket(url);

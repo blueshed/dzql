@@ -23,7 +23,7 @@ export const post = (path: string, form: Record<string, string> = {}): Post => (
 /** Is this a post to a route, not a write on the wire? */
 export const isPost = (w: Write | Post): w is Post => "path" in w;
 
-/** The cast: a session per name, and the writes that put it where the stories find it.
+/** The cast: a session per name, a tab of it open, and the writes that put it where the stories find it.
  * Every story starts from here: the cast is set up afresh per story, then the story's own premise
  * (the same shape), so no story depends on another. */
 export type Cast = Record<string, Write[]>;
@@ -114,6 +114,22 @@ type Cannot = Budgeted & Modelled & {
   told?: string;
 };
 
+/** A story told by a socket opening: `opensTab`. */
+type OpensTab = Budgeted & Modelled & {
+  /**
+   * The author opens a tab at this address, as a link, a bookmark or a reload does: a socket of
+   * their session's own, at the URL the address is. No write and no control: their new tab must be
+   * drawn standing there, and their other tab stays where it was, so `seen` names only who
+   * notices the tab opening (who is in a room). The new tab closes after.
+   */
+  opensTab: string;
+  /** Where the author's tab already open stands, as for a `does`. Omitted: where `seen` or the cast put them. */
+  from?: string;
+  seen: Seen;
+  /** Who must not even be sent a change by it, as for a `does`. */
+  untold?: string[];
+};
+
 /** A story told by a socket going: `closesTab`. */
 type ClosesTab = Budgeted & Modelled & {
   /**
@@ -137,10 +153,11 @@ export const STORY_KEYS = {
   does: ["does", "from", "offPage", "gesture", "seen", "undone", "redone", "untold", "budget", "model"],
   cannot: ["cannot", "from", "told", "budget", "model"],
   closesTab: ["closesTab", "seen", "untold", "budget", "model"],
-} as const satisfies { does: readonly (keyof Does)[]; cannot: readonly (keyof Cannot)[]; closesTab: readonly (keyof ClosesTab)[] };
+  opensTab: ["opensTab", "from", "seen", "untold", "budget", "model"],
+} as const satisfies { does: readonly (keyof Does)[]; cannot: readonly (keyof Cannot)[]; closesTab: readonly (keyof ClosesTab)[]; opensTab: readonly (keyof OpensTab)[] };
 
 /** One kind of story, and none of another kind's keys. */
-type Only<T> = T & { [K in Exclude<keyof Does | keyof Cannot | keyof ClosesTab, keyof T>]?: never };
+type Only<T> = T & { [K in Exclude<keyof Does | keyof Cannot | keyof ClosesTab | keyof OpensTab, keyof T>]?: never };
 
 /** What a story tells, before it has a name. */
 export type Told = {
@@ -152,7 +169,7 @@ export type Told = {
    * story if the cast made it. Made in the order written; each must change something.
    */
   premise?: Cast;
-} & (Only<Does> | Only<Cannot> | Only<ClosesTab>);
+} & (Only<Does> | Only<Cannot> | Only<ClosesTab> | Only<OpensTab>);
 
 export type Story = { name: string } & Told;
 
@@ -173,8 +190,9 @@ export type Stories = {
    */
   signIn?: (name: string) => Post | undefined;
   /**
-   * The write that puts a person at an address: for `from`, and for the places in a `seen` record.
-   * Leave's is `replace /page` on the session.
+   * The write that puts a person's tab at an address: for `from`, and for the places in a `seen`
+   * record. Leave's is `replace /page` on the session, which moves the tab that sends it
+   * (`Example.address`).
    *
    * - An address is the example's own: a page's address, then, after " @ ", anything else it understands.
    * - Where a page says where it stands (`data-page`), the harness checks the person got there.
@@ -220,7 +238,7 @@ export function untold(named: Record<string, { name: string }>, sources: string[
   return Object.entries(named).filter(([key]) => !sources.some((s) => new RegExp(`\\.${key}\\b`).test(s))).map(([, s]) => s.name);
 }
 
-/** A story's write on the wire: its `does` or its `cannot`; none for a post or a tab closing. */
+/** A story's write on the wire: its `does` or its `cannot`; none for a post, or a tab opening or closing. */
 export const writeOf = (s: Story): Write | undefined => {
   const w = s.does ?? s.cannot;
   return w && !isPost(w) ? w : undefined;

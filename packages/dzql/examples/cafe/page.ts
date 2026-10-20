@@ -31,12 +31,12 @@ function partsOf(sessionId: string, role: "manager" | "cook" | "customer", table
   return { home: t.table.name, parts: [ordering(menuOf(), openInvoice(t.invoices, t.table.id), at, sessionId), invoice(t, at)] };
 }
 
-/** The page for a session. */
-export function render(sessionId: string): string {
+/** The page for a session, where its tab stands (`page`, the tab's address). */
+export function render(sessionId: string, page: string): string {
   const v = visitOf(sessionId);
   if (!v.role) return layers(door(links.ways(), doorOf()), "", "");
-  const { home, parts } = partsOf(sessionId, v.role, v.table, v.page);
+  const { home, parts } = partsOf(sessionId, v.role, v.table, page);
   const shown = parts.find((p) => p.open);
   const trail: Crumb[] = shown ? [{ label: home, back: go("") }, { label: shown.title }] : [{ label: home }];
-  return site(v.page, layers(boxPage(trail, [], parts.map((p) => p.cell), shown?.open), shown?.sheet ?? "", shown?.modal ?? ""));
+  return site(page, layers(boxPage(trail, [], parts.map((p) => p.cell), shown?.open), shown?.sheet ?? "", shown?.modal ?? ""));
 }

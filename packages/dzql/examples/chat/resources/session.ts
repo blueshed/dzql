@@ -9,7 +9,9 @@ import { refuse } from "dzql/rendering/refusal";
 // The session: the ground the room sits on -- your name, your room and how far back in it you
 // read, kept in delta (`session:<id>`, ../delta.ts), your own and nobody else's. What a write to it
 // may be is here: a name or a room, trimmed, a blank ignored; logging out is the name taken back,
-// and the room with it. Who is in a room follows from the sessions (../presence.ts).
+// and the room with it. Who is in a room follows from the sessions (../presence.ts). Your room is
+// the session's, not a tab's: the stories say a person is in a room (Ada and Bob see Dee arrive),
+// so every tab of yours is in it; chat has no address, and its pages are drawn at none.
 //
 // How far back you read is the session's, as where you are is: the message your window ends
 // before (`/before`), a keyset, which a message said meanwhile never moves, as an offset would.

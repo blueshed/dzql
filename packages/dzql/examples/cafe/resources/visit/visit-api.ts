@@ -5,13 +5,13 @@ import { sessionRows } from "dzql/rendering/sessions";
 import { delta, register } from "../../store";
 
 // The visit: the model's own document (`own`), so the app's session. It holds the table a customer
-// scanned, as the model says; the app adds who signed in (staff), where they are, and the cookie's
-// hash, which is never in it. Off the ledger: coming in and moving about are not the cafe's history.
+// scanned, as the model says; the app adds who signed in (staff), and the cookie's hash, which is
+// never in it. Where they are is each tab's own (dzql/rendering/tabs), never the visit's. Off the ledger: coming in and moving about are not the cafe's history.
 // The session a cookie names is found by that hash, through `cookie:` (the model already names a
 // document `visit`, sessionRows' default lookup).
 register(
   [
-    defineDoc("visit:", { root: "visits", include: [], implied: true, columns: { visits: ["table", "role", "name", "page"] } }),
+    defineDoc("visit:", { root: "visits", include: [], implied: true, columns: { visits: ["table", "role", "name"] } }),
     defineDoc("cookie:", { root: "visits", scope: { cookie: ":cookie" }, include: [] }),
   ],
   { ledger: false },
@@ -21,17 +21,17 @@ register(
 export const sessions = sessionRows(delta, "visits", "cookie:");
 
 export type Role = "manager" | "cook" | "customer";
-export type Visit = { role: Role | null; name: string | null; table: string | null; page: string };
+export type Visit = { role: Role | null; name: string | null; table: string | null };
 
-/** Who a session is -- staff by their role, a customer once they have scanned a table, else nobody yet -- and where they are. */
+/** Who a session is: staff by their role, a customer once they have scanned a table, else nobody yet. */
 export function read(sessionId: string): Visit {
-  const v = readDoc<{ visits?: { role?: string | null; name?: string | null; table?: string | number | null; page?: string | null } }>(`visit:${sessionId}`)?.visits ?? {};
+  const v = readDoc<{ visits?: { role?: string | null; name?: string | null; table?: string | number | null } }>(`visit:${sessionId}`)?.visits ?? {};
   const table = v.table == null ? null : String(v.table);
   const role = (v.role ?? (table ? "customer" : null)) as Role | null;
-  return { role, name: v.name ?? null, table, page: v.page ?? "" };
+  return { role, name: v.name ?? null, table };
 }
 
-/** The places each person may stand, and what may open over them there. */
+/** The places each person's tabs may stand, and what may open over them there. */
 const PLACES: Record<Role, Record<string, string[]>> = {
   manager: { "": [], tables: ["table", "new"], ready: ["order"] },
   cook: { "": [], orders: ["order"], menu: ["item", "new", "confirm"] },

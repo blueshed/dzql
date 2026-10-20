@@ -8,14 +8,14 @@ import { guards } from "./model/guards";
 // PGLITE_DIR (in memory without one: the tests, the stories). What the model made (./model/, by
 // `dzql model` from ./model.json) comes first, by its own migrations; then what the app keeps beside
 // it -- who the staff are, and what a visit holds beyond the table a customer scanned (who signed
-// in, where they are, the cookie's hash) -- made by the compiled SQL, which adds a missing table or
+// in, the cookie's hash; where they are is each tab's own) -- made by the compiled SQL, which adds a missing table or
 // column (dzql's `openStore`). Each resource registers its documents (`register`, in
 // `resources/<name>/<name>-api.ts`); `open()` compiles them all and opens one listener over them,
 // the cafe seeded and the model's guards in front.
 
 export const schema = defineSchema({
   ...tables,
-  visits: { ...tables.visits!, columns: { ...tables.visits!.columns, role: "text?", name: "text?", page: "text?", cookie: "text?" } },
+  visits: { ...tables.visits!, columns: { ...tables.visits!.columns, role: "text?", name: "text?", cookie: "text?" } },
   staff: { table: "cafe_staff", columns: { name: "text", role: "text" }, temporal: false },
 });
 

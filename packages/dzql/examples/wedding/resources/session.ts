@@ -2,14 +2,15 @@ import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import type { Resource } from "dzql/rendering/resources/resource";
-import { serverWrite } from "dzql/rendering/documents";
 import { collectionsWrite } from "dzql/rendering/bento";
+import { addressOf, moveTab } from "dzql/rendering/tabs";
 import { keepEveryone } from "../everyone";
 
-// A visit (`session:<id>`): who this session is (a code) and where it is on the site. This is the
+// A visit (`session:<id>`): who this session is (a code) and how it reads the lists. This is the
 // session -- the ground the household and board resources sit on, not
 // a place of its own on the page: it has no `render`. It takes the writes that move around the
-// page -- a code, a page, a drawer, a reading -- and, as a first page opens, makes sure `everyone`
+// page -- a code, a page, a drawer, a reading; a page or a drawer is the tab's to go to, and the
+// kernel moves the tab that sent it -- and, as a first page opens, makes sure `everyone`
 // (../everyone.ts) says who stands in the photo.
 
 /** Where you are only means something once you are in: everything but the code and a resend needs one. */
@@ -26,7 +27,7 @@ export const session: Resource = {
   docType: "session",
   ledger: false, // a visit is not history (../delta.ts)
   perSession: true, // keyed by the session id: this session's alone
-  under: "/visits", // eta's `/page` is the document's `/visits/page`
+  under: "/visits", // eta's `/code` is the document's `/visits/code`
   resolveDoc(ws) {
     return ws.data.sessionId; // every connection always sees its own visit
   },
@@ -36,13 +37,13 @@ export const session: Resource = {
   },
   // A visit is nobody else's to see, and never on the ledger (../delta.ts): a code entered, a page
   // gone to, a reading switched, each field it moves replaced whole.
-  shape: (_ws, id, ops) => sessionDoc.shape(id, ops),
+  shape: (ws, id, ops) => sessionDoc.shape(id, addressOf(ws), ops), // from where the tab that sent it stands
   // who stands in the photo is kept from the tables; a first page makes sure it is
   onOpen: () => keepEveryone(),
 };
 
-/** The household's and the board's `afterWrite`: the modal that asked is put away by the write that answers it. */
-export const putAway: NonNullable<Resource["afterWrite"]> = async (ws, _id, ops) => {
-  const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
-  if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
+/** The household's and the board's `afterWrite`: the modal that asked, in the tab that answered it, is put away by the write that answers it. */
+export const putAway: NonNullable<Resource["afterWrite"]> = (ws, _id, ops) => {
+  const back = sessionDoc.answered(addressOf(ws), ops);
+  if (back !== undefined) moveTab(ws, back);
 };

@@ -80,9 +80,9 @@ function draftSheet(t: Team, me: Person, draft: Span | null, path: string, sessi
   return drawer("draft", draft ? "Your draft" : "Ask for leave", body, go(path), "draft-drawer");
 }
 
-/** The page for a session. */
-export function render(sessionId: string): string {
-  const { person: me, page, draft } = sessionOf(sessionId);
+/** The page for a session, where its tab stands (`page`, the tab's address). */
+export function render(sessionId: string, page: string): string {
+  const { person: me, draft } = sessionOf(sessionId);
   if (!me) return layers(signInPage(sessionId), "", ""); // the bento's frame, so the door is drawn with its controls
   const t = teamOf();
   const { path, what, which } = parseAddress(page);
