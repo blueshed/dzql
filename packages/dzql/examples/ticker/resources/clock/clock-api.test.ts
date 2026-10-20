@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_TZ, ZONES, after, cityOf, offsetOf } from "./clock";
+import { DEFAULT_TZ, ZONES, after, cityOf, offsetOf } from "./clock-api";
 
 describe("clock document", () => {
   test("the default city is Zurich; the zones are the runtime's own", () => {

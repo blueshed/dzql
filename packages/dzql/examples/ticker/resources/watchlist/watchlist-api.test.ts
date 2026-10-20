@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { after } from "./watchlist";
+import { after } from "./watchlist-api";
 
 const has = (symbol: string) => ["ALPH", "MIKE", "NOVA"].includes(symbol);
 

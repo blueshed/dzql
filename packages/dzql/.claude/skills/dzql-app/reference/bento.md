@@ -22,7 +22,7 @@ binds the app's icons, its session's docType and the last tool, once. These are 
 
 - A page is a **box** (`boxPage`: cells in a tray, one may grow into the window; laid out by
   `grid()`, `src/rendering/grid.ts`) or a **collection** (`collectionPage`: the window alone).
-  Pick the example by kind: ticker (`examples/ticker/views/page.ts`) for a box, leave for a
+  Pick the example by kind: ticker (`examples/ticker/page.ts`) for a box, leave for a
   collection. A box's trail is the box's own; when a cell opens, the window gains the way back to
   the box and the cell's name on its own (`boxPage(trail, inPlace, cells, open)`).
 - Every gesture is a `data-write` string you hand in.

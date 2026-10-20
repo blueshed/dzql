@@ -1,4 +1,4 @@
-import * as clockDoc from "../documents/clock";
+import * as clockDoc from "./clock-api";
 import type { Resource } from "dzql/rendering/resources/resource";
 
 // A session's clock: its own to write, seen by nobody else. The clock applet names this document
@@ -11,7 +11,7 @@ export const clock: Resource = {
   docType: "clock",
   perSession: true, // keyed by the session id: this session's alone
   under: "/desks", // eta's `/tz` is the document's `/desks/tz`: the session's row
-  // No render(): the ticker resource renders the page, the clock within it.
+  // its part of the page is the clock (./clock-view.ts), which ../../page.ts composes
   resolveDoc(ws) {
     return ws.data.sessionId;
   },

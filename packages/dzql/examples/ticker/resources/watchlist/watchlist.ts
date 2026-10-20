@@ -1,5 +1,5 @@
-import * as market from "../documents/market";
-import * as watchlistDoc from "../documents/watchlist";
+import * as market from "../ticker/ticker-api";
+import * as watchlistDoc from "./watchlist-api";
 import type { Resource } from "dzql/rendering/resources/resource";
 import { parseAddress } from "dzql/rendering/bento";
 import type { PatchOp } from "dzql/rendering/json-patch";
@@ -22,7 +22,7 @@ export const watchlist: Resource = {
   docType: "watchlist",
   perSession: true, // keyed by the session id: this session's alone
   under: "/desks", // eta's `/symbols` is the document's `/desks/symbols`: the session's row
-  // No render(): the ticker resource renders the page, this list within it.
+  // its part of the page is the board (./watchlist-view.ts), which ../../page.ts composes
   resolveDoc(ws) {
     return ws.data.sessionId;
   },

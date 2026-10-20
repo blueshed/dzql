@@ -1,14 +1,15 @@
+import { defineDoc } from "@blueshed/delta/sqlite";
 import { read as readDoc } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
-import { cityOf } from "../applets/clock"; // the applet's own, pure: the browser says the city the same way
-export { cityOf };
+import { cityOf } from "../../applets/clock"; // the applet's own, pure: the browser says the city the same way
+import { DEFAULT_TZ, register } from "../../store";
+export { cityOf, DEFAULT_TZ };
 
-// A session's clock, kept in delta (`clock:<id>`, the session's row's `tz`, ../delta.ts): the city whose time it shows, as
+// A session's clock, kept in delta (`clock:<id>`, the session's row's `tz`): the city whose time it shows, as
 // an IANA zone ("Europe/Zurich"). The zones are the runtime's own list; a write names one of them
 // or does not apply. Choosing a city is the person's doing, so it is on the ledger and Undo takes
 // them back.
-
-export const DEFAULT_TZ = process.env.CLOCK_TZ ?? "Europe/Zurich";
+register([defineDoc("clock:", { root: "desks", include: [], columns: { desks: ["tz"] } })]);
 
 export type ClockDocument = {
   tz: string;

@@ -1,11 +1,14 @@
+import { defineDoc } from "@blueshed/delta/sqlite";
 import { read as readDoc } from "dzql/rendering/documents";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { refuse } from "dzql/rendering/refusal";
+import { register } from "../../store";
 
-// A session's watchlist, kept in delta (`watchlist:<id>`, the session's row's `symbols`, ../delta.ts): the symbols its board
+// A session's watchlist, kept in delta (`watchlist:<id>`, the session's row's `symbols`): the symbols its board
 // shows, in the order added. The wire says `add /symbols/-` and `remove /symbols/<index>`; the
-// document takes the list whole, so an undo puts back exactly the list that was.
+// document takes the list whole, so an undo puts back exactly the list that was. On the ledger.
+register([defineDoc("watchlist:", { root: "desks", include: [], columns: { desks: ["symbols"] } })]);
 
 export type WatchlistDocument = { symbols: string[] };
 

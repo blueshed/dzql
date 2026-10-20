@@ -1,12 +1,16 @@
+import { defineDoc } from "@blueshed/delta/sqlite";
 import { read as readDoc } from "dzql/rendering/documents";
 import { address, collectionsWrite, parseAddress, type Collections } from "dzql/rendering/bento";
 import type { PatchOp } from "dzql/rendering/json-patch";
+import { register } from "../../store";
 
-// The desk, kept in delta (`desk:<id>`, ../delta.ts): how this session reads the board and what
-// find says. Nothing here is history: it is never on the ledger, and Undo passes over it. Where a
-// tab is on the page -- one address (src/rendering/bento.ts): the cell grown into the window, and
-// the one thing open over it, a symbol's drawer or the clock's, or the modal that asks -- is the
-// tab's own (dzql/rendering/tabs), given beside the desk to draw and to shape a write by.
+// The desk, kept in delta (`desk:<id>`, the session's row's `reading`, `filter` and `hide`): how
+// this session reads the board and what find says. Nothing here is history: it is never on the
+// ledger, and Undo passes over it. Where a tab is on the page -- one address (src/rendering/bento.ts):
+// the cell grown into the window, and the one thing open over it, a symbol's drawer or the clock's,
+// or the modal that asks -- is the tab's own (dzql/rendering/tabs), given beside the desk to draw
+// and to shape a write by.
+register([defineDoc("desk:", { root: "desks", include: [], columns: { desks: ["reading", "filter", "hide"] } })], { ledger: false });
 
 export type Ui = {
   /** Where the tab stands: "" the desk, "board" or "market" a window; then "?symbol=ALPH", "?clock", "?new", "?confirm=ALPH". */
@@ -19,6 +23,12 @@ export function read(sessionId: string): Ui {
   const row = readDoc<{ desks?: Record<string, unknown> }>(`desk:${sessionId}`)?.desks ?? {};
   return Object.fromEntries(FIELDS.filter((f) => row[f] != null).map((f) => [f, row[f]])) as Ui;
 }
+
+/** Where this session is: the window, and the one thing open over it. */
+export const where = (ui: Ui) => parseAddress(ui.page);
+
+/** How the board is read: its sparklines, or a list. */
+export const reading = (ui: Ui): string => ui.reading?.board ?? "sparkline";
 
 const SYMBOL = /^[A-Z0-9.]{1,6}$/;
 

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createDocuments, setActiveDocuments } from "dzql/rendering/documents";
-import { delta } from "../delta";
-import { has, read, ticks } from "./market";
+import { delta } from "../../store";
+import { has, read, ticks } from "./ticker-api";
 
 beforeAll(async () => {
   const documents = createDocuments(delta);

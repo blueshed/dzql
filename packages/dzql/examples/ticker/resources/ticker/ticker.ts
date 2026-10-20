@@ -1,15 +1,10 @@
-import * as clockDoc from "../documents/clock";
-import * as market from "../documents/market";
-import * as watchlistDoc from "../documents/watchlist";
 import type { PatchOp } from "dzql/rendering/json-patch";
 import type { Resource } from "dzql/rendering/resources/resource";
 import { audienceFor } from "dzql/rendering/resources/audience";
 import { activeDocuments, serverWrite, settled } from "dzql/rendering/documents";
-import { toldAt } from "dzql/rendering/refusal";
-import * as deskDoc from "../documents/desk";
-import { page } from "../views/page";
+import * as market from "./ticker-api";
 
-// The market, and the page. A tick -- from the feed below, or typed by anyone through the wire
+// The market. A tick -- from the feed below, or typed by anyone through the wire
 // or the CLI -- is a write to the market document, echoed to every connection; the board applet
 // on each page takes the ops itself (Applet.patch), and a page is sent only the parts of it that
 // show a price. The feed runs only while someone is connected: the market moves while
@@ -53,22 +48,6 @@ export function stopFeed(): void {
 }
 
 const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
-
-/**
- * One symbol of the market, as its own document (`quote:<SYMBOL>`): what a board row reads, so a
- * board is told only the symbols it watches. Written only through the market, whose ticks delta
- * tells it; nobody writes one from the wire.
- */
-export const quote: Resource = {
-  docType: "quote",
-  undoable: false,
-  under: "/quotes", // the document is the row: eta's paths start at it
-  resolveDoc: () => undefined,
-};
-
-/** The desk: the whole page, from every document a session has, where its tab stands (`address`), and why its last watch was refused, if it was. */
-export const render = (sessionId: string, address: string): string =>
-  page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: { ...deskDoc.read(sessionId), page: address }, said: toldAt(sessionId, "watchlist", "/symbols/-") });
 
 export const ticker: Resource = {
   docType: "ticker",

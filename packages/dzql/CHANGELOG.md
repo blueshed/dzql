@@ -86,6 +86,10 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   two memory documents from the sessions and the connections, and is no one resource's. The tables,
   the prefixes and the migrations folder are as they were; its 14 stories pass as before. The
   dzql-app skill's documents, resource, page, controls and assistants pages quote the new files.
+  The ticker next: `resources/desk/`, `ticker/` (the market, its seed beside it), `quote/`,
+  `watchlist/` and `clock/`; `views/page.ts` is `page.ts`, composing the board (the watchlist's
+  view), the market (the ticker's) and the clock (the clock's); the default city is said with the
+  tables in `store.ts`, a column's default. Its 17 stories pass, with the same 5 warnings.
 - **A ref keeps its surrogate** (20 October, #79, on Peter's design): a row that names a row a story
   can remove keeps, beside the key, what it shows of it, copied as it is written (`dish_name`,
   `dish_price` beside `dish`); the page shows the named row while it stands, and the copy once it
