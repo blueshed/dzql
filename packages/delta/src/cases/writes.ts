@@ -11,6 +11,7 @@
  *   createRowCases(standUp);
  *   writeScopeCases(standUp);
  *   uniqueCases(standUp);
+ *   acceptCases(standUp);
  *
  * where `standUp({ schema, docs, seed })` makes a fresh store with that
  * schema, those documents registered and those rows imported, and answers a
@@ -275,6 +276,62 @@ export function refusalCases(backend: CaseBackend): void {
         expect(r.error).toBeUndefined();
         expect(Date.parse((await fresh(up.ws, "case-shelf:1")).case_shelves.checked)).toBe(Date.parse(at));
       }
+    });
+  });
+}
+
+/** The rule a document says of itself (`accept`): a blank name is no name, and the label is fixed. */
+export const ruledApp: CaseApp = {
+  schema: shelvesApp.schema,
+  docs: [defineDoc("case-ruled:", {
+    root: "case_shelves",
+    include: ["case_jars"],
+    accept: (op) => {
+      if (op.path === "/case_shelves/label") return false;
+      const name = (op as { value?: { name?: unknown } }).value?.name;
+      return op.op !== "add" || (typeof name === "string" && name.trim() !== "") || "A jar needs a name";
+    },
+  })],
+  seed: shelvesApp.seed,
+};
+
+/**
+ * A document's own rule, asked of each op before any is applied, the same on every backend: its
+ * reason refuses the whole write (400) and nothing changes; `false` is refused in delta's words;
+ * what it takes is written.
+ */
+export function acceptCases(backend: CaseBackend): void {
+  describe("a document's own rule (accept)", () => {
+    let up: Awaited<ReturnType<CaseBackend>>;
+    beforeAll(async () => { up = await backend(ruledApp); });
+    afterAll(async () => { await up.end(); });
+    const jars = async () => Object.values((await fresh(up.ws, "case-ruled:1")).case_jars).map((j: any) => j.name);
+
+    test("its reason refuses the whole write, the ops it took included, and nothing changes", async () => {
+      const c = mockClient();
+      await sendAndAwait(up.ws, c, { action: "open", doc: "case-ruled:1" });
+      const r = await sendAndAwait(up.ws, c, { action: "delta", doc: "case-ruled:1", ops: [
+        { op: "add", path: "/case_jars/-", value: { name: "honey" } },
+        { op: "add", path: "/case_jars/-", value: { name: "  " } },
+      ] });
+      expect(r.error).toEqual({ code: 400, message: "A jar needs a name" });
+      expect(await jars()).toEqual(["jam"]);
+    });
+
+    test("false is refused in delta's words", async () => {
+      const c = mockClient();
+      await sendAndAwait(up.ws, c, { action: "open", doc: "case-ruled:1" });
+      const r = await sendAndAwait(up.ws, c, { action: "delta", doc: "case-ruled:1", ops: [{ op: "replace", path: "/case_shelves/label", value: "low" }] });
+      expect(r.error).toEqual({ code: 400, message: "case-ruled:1 does not take replace /case_shelves/label" });
+      expect((await fresh(up.ws, "case-ruled:1")).case_shelves.label).toBe("top");
+    });
+
+    test("what it takes is written", async () => {
+      const c = mockClient();
+      await sendAndAwait(up.ws, c, { action: "open", doc: "case-ruled:1" });
+      const r = await sendAndAwait(up.ws, c, { action: "delta", doc: "case-ruled:1", ops: [{ op: "add", path: "/case_jars/-", value: { name: "honey" } }] });
+      expect(r.error).toBeUndefined();
+      expect(await jars()).toEqual(["jam", "honey"]);
     });
   });
 }

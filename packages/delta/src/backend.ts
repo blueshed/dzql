@@ -7,8 +7,8 @@
  * it; `tests/package-exports.test.ts` lists what it gives.
  */
 export {
-  defineDoc, defineSchema, defaultForType, holdsField, isIsoTime, isoTime, lastId, q, showDoc, showOps, showRow, uniqueIndexSql,
-  type ColumnDef, type ColumnShorthand, type ColumnType, type DocDef, type ResolvedTable, type ResolvedUnique, type Schema, type Snapshot,
+  defineDoc, defineSchema, defaultForType, holdsField, isIsoTime, isoTime, lastId, q, refusedBy, showDoc, showOps, showRow, uniqueIndexSql,
+  type Accept, type ColumnDef, type ColumnShorthand, type ColumnType, type DocDef, type ResolvedTable, type ResolvedUnique, type Schema, type Snapshot,
   type TableDef, type UniqueDef, type ValidationError,
 } from "./schema";
 export { assertScopeKeys, pastSafeId, resolveScope, type Scope } from "./server/scope";

@@ -72,6 +72,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A document's own rule: `defineDoc(..., { accept })`** (20 October, roots #138, #139). What the
+  schema cannot say (a name that is not blank, a list only some people write) is asked of each op
+  of a write before any is applied, given the document's name and who is writing: `true` takes it,
+  a reason (or `false`, in delta's words) refuses the whole write with 400, and nothing changes. An
+  undo or a redo is not asked. It holds for every writer (a socket, `createLocal()`, the CLI), on
+  every backend: `acceptCases` in `./testing` asks it, and `refusedBy` in `./backend` is how a
+  backend outside the package asks it. It is `registerDoc`'s `accept`, which went with it on 20
+  October and left such a rule only a socket handler of the app's, back where the document is defined.
+
 - **The case suite asks a schema's refusal in its words** (20 October, root #132): `refusalCases`
   (`./testing`, `src/cases/writes.ts`, beside `errorCodeCases`) asks every backend each of
   `refusals` -- a path that is no pointer, an empty one, a collection the schema or the document

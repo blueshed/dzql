@@ -445,6 +445,11 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **A document's own rule (`accept`) on Postgres** (20 October, roots #138, #139): the listener asks
+  delta's `refusedBy` of a write before `delta_apply`, given the writer's identity, so the rule holds
+  as it does on SQLite. delta's `acceptCases` run in `tests/delta/writes.test.ts`, and
+  `tests/delta/accept-pglite.test.ts` has a list everyone reads and an admin writes.
+
 - **`openStore` takes several schemas** (20 October, root #130): `openStore({ schema: [order.schema,
   message.schema] })`, each resource's own, kept as one, where an app spread their `.tables` into
   one; a table two of them declare is refused as the store is said

@@ -22,6 +22,15 @@ scope), and everyone for anyone signed in (`people:`, `shared: true`), in
 **A document's name is the channel its writes are broadcast on.** Whoever has it open hears
 every write through it, so who may have the name is who may see its rows.
 
+**Who may write it** is the document's own rule (`accept`, `schema.md`), given who is writing. A
+list everyone reads and only some write is a path (or `shared: true`) for the reading and a rule
+for the writing:
+
+```ts
+defineDoc("notices:", { root: "notices", include: [], owns: "AUTHENTICATED",
+  accept: (_op, { who }) => (who as Person).admin === true || "Only an admin posts a notice" });
+```
+
 ## The shapes
 
 - **One's own**: `@column`, the root row's column is the person.

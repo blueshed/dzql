@@ -6,6 +6,15 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### A document's own rule, and who may write it (20 October, roots #138, #139)
+
+- delta's `defineDoc` takes `accept`, asked of each op before any is applied, with who is writing,
+  on SQLite, the JSON file and dzql's Postgres alike. It is what `registerDoc`'s `accept` was,
+  where the document is defined; removing `registerDoc` that morning had left a rule the schema
+  cannot say only a socket handler of the app's. With `who`, a list everyone reads and only some
+  write is a path for the reading and a rule for the writing. delta-doc's `schema.md` and
+  `ownership.md` teach it, and evolve's `document.md` points there.
+
 ### Every skill's evaluations run, and what they found fixed (20 October, root #113)
 
 - `scripts/evals.ts` ran every shipped skill's scenarios as fresh `claude -p` sessions (round 2,

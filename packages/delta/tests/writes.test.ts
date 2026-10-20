@@ -10,7 +10,7 @@ import { describe, test, expect } from "bun:test";
 import { createWs } from "../src/server/server";
 import { registerMemory } from "../src/server/kinds";
 import { setLogLevel } from "../src/server/logger";
-import { createRowCases, errorCodeCases, mockClient, refusalCases, sendAndAwait, uniqueCases, writeScopeCases } from "@blueshed/delta/testing";
+import { acceptCases, createRowCases, errorCodeCases, mockClient, refusalCases, sendAndAwait, uniqueCases, writeScopeCases } from "@blueshed/delta/testing";
 import { jsonBackend, sqliteBackend } from "./helpers/case-backends";
 
 setLogLevel("silent");
@@ -22,6 +22,7 @@ for (const [name, backend] of [["SQLite", sqliteBackend], ["the JSON file", json
     createRowCases(backend);
     writeScopeCases(backend);
     uniqueCases(backend);
+    acceptCases(backend);
   });
 }
 

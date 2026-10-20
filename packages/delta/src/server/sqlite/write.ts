@@ -16,7 +16,7 @@ import { type DeltaOp, splitPath, joinPath, changedFields } from "../../core";
 import { createLogger } from "../logger";
 import { rowAt, type Ledger } from "../ledger";
 import { meets, resolveScope, rowId, sameId, type Scope } from "../scope";
-import { holdsField, q, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { holdsField, q, refusedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { keeping, scopeValue } from "./keep";
 import { impliedDoc, readDoc } from "./read";
 import { carryUndeclared, closeRow, columnsOf, undeclaredColumns, undeclaredOf, current, decodeRow, insertCollectionRow, insertRow, leftOut, named, now, refuse, sqliteTime, updateRow } from "./rows";
@@ -714,6 +714,9 @@ export function createWriter<I>(r: Registration<I>) {
     const scope = resolveScope(def, docName.slice(def.prefix.length));
     // a document named with a time reads it as it stood: what is written now is not its to write
     if (scope.at !== undefined) return { error: { code: 403, message: `${docName} reads ${def.root} as it stood at ${scope.at}: it takes no writes. Write through a document with no time in its name.` } };
+    // the document's own rule, asked of a fresh write (never a walk: it puts back what was taken)
+    const refused = by.undoes === undefined ? refusedBy(def, docName, ops, by.as) : undefined;
+    if (refused !== undefined) return { error: { code: 400, message: refused } };
 
     let snapshot = structuredClone(doc); // for rollback, and for the inverse
     spent.length = 0;

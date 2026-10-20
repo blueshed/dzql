@@ -13,7 +13,7 @@
  * backend's codegen / default / validation helpers own the per-type
  * mappings — this module is the vocabulary only.
  */
-import { splitPath } from "./core";
+import { splitPath, type DeltaOp } from "./core";
 import { parsePath } from "./paths";
 
 export type ColumnType =
@@ -104,6 +104,27 @@ export interface DocDef {
    * With auth, a document with a path needs no `owns` function or `shared`.
    */
   owns?: string;
+  /**
+   * The document's own rule, what the schema cannot say ("a name is not blank", "only the
+   * keeper of the list writes it"): asked of each op of a write before any is applied, with the
+   * writer (`who`: the identity it signed in as; none where the store has no sign-in). `true`
+   * takes it; `false`, or a reason, refuses the whole write with 400 and that reason, and nothing
+   * changes. An undo or a redo is not asked: it puts back what was taken. Every backend asks it.
+   */
+  accept?: Accept;
+}
+
+/** A document's own rule (`DocDef.accept`): `true` takes the op; `false` or a reason refuses the write. */
+export type Accept = (op: DeltaOp, by: { doc: string; who?: unknown }) => boolean | string;
+
+/** The refusal a document's rule gives a write (400), or none: each op asked before any is applied, as every backend asks it. */
+export function refusedBy(def: DocDef, doc: string, ops: DeltaOp[], who?: unknown): string | undefined {
+  if (!def.accept) return undefined;
+  for (const op of ops) {
+    const taken = def.accept(op, { doc, who });
+    if (taken !== true) return taken || `${doc} does not take ${op.op} ${op.path}`;
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,7 +306,7 @@ export function defaultForType(type: ColumnType): unknown {
 
 export function defineDoc(
   prefix: string,
-  opts: { root: string; include: string[]; scope?: Record<string, string>; implied?: boolean; columns?: Record<string, string[]>; owns?: string },
+  opts: { root: string; include: string[]; scope?: Record<string, string>; implied?: boolean; columns?: Record<string, string[]>; owns?: string; accept?: Accept },
 ): DocDef {
   if (!DOC_PREFIX.test(prefix)) {
     throw new Error(
@@ -308,6 +329,7 @@ export function defineDoc(
     ...(opts.implied ? { implied: true } : {}),
     ...(opts.columns && Object.keys(opts.columns).length ? { columns: opts.columns } : {}),
     ...(opts.owns !== undefined ? { owns: ownsPath(prefix, opts.owns) } : {}),
+    ...(opts.accept ? { accept: opts.accept } : {}),
   };
 }
 

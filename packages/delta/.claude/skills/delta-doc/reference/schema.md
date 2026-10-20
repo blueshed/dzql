@@ -71,3 +71,22 @@ neither, a root field's replace is taken as single and a root row's add as list.
 what the backend refuses as a mistake (400); a 404, a 409 or a value the column cannot cast is
 the database's. The backend runs it on every write: `sqlite/validate.ts`.
 
+## A document's own rule: `accept`
+
+What the schema cannot say is the document's own rule, beside its definition: a text that must
+not be blank, a field only some people write. Every backend asks it of each op of a write before
+any is applied, given the document's name and who is writing (`who`, as they signed in):
+
+```ts
+defineDoc("menu:", {
+  root: "dishes",
+  include: [],
+  accept: (op) => op.op !== "add" || String((op.value as { name?: unknown }).name ?? "").trim() !== "" || "A dish needs a name",
+});
+```
+
+`true` takes the op; a reason refuses the whole write with 400 and that reason (`false`, in
+delta's words), and nothing changes. An undo or a redo is not asked: it puts back what was
+taken. It holds for every writer, a page's socket, `createLocal()` and the CLI alike, so a rule
+never lives in a socket handler of the app's. The cases are `acceptCases` (`src/cases/writes.ts`).
+

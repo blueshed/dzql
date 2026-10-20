@@ -17,7 +17,7 @@ import { trackSubscribe, trackUnsubscribe, onClientDrop } from "@blueshed/delta/
 import { createLogger } from "@blueshed/delta/logger";
 import type { Pool, PoolClient } from "pg";
 import { callAs, docTypes, showAnswer } from "./registry";
-import { showDoc, showOps, type DocDef, type Schema } from "@blueshed/delta/backend";
+import { refusedBy, showDoc, showOps, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { resolveScope } from "@blueshed/delta/backend";
 import type { DocType } from "./registry";
 import type { DeltaAuth } from "@blueshed/delta/auth";
@@ -676,6 +676,9 @@ export async function createDocListener<I = unknown>(
       if (!(await type.open(ctx, docName, msg, identity)) && type.def) await type.apply(ctx, docName, [], identity, undefined, declared);
       return respond({ error: { code: 404, message: `Doc not loaded: open ${docName} before writing to it` } });
     }
+    // the document's own rule (accept), asked of each op before any is applied, as SQLite asks it
+    const refused = type.def ? refusedBy(type.def, docName, msg.ops as DeltaOp[], identity) : undefined;
+    if (refused !== undefined) return respond({ error: { code: 400, message: refused } });
     const writer = writerOf(identity, client);
     const kept = onLedger(type.prefix);
     const by = kept ? { who: whoOf(writer), cursor: cursorOf(msg, client, writer), undoable: msg.undoable !== false } : undefined;
