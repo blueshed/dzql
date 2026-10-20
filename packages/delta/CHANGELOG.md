@@ -52,6 +52,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   op's path, then why). The codes agreed before; the words did not, and nothing asked them.
   SQLite and the JSON file answer it as they were; dzql's Postgres now does too.
 
+- **The case suite asks a document's refusals in its words too, and an op wrong in several ways**
+  (20 October, root #134). `mistakes` carries each one's words, and `errorCodeCases` expects
+  `{ code, message }` whole: a row not there or another room's (`Row not found:
+  case_messages/404`, 404), another root row through a single document (`case-room:1 holds
+  case_rooms 1 alone: add another case_rooms row through a document that lists them`, 400; its
+  remove or a field of it, `Row not found: case_rooms/2`), an id already taken (`Id already taken:
+  /case_messages/7 -- add to /case_messages/- for a new id`, 409), and the rest. `roomsApp` has a
+  second room, so another room's row is asked. `writeScopeCases` asks each sibling's row, parent
+  and membership refusal whole, and a row of its own moved under a sibling's parent; `refusals`
+  asks a row added, a row replaced and the root replaced wrong in several ways. **SQLite says an
+  op's refusals in one order every backend can say**: the fields there are not, then each value
+  not as it may be written, then each required field left out, each kind by name. A row's value
+  said them as its keys came, with what it left out before the values; Postgres keeps no value's
+  key order (jsonb). Each refusal's words are as they were.
+
 - **A socket server writes its own memory document** (20 October, #88): `registerMemory` returns
   `write(name, ops)` beside `peek` and `forget`, applied, versioned and told to every holder as a
   `delta` from this process is, and answered as one is (`MemoryAnswer`: `{ result: { ack,

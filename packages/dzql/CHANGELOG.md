@@ -210,6 +210,31 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   sentence. `validateOps` (`dzql/postgres`) says a row's id as a field, a row id past 2^53 - 1 and
   a parent key that is no id as `delta_apply` now does.
 
+- **A document's refusals, and an op wrong in several ways, are worded as delta's SQLite words
+  them** (20 October, root #134). A row the document does not hold was `row not found:
+  case_messages/404` (and `root row not found: case_rooms` for a single document's root gone
+  mid-walk); it is `Row not found: case_messages/404`, `Row not found: case_rooms/1`, and the
+  same for a parent not there or not the document's and for a row the write would take out of its
+  document (`Row not found: ... -- the write would take it out of ...`). An add of another root
+  row through a single document was `invalid op: add /case_rooms/- -- document case-room:1 holds
+  one case_rooms, its root: add it through a document that lists them`; it is `case-room:1 holds
+  case_rooms 1 alone: add another case_rooms row through a document that lists them`, asked after
+  the value, as SQLite asks it. `id already taken: ...` and `document not found: ...` are `Id
+  already taken: ...` and `Document not found: ...`. An op wrong in several ways was told the
+  refusals of the first kind met (unknown fields, else the values, else what it left out, which an
+  add asked only after its parent); it is told every one, joined by `; `, in delta's order: the
+  fields there are not, then each value not as it may be written, then each required field left
+  out, each kind by name (`COLLATE "C"`). So the checks take what a value leaves out:
+  `_delta_assert_fields` and `_delta_assert_fields_declared` gain `p_missing` (from the new
+  `_delta_missing`), `_delta_whole(p_columns)` only blanks a row, and their earlier forms are
+  dropped as the framework is applied; `compileColumns` writes the compiled checks so (snapshot
+  updated). The codes are as they were. delta's `errorCodeCases` and `writeScopeCases` now ask the
+  whole sentence, and `refusals` an op wrong in several ways, on PGlite and the server.
+  `validateOps` (`dzql/postgres`) keeps in step: every refusal of a value in that order (a whole
+  row's type after the field's path), an add asked its id past 2^53 - 1, its value, then whether
+  it is another root (in delta's words, naming the document), then an id that is no number;
+  `tests/delta-pg/path-pglite.test.ts` asks that its sentence is `delta_apply`'s for each.
+
 - **The ticker's city picker takes its row apart** (20 October, railroad's #6): a keyed `list()`
   row is its fields now, so `examples/ticker/applets/city-picker-applet.tsx` reads `({ tz, label },
   i$)` in place of `z$.peek().tz` and `z$.map((z) => z.label)`.

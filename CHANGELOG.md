@@ -35,6 +35,16 @@ differ, fixed where each differs.
   through the step but `health` (an unknown page opens on the box), and the step writes no test
   of the message's.
 
+### A document's refusals, and an op wrong in several ways, in one set of words (20 October, root #134)
+
+- dzql's Postgres says a row the document does not hold (`Row not found: ...`), another root row
+  added through a single document (`<doc> holds <root> <id> alone: ...`), an id already taken and a
+  document not found as delta's SQLite does, and an op wrong in several ways every refusal at once,
+  in one order delta's SQLite now says too (the fields there are not, the values, what it leaves
+  out; each kind by name). delta's case suite asks each whole (`errorCodeCases`, `writeScopeCases`,
+  `refusals`), on SQLite, the JSON file, PGlite and the Postgres server; dzql's `validateOps` keeps
+  in step. dzql's and delta's CHANGELOGs have the detail.
+
 ### A schema's refusal in one set of words on every backend (20 October, root #132, delta #92)
 
 - dzql's Postgres words each schema refusal as delta's SQLite does (the op's path, then why), and

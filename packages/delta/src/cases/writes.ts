@@ -43,38 +43,63 @@ export const roomsApp: CaseApp = {
     case_messages: { columns: { text: "text" }, parent: { collection: "case_rooms", fk: "case_rooms_id" }, temporal: false },
   }),
   docs: [defineDoc("case-room:", { root: "case_rooms", include: ["case_messages"] })],
-  seed: { tables: { case_rooms: [{ id: 1, title: "general" }], case_messages: [{ id: 7, case_rooms_id: 1, text: "hi" }] } },
+  seed: {
+    tables: {
+      case_rooms: [{ id: 1, title: "general" }, { id: 2, title: "random" }],
+      case_messages: [{ id: 7, case_rooms_id: 1, text: "hi" }, { id: 8, case_rooms_id: 2, text: "elsewhere" }],
+    },
+  },
 };
 
-/** The mistakes, each answered with one code on every backend (400 malformed, 404 not there, 409 already there). */
-export const mistakes: Record<string, { ops: unknown[]; code: number }> = {
-  "a path without a leading slash": { ops: [{ op: "remove", path: "case_messages" }], code: 400 },
-  "a row that is not there": { ops: [{ op: "replace", path: "/case_messages/404/text", value: "x" }], code: 404 },
-  "a remove of a row that is not there": { ops: [{ op: "remove", path: "/case_messages/404" }], code: 404 },
-  "an unknown field": { ops: [{ op: "replace", path: "/case_messages/7/nope", value: "x" }], code: 400 },
-  "a field named after Object.prototype": { ops: [{ op: "replace", path: "/case_messages/7/toString", value: "x" }], code: 400 },
-  "an add of a row that is already there": { ops: [{ op: "add", path: "/case_messages/7", value: { text: "again" } }], code: 409 },
-  "an add that leaves out a required field": { ops: [{ op: "add", path: "/case_messages/-", value: {} }], code: 400 },
-  "a remove of a field": { ops: [{ op: "remove", path: "/case_messages/7/text" }], code: 400 },
-  "an add of a field": { ops: [{ op: "add", path: "/case_messages/7/text", value: "x" }], code: 400 },
-  "an op that is not an object": { ops: [null], code: 400 },
+const TAKEN = "-- add to /case_messages/- for a new id";
+const ALONE = "case-room:1 holds case_rooms 1 alone: add another case_rooms row through a document that lists them";
+
+/**
+ * The mistakes, each answered with one code on every backend (400 malformed, 404 not there, 409
+ * already there), in the same words: a row the document does not hold (not there, or another
+ * room's) is not found, and a single document adds no root row but its own.
+ */
+export const mistakes: Record<string, { ops: unknown[]; code: number; message: string }> = {
+  "a path without a leading slash": { ops: [{ op: "remove", path: "case_messages" }], code: 400, message: `Invalid JSON Pointer "case_messages": a path starts with "/" ("" is the whole document)` },
+  "a row that is not there": { ops: [{ op: "replace", path: "/case_messages/404/text", value: "x" }], code: 404, message: "Row not found: case_messages/404" },
+  "a remove of a row that is not there": { ops: [{ op: "remove", path: "/case_messages/404" }], code: 404, message: "Row not found: case_messages/404" },
+  "a row replaced whole that is not there": { ops: [{ op: "replace", path: "/case_messages/404", value: { text: "x" } }], code: 404, message: "Row not found: case_messages/404" },
+  "another room's row": { ops: [{ op: "replace", path: "/case_messages/8/text", value: "x" }], code: 404, message: "Row not found: case_messages/8" },
+  "a remove of another room's row": { ops: [{ op: "remove", path: "/case_messages/8" }], code: 404, message: "Row not found: case_messages/8" },
+  "another root row's field": { ops: [{ op: "replace", path: "/case_rooms/2/title", value: "x" }], code: 404, message: "Row not found: case_rooms/2" },
+  "a remove of another root row": { ops: [{ op: "remove", path: "/case_rooms/2" }], code: 404, message: "Row not found: case_rooms/2" },
+  "an add of another root row": { ops: [{ op: "add", path: "/case_rooms/-", value: { title: "x" } }], code: 400, message: ALONE },
+  "an add of another root row, by its id": { ops: [{ op: "add", path: "/case_rooms/3", value: { title: "x" } }], code: 400, message: ALONE },
+  "an add of the root that is there": { ops: [{ op: "add", path: "/case_rooms/1", value: { title: "x" } }], code: 409, message: "Id already taken: /case_rooms/1 -- add to /case_rooms/- for a new id" },
+  "an unknown field": { ops: [{ op: "replace", path: "/case_messages/7/nope", value: "x" }], code: 400, message: "/case_messages/7/nope: Unknown field: nope" },
+  "a field named after Object.prototype": { ops: [{ op: "replace", path: "/case_messages/7/toString", value: "x" }], code: 400, message: "/case_messages/7/toString: Unknown field: toString" },
+  "an add of a row that is already there": { ops: [{ op: "add", path: "/case_messages/7", value: { text: "again" } }], code: 409, message: `Id already taken: /case_messages/7 ${TAKEN}` },
+  "an add of a row another room holds": { ops: [{ op: "add", path: "/case_messages/8", value: { text: "again" } }], code: 409, message: `Id already taken: /case_messages/8 ${TAKEN}` },
+  "an add that leaves out a required field": { ops: [{ op: "add", path: "/case_messages/-", value: {} }], code: 400, message: "/case_messages/-: Required field missing: text (give it a value, or declare a default or make it nullable in the schema)" },
+  "a remove of a field": { ops: [{ op: "remove", path: "/case_messages/7/text" }], code: 400, message: "/case_messages/7/text: Invalid op: remove /case_messages/7/text" },
+  "an add of a field": { ops: [{ op: "add", path: "/case_messages/7/text", value: "x" }], code: 400, message: "/case_messages/7/text: Invalid op: add /case_messages/7/text" },
+  "an op that is not an object": { ops: [null], code: 400, message: "An op is an object: { op, path, value }" },
 };
 
-/** The same mistake, the same code: every one of `mistakes`, and nothing changed by any. */
+/** The same mistake, the same code and words: every one of `mistakes`, the whole sentence, and nothing changed by any. */
 export function errorCodeCases(backend: CaseBackend): void {
   describe("the same mistake, the same code", () => {
     let up: Awaited<ReturnType<CaseBackend>>;
     beforeAll(async () => { up = await backend(roomsApp); });
     afterAll(async () => { await up.end(); });
 
-    for (const [name, { ops, code }] of Object.entries(mistakes)) {
+    for (const [name, { ops, code, message }] of Object.entries(mistakes)) {
       test(`${name}: ${code}`, async () => {
         const c = mockClient();
         await sendAndAwait(up.ws, c, { action: "open", doc: "case-room:1" });
         const r = await sendAndAwait(up.ws, c, { action: "delta", doc: "case-room:1", ops });
-        expect(r.error?.code).toBe(code);
+        expect(r.error).toEqual({ code, message });
         const now = await fresh(up.ws, "case-room:1");
+        expect(now.case_rooms).toEqual({ id: 1, title: "general" });
         expect(Object.values(now.case_messages)).toEqual([{ id: 7, case_rooms_id: 1, text: "hi" }]);
+        const other = await fresh(up.ws, "case-room:2");
+        expect(other.case_rooms).toEqual({ id: 2, title: "random" });
+        expect(Object.values(other.case_messages)).toEqual([{ id: 8, case_rooms_id: 2, text: "elsewhere" }]);
       });
     }
   });
@@ -142,6 +167,24 @@ export const refusals: Record<string, { ops: unknown[]; message: string }> = {
   "a null json where none is taken": { ops: [{ op: "replace", path: "/case_shelves/data", value: null }], message: "/case_shelves/data: data cannot be null" },
   "a parent key set to null": { ops: [{ op: "replace", path: "/case_jars/1/case_shelves_id", value: null }], message: "/case_jars/1/case_shelves_id: case_shelves_id cannot be null" },
   "a parent key that is no id": { ops: [{ op: "replace", path: "/case_jars/1/case_shelves_id", value: 1.5 }], message: "/case_jars/1/case_shelves_id: case_shelves_id must be an id: an integer, or text" },
+  // an op wrong in several ways: every refusal of it, joined by "; " -- the fields there are not, then
+  // each value not as it may be written, then each required field left out, each kind by name
+  "a row added wrong in several ways": {
+    ops: [{ op: "add", path: "/case_jars/-", value: { b: 1, name: 5, aa: 2 } }],
+    message: "/case_jars/-: Unknown field: aa; /case_jars/-: Unknown field: b; /case_jars/-/name: name must be a string",
+  },
+  "a row replaced wrong in several ways": {
+    ops: [{ op: "replace", path: "/case_jars/1", value: { nope: 1, case_shelves_id: 1.5 } }],
+    message: `/case_jars/1: Unknown field: nope; /case_jars/1/case_shelves_id: case_shelves_id must be an id: an integer, or text; /case_jars/1: Required field missing: name ${LEFT_OUT}`,
+  },
+  "the root replaced wrong in several ways": {
+    ops: [{ op: "replace", path: "/case_shelves", value: { zz: 1, rank: 1.5, label: 5, note: 3, b: 2 } }],
+    message: [
+      "/case_shelves: Unknown field: b", "/case_shelves: Unknown field: zz",
+      "/case_shelves/label: label must be a string", "/case_shelves/note: note must be a string", "/case_shelves/rank: rank must be an integer",
+      ...["checked", "data", "open", "width"].map((c) => `/case_shelves: Required field missing: ${c} ${LEFT_OUT}`),
+    ].join("; "),
+  },
 };
 
 /** A schema's refusal, in the same words on every backend: every one of `refusals`, 400, the whole sentence, and nothing changed by any. */
@@ -372,32 +415,39 @@ export function writeScopeCases(backend: CaseBackend): void {
 
     test("a sibling's row is not there to remove: 404, as a row that does not exist", async () => {
       const r = await write([{ op: "remove", path: "/notes/200" }]);
-      expect(r.error?.code).toBe(404);
+      expect(r.error).toEqual({ code: 404, message: "Row not found: notes/200" });
       expect(await bobs()).toEqual(bobsAsSeeded);
     });
 
     test("nor through its parent, and no cascade runs", async () => {
       const r = await write([{ op: "remove", path: "/projects/20" }]);
-      expect(r.error).toBeDefined();
+      expect(r.error).toEqual({ code: 404, message: "Row not found: projects/20" });
       expect(await bobs()).toEqual(bobsAsSeeded);
     });
 
     test("a sibling's field is not there to replace", async () => {
       const r = await write([{ op: "replace", path: "/notes/200/body", value: "OWNED" }]);
-      expect(r.error).toBeDefined();
+      expect(r.error).toEqual({ code: 404, message: "Row not found: notes/200" });
       expect(await bobs()).toEqual(bobsAsSeeded);
     });
 
     test("nor its whole row", async () => {
       const r = await write([{ op: "replace", path: "/notes/200", value: { body: "OWNED", project_id: 20 } }]);
-      expect(r.error).toBeDefined();
+      expect(r.error).toEqual({ code: 404, message: "Row not found: notes/200" });
       expect(await bobs()).toEqual(bobsAsSeeded);
     });
 
     test("a grandchild is not grafted onto a sibling's parent", async () => {
       const r = await write([{ op: "add", path: "/notes/-", value: { body: "injected", project_id: 20 } }]);
-      expect(r.error).toBeDefined();
+      expect(r.error).toEqual({ code: 404, message: "Row not found: projects/20" });
       expect(await bobs()).toEqual(bobsAsSeeded);
+    });
+
+    test("a row of its own is not moved under a sibling's parent", async () => {
+      const r = await write([{ op: "replace", path: "/notes/100/project_id", value: 20 }]);
+      expect(r.error).toEqual({ code: 404, message: "Row not found: projects/20" });
+      expect(await bobs()).toEqual(bobsAsSeeded);
+      expect((await fresh(up.ws, "tenant:1")).notes["100"].project_id).toBe(10);
     });
 
     test("in scope, every write still lands", async () => {
@@ -429,7 +479,7 @@ export function writeScopeCases(backend: CaseBackend): void {
       try {
         const u = mockClient();
         expect((await sendAndAwait(up.ws, u, { action: "open", doc: "user:1" })).result.memberships).toEqual({});
-        expect((await sendAndAwait(up.ws, u, { action: "delta", doc: "user:1", ops: [{ op: "remove", path: "/memberships/1" }] })).error).toBeDefined();
+        expect((await sendAndAwait(up.ws, u, { action: "delta", doc: "user:1", ops: [{ op: "remove", path: "/memberships/1" }] })).error).toEqual({ code: 404, message: "Row not found: memberships/1" });
         expect(Object.keys((await fresh(up.ws, "team:1")).memberships)).toEqual(["1"]);
         const t = mockClient();
         await sendAndAwait(up.ws, t, { action: "open", doc: "team:1" });

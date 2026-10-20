@@ -63,7 +63,7 @@ describe("an add of a row that is already there (Postgres)", () => {
     const made = await delta("add-board:", [{ op: "add", path: "/add_notes/-", value: { body: "first" } }]);
     const id = made.result ? (await pool.query("SELECT id FROM current_add_notes")).rows[0].id : null;
     const again = await delta("add-board:", [{ op: "add", path: `/add_notes/${id}`, value: { body: "again" } }]);
-    expect(again.error).toEqual({ code: 409, message: `id already taken: /add_notes/${id} -- add to /add_notes/- for a new id` });
+    expect(again.error).toEqual({ code: 409, message: `Id already taken: /add_notes/${id} -- add to /add_notes/- for a new id` });
     expect((await pool.query("SELECT body FROM add_notes WHERE id = $1 AND valid_to IS NULL", [id])).rows).toEqual([{ body: "first" }]);
   });
 

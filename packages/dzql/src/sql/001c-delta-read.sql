@@ -114,7 +114,7 @@ BEGIN
   -- id the serial has handed out is taken, whether a row RLS hides holds it or
   -- none does. delta_apply passes the serial past the root once it is done.
   IF NOT _delta_serial_new(v_coll.table_name, p_id) THEN
-    RAISE EXCEPTION 'id already taken: % -- add to % for a new id',
+    RAISE EXCEPTION 'Id already taken: % -- add to % for a new id',
       _delta_build_path(p_def.root_collection, p_id::text), _delta_build_path(p_def.root_collection, '-')
       USING ERRCODE = '23505';
   END IF;

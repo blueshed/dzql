@@ -19329,10 +19329,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
-CREATE OR REPLACE FUNCTION _delta_assert_fields(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN)
+CREATE OR REPLACE FUNCTION _delta_assert_fields(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN, p_missing TEXT)
 RETURNS void AS $$
 DECLARE
   v_bad TEXT;
+  v_types TEXT;
 BEGIN
   CASE p_collection
     WHEN 'weddings' THEN
@@ -19341,11 +19342,11 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'name');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'name');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('name', CASE WHEN jsonb_typeof((p_value->'name')) = 'null' THEN 'name cannot be null' WHEN jsonb_typeof((p_value->'name')) <> 'null' AND NOT (jsonb_typeof((p_value->'name')) = 'string') THEN 'name must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
@@ -19355,27 +19356,27 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'email', 't');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'email', 't');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('weddings_id', CASE WHEN jsonb_typeof((p_value->'weddings_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'weddings_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'weddings_id')) = 'string' OR (jsonb_typeof((p_value->'weddings_id')) = 'number' AND (p_value->'weddings_id')::text::numeric = trunc((p_value->'weddings_id')::text::numeric))) THEN 'weddings_id must be an id: an integer, or text' END),
           ('email', CASE WHEN jsonb_typeof((p_value->'email')) = 'null' THEN 'email cannot be null' WHEN jsonb_typeof((p_value->'email')) <> 'null' AND NOT (jsonb_typeof((p_value->'email')) = 'string') THEN 'email must be a string' END),
           ('t', CASE WHEN jsonb_typeof((p_value->'t')) <> 'null' AND NOT (jsonb_typeof((p_value->'t')) = 'string') THEN 't must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
         IF p_columns = '{"email":{"type":"text","nullable":false}}'::jsonb THEN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'email');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'email');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('weddings_id', CASE WHEN jsonb_typeof((p_value->'weddings_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'weddings_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'weddings_id')) = 'string' OR (jsonb_typeof((p_value->'weddings_id')) = 'number' AND (p_value->'weddings_id')::text::numeric = trunc((p_value->'weddings_id')::text::numeric))) THEN 'weddings_id must be an id: an integer, or text' END),
           ('email', CASE WHEN jsonb_typeof((p_value->'email')) = 'null' THEN 'email cannot be null' WHEN jsonb_typeof((p_value->'email')) <> 'null' AND NOT (jsonb_typeof((p_value->'email')) = 'string') THEN 'email must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
@@ -19385,13 +19386,13 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'name');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'name');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('weddings_id', CASE WHEN jsonb_typeof((p_value->'weddings_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'weddings_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'weddings_id')) = 'string' OR (jsonb_typeof((p_value->'weddings_id')) = 'number' AND (p_value->'weddings_id')::text::numeric = trunc((p_value->'weddings_id')::text::numeric))) THEN 'weddings_id must be an id: an integer, or text' END),
           ('name', CASE WHEN jsonb_typeof((p_value->'name')) = 'null' THEN 'name cannot be null' WHEN jsonb_typeof((p_value->'name')) <> 'null' AND NOT (jsonb_typeof((p_value->'name')) = 'string') THEN 'name must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
@@ -19401,13 +19402,13 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'courses_id', 'name');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'courses_id', 'name');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('courses_id', CASE WHEN jsonb_typeof((p_value->'courses_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'courses_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'courses_id')) = 'string' OR (jsonb_typeof((p_value->'courses_id')) = 'number' AND (p_value->'courses_id')::text::numeric = trunc((p_value->'courses_id')::text::numeric))) THEN 'courses_id must be an id: an integer, or text' END),
           ('name', CASE WHEN jsonb_typeof((p_value->'name')) = 'null' THEN 'name cannot be null' WHEN jsonb_typeof((p_value->'name')) <> 'null' AND NOT (jsonb_typeof((p_value->'name')) = 'string') THEN 'name must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
@@ -19417,11 +19418,11 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'label');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'label');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('label', CASE WHEN jsonb_typeof((p_value->'label')) = 'null' THEN 'label cannot be null' WHEN jsonb_typeof((p_value->'label')) <> 'null' AND NOT (jsonb_typeof((p_value->'label')) = 'string') THEN 'label must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
@@ -19431,13 +19432,13 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'text');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'text');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('weddings_id', CASE WHEN jsonb_typeof((p_value->'weddings_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'weddings_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'weddings_id')) = 'string' OR (jsonb_typeof((p_value->'weddings_id')) = 'number' AND (p_value->'weddings_id')::text::numeric = trunc((p_value->'weddings_id')::text::numeric))) THEN 'weddings_id must be an id: an integer, or text' END),
           ('text', CASE WHEN jsonb_typeof((p_value->'text')) = 'null' THEN 'text cannot be null' WHEN jsonb_typeof((p_value->'text')) <> 'null' AND NOT (jsonb_typeof((p_value->'text')) = 'string') THEN 'text must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
@@ -19447,27 +19448,27 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'table_no', 'kept', 'wishes');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'table_no', 'kept', 'wishes');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('weddings_id', CASE WHEN jsonb_typeof((p_value->'weddings_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'weddings_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'weddings_id')) = 'string' OR (jsonb_typeof((p_value->'weddings_id')) = 'number' AND (p_value->'weddings_id')::text::numeric = trunc((p_value->'weddings_id')::text::numeric))) THEN 'weddings_id must be an id: an integer, or text' END),
           ('table_no', CASE WHEN jsonb_typeof((p_value->'table_no')) = 'null' THEN 'table_no cannot be null' WHEN jsonb_typeof((p_value->'table_no')) <> 'null' AND NOT (jsonb_typeof((p_value->'table_no')) = 'number' AND (p_value->'table_no')::text::numeric = trunc((p_value->'table_no')::text::numeric)) THEN 'table_no must be an integer' END),
           ('kept', CASE WHEN jsonb_typeof((p_value->'kept')) = 'null' THEN 'kept cannot be null' WHEN jsonb_typeof((p_value->'kept')) <> 'null' AND NOT (jsonb_typeof((p_value->'kept')) = 'boolean') THEN 'kept must be a boolean' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
         IF p_columns = '{"table_no":{"type":"integer","nullable":false}}'::jsonb THEN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'table_no');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'table_no');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('weddings_id', CASE WHEN jsonb_typeof((p_value->'weddings_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'weddings_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'weddings_id')) = 'string' OR (jsonb_typeof((p_value->'weddings_id')) = 'number' AND (p_value->'weddings_id')::text::numeric = trunc((p_value->'weddings_id')::text::numeric))) THEN 'weddings_id must be an id: an integer, or text' END),
           ('table_no', CASE WHEN jsonb_typeof((p_value->'table_no')) = 'null' THEN 'table_no cannot be null' WHEN jsonb_typeof((p_value->'table_no')) <> 'null' AND NOT (jsonb_typeof((p_value->'table_no')) = 'number' AND (p_value->'table_no')::text::numeric = trunc((p_value->'table_no')::text::numeric)) THEN 'table_no must be an integer' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
@@ -19477,14 +19478,14 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'price', 'starts');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'price', 'starts');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('weddings_id', CASE WHEN jsonb_typeof((p_value->'weddings_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'weddings_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'weddings_id')) = 'string' OR (jsonb_typeof((p_value->'weddings_id')) = 'number' AND (p_value->'weddings_id')::text::numeric = trunc((p_value->'weddings_id')::text::numeric))) THEN 'weddings_id must be an id: an integer, or text' END),
           ('price', CASE WHEN jsonb_typeof((p_value->'price')) <> 'null' AND NOT (jsonb_typeof((p_value->'price')) = 'number') THEN 'price must be a number' END),
           ('starts', CASE WHEN jsonb_typeof((p_value->'starts')) <> 'null' AND NOT (jsonb_typeof((p_value->'starts')) = 'string' AND ((p_value->'starts') #>> '{}') ~ '^\\d{4}-\\d{2}-\\d{2}([T ]([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d{1,6})?)?(Z|[+-]([01]\\d|2[0-3])(:?[0-5]\\d)?)?)?$') THEN 'starts must be an ISO-8601 time' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
@@ -19494,14 +19495,14 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'households_id', 'gift');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'households_id', 'gift');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('weddings_id', CASE WHEN jsonb_typeof((p_value->'weddings_id')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'weddings_id cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'weddings_id')) = 'string' OR (jsonb_typeof((p_value->'weddings_id')) = 'number' AND (p_value->'weddings_id')::text::numeric = trunc((p_value->'weddings_id')::text::numeric))) THEN 'weddings_id must be an id: an integer, or text' END),
           ('households_id', CASE WHEN jsonb_typeof((p_value->'households_id')) = 'null' THEN 'households_id cannot be null' WHEN jsonb_typeof((p_value->'households_id')) <> 'null' AND NOT (jsonb_typeof((p_value->'households_id')) = 'number' AND (p_value->'households_id')::text::numeric = trunc((p_value->'households_id')::text::numeric)) THEN 'households_id must be an integer' END),
           ('gift', CASE WHEN jsonb_typeof((p_value->'gift')) = 'null' THEN 'gift cannot be null' WHEN jsonb_typeof((p_value->'gift')) <> 'null' AND NOT (jsonb_typeof((p_value->'gift')) = 'string') THEN 'gift must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
@@ -19511,22 +19512,22 @@ BEGIN
         IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;
-        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'group', 'in', 'from', 'to');
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
-        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+        SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'group', 'in', 'from', 'to');
+        SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
           ('group', CASE WHEN jsonb_typeof((p_value->'group')) = 'null' THEN CASE WHEN p_add THEN NULL ELSE 'group cannot be null' END
             WHEN NOT (jsonb_typeof((p_value->'group')) = 'string' OR (jsonb_typeof((p_value->'group')) = 'number' AND (p_value->'group')::text::numeric = trunc((p_value->'group')::text::numeric))) THEN 'group must be an id: an integer, or text' END),
           ('in', CASE WHEN jsonb_typeof((p_value->'in')) <> 'null' AND NOT (jsonb_typeof((p_value->'in')) = 'number' AND (p_value->'in')::text::numeric = trunc((p_value->'in')::text::numeric)) THEN 'in must be an integer' END),
           ('from', CASE WHEN jsonb_typeof((p_value->'from')) <> 'null' AND NOT (jsonb_typeof((p_value->'from')) = 'string') THEN 'from must be a string' END),
           ('to', CASE WHEN jsonb_typeof((p_value->'to')) <> 'null' AND NOT (jsonb_typeof((p_value->'to')) = 'string') THEN 'to must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;
         RETURN;
         END IF;
       END IF;
     ELSE NULL;
   END CASE;
   -- another set of columns (a walk's, another version's): by the columns given
-  PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value, p_path, p_add, p_field);
+  PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value, p_path, p_add, p_field, p_missing);
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 

@@ -341,10 +341,15 @@ describe("validateOps", () => {
 
     test("a single document adds no other root row, only its own back (an undo of its removal); given no mode, a root row's add is a list's, and is taken (todo #52, #43)", () => {
       const add = (path: string) => [{ op: "add", path, value: { weddings_id: 1, email: "x@x" } }] as const;
-      expect(messages(validateOps(wedding, household, [...add("/households/-")], { doc: "household:1" })).map((m) => m.split(" --")[0])).toEqual(["Invalid op: add /households/-"]);
-      expect(messages(validateOps(wedding, household, [...add("/households/2")], { doc: "household:1" })).map((m) => m.split(" --")[0])).toEqual(["Invalid op: add /households/2"]);
+      // in delta's words, as delta_apply says them (and SQLite's applyOps)
+      const alone = "household:1 holds households 1 alone: add another households row through a document that lists them";
+      expect(validateOps(wedding, household, [...add("/households/-")], { doc: "household:1" })).toEqual([{ path: "/households/-", message: alone }]);
+      expect(validateOps(wedding, household, [...add("/households/2")], { doc: "household:1" })).toEqual([{ path: "/households/2", message: alone }]);
       expect(validateOps(wedding, household, [...add("/households/1")], { doc: "household:1" })).toEqual([]);
-      expect(validateOps(wedding, household, [...add("/households/-")], { list: false }).length).toBe(1);
+      // the mode said, but not the name: which root it holds, it cannot say
+      expect(messages(validateOps(wedding, household, [...add("/households/-")], { list: false }))).toEqual([
+        "household:<id> holds households <id> alone: add another households row through a document that lists them",
+      ]);
       expect(validateOps(wedding, household, [...add("/households/-")])).toEqual([]);
     });
 

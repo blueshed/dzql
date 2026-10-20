@@ -12,7 +12,8 @@
  * - `_delta_assert_fields`: for each collection, each set of columns the definitions give it (all
  *   of them, and each document's own), checked by written statements -- the fields there are, the
  *   parent key, each column's type -- in delta's words (SQLite's), after the op's path (a row's field,
- *   after the field's), in one order (`ORDER BY` in SQL, so the database's collation orders both alike). Another set (a walk's, another version's) is checked
+ *   after the field's), every refusal at once in delta's order (the fields there are not, the values,
+ *   then the required fields left out, `p_missing`; each kind by name, `COLLATE "C"`). Another set (a walk's, another version's) is checked
  *   by the columns given (`_delta_assert_fields_declared`).
  */
 import type { ColumnDef, DocDef, ResolvedTable, Schema } from "@blueshed/delta/backend";
@@ -69,8 +70,7 @@ function checksOf(table: ResolvedTable, columns: Record<string, ColumnDef>): str
     `IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
           RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
         END IF;`,
-    `SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN (${[...new Set(known)].map(lit).join(", ")});
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;`,
+    `SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN (${[...new Set(known)].map(lit).join(", ")});`,
   ];
   // each field's value as it may be written: the parent key an id, null only where an add leaves it
   // (its document's root, or found in scope); a column of its type, null only where it is nullable
@@ -90,10 +90,12 @@ function checksOf(table: ResolvedTable, columns: Record<string, ColumnDef>): str
     if (whens.length) rows.push(`(${lit(col)}, CASE ${whens.join(" ")} END)`);
   }
   if (rows.length) {
-    lines.push(`SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
-          ${rows.join(",\n          ")}) AS x(k, m) WHERE m IS NOT NULL;
-        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;`);
+    lines.push(`SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types FROM (VALUES
+          ${rows.join(",\n          ")}) AS x(k, m) WHERE m IS NOT NULL;`);
   }
+  // every refusal of the value at once: the fields there are not, the values, then what it leaves out
+  lines.push(`IF v_bad IS NOT NULL OR v_types IS NOT NULL THEN RAISE EXCEPTION '%', concat_ws('; ', v_bad, v_types, p_missing) USING ERRCODE = '22023'; END IF;
+        IF p_missing IS NOT NULL THEN RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502'; END IF;`);
   return [...lines, "RETURN;"].join("\n        ");
 }
 
@@ -123,14 +125,15 @@ ${[...sets.values()].map((cols) => `        IF p_columns = ${asStored(cols)} THE
         END IF;`).join("\n")}
       END IF;`;
   });
-  const checks = `CREATE OR REPLACE FUNCTION _delta_assert_fields(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN)
+  const checks = `CREATE OR REPLACE FUNCTION _delta_assert_fields(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN, p_missing TEXT)
 RETURNS void AS $$
 DECLARE
   v_bad TEXT;
+  v_types TEXT;
 BEGIN
 ${caseOf("p_collection", branches, "NULL;")}
   -- another set of columns (a walk's, another version's): by the columns given
-  PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value, p_path, p_add, p_field);
+  PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value, p_path, p_add, p_field, p_missing);
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;`;
   return [...docs.map((d) => columnsOf(schema, d)), dispatch, checks, ""].join("\n\n");

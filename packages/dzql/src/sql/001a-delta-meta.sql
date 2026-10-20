@@ -182,32 +182,35 @@ $$;
 -- walk's, as its entry was stored) is checked here.
 -- In delta's words, as SQLite's validateOps says each: after the op's path
 -- (`p_path`), and a field of a row's value (not `p_field`, one field's op) after
--- the field's; several refusals of one kind joined by "; ". An add (`p_add`)
--- may leave its parent key null: its document's root, or found in scope.
+-- the field's. An op wrong in several ways is told every refusal, joined by
+-- "; ": the fields there are not, then each value not as it may be written,
+-- then each required field it leaves out (`p_missing`, _delta_missing: 23502
+-- when that is all), each kind by name (COLLATE "C", as delta sorts them). An
+-- add (`p_add`) may leave its parent key null: its document's root, or found in scope.
 DROP FUNCTION IF EXISTS _delta_assert_fields_declared(text, jsonb, text, jsonb);   -- its first form named no op's path
 DROP FUNCTION IF EXISTS _delta_assert_fields(text, jsonb, text, jsonb);
+DROP FUNCTION IF EXISTS _delta_assert_fields_declared(text, jsonb, text, jsonb, text, boolean, boolean);   -- its second told no field left out
+DROP FUNCTION IF EXISTS _delta_assert_fields(text, jsonb, text, jsonb, text, boolean, boolean);
 CREATE OR REPLACE FUNCTION _delta_assert_fields_declared(
-  p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN
+  p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN, p_missing TEXT
 ) RETURNS void LANGUAGE plpgsql IMMUTABLE AS $$
 DECLARE
   v_unknown TEXT;
+  v_types TEXT;
 BEGIN
   IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
     RAISE EXCEPTION '%: % value must be an object', p_path, CASE WHEN p_add THEN 'Add' ELSE 'Replace' END USING ERRCODE = '22023';
   END IF;
-  SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k) INTO v_unknown
+  SELECT string_agg(p_path || ': Unknown field: ' || k, '; ' ORDER BY k COLLATE "C") INTO v_unknown
     FROM jsonb_object_keys(p_value) AS k
    WHERE NOT COALESCE(p_columns, '{}'::jsonb) ? k
      AND k NOT IN ('id', 'valid_from', 'valid_to')
      AND k IS DISTINCT FROM p_parent_fk;
-  IF v_unknown IS NOT NULL THEN
-    RAISE EXCEPTION '%', v_unknown USING ERRCODE = '22023';
-  END IF;
   -- each field's value as it may be written, as SQLite's validateOps asks: of its column's type, not
   -- cast (5 into a text column is "5"); null only where its column takes it; the parent key, given,
   -- a whole number or text (text that is no number's digits is refused when the column casts it,
   -- 22P02, 400, as SQLite refuses a key that names no row), null only where an add leaves it
-  SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k) INTO v_unknown
+  SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END || ': ' || m, '; ' ORDER BY k COLLATE "C") INTO v_types
     FROM (
       SELECT k, CASE
         WHEN k = p_parent_fk THEN CASE
@@ -230,8 +233,11 @@ BEGIN
         FROM jsonb_each(p_value) AS v(k, val), LATERAL (SELECT p_columns->k AS c) col
     ) AS checked
    WHERE m IS NOT NULL;
-  IF v_unknown IS NOT NULL THEN
-    RAISE EXCEPTION '%', v_unknown USING ERRCODE = '22023';
+  IF v_unknown IS NOT NULL OR v_types IS NOT NULL THEN
+    RAISE EXCEPTION '%', concat_ws('; ', v_unknown, v_types, p_missing) USING ERRCODE = '22023';
+  END IF;
+  IF p_missing IS NOT NULL THEN
+    RAISE EXCEPTION '%', p_missing USING ERRCODE = '23502';
   END IF;
 END;
 $$;
@@ -240,8 +246,21 @@ $$;
 -- with one that checks each column set it compiled by its own statements, and
 -- any other by the columns given.
 CREATE OR REPLACE FUNCTION _delta_assert_fields(
-  p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN
-) RETURNS void LANGUAGE sql IMMUTABLE AS $$ SELECT _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value, p_path, p_add, p_field); $$;
+  p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB, p_path TEXT, p_add BOOLEAN, p_field BOOLEAN, p_missing TEXT
+) RETURNS void LANGUAGE sql IMMUTABLE AS $$ SELECT _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value, p_path, p_add, p_field, p_missing); $$;
+
+-- _delta_missing: the required columns of `p_columns` (not nullable, no
+-- default) a row's value leaves out, in delta's words after the op's path
+-- (`p_path`), by name, joined by "; " -- or NULL. A row added, or replaced
+-- whole (RFC 6902: a replace of the row is the row), is asked it before
+-- whether the row is there, and it is told after the value's other refusals
+-- (_delta_assert_fields).
+CREATE OR REPLACE FUNCTION _delta_missing(p_columns JSONB, p_value JSONB, p_path TEXT)
+RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+  SELECT string_agg(p_path || ': Required field missing: ' || col_key || ' (give it a value, or declare a default or make it nullable in the schema)', '; ' ORDER BY col_key COLLATE "C")
+    FROM jsonb_each(p_columns) AS x(col_key, col_def)
+   WHERE NOT COALESCE(p_value ? col_key, FALSE) AND NOT COALESCE((col_def->>'nullable')::boolean, false) AND NOT col_def ? 'default';
+$$;
 
 -- Pick the source relation for a collection.
 --   temporal + no timestamp → current_<table> view

@@ -75,8 +75,11 @@ exact version, or the setup stops reading it).
 - **`add /<coll>/-` makes a row the server names**, on every backend, and the echo carries
   `/<coll>/<id>` (`createRowCases` in `src/cases/writes.ts`). The path's id wins over one in the value.
 - **One error-code table**: 400 malformed, 401, 403 read-only, 404 not there, 409 already
-  there, 500 the server's; `errorCodeCases` in `src/cases/writes.ts` asks every backend, and
-  `refusalCases` a schema's refusals in SQLite's words, the whole sentence (the op's path, then why).
+  there, 500 the server's; `errorCodeCases` in `src/cases/writes.ts` asks every backend, each
+  mistake's code and SQLite's words (a row not there, another root row, an id taken), and
+  `refusalCases` a schema's refusals in SQLite's words, the whole sentence (the op's path, then why;
+  an op wrong in several ways, every one, in one order: unknown fields, values, required fields
+  left out, each kind by name).
 - **With `auth`, a document says who owns it** (`owns`, or `shared: true`): its name is its
   broadcast channel. `registerDocs` and a custom doc's registration throw without one
   (`ownerless` in `src/server/auth.ts`). A membership custom doc is queried, cached and fanned

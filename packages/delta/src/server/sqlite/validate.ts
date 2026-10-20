@@ -58,7 +58,8 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
     // never stored as "", 0 or false in its place.
     // A replace leaves the columns the document does not hold as they are; an add makes them.
     const required = (value: Record<string, unknown>, given: Record<string, unknown> = {}, add = false) => {
-      for (const [col, colDef] of Object.entries(table.columns)) {
+      for (const col of Object.keys(table.columns).sort()) {
+        const colDef = table.columns[col]!;
         if (!colDef.nullable && colDef.default === undefined && value[col] === undefined && given[col] === undefined && (add || held(col))) {
           errors.push({ path: op.path, message: `Required field missing: ${col} (give it a value, or declare a default or make it nullable in the schema)` });
         }
@@ -82,11 +83,12 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
         errors.push({ path: op.path, message: "Replace value must be an object" });
         continue;
       }
-      for (const key of Object.keys(value)) {
+      const fields = Object.keys(value).sort();   // each kind of refusal by name, as Postgres can say them
+      for (const key of fields) {
         if (!isKnownKey(key)) errors.push({ path: op.path, message: `Unknown field: ${key}` });
       }
-      for (const [field, fieldValue] of Object.entries(value)) {
-        const typeErr = fieldErr(field, fieldValue);
+      for (const field of fields) {
+        const typeErr = fieldErr(field, value[field]);
         if (typeErr) errors.push({ path: `${op.path}/${field}`, message: typeErr });
       }
       required(value);
@@ -146,18 +148,23 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
 
       // Unknown fields are rejected: otherwise the op acks, rides the broadcast
       // and cache, but is dropped by the DB write — diverging clients from disk.
-      for (const key of Object.keys(value)) {
+      // Every refusal of the value is said, in one order on every backend: the
+      // fields there are not, each value not as it may be written, each required
+      // field left out -- each kind by name (jsonb keeps no value's own order).
+      const fields = Object.keys(value).sort();
+      for (const key of fields) {
         if (!isKnownKey(key)) errors.push({ path: op.path, message: `Unknown field: ${key}` });
       }
 
-      required(value, op.op === "add" && opts.list && collKey === def.root ? opts.values : {}, op.op === "add");
-
       // Type-check the fields that map to declared columns, and the parent key
       // given (an add's may be left out, or null: its document's root, or found in scope).
-      for (const [field, fieldValue] of Object.entries(value)) {
+      for (const field of fields) {
+        const fieldValue = value[field];
         const typeErr = op.op === "add" && field === fkCol && fieldValue == null ? null : fieldErr(field, fieldValue);
         if (typeErr) errors.push({ path: `${op.path}/${field}`, message: typeErr });
       }
+
+      required(value, op.op === "add" && opts.list && collKey === def.root ? opts.values : {}, op.op === "add");
     }
 
     // Field-level replace: /<coll>/<id>/field -- a column, or the parent key (the row moves)

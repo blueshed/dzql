@@ -181,6 +181,12 @@ describe("pglite: validateOps answers as delta_apply does", () => {
     ["fo-board:1", { op: "add", path: "/courses/-", value: { name: "Fish", nope: 1 } }],
     ["fo-board:1", { op: "add", path: "/courses/-", value: 5 }],
     ["fo-board:1", { op: "add", path: "/courses/-", value: { name: 5 } }],
+    ["fo-board:1", { op: "add", path: "/courses/-", value: { zz: 1, name: 5, aa: 2 } }],
+    ["fo-board:1", { op: "add", path: "/courses/-", value: { b: 1 } }],
+    ["fo-board:1", { op: "replace", path: "/households/1", value: { nope: 1, weddings_id: 1.5 } }],
+    ["fo-household:1", { op: "replace", path: "/households", value: { zz: 1, email: 5, weddings_id: null } }],
+    ["fo-course:1", { op: "add", path: "/courses/-", value: 5 }],
+    ["fo-course:1", { op: "add", path: "/courses/7", value: { nope: 1 } }],
     ["fo-board:1", { op: "replace", path: "/courses/1/name", value: 5 }],
     ["fo-board:1", { op: "replace", path: "/courses/99/name", value: 5 }],
     ["fo-seating:1", { op: "replace", path: "/seats/1/kept", value: "yes" }],
@@ -236,19 +242,26 @@ describe("pglite: validateOps answers as delta_apply does", () => {
   const WIRE: Record<string, number> = { "22023": 400, "22P02": 400, "23502": 400, P0002: 404, "23505": 409 };
 
   test("each write it refuses the database refuses as a mistake (400); each it takes, the database takes, or answers for its rows", async () => {
-    const answers: { doc: string; op: unknown; ahead: string[]; database: number }[] = [];
+    const answers: { doc: string; op: unknown; ahead: string[]; database: number; said: string; told?: string }[] = [];
     for (const [doc, op] of writes) {
       await pool.query(`TRUNCATE ${tables.join(", ")}, _delta_versions, _delta_ops_log RESTART IDENTITY`);
       await importTables(pool, pathSchema, pathSeed);
       const def = pathDocs.find((d) => doc.startsWith(d.prefix))!;
-      const ahead = validateOps(pathSchema, def, [op as any], { doc }).map((e) => e.message);   // the name says its mode and scope (todo #57)
+      const errors = validateOps(pathSchema, def, [op as any], { doc });   // the name says its mode and scope (todo #57)
+      const ahead = errors.map((e) => e.message);
       let database = 200;
+      let told: string | undefined;
       try { await pool.query("SELECT delta_apply($1, $2::jsonb)", [doc, JSON.stringify([op])]); }
-      catch (err: any) { database = WIRE[err.code] ?? 500; }
-      answers.push({ doc, op, ahead, database });
+      catch (err: any) { database = WIRE[err.code] ?? 500; told = err.message; }
+      answers.push({ doc, op, ahead, database, said: errors.map((e) => `${e.path}: ${e.message}`).join("; "), told });
     }
     expect(answers.filter((a) => a.database === 500)).toEqual([]);
     expect(answers.filter((a) => (a.ahead.length > 0) !== (a.database === 400))).toEqual([]);
+    // and in the same words (todo #134): a value's refusals, every one, the whole sentence (each after its path);
+    // a single document's other root, the sentence alone, as delta's SQLite says it
+    const worded = answers.filter((a) => a.database === 400 && /Unknown field|must be|cannot be null|Required field missing|alone: add another/.test(a.told!));
+    expect(worded.length).toBeGreaterThan(20);
+    expect(worded.filter((a) => (/alone: add another/.test(a.told!) ? a.ahead.join("; ") : a.said) !== a.told)).toEqual([]);
   }, 30_000);   // many PGlite round trips: past bun's 5s default on a loaded machine
 });
 

@@ -63,6 +63,7 @@ export async function pruneOpsLog(pool: Pool, keepInterval = "1 hour"): Promise<
  */
 export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: { doc?: string; list?: boolean; values?: Record<string, string> } = {}): ValidationError[] {
   let rootId: string | undefined;   // a single document's own root, where its name says it
+  const docName = opts.doc;
   if (opts.doc !== undefined) {
     if (!opts.doc.startsWith(def.prefix)) throw new Error(`validateOps: ${opts.doc} is not a document of ${def.prefix}`);
     const scope = resolveScope(def, opts.doc.slice(def.prefix.length));
@@ -105,19 +106,24 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
       const [ok, what] = of[col.type] ?? [true, ""];
       return ok ? null : `${field} must be ${what}`;
     };
-    // A whole-row value: an object of known keys, each field as it may be written.
-    const rowErrs = (row: Record<string, unknown>, verb: "add" | "replace") => {
-      for (const k of Object.keys(row)) if (!known(k)) fail(`Unknown field: ${k}`);
-      for (const [k, v] of Object.entries(row)) {
+    // A whole-row value: an object of known keys, each field as it may be written (a whole row's
+    // after the field's path, `whole`). Every refusal of it, as delta_apply says them: the fields
+    // there are not, then the values, then (`required`) what it leaves out, each kind by name.
+    const rowErrs = (row: Record<string, unknown>, verb: "add" | "replace", whole = true) => {
+      const fields = Object.keys(row).sort();
+      for (const k of fields) if (!known(k)) fail(`Unknown field: ${k}`);
+      for (const k of fields) {
+        const v = row[k];
         const err = verb === "add" && k === fk && v == null ? null : fieldErr(k, v);   // an add's parent key, left null, is its document's, or found in scope
-        if (err) fail(err);
+        if (err) fail(err, whole ? `${op.path}/${k}` : op.path);
       }
     };
     // A row's value, added or replaced whole (RFC 6902: a replace of the row is the row): a column
     // that is neither nullable nor has a default must be given -- by the value, or, for a list-mode
-    // root row's add, by the scope, as delta_apply checks after it stamps them (#39, #3).
+    // root row's add, by the scope, as delta_apply checks (#39, #3).
     const required = (row: Record<string, unknown>, given: Record<string, unknown> = {}, add = false) => {   // a replace sets the columns it holds
-      for (const [col, colDef] of Object.entries(table.columns)) {
+      for (const col of Object.keys(table.columns).sort()) {
+        const colDef = table.columns[col]!;
         if (!colDef.nullable && colDef.default === undefined && !Object.hasOwn(row, col) && !Object.hasOwn(given, col) && (add || held(col))) {
           fail(`Required field missing: ${col} (give it a value, or declare a default or make it nullable in the schema)`);
         }
@@ -134,7 +140,7 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
     // -- a column, or the parent key: the row moves (#37).
     if (collKey === def.root && !opts.list && op.op === "replace" && (parts.length === 1 || (parts.length === 2 && !/^\d+$/.test(parts[1]!)))) {
       if (parts[1] === "id") fail("Unknown field: id");   // a row keeps the id its path names
-      else if (parts.length === 2) rowErrs({ [parts[1]!]: value }, "replace");
+      else if (parts.length === 2) rowErrs({ [parts[1]!]: value }, "replace", false);
       else if (!isObject) fail("Replace value must be an object");
       else { rowErrs(value, "replace"); required(value); }
       continue;
@@ -143,12 +149,31 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
     // A row: add /<coll>/<id or ->, remove /<coll>/<id>, replace /<coll>/<id>[/<field>].
     const rowOp = (op.op === "add" || op.op === "remove") ? parts.length === 2 : op.op === "replace" && (parts.length === 2 || parts.length === 3);
     if (!rowOp) { fail(`Invalid op: ${op.op} ${op.path}`); continue; }
-    // a single document holds one root row, the one its name names: it adds no other (#52) --
+    // An add, as delta_apply asks it: its id past 2^53 - 1, then its value, every refusal of it;
+    // then a single document holds one root row, the one its name names: it adds no other (#52) --
     // when the mode is known; given none, a root row's add is a list's, and is taken. Its own
     // it may add back, by an undo of its removal (#43): the database says whether it is gone.
-    const other = parts[1] === "-" || (rootId !== undefined && /^[0-9]+$/.test(parts[1]!) && Number(parts[1]) !== Number(rootId));
-    if (op.op === "add" && collKey === def.root && opts.list === false && other) { fail(`Invalid op: add ${op.path} -- a single document holds one ${collKey}, its root`); continue; }
-    const idError = op.op === "add" && parts[1] === "-" ? null : idErr(parts[1]!);
+    // Then an id that is no number: Postgres mints them.
+    if (op.op === "add") {
+      const seg = parts[1]!;
+      const digits = /^[0-9]+$/.test(seg);
+      if (digits && pastSafeId(seg)) { fail(idErr(seg)!); continue; }
+      if (!isObject) { fail("Add value must be an object"); continue; }
+      const before = errors.length;
+      rowErrs(value, "add");
+      required(value, opts.list && collKey === def.root ? opts.values : {}, true);
+      if (errors.length > before) continue;
+      const own = rootId !== undefined && /^[0-9]+$/.test(rootId) ? BigInt(rootId).toString() : rootId;   // as delta_apply prints it
+      const other = !digits || (own !== undefined && BigInt(seg).toString() !== own);
+      if (collKey === def.root && opts.list === false && other) {
+        const id = own ?? "<id>";
+        fail(`${docName ?? `${def.prefix}<id>`} holds ${collKey} ${id} alone: add another ${collKey} row through a document that lists them`);
+        continue;
+      }
+      if (seg !== "-" && !digits) fail(idErr(seg)!);
+      continue;
+    }
+    const idError = idErr(parts[1]!);
     if (idError) { fail(idError); continue; }
     if (op.op === "remove") continue;
     if (parts.length === 3) {
@@ -158,9 +183,9 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
       if (err) fail(err);
       continue;
     }
-    if (!isObject) { fail(`${op.op === "add" ? "Add" : "Replace"} value must be an object`); continue; }
-    rowErrs(value, op.op as "add" | "replace");
-    required(value, op.op === "add" && opts.list && collKey === def.root ? opts.values : {}, op.op === "add");
+    if (!isObject) { fail("Replace value must be an object"); continue; }
+    rowErrs(value, "replace");
+    required(value);
   }
   return errors;
 }

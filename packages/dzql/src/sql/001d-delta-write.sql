@@ -192,7 +192,7 @@ BEGIN
      AND (p_value->>p_parent_fk)::BIGINT IS DISTINCT FROM (p_row->>p_parent_fk)::BIGINT
      AND (NOT _delta_row_in_scope(p_def, p_doc_name, p_parent, (p_value->>p_parent_fk)::BIGINT)
           OR NOT _delta_row_there(p_parent, (p_value->>p_parent_fk)::BIGINT)) THEN
-    RAISE EXCEPTION 'row not found: %/%', p_parent, p_value->>p_parent_fk
+    RAISE EXCEPTION 'Row not found: %/%', p_parent, p_value->>p_parent_fk
       USING ERRCODE = 'P0002';
   END IF;
 END;
@@ -262,26 +262,15 @@ $$ LANGUAGE plpgsql;
 -- default, or null -- the row as blank as that, for the row as it is to be
 -- written over and the value merged over that. Its id and parent key, where
 -- it is, stay. A required column the value leaves out (not nullable, no
--- default) is the writer's mistake: 23502, 400 on the wire, as for an add,
--- and asked with the value's fields, before whether the row is there (todo
--- #3; replaceRow in sqlite.ts), in delta's words after the op's path (`p_path`).
+-- default) is the writer's mistake, asked with the value's fields, before
+-- whether the row is there (todo #3; replaceRow in sqlite.ts): _delta_missing.
 -- ---------------------------------------------------------------------------
-DROP FUNCTION IF EXISTS _delta_whole(jsonb, jsonb);   -- its first form named no op's path
-CREATE OR REPLACE FUNCTION _delta_whole(p_columns JSONB, p_value JSONB, p_path TEXT)
-RETURNS JSONB AS $$
-DECLARE
-  v_missing TEXT;
-BEGIN
-  SELECT string_agg(p_path || ': Required field missing: ' || col_key || ' (give it a value, or declare a default or make it nullable in the schema)', '; ' ORDER BY col_key) INTO v_missing
-    FROM jsonb_each(p_columns) AS x(col_key, col_def)
-   WHERE NOT p_value ? col_key AND NOT COALESCE((col_def->>'nullable')::boolean, false) AND NOT col_def ? 'default';
-  IF v_missing IS NOT NULL THEN
-    RAISE EXCEPTION '%', v_missing
-      USING ERRCODE = '23502';
-  END IF;
-  RETURN COALESCE((SELECT jsonb_object_agg(col_key, COALESCE(col_def->'default', 'null'::jsonb)) FROM jsonb_each(p_columns) AS x(col_key, col_def)), '{}'::jsonb);
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+DROP FUNCTION IF EXISTS _delta_whole(jsonb, jsonb);   -- its earlier forms refused what the value left out (now _delta_missing)
+DROP FUNCTION IF EXISTS _delta_whole(jsonb, jsonb, text);
+CREATE OR REPLACE FUNCTION _delta_whole(p_columns JSONB)
+RETURNS JSONB LANGUAGE sql IMMUTABLE AS $$
+  SELECT COALESCE((SELECT jsonb_object_agg(col_key, COALESCE(col_def->'default', 'null'::jsonb)) FROM jsonb_each(p_columns) AS x(col_key, col_def)), '{}'::jsonb);
+$$;
 
 -- ---------------------------------------------------------------------------
 -- delta_apply: apply delta ops to relational tables, bump version, NOTIFY
@@ -326,7 +315,6 @@ DECLARE
   v_blank         JSONB;             -- a replace of the row whole: each column as an add leaves it (_delta_whole); of a field, nothing
   v_cols          JSONB;             -- the op's collection's columns the document holds (_delta_write_columns); a walk's, all
   v_exists        BOOLEAN;
-  v_missing       TEXT;
   v_ts            TIMESTAMPTZ := NOW();
   v_version       BIGINT;
   v_broadcast_ops JSONB := '[]'::jsonb;
@@ -394,7 +382,7 @@ BEGIN
   IF jsonb_array_length(p_ops) = 0 AND NOT v_is_list AND NOT COALESCE(p_walk, FALSE) AND NOT COALESCE(v_def.implied, FALSE) THEN
     v_exists := _delta_root_there(v_def, p_doc_name, v_scope, v_root_view, v_doc_id);
     IF NOT v_exists THEN
-      RAISE EXCEPTION 'document not found: % (its root, %, is not there)',
+      RAISE EXCEPTION 'Document not found: % (its root, %, is not there)',
         p_doc_name, _delta_build_path(v_def.root_collection, v_doc_id::text)
         USING ERRCODE = 'P0002';
     END IF;
@@ -425,7 +413,7 @@ BEGIN
                   AND v_parts[2] ~ '^[0-9]+$' AND v_parts[2]::numeric = v_doc_id;
       END IF;
       IF NOT v_exists AND NOT v_back THEN
-        RAISE EXCEPTION 'document not found: % (its root, %, is not there)',
+        RAISE EXCEPTION 'Document not found: % (its root, %, is not there)',
           p_doc_name, _delta_build_path(v_def.root_collection, v_doc_id::text)
           USING ERRCODE = 'P0002';
       END IF;
@@ -491,14 +479,15 @@ BEGIN
         END IF;
         v_op := jsonb_set(v_op, '{value}', jsonb_build_object(v_parts[2], v_op->'value'));
       END IF;
-      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 2);
-      v_blank := CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_whole(v_cols, v_op->'value', v_op->>'path') ELSE '{}'::jsonb END;
+      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 2,
+        CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_missing(v_cols, v_op->'value', v_op->>'path') END);
+      v_blank := CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_whole(v_cols) ELSE '{}'::jsonb END;
 
       -- Read + lock
       v_row := _delta_row_lock(v_coll_key, v_coll.table_name, v_coll.temporal, v_doc_id);   -- read, and lock
 
       IF v_row IS NULL THEN
-        RAISE EXCEPTION 'root row not found: %', v_def.root_collection USING ERRCODE = 'P0002';
+        RAISE EXCEPTION 'Row not found: %/%', v_def.root_collection, v_doc_id USING ERRCODE = 'P0002';
       END IF;
       PERFORM _delta_assert_parent_held(v_def, p_doc_name, v_coll.parent_fk, v_coll.parent_collection, v_row, v_op->'value');
       v_before := _delta_holders(v_coll_key, _delta_strip_temporal(v_row), p_doc_name);
@@ -515,7 +504,7 @@ BEGIN
       -- rows do (below): one written out of the rest of its name's scope -- a
       -- seat of fo-seat-of:1:3 to table 7 -- is refused, and the write undone.
       IF NOT _delta_row_in_scope(v_def, p_doc_name, v_coll_key, v_doc_id) THEN
-        RAISE EXCEPTION 'row not found: %/% -- the write would take it out of %',
+        RAISE EXCEPTION 'Row not found: %/% -- the write would take it out of %',
           v_coll_key, v_doc_id, p_doc_name
           USING ERRCODE = 'P0002';
       END IF;
@@ -543,23 +532,34 @@ BEGIN
     -- Add row:  add /<collection>/<id>
     -- ---------------------------------------------------------------
     IF array_length(v_parts, 1) = 2 AND v_op->>'op' = 'add' THEN
-      -- ... and it holds one root row, the one its name names: it adds no
-      -- other. A row it could not read would be told to no one.
+      v_id_text := v_parts[2];
+      -- the id the path names (past 2^53 - 1), then the value -- every refusal of it, a required
+      -- column it leaves out last (a list's root row is given its scope's values) -- as SQLite's
+      -- validateOps asks them
+      IF v_id_text ~ '^[0-9]+$' THEN
+        v_id := _delta_row_id(v_coll_key, v_id_text, v_op->>'path');
+      END IF;
+      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', TRUE, FALSE,
+        _delta_missing(_delta_cols(v_coll_key, v_coll.columns_def),
+          CASE WHEN v_is_list AND v_coll_key = v_def.root_collection
+               THEN v_op->'value' || _delta_scope_row(_delta_cols(v_coll_key, v_coll.columns_def), v_scope->'values')
+               ELSE v_op->'value' END,
+          v_op->>'path'));
+      -- ... and a single document holds one root row, the one its name names:
+      -- it adds no other. A row it could not read would be told to no one.
       -- Its own it adds only when it is gone (above: taken out earlier in this
       -- write, or by a walk, an undo of its removal); there, the live check
-      -- below answers 409.
+      -- below answers 409. In delta's words, as SQLite's applyOps says it.
       IF NOT v_is_list AND v_coll_key = v_def.root_collection
-         AND (v_parts[2] !~ '^[0-9]+$' OR v_parts[2]::numeric <> v_doc_id) THEN
-        RAISE EXCEPTION 'invalid op: add % -- document % holds one %, its root: add it through a document that lists them',
-          v_op->>'path', p_doc_name, v_def.root_collection
+         AND (v_id_text !~ '^[0-9]+$' OR v_id_text::numeric <> v_doc_id) THEN
+        RAISE EXCEPTION '% holds % % alone: add another % row through a document that lists them',
+          p_doc_name, v_def.root_collection, v_doc_id, v_def.root_collection
           USING ERRCODE = '22023';
       END IF;
-      v_id_text := v_parts[2];
-      -- the id the path names, then the value, as SQLite's validateOps asks them
+      -- an id that is no number: Postgres mints them
       IF v_id_text <> '-' THEN
         v_id := _delta_row_id(v_coll_key, v_id_text, v_op->>'path');
       END IF;
-      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', TRUE, FALSE);
       -- Auto-generate ID from sequence if path ends with '-'
       IF v_id_text = '-' THEN
         v_id := _delta_next_id(v_coll_key, v_coll.table_name);
@@ -593,7 +593,7 @@ BEGIN
         v_exists := _delta_row_there(v_coll_key, v_id);
       END IF;
       IF v_exists THEN
-        RAISE EXCEPTION 'id already taken: % -- add to % for a new id',
+        RAISE EXCEPTION 'Id already taken: % -- add to % for a new id',
           _delta_build_path(v_coll_key, v_id::text), _delta_build_path(v_coll_key, '-')
           USING ERRCODE = '23505';
       END IF;
@@ -624,14 +624,14 @@ BEGIN
          AND NOT _delta_row_in_scope(
                v_def, p_doc_name, v_coll.parent_collection,
                (v_new_row->>v_coll.parent_fk)::BIGINT) THEN
-        RAISE EXCEPTION 'row not found: %/%',
+        RAISE EXCEPTION 'Row not found: %/%',
           v_coll.parent_collection, COALESCE(v_new_row->>v_coll.parent_fk, '')
           USING ERRCODE = 'P0002';
       END IF;
       -- ... and whatever the document, the parent it names must be there (a list names it only by key)
       IF v_coll.parent_fk IS NOT NULL AND v_new_row->>v_coll.parent_fk IS NOT NULL
          AND NOT _delta_row_there(v_coll.parent_collection, (v_new_row->>v_coll.parent_fk)::BIGINT) THEN
-        RAISE EXCEPTION 'row not found: %/%', v_coll.parent_collection, v_new_row->>v_coll.parent_fk
+        RAISE EXCEPTION 'Row not found: %/%', v_coll.parent_collection, v_new_row->>v_coll.parent_fk
           USING ERRCODE = 'P0002';
       END IF;
 
@@ -641,24 +641,12 @@ BEGIN
       IF NOT v_is_list AND v_coll_key = v_def.root_collection AND v_coll.parent_fk IS NOT NULL
          AND v_root_was IS NOT NULL
          AND (v_new_row->>v_coll.parent_fk)::BIGINT IS DISTINCT FROM (v_root_was->>v_coll.parent_fk)::BIGINT THEN
-        RAISE EXCEPTION 'row not found: %/%',
+        RAISE EXCEPTION 'Row not found: %/%',
           v_coll.parent_collection, COALESCE(v_new_row->>v_coll.parent_fk, '')
           USING ERRCODE = 'P0002';
       END IF;
 
-      -- A required column (not nullable, no declared default) the value leaves
-      -- out is the writer's mistake: refuse it (SQLSTATE 23502, 400 on the
-      -- wire) rather than store '' / 0 / false for it: in delta's words, after the op's path.
-      SELECT string_agg((v_op->>'path') || ': Required field missing: ' || col_key || ' (give it a value, or declare a default or make it nullable in the schema)', '; ' ORDER BY col_key) INTO v_missing
-        FROM jsonb_each(_delta_cols(v_coll_key, v_coll.columns_def)) AS x(col_key, col_def)
-       WHERE NOT v_new_row ? col_key
-         AND NOT COALESCE((col_def->>'nullable')::boolean, false)
-         AND NOT col_def ? 'default';
-      IF v_missing IS NOT NULL THEN
-        RAISE EXCEPTION '%', v_missing
-          USING ERRCODE = '23502';
-      END IF;
-
+      -- (A required column the value leaves out was refused with its fields, above: _delta_missing.)
       -- Declared column defaults, for what the value leaves out
       SELECT v_new_row || COALESCE(jsonb_object_agg(col_key, col_def->'default'), '{}'::jsonb)
         INTO v_new_row
@@ -693,7 +681,7 @@ BEGIN
       -- -- so it is refused, and the write undone.
       IF v_coll_key = v_def.root_collection
          AND NOT _delta_row_in_scope(v_def, p_doc_name, v_coll_key, v_id) THEN
-        RAISE EXCEPTION 'row not found: %/% -- the add is not one % holds',
+        RAISE EXCEPTION 'Row not found: %/% -- the add is not one % holds',
           v_coll_key, v_id, p_doc_name
           USING ERRCODE = 'P0002';
       END IF;
@@ -719,7 +707,7 @@ BEGIN
       -- _delta_cascade_remove addresses rows by id alone, so without this gate a
       -- client could name any id and delete a sibling doc's row.
       IF NOT v_outside AND NOT _delta_row_in_scope(v_def, p_doc_name, v_coll_key, v_id) THEN
-        RAISE EXCEPTION 'row not found: %/%', v_coll_key, v_id
+        RAISE EXCEPTION 'Row not found: %/%', v_coll_key, v_id
           USING ERRCODE = 'P0002';
       END IF;
       -- who holds the row and every row the cascade takes, asked before any is gone
@@ -735,7 +723,7 @@ BEGIN
       -- document holds whole (one with no parent, a list's include) through,
       -- and the cascade removes nothing (or RLS hid the row from this identity).
       IF jsonb_array_length(v_removed) = 0 THEN
-        RAISE EXCEPTION 'row not found: %/%', v_coll_key, v_id
+        RAISE EXCEPTION 'Row not found: %/%', v_coll_key, v_id
           USING ERRCODE = 'P0002';
       END IF;
       v_broadcast_ops := v_broadcast_ops || v_removed;
@@ -764,21 +752,22 @@ BEGIN
         END IF;
         v_op := jsonb_set(v_op, '{value}', jsonb_build_object(v_parts[3], v_op->'value'));
       END IF;
-      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 3);
-      v_blank := CASE WHEN array_length(v_parts, 1) = 2 THEN _delta_whole(v_cols, v_op->'value', v_op->>'path') ELSE '{}'::jsonb END;
+      PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 3,
+        CASE WHEN array_length(v_parts, 1) = 2 THEN _delta_missing(v_cols, v_op->'value', v_op->>'path') END);
+      v_blank := CASE WHEN array_length(v_parts, 1) = 2 THEN _delta_whole(v_cols) ELSE '{}'::jsonb END;
 
       -- Same gate as remove: the row is addressed by bare id, so it must belong
       -- to this doc. (The single-mode root branch above never reaches here — it
       -- targets v_doc_id directly.)
       IF NOT _delta_row_in_scope(v_def, p_doc_name, v_coll_key, v_id) THEN
-        RAISE EXCEPTION 'row not found: %/%', v_coll_key, v_id
+        RAISE EXCEPTION 'Row not found: %/%', v_coll_key, v_id
           USING ERRCODE = 'P0002';
       END IF;
 
       v_row := _delta_row_lock(v_coll_key, v_coll.table_name, v_coll.temporal, v_id);   -- read, and lock
 
       IF v_row IS NULL THEN
-        RAISE EXCEPTION 'row not found: %/%', v_coll_key, v_id USING ERRCODE = 'P0002';
+        RAISE EXCEPTION 'Row not found: %/%', v_coll_key, v_id USING ERRCODE = 'P0002';
       END IF;
       PERFORM _delta_assert_parent_held(v_def, p_doc_name, v_coll.parent_fk, v_coll.parent_collection, v_row, v_op->'value');
       v_before := _delta_holders(v_coll_key, _delta_strip_temporal(v_row), p_doc_name);
@@ -820,7 +809,7 @@ BEGIN
       -- root named by its id, as above.
       IF v_coll_key = v_def.root_collection
          AND NOT _delta_row_in_scope(v_def, p_doc_name, v_coll_key, v_id) THEN
-        RAISE EXCEPTION 'row not found: %/% -- the write would take it out of %',
+        RAISE EXCEPTION 'Row not found: %/% -- the write would take it out of %',
           v_coll_key, v_id, p_doc_name
           USING ERRCODE = 'P0002';
       END IF;

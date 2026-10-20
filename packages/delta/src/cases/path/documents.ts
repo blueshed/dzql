@@ -681,7 +681,7 @@ export function serialCases(backend: () => PathBackend): void {
       await write(b.process, "fo-weddings:", [{ op: "add", path: "/weddings/-", value: { name: "brief" } }, { op: "remove", path: "/weddings/3" }]);
       const copies = await openAll(b.process, ["fo-plan:3", "fo-plan:50", "fo-weddings:"]);
       const spent = await b.process.call("delta", { doc: "fo-plan:3", ops: [{ op: "add", path: "/courses/-", value: { name: "Soup" } }] });
-      expect(spent.error).toEqual({ code: 409, message: expect.stringMatching(/^id already taken: \/weddings\/3 -- add to \/weddings\/- for a new id$/i) });
+      expect(spent.error).toEqual({ code: 409, message: "Id already taken: /weddings/3 -- add to /weddings/- for a new id" });
       await write(b.process, "fo-plan:50", [{ op: "add", path: "/courses/-", value: { name: "Soup" } }]);
       const code = async (id: number) => (await b.process.call("delta", { doc: "fo-weddings:", ops: [{ op: "add", path: `/weddings/${id}`, value: { name: "x" } }] })).error?.code;
       expect(await code(49)).toBe(409);
