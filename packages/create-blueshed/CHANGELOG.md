@@ -100,6 +100,11 @@ section up.
   whose client submits a `data-write` form on Cmd/Ctrl+Enter from a textarea): the `saves` story
   keeps its words through the thin-client step, and its Cmd+Enter test is in `message.test.ts`,
   both pages'. `tests/message-view.test.ts` goes: all it held is both pages' now.
+- **Typing not yet saved is kept on the thin client too, the caret gone or not** (20 October, root
+  #125; needs dzql's next release, whose morph keeps a field that differs from what was drawn into
+  it): the `refused` story keeps its second half through the thin-client step, and its test in
+  `message.test.ts` leaves the box before another window saves, then waits for the save to reach
+  the box.
 - **The evolve skill's last step: the page drawn on the server** (20 October, root #73):
   `references/thin-client.md`, applied after two-documents, sqlite and postgres by
   `tests/evolve.ts`, moves the order app to dzql's thin client in the shape `bun create dzql`

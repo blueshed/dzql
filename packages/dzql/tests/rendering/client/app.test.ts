@@ -1015,6 +1015,36 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.getElementById('text').value`)).toBe("second");
   });
 
+  test("typing not yet sent is kept after the caret has left it: a render drawing another value keeps it, until it is sent, or typed back to what was drawn", async () => {
+    await using view = await open();
+    const drawer = (title: string, text: string) =>
+      `<form id="msg" data-write='{"doc":"message","op":"replace","path":"/messages/1"}'><input id="title" name="title" value="${title}"><textarea id="text" name="text">${text}</textarea></form><button id="elsewhere">elsewhere</button>`;
+    const held = `["title", "text"].map((id) => document.getElementById(id).value)`;
+    await pushRender(view, drawer("Hi", "Hello"));
+    await view.click("#title");
+    await view.type("!");
+    await view.click("#text");
+    await view.evaluate(`document.getElementById('text').setSelectionRange(5, 5)`);
+    await view.type(" there");
+    await view.click("#elsewhere"); // the caret leaves both, unsent
+    await pushRender(view, drawer("Bob", "Bob's")); // another window's save, drawn
+    expect(await view.evaluate<string[]>(held)).toEqual(["Hi!", "Hello there"]);
+
+    // put back as it is drawn now, a field follows what is drawn again
+    await view.evaluate(`["title", "text"].forEach((id) => (document.getElementById(id).value = "Bob"))`);
+    await view.evaluate(`document.getElementById('text').value = "Bob's"`);
+    await pushRender(view, drawer("Ann", "Ann's"));
+    expect(await view.evaluate<string[]>(held)).toEqual(["Ann", "Ann's"]);
+
+    // sent, the form shows what is drawn, and then what the write drew
+    await view.click("#title");
+    await view.type("!");
+    await view.press("Enter");
+    expect(await sentAt(view, 1)).toEqual({ doc: "message", ops: [{ op: "replace", path: "/messages/1", value: { title: "Ann!", text: "Ann's" } }] });
+    await pushRender(view, drawer("Ann!", "Ann's"));
+    expect(await view.evaluate<string[]>(held)).toEqual(["Ann!", "Ann's"]);
+  });
+
   test("Cmd+Enter or Ctrl+Enter in a textarea sends its form, as Enter does from a field of one line; Enter alone is a new line, and an editing form's textarea is left to the browser", async () => {
     await using view = await open();
     const note = `<form id="note" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><textarea id="body" name="text"></textarea></form>${words()}`;

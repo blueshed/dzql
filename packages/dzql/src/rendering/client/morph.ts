@@ -45,33 +45,38 @@ function morphAttributes(old: Element, next: Element, hooks: MorphHooks): void {
   // attribute below moves it (a box nobody has touched follows its `checked` attribute)
   const unsent = old instanceof HTMLInputElement && (old.checked !== old.defaultChecked || hooks.pressed?.(old) === true);
   if (unsent) old.checked = old.checked;
+  // and what is typed and not yet drawn, someone in the field or not: it differs from what was drawn into it
+  const typing = old instanceof HTMLInputElement && old.value !== old.defaultValue;
   for (const { name } of [...old.attributes]) {
     if (!next.hasAttribute(name)) {
       old.removeAttribute(name);
-      showRendered(old, name, unsent);
+      showRendered(old, name, unsent, typing);
     }
   }
   for (const { name, value } of [...next.attributes]) {
     if (old.getAttribute(name) !== value) {
       old.setAttribute(name, value);
-      showRendered(old, name, unsent);
+      showRendered(old, name, unsent, typing);
     }
   }
 }
 
 /**
- * A field nobody is in shows what was just rendered into it. Once typed in, a field's value no
- * longer follows its `value` attribute (nor a textarea's its text), so after an undo it would go
- * on showing the value undone -- and an editing form, comparing it with what was rendered, would
- * send it again. Only when the render changed it, so an unrelated render keeps what is typed.
- * A box or a radio is a select's kind of field (showChosen): it keeps a tick not yet drawn, and
- * otherwise shows what is drawn, whether or not someone is in it.
+ * A field that holds what was last drawn into it, with nobody in it, shows what was just rendered
+ * into it. Once typed in, a field's value no longer follows its `value` attribute (nor a
+ * textarea's its text), so after an undo it would go on showing the value undone -- and an
+ * editing form, comparing it with what was rendered, would send it again. Only when the render
+ * changed it, so an unrelated render keeps what is typed; and never over typing not yet drawn
+ * (`typing`: it differs from what was drawn), whether or not someone is still in the field, until
+ * it is sent and drawn, or typed back to what was. A box or a radio is a select's kind of field
+ * (showChosen): it keeps a tick not yet drawn, and otherwise shows what is drawn, whether or not
+ * someone is in it.
  */
-function showRendered(el: Element, name: string, unsent: boolean): void {
+function showRendered(el: Element, name: string, unsent: boolean, typing: boolean): void {
   if (!(el instanceof HTMLInputElement)) return;
   if (name === "checked") {
     if (!unsent) el.checked = el.defaultChecked;
-  } else if (name === "value" && el !== document.activeElement) el.value = el.defaultValue;
+  } else if (name === "value" && el !== document.activeElement && !typing) el.value = el.defaultValue;
 }
 
 /**
@@ -126,10 +131,11 @@ function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
     morphAttributes(old, next, hooks);
     const area = old instanceof HTMLTextAreaElement ? old : undefined;
     const text = area?.defaultValue;
+    const typing = area !== undefined && area.value !== text; // typed and not yet drawn, as showRendered keeps
     const select = old instanceof HTMLSelectElement && !old.multiple ? old : undefined; // a multiple select is not a field (app.ts): the browser's alone
     const chosen = select && select.value !== (drawnOption(select)?.value ?? "") ? select.value : undefined; // not yet drawn
     morphChildren(old, next, hooks);
-    if (area && area.defaultValue !== text && area !== document.activeElement) area.value = area.defaultValue; // as showRendered, for a textarea's text
+    if (area && area.defaultValue !== text && area !== document.activeElement && !typing) area.value = area.defaultValue; // as showRendered, for a textarea's text
     if (select) showChosen(select, chosen);
   } else if (old.textContent !== next.textContent) {
     old.textContent = next.textContent;

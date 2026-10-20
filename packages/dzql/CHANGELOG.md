@@ -176,6 +176,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **Typing not yet sent is kept after the caret leaves it** (20 October, root #125). The morph
+  kept what a field held only while someone was in it, so a save from another window drew over
+  words typed and left in a box. Now a field (an input, a textarea) that differs from what was last
+  drawn into it keeps what it holds, in it or not, until it is sent and drawn, or typed back to
+  what was drawn; one that holds what was drawn follows the page, as before. The light page's
+  drawer always did (`tests/rendering/client/app.test.ts`). Nothing to move across.
+
 - **A write the store refuses says why, whatever refused it** (20 October, root #123). The kernel
   told a store's 403 and 401 and refused the rest without a word, so a value the schema does not
   take (400) was handed back with nothing beside the control. Now any 4xx is a refusal with words,

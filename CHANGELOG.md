@@ -20,6 +20,8 @@ differ, fixed where each differs.
   guards' words, the resource's (`refused`), or delta's; the step's message says Not saved again.
 - **Cmd+Enter or Ctrl+Enter sends a form from its textarea** (#124, dzql's client): the `saves`
   story keeps its words, and the template's `message-view.test.ts` goes.
+- **Typing not yet sent is kept, the caret gone or not** (#125, dzql's morph): the `refused` story
+  keeps its second half through the step.
 
 ### The traps delta's examples found, removed (20 October, delta #88-#91)
 

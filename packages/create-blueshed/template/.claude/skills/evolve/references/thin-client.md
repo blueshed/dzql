@@ -418,7 +418,7 @@ if (import.meta.main) await run(startServer);
 
 ## The stories
 
-A story people do on the page gains its body on its own line, under its key: who does it, from where, and who then sees it (dzql-app's `stories.md`). The harness tells it against the page the server draws, then undoes and redoes it. One it cannot tell (a restart, a move, what no page shows or no control sends) stays a sentence, told by its tests as before. Three change their words with what the page now does:
+A story people do on the page gains its body on its own line, under its key: who does it, from where, and who then sees it (dzql-app's `stories.md`). The harness tells it against the page the server draws, then undoes and redoes it. One it cannot tell (a restart, a move, what no page shows or no control sends) stays a sentence, told by its tests as before. Each keeps its words, but one: an unknown page opens on the box (`health`).
 
 ```ts
 // stories.ts: in place of import { story, type Stories } from "dzql/modelling/stories";
@@ -529,7 +529,7 @@ test(`${stories.stories.health.name} -- a page that is not one opens on the box`
 Working: `tests/evolve.ts` makes a new app from this template, applies this page (after two-documents.md, sqlite.md and postgres.md) and runs its type check and tests (`bun run test:evolve`).
 
 - `bun run stories` says each story; `STORY_BY_HAND=1 bun run stories` does each with the page's own controls, in a browser the size of a phone.
-- **What changed for the people using it**, each by where it is drawn: Saved is said beside the box, not in a toast; Not saved is said beside the box, where it was a toast too; typing not yet saved is kept while the caret is in the box; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
+- **What changed for the people using it**, each by where it is drawn: Saved and Not saved are said beside the box, not in a toast; an unknown page opens on the box, where it said Page not found; the uptime is the status route's alone, since a page drawn again must be the same page.
 - **The session:** nobody signs in, so the cookie is the session and no row is kept by it (`Example.session` left out). Sign-in by link, a session kept as a row (`sessionRows`), is dzql-app's `signin.md`; delta's `auth-link` ([auth.md](auth.md)) is for a page that is delta's client, not this one.
 - **The store is the server's**, as `orderDocs`'s was: opened as it starts, on its data folder, and closed as it stops, so a test runs servers on folders of its own, and `bun dev`'s reload closes the last store before it opens the next (its ids carry on).
 - From here the app grows with `dzql-app`; the other references here are the light page's. `CLAUDE.md` and `README.md` still describe the light page: say the thin one, as create-dzql's do.

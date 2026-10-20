@@ -145,10 +145,11 @@ test(`${stories.stories.follows.name} -- a save shows in another window, and so 
   });
 });
 
-test(`${stories.stories.refused.name} -- typing that is not saved is not overwritten by another window's save`, async () => {
+test(`${stories.stories.refused.name} -- typing that is not saved is not overwritten by another window's save, though the caret has left the box`, async () => {
   await openMessage();
   await waitFor(`document.querySelector("textarea")?.value === "from the first!"`);
   await replaceText("textarea", "half-typed");
+  await view.evaluate(`document.querySelector("textarea").blur()`);
   await withOtherWindow(async (other, waitForOther) => {
     await openMessage(other, waitForOther);
     await waitForOther(`document.querySelector("textarea")?.value === "from the first!"`);
@@ -157,7 +158,7 @@ test(`${stories.stories.refused.name} -- typing that is not saved is not overwri
     await other.click(SAVE);
     await waitForOther(SAID("Saved"));
   });
-  await Bun.sleep(300); // time for the change to arrive, had it been taken
+  await waitFor(`document.querySelector(".cell[data-key=message] .cell-summary")?.textContent === "from the first!?"`); // the change is here, on the box
   expect(await view.evaluate<string>(`document.querySelector("textarea").value`)).toBe("half-typed");
 });
 
