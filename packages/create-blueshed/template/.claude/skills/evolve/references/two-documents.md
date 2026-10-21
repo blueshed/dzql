@@ -183,7 +183,7 @@ const ORDER = `.cell[data-key="your-order"]`;
 const shown = (cell: string) => `[...document.querySelectorAll('${cell} .rows .what')].map((w) => w.textContent.trim()).join(", ")`;
 const total = (amount: string) => `document.querySelector('${ORDER} .row.total .state')?.textContent === "${amount}"`;
 
-test(`${stories.stories.ordering.name} -- your order: added to, there when you come back, and not another window's`, async () => {
+test(`${stories.stories.ordering.name} -- your order: added to, there when you come back, and not another browser's`, async () => {
   await open();
   await waitFor(`${shown(CATALOGUE)} === "Tea, Cake"`); // the catalogue is drawn
   await waitFor(total("0.00")); // no order yet

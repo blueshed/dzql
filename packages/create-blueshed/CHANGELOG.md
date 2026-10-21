@@ -127,9 +127,21 @@ section up.
   order's number (`localStorage`), and its first Add takes the next from the server (`add
   /orders/-` on a new `orders:` document, `yourOrder()` in `order.ts`); once people sign in
   (`auth.md`), an order is theirs by who they are. The ordering story and its test say it: your
-  order is there when you come back, and another window's is its own. `sqlite.md`, `postgres.md`
+  order is there when you come back, and another browser's is its own. `sqlite.md`, `postgres.md`
   and the orders fixture carry `orders:`; the kitchen's tests no longer assume the page is on
-  order 1. The thin client keeps everyone on order 1, with its own order test (template #17, open).
+  order 1.
+- **On the thin client too, the order is the customer's own** (21 October, template #17).
+  `thin-client.md` kept everyone on order 1, since a page drawn on the server cannot read
+  `localStorage`. The session names the order there: a row the visit's cookie names (dzql's
+  `sessionRows`, `Example.session`, as the café's visit is), whose document, `session:`, holds
+  `order_id`. The first Add makes the order through `orders:` (a new `orders` resource, never
+  undone) and writes its id to the session, then puts the line on it as the customer, so Undo
+  takes back the line; the page reads the session's order. Two windows of one browser share it;
+  another browser has its own. The ordering story keeps the light page's words, and its test is the
+  light page's `order.test.ts`, no longer rewritten; the stories' cast gives Bob his order first.
+  **To move across**: an app that took the step adds `session-api.ts` and its `sessions`, the
+  `orders` resource, and the view's `sessionId`, as the page has them, and takes back the light
+  page's `order.test.ts` and ordering story.
 - **An upload is made in a modal** (21 October, round 3, finding 6). `http.md` has the page's view:
   Upload beside the page's name opens `addModal` with a file field, and the Files cell keeps a link
   to each file put, tested in the browser against the stand-in bucket. `addModal` takes `type:
