@@ -6,6 +6,26 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### Round 3 of the evaluations, and what it found fixed (21 October)
+
+- Round 3 ran every skill's scenarios on the packed packages (`evals/runs/2026-10-21-<skill>.md`):
+  railroad 40/40, delta-doc 20.5/21, evolve 22.5/23 (round 2: 10/20), dzql-app 13.5/15, modelling
+  15/17; the Shed's run 6 (`runs/2026-10-21-run-6.md`) passes every must-not at stage 5 for the first
+  time and fails one at stage 4.
+- **Breaking**, delta: the undo cursor of a socket not signed in is bound to a key the server mints
+  (an HttpOnly `delta_cursor` cookie), so a socket naming another's `clientId` no longer takes their
+  cursor and their undo. `registerDocs` returns `close()` on both backends.
+- dzql: a thin app type-checks as npm installs it; the story runner fails a story that writes a
+  document no resource owns in its own words; the model's checks find a story with nowhere to add
+  its rows, and its proof drops no story; `dzql model --help`.
+- The skills: evolve's quantity migration counts live lines and closes the rest (it had counted
+  closed versions and deleted history), each customer has an order of their own on both pages, an
+  upload in a modal, the server waits for the last save; railroad's test set-up and a fourth
+  scenario; delta-doc's per-field undo guard and a notice-board scenario; dzql-app's examples out of
+  the eval's domain; modelling runs the model's tests.
+- `scripts/evals.ts` installs the tarballs in every start and records a project with no tests as
+  none.
+
 ### A time only the server sets (20 October, root #138)
 
 - A `timestamptz` column may have `default: "now"`: where a write leaves it out, the row takes the
