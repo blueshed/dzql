@@ -8,7 +8,8 @@
  *   site (its `Origin`), and the answer sets a **session**: an HttpOnly cookie, kept as its hash, for a
  *   year, renewed as it is used.
  * - **The socket is signed in by the cookie**, on upgrade (`onUpgrade`, through `upgradeWithAuth`):
- *   no token rides in its URL or in a message.
+ *   no token rides in its URL or in a message. A socket with no session is nobody: the gate refuses
+ *   it (401) every document but those anyone's (`owns: "ANYONE"`), which it opens and hears as no one.
  * - **Anyone signed in may make anyone's link** (`call("link", { person })`), unless the app says
  *   otherwise (`mayLink`); the first person's comes from a command on the server (`makeLink`).
  * - **In development** (not `NODE_ENV=production`), `GET /api/dev/people` lists everyone and

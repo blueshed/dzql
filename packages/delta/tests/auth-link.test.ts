@@ -17,14 +17,19 @@ import { linkStoreCases } from "../src/testing";
 setLogLevel("silent");
 
 type Person = { id: number; name: string };
-const schema = defineSchema({ people: { columns: { name: "text" } } });
-const docs = [defineDoc("people:", { root: "people", include: [] }), defineDoc("person:", { root: "people", include: [] })];
+const schema = defineSchema({ people: { columns: { name: "text" } }, notices: { columns: { text: "text" }, temporal: false } });
+const docs = [
+  defineDoc("people:", { root: "people", include: [] }),
+  defineDoc("person:", { root: "people", include: [] }),
+  // everyone's, signed in or not; written by someone signed in
+  defineDoc("notices:", { root: "notices", include: [], owns: "ANYONE", accept: (_op, { who }) => who !== undefined || "Sign in to post a notice" }),
+];
 
 /** A server on a fresh database with Ann (1) and Bob (2), signing in by link: `dev` says whether the picker answers. */
 function serve(dev: boolean) {
   const db = new Database(":memory:");
   createTables(db, schema);
-  importTables(db, schema, { tables: { people: [{ id: 1, name: "Ann" }, { id: 2, name: "Bob" }] }, sequences: { people: 2 } });
+  importTables(db, schema, { tables: { people: [{ id: 1, name: "Ann" }, { id: 2, name: "Bob" }], notices: [{ id: 1, text: "open at nine" }] }, sequences: { people: 2 } });
   const store = sqliteLinkStore(db);
   const personOf = (id: number) => db.query<Person, [number]>("SELECT id, name FROM people WHERE id = ?").get(id);
   const auth = linkAuth<Person>({ store, personOf, people: () => db.query<Person, []>("SELECT id, name FROM people ORDER BY id").all(), dev });
@@ -54,8 +59,10 @@ async function socket(at: { server: Bun.Server<unknown> }, cookie?: string) {
   await new Promise((ok, no) => ((sock.onopen = ok), (sock.onerror = no)));
   let n = 0;
   const waiting = new Map<number, (msg: any) => void>();
+  const heard: any[] = [];
   sock.onmessage = (e) => {
     const msg = JSON.parse(String(e.data));
+    heard.push(msg);
     waiting.get(msg.id)?.(msg);
     waiting.delete(msg.id);
   };
@@ -65,7 +72,7 @@ async function socket(at: { server: Bun.Server<unknown> }, cookie?: string) {
       waiting.set(id, answer);
       sock.send(JSON.stringify({ id, ...msg }));
     });
-  return { ask, close: () => sock.close() };
+  return { ask, heard, close: () => sock.close() };
 }
 
 describe("a link", () => {
@@ -120,6 +127,25 @@ describe("a session", () => {
       expect((await nobody.ask({ action: "open", doc: "people:" })).error.code).toBe(401);
     } finally {
       nobody.close();
+    }
+  });
+
+  test("a socket with none opens and hears a document anyone's (owns: ANYONE), writes it as its rule says, and nothing else", async () => {
+    const nobody = await socket(live);
+    const ann = await socket(live, await live.auth.signInAs(1));
+    try {
+      expect((await nobody.ask({ action: "open", doc: "notices:" })).result.notices).toEqual({ 1: { id: 1, text: "open at nine" } });
+      expect((await nobody.ask({ action: "delta", doc: "notices:", ops: [{ op: "replace", path: "/notices/1/text", value: "closed" }] })).error)
+        .toEqual({ code: 400, message: "Sign in to post a notice" });
+      await ann.ask({ action: "open", doc: "notices:" });
+      expect((await ann.ask({ action: "delta", doc: "notices:", ops: [{ op: "replace", path: "/notices/1/text", value: "open at ten" }] })).error).toBeUndefined();
+      for (let i = 0; i < 50 && !nobody.heard.some((m) => m.doc === "notices:" && m.ops); i++) await Bun.sleep(10);
+      expect(nobody.heard.find((m) => m.doc === "notices:" && m.ops).ops).toEqual([{ op: "replace", path: "/notices/1/text", value: "open at ten" }]);
+      expect(nobody.heard.filter((m) => m.error && !m.id)).toEqual([]);   // never let go
+      for (const doc of ["people:", "person:1"]) expect((await nobody.ask({ action: "open", doc })).error.code).toBe(401);
+    } finally {
+      nobody.close();
+      ann.close();
     }
   });
 

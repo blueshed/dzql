@@ -11,6 +11,8 @@
 import { describe, expect, test } from "bun:test";
 import { defineDoc, defineSchema, type DocDef } from "../schema";
 import type { DeltaAuth } from "../server/auth";
+import { waitFor } from "./support";
+
 
 export type Person = { id: number; name: string };
 
@@ -59,6 +61,8 @@ export const permissionDocs = {
   members: defineDoc("members:", { root: "members", include: [], owns: "AUTHENTICATED" }),
   /** Nobody's. */
   sealed: defineDoc("sealed:", { root: "orgs", include: [], owns: "FALSE" }),
+  /** Every post, for anyone, signed in or not; written by someone signed in (its rule). */
+  board: defineDoc("board:", { root: "posts", include: [], owns: "ANYONE", accept: (_op, { who }) => who !== undefined || "Sign in to post" }),
   /** A person and their own tasks, for them. */
   mine: defineDoc("mine:", { root: "people", include: ["tasks"], owns: "@id" }),
   /** A team's people and their tasks, for its members: a scoped list holds only what hangs under the people it admits. */
@@ -71,7 +75,10 @@ const cy: Person = { id: 3, name: "Cy" };
 const NOT_FOUND = { code: 404, message: "Not found" };
 
 export interface PermissionProcess {
-  as(person: Person): { call(action: string, msg: Record<string, unknown>): Promise<any> };
+  /** A caller signed in as `person`; with none, a caller nobody is signed in on. */
+  as(person?: Person): { call(action: string, msg: Record<string, unknown>): Promise<any> };
+  /** What the process tells, on every channel, and to whom (`createLocal().onPublish`). */
+  onPublish(fn: (channel: string, data: any, to?: { identity: unknown }) => void): () => void;
 }
 
 export interface PermissionBackend {
@@ -166,6 +173,32 @@ export function permissionCases(name: string, backend: () => PermissionBackend):
       const p = await backend().start(all);
       expect((await p.as(ben).call("open", { doc: "members:" })).error).toBeUndefined();
       expect((await p.as(ann).call("open", { doc: "sealed:1" })).error).toEqual(NOT_FOUND);
+    });
+
+    test("ANYONE: a caller nobody is signed in on opens and hears board:, writes it only as its rule says, and is refused every other document (401)", async () => {
+      const p = await backend().start(all);
+      const nobody = p.as();
+      const sent: { channel: string; data: any; to?: { identity: unknown } }[] = [];
+      const off = p.onPublish((channel, data, to) => sent.push({ channel, data, to }));
+      try {
+        expect(Object.keys((await nobody.call("open", { doc: "board:" })).result.posts)).toEqual(["1", "2"]);
+        expect((await p.as(cy).call("open", { doc: "board:" })).error).toBeUndefined();   // and anyone signed in
+        // its writes are its rule's, told no one (who undefined)
+        expect((await nobody.call("delta", { doc: "board:", ops: [{ op: "add", path: "/posts/-", value: { author_id: 3, title: "anon" } }] })).error)
+          .toEqual({ code: 400, message: "Sign in to post" });
+        expect((await p.as(cy).call("delta", { doc: "board:", ops: [{ op: "add", path: "/posts/-", value: { author_id: 3, title: "Cy's" } }] })).error).toBeUndefined();
+        // the caller nobody is signed in on hears it, and is not let go
+        await waitFor(() => sent.some((m) => m.channel === "board:" && m.data.ops?.some((o: any) => o.value?.title === "Cy's")));
+        expect(sent.filter((m) => m.data?.error)).toEqual([]);
+        expect(Object.keys((await nobody.call("open", { doc: "board:" })).result.posts)).toEqual(["1", "2", "3"]);
+        // default-deny holds for every other document: a path, AUTHENTICATED, FALSE
+        for (const doc of ["post:1", "members:", "venues:", "mine:1", "sealed:1"]) {
+          expect([doc, (await nobody.call("open", { doc })).error?.code]).toEqual([doc, 401]);
+          expect([doc, (await nobody.call("delta", { doc, ops: [] })).error?.code]).toEqual([doc, 401]);
+        }
+      } finally {
+        off();
+      }
     });
 
     test("a path that cannot be followed is refused at registration, naming the document, the path and what is wrong", async () => {

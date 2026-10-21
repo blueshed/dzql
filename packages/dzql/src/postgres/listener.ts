@@ -23,6 +23,7 @@ import type { DocType } from "./registry";
 import type { DeltaAuth } from "@blueshed/delta/auth";
 import { isAuthError } from "@blueshed/delta/auth";
 import { splitPath, type DeltaOp } from "@blueshed/delta/core";
+import { isAnyone } from "@blueshed/delta/paths";
 import { isEntryId, ledgerWho, socketCursor } from "@blueshed/delta/backend";
 import { assertOwned, createCustomDocs, NOT_FOUND, sendTo, type CustomDoc, type Owns, type Refusal } from "@blueshed/delta/backend";
 import { namespaceOf } from "./sql";
@@ -445,7 +446,7 @@ export async function createDocListener<I = unknown>(
         more = page.length >= FETCH_PAGE && rows.length === page.length;
         // Told to those who may still hear it: the document's own subscribers
         if (auth && rows.length > 0) {
-          await custom.letGo(docName, state.subscribers, ownsOf(docName));
+          await custom.letGo(docName, state.subscribers, ownsOf(docName), { anyone: isAnyone(resolveDoc(docName)?.type.def) });
           if (resync) await custom.letGoWatching(rows.flatMap(appliedOf));
         }
         for (const row of rows) {
@@ -549,8 +550,10 @@ export async function createDocListener<I = unknown>(
     return async (msg: any, client: any, respond: (r: any) => void) => {
       if (destroyed) return; // a listener ended answers nothing: its socket may have the next one's
       const g = gate(client);
-      if ("error" in g) return respond(g);
-      const { identity } = g;
+      // a document anyone's (owns: "ANYONE") is open to a socket the gate refuses, as no one; no other is
+      const nobody = "error" in g && isAnyone(typeof msg?.doc === "string" ? resolveDoc(msg.doc)?.type.def : undefined);
+      if ("error" in g && !nobody) return respond(g);
+      const identity = "error" in g ? undefined : g.identity;
       const docName = msg.doc as string;
       if (!docName) {
         return respond({ error: { code: 400, message: "doc is required" } });
@@ -562,7 +565,7 @@ export async function createDocListener<I = unknown>(
       try {
         // The document's name is its channel: one this identity does not own is
         // not there for it (404, as a missing one), so it never subscribes.
-        if (owned && auth && found.type.owns && !(await found.type.owns(identity as I, docName))) {
+        if (owned && auth && !nobody && found.type.owns && !(await found.type.owns(identity as I, docName))) {
           return respond({ error: NOT_FOUND });
         }
         await fn({ docName, type: found.type, ctx: found.ctx, msg, client, respond, identity });

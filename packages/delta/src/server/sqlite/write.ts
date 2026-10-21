@@ -17,6 +17,7 @@ import { createLogger } from "../logger";
 import { rowAt, type Ledger } from "../ledger";
 import { meets, resolveScope, rowId, sameId, type Scope } from "../scope";
 import { hangsFrom, holdsField, isServerTime, q, refusedBy, shapedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { isAnyone } from "../../paths";
 import { keeping, scopeValue } from "./keep";
 import { impliedDoc, readDoc } from "./read";
 import { carryUndeclared, closeRow, columnsOf, undeclaredColumns, undeclaredOf, current, decodeRow, insertCollectionRow, insertRow, leftOut, named, now, refuse, sqliteTime, updateRow } from "./rows";
@@ -886,7 +887,7 @@ export function createWriter<I>(r: Registration<I>) {
     }
     inOrder(() => {
       // With auth, only to those who may still hear each document.
-      const asked = auth ? [...changes.map(({ name }) => custom.letGo(name, subscriptions.get(name), ownsOf(name), { dropped: () => unheld(name) })), custom.letGoWatching(applied)] : [];
+      const asked = auth ? [...changes.map(({ name }) => custom.letGo(name, subscriptions.get(name), ownsOf(name), { dropped: () => unheld(name), anyone: isAnyone(findDoc(name)?.def) })), custom.letGoWatching(applied)] : [];
       const publish = () => {
         for (const { name, change } of changes) ws.publish(name, change);
         custom.tell(applied);

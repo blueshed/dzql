@@ -44,7 +44,7 @@ const on = (pool: () => Pool) => () => ({
     const types = docs.map((def) => docTypeFromDef<Person>(def, pool(), { auth: permissionAuth }));
     const local = createLocal();
     listeners.push(await createDocListener(local.server, pool(), { types, auth: permissionAuth, ledger: true }));
-    return { as: (person: Person) => local.as(person) };
+    return { as: (person?: Person) => local.as(person), onPublish: local.onPublish };
   },
 });
 
