@@ -12,6 +12,7 @@
  *   writeScopeCases(standUp);
  *   uniqueCases(standUp);
  *   acceptCases(standUp);
+ *   shapeCases(standUp);
  *   serverTimeCases(standUp);
  *
  * where `standUp({ schema, docs, seed })` makes a fresh store with that
@@ -22,7 +23,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } fr
 import { applyOps, splitPath } from "../core";
 import { defineDoc, defineSchema, type DocDef, type Schema, type Snapshot } from "../schema";
 import type { WsServer } from "../server/server";
-import { mockClient, sendAndAwait } from "./support";
+import { mockClient, sendAndAwait, waitFor } from "./support";
 
 /** An app for a case: what a backend stands up on a fresh store (on the ledger, `ledger: true`). */
 export interface CaseApp { schema: Schema; docs: DocDef[]; seed: Snapshot; ledger?: boolean }
@@ -338,16 +339,125 @@ export function acceptCases(backend: CaseBackend): void {
 }
 
 // ---------------------------------------------------------------------------
+// A desk and its bookings: a value the server gives as the row is written
+// ---------------------------------------------------------------------------
+
+const DAY = 86_400_000;
+/** Does the op give a booking's end: its field, or a row's value that names it? */
+const givesEnd = (op: { path: string; value?: unknown }) =>
+  op.path.endsWith("/ends") || (typeof op.value === "object" && op.value !== null && "ends" in op.value);
+
+/**
+ * A desk's bookings, each ending two weeks from the day it is made: a value a rule gives as
+ * the row is written, so the server sets it (`shape`) and stores it; a client may not (`accept`,
+ * asked first). `case-askew:` shapes a field the schema does not declare.
+ */
+export const shapedApp: CaseApp = {
+  schema: defineSchema({
+    case_desks: { columns: { name: "text" }, temporal: false },
+    case_bookings: {
+      columns: { title: "text", made: { type: "timestamptz", default: "now" }, ends: "timestamptz?" },
+      parent: { collection: "case_desks", fk: "case_desks_id" },
+    },
+  }),
+  docs: [
+    defineDoc("case-desk:", {
+      root: "case_desks",
+      include: ["case_bookings"],
+      accept: (op) => !givesEnd(op) || "The desk sets when a booking ends",
+      shape: (op) => op.op === "add" && splitPath(op.path)[0] === "case_bookings"
+        ? { ...op, value: { ...(op.value as object), ends: new Date(Date.now() + 14 * DAY).toISOString() } }
+        : op,
+    }),
+    defineDoc("case-askew:", {
+      root: "case_desks",
+      include: ["case_bookings"],
+      shape: (op) => (op.op === "add" ? { ...op, value: { ...(op.value as object), colour: "red" } } : op),
+    }),
+  ],
+  seed: {
+    tables: {
+      case_desks: [{ id: 1, name: "front" }],
+      case_bookings: [{ id: 1, case_desks_id: 1, title: "atlas", made: "2026-01-01T09:00:00Z", ends: "2026-01-15T09:00:00Z", valid_from: "2026-01-01T00:00:00.000Z", valid_to: null }],
+    },
+  },
+  ledger: true,
+};
+
+/**
+ * What the server makes of a write as it is written (`shape`), the same on every backend: asked
+ * after the document's rule, of each op of a fresh write; what it answers is validated as any
+ * write is, then stored, told and recorded; an undo or a redo is never shaped.
+ */
+export function shapeCases(backend: CaseBackend): void {
+  describe("what the server makes of a write (shape)", () => {
+    let up: Awaited<ReturnType<CaseBackend>>;
+    beforeEach(async () => { up = await backend(shapedApp); });
+    afterEach(async () => { await up.end(); });
+
+    const me = mockClient({ local: true });
+    const write = async (doc: string, ops: unknown[]) => {
+      await sendAndAwait(up.ws, me, { action: "open", doc });
+      return sendAndAwait(up.ws, me, { action: "delta", doc, cursor: "desk", ops });
+    };
+    const bookings = async () => (await fresh(up.ws, "case-desk:1")).case_bookings;
+
+    test("a value the shape gives is stored, set by the server: told to a holder, answered and recorded", async () => {
+      const published: any[] = [];
+      up.ws.setServer({ publish: (ch: string, raw: string) => published.push({ ch, ...JSON.parse(raw) }) });
+      const peer = mockClient({ clientId: "peer" });
+      await sendAndAwait(up.ws, peer, { action: "open", doc: "case-desk:1" });
+      const before = Date.now();
+      const r = await write("case-desk:1", [{ op: "add", path: "/case_bookings/-", value: { title: "maps" } }]);
+      const after = Date.now();
+      expect(r.error).toBeUndefined();
+      const made = Object.values(await bookings()).find((q: any) => q.title === "maps") as any;
+      expect(Date.parse(made.ends)).toBeGreaterThanOrEqual(before + 14 * DAY - 1000);
+      expect(Date.parse(made.ends)).toBeLessThanOrEqual(after + 14 * DAY + 1000);
+      // the answer is what was applied, the value as stored
+      expect(r.result.ops).toEqual([{ op: "add", path: `/case_bookings/${made.id}`, value: made }]);
+      // a holder is told the row as stored
+      const told = await waitFor(() => published.find((m) => m.ch === "case-desk:1" && m.ops));
+      expect(told.ops).toEqual([{ op: "add", path: `/case_bookings/${made.id}`, value: made }]);
+    });
+
+    test("it is asked after the document's rule: a client may not give what the server sets", async () => {
+      expect((await write("case-desk:1", [{ op: "add", path: "/case_bookings/-", value: { title: "maps", ends: "2030-01-01T00:00:00Z" } }])).error)
+        .toEqual({ code: 400, message: "The desk sets when a booking ends" });
+      expect((await write("case-desk:1", [{ op: "replace", path: "/case_bookings/1/ends", value: "2030-01-01T00:00:00Z" }])).error)
+        .toEqual({ code: 400, message: "The desk sets when a booking ends" });
+      expect(Object.keys(await bookings())).toEqual(["1"]);
+    });
+
+    test("what it answers is validated as any write is", async () => {
+      expect((await write("case-askew:1", [{ op: "add", path: "/case_bookings/-", value: { title: "maps" } }])).error)
+        .toEqual({ code: 400, message: "/case_bookings/-: Unknown field: colour" });
+      expect(Object.keys(await bookings())).toEqual(["1"]);
+    });
+
+    test("an undo or a redo is never shaped: each puts back what was recorded", async () => {
+      expect((await write("case-desk:1", [{ op: "remove", path: "/case_bookings/1" }])).error).toBeUndefined();
+      expect((await sendAndAwait(up.ws, me, { action: "undo", cursor: "desk" })).error).toBeUndefined();
+      expect((await bookings())["1"].ends).toBe("2026-01-15T09:00:00+00:00");
+      const r = await write("case-desk:1", [{ op: "add", path: "/case_bookings/-", value: { title: "maps" } }]);
+      const id = String(r.result.ops[0].value.id);
+      const ends = (await bookings())[id].ends;
+      expect((await sendAndAwait(up.ws, me, { action: "undo", cursor: "desk" })).error).toBeUndefined();
+      expect((await bookings())[id]).toBeUndefined();
+      await Bun.sleep(5);
+      expect((await sendAndAwait(up.ws, me, { action: "redo", cursor: "desk" })).error).toBeUndefined();
+      expect((await bookings())[id].ends).toBe(ends);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // A log and its entries: a time only the server sets
 // ---------------------------------------------------------------------------
 
-/** Does the op give an entry's time: its field, or a row's value that names it? */
-const givesTime = (op: { path: string; value?: unknown }) =>
-  op.path.endsWith("/at") || (typeof op.value === "object" && op.value !== null && "at" in op.value);
-
 /**
- * A log's entries, each written `at` the server's time (`default: "now"`), and the log's rule
- * refusing a time a client sends: the entries keep versions, so a replace is a new version.
+ * A log's entries, each written `at` the server's time (`default: "now"`): the entries keep
+ * versions, so a replace is a new version; on the ledger, so a walk is asked too.
  */
 export const stampedApp: CaseApp = {
   schema: defineSchema({
@@ -357,19 +467,25 @@ export const stampedApp: CaseApp = {
       parent: { collection: "case_logs", fk: "case_logs_id" },
     },
   }),
-  docs: [defineDoc("case-log:", { root: "case_logs", include: ["case_entries"], accept: (op) => !givesTime(op) || "The server sets the time" })],
+  docs: [defineDoc("case-log:", { root: "case_logs", include: ["case_entries"] })],
   seed: {
     tables: {
       case_logs: [{ id: 1, title: "day" }],
       case_entries: [{ id: 1, case_logs_id: 1, text: "kept", at: "2026-01-01T09:00:00Z", valid_from: "2026-01-01T00:00:00.000Z", valid_to: null }],
     },
   },
+  ledger: true,
 };
+
+/** delta's words for a time only the server sets, named by a write. */
+const serverSets = (path: string) => `${path}: at is set by the server as the row is written (default: "now"): leave it out`;
 
 /**
  * A time only the server sets (`default: "now"`), the same on every backend: a row a write makes
  * that leaves it out takes the server's time as it is written, in UTC to the millisecond, one time
- * for every row of the write; a replace of the row whole that leaves it out keeps the row's own.
+ * for every row of the write; a write that names it is refused (400), in delta's words; a replace of
+ * the row whole that leaves it out keeps the row's own; and a walk, which is no write, puts back the
+ * time the row had, as rows imported keep theirs.
  */
 export function serverTimeCases(backend: CaseBackend): void {
   describe('a time only the server sets (default: "now")', () => {
@@ -377,10 +493,10 @@ export function serverTimeCases(backend: CaseBackend): void {
     beforeEach(async () => { up = await backend(stampedApp); });
     afterEach(async () => { await up.end(); });
 
+    const me = mockClient({ local: true });
     const write = async (ops: unknown[]) => {
-      const c = mockClient();
-      await sendAndAwait(up.ws, c, { action: "open", doc: "case-log:1" });
-      return sendAndAwait(up.ws, c, { action: "delta", doc: "case-log:1", ops });
+      await sendAndAwait(up.ws, me, { action: "open", doc: "case-log:1" });
+      return sendAndAwait(up.ws, me, { action: "delta", doc: "case-log:1", cursor: "stamp", ops });
     };
     const entries = async () => (await fresh(up.ws, "case-log:1")).case_entries;
     const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?\+00:00$/;
@@ -402,16 +518,35 @@ export function serverTimeCases(backend: CaseBackend): void {
       expect(Date.parse(at)).toBeLessThanOrEqual(after + 5000);
     });
 
-    test("a time the client sends is the document's rule to refuse", async () => {
-      expect((await write([{ op: "add", path: "/case_entries/-", value: { text: "late", at: "2020-01-01T00:00:00Z" } }])).error).toEqual({ code: 400, message: "The server sets the time" });
-      expect((await write([{ op: "replace", path: "/case_entries/1/at", value: "2020-01-01T00:00:00Z" }])).error).toEqual({ code: 400, message: "The server sets the time" });
-      expect((await entries())["1"].at).toBe("2026-01-01T09:00:00+00:00");
+    test("a write that names it is refused, 400, in delta's words, and nothing changes", async () => {
+      expect((await write([{ op: "add", path: "/case_entries/-", value: { text: "late", at: "2020-01-01T00:00:00Z" } }])).error)
+        .toEqual({ code: 400, message: serverSets("/case_entries/-/at") });
+      expect((await write([{ op: "replace", path: "/case_entries/1/at", value: "2020-01-01T00:00:00Z" }])).error)
+        .toEqual({ code: 400, message: serverSets("/case_entries/1/at") });
+      expect((await write([{ op: "replace", path: "/case_entries/1", value: { text: "changed", at: "2026-01-01T09:00:00Z" } }])).error)
+        .toEqual({ code: 400, message: serverSets("/case_entries/1/at") });
+      // a batch with one such op writes nothing of the rest
+      expect((await write([
+        { op: "add", path: "/case_entries/-", value: { text: "fine" } },
+        { op: "replace", path: "/case_entries/1/at", value: null },
+      ])).error).toEqual({ code: 400, message: serverSets("/case_entries/1/at") });
+      expect(Object.values(await entries())).toEqual([{ id: 1, case_logs_id: 1, text: "kept", at: "2026-01-01T09:00:00+00:00" }]);
     });
 
     test("a replace of the row whole that leaves it out keeps the row's own time", async () => {
       const r = await write([{ op: "replace", path: "/case_entries/1", value: { text: "changed" } }]);
       expect(r.error).toBeUndefined();
       expect((await entries())["1"]).toEqual({ id: 1, case_logs_id: 1, text: "changed", at: "2026-01-01T09:00:00+00:00" });
+    });
+
+    test("a walk is no write: an undo puts the row back with the time it had", async () => {
+      expect((await write([{ op: "remove", path: "/case_entries/1" }])).error).toBeUndefined();
+      expect((await entries())["1"]).toBeUndefined();
+      expect((await sendAndAwait(up.ws, me, { action: "undo", cursor: "stamp" })).error).toBeUndefined();
+      expect((await entries())["1"]).toEqual({ id: 1, case_logs_id: 1, text: "kept", at: "2026-01-01T09:00:00+00:00" });
+      expect((await sendAndAwait(up.ws, me, { action: "redo", cursor: "stamp" })).error).toBeUndefined();
+      expect((await sendAndAwait(up.ws, me, { action: "undo", cursor: "stamp" })).error).toBeUndefined();
+      expect((await entries())["1"].at).toBe("2026-01-01T09:00:00+00:00");
     });
   });
 }

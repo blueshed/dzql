@@ -1,6 +1,6 @@
 /** What a write may say (`validateOps`): its paths, collections, fields and values, against the schema. */
 import { joinPath, splitPath, type DeltaOp } from "../../core";
-import { holdsField, isIsoTime, type ColumnDef, type DocDef, type ResolvedTable, type Schema, type ValidationError } from "../../schema";
+import { holdsField, isIsoTime, isServerTime, type ColumnDef, type DocDef, type ResolvedTable, type Schema, type ValidationError } from "../../schema";
 import { pastSafeId, rowId, sameId } from "../scope";
 
 /**
@@ -44,6 +44,9 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
     // a walk puts a row back as it was stored: a column this version does not declare, but the table has, too
     let others: Set<string> | undefined;
     const storedOnly = (k: string) => !!opts.walk && !!opts.stored && (others ??= new Set(opts.stored(table))).has(k);
+    // A time only the server sets (`default: "now"`), named by a write: refused, alone -- a walk puts back what the row had
+    const serverSet = (k: string) => !opts.walk && columnOf(k) !== undefined && isServerTime(columnOf(k)!) && held(k);
+    const setByServer = (at: string, field: string) => errors.push({ path: at, message: serverSets(field) });
     const isKnownKey = (k: string) => ((k === "id" || k === fkCol || columnOf(k) !== undefined) && held(k)) || storedOnly(k);
     // A field's value: a column's by its type; the parent key's as a key (the row moves).
     const fieldErr = (field: string, value: unknown): string | null => {
@@ -84,6 +87,7 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
         continue;
       }
       const fields = Object.keys(value).sort();   // each kind of refusal by name, as Postgres can say them
+      if (fields.some(serverSet)) { for (const f of fields.filter(serverSet)) setByServer(`${op.path}/${f}`, f); continue; }
       for (const key of fields) {
         if (!isKnownKey(key)) errors.push({ path: op.path, message: `Unknown field: ${key}` });
       }
@@ -112,6 +116,7 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
         errors.push({ path: op.path, message: `Unknown field: ${field}` });
         continue;
       }
+      if (serverSet(field)) { setByServer(op.path, field); continue; }
       const typeErr = fieldErr(field, (op as any).value);
       if (typeErr) errors.push({ path: op.path, message: typeErr });
       continue;
@@ -152,6 +157,7 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
       // fields there are not, each value not as it may be written, each required
       // field left out -- each kind by name (jsonb keeps no value's own order).
       const fields = Object.keys(value).sort();
+      if (fields.some(serverSet)) { for (const f of fields.filter(serverSet)) setByServer(`${op.path}/${f}`, f); continue; }
       for (const key of fields) {
         if (!isKnownKey(key)) errors.push({ path: op.path, message: `Unknown field: ${key}` });
       }
@@ -174,6 +180,7 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
         errors.push({ path: op.path, message: `Unknown field: ${field}` });
         continue;
       }
+      if (serverSet(field)) { setByServer(op.path, field); continue; }
       const typeErr = fieldErr(field, (op as any).value);
       if (typeErr) errors.push({ path: op.path, message: typeErr });
     }
@@ -181,6 +188,9 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
 
   return errors;
 }
+
+/** A time only the server sets, named by a write: in delta's words, as Postgres's `_delta_server_set` says it. */
+export const serverSets = (field: string) => `${field} is set by the server as the row is written (default: "now"): leave it out`;
 
 /**
  * Does `/<root>/<segment>` name a single document's root row, not a field of

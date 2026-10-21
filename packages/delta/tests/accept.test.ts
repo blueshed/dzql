@@ -16,11 +16,13 @@ import { auth, type Me } from "@blueshed/delta/testing";
 setLogLevel("silent");
 
 const ADMIN = 1;
-const schema = defineSchema({ notes: { columns: { text: "text" } } });
+const schema = defineSchema({ notes: { columns: { text: "text", by: "integer?" } } });
 const docs = [defineDoc("board:", {
   root: "notes",
   include: [],
   accept: (op, { who }) => op.op === "remove" ? "A note stays: it is never removed" : (who as Me | undefined)?.id === ADMIN || "Only an admin writes the board",
+  // and the server signs each note with who wrote it (shape), told the writer as accept is
+  shape: (op, { who }) => (op.op === "add" ? { ...op, value: { ...(op.value as object), by: (who as Me).id } } : op),
 })];
 
 for (const [name, register] of [
@@ -47,6 +49,7 @@ for (const [name, register] of [
       expect((await admin.call("delta", { doc: "board:", cursor: "admin", ops: [{ op: "add", path: "/notes/-", value: { text: "lights off" } }] })).error).toBeUndefined();
       const texts = async () => Object.values((await bo.call("open", { doc: "board:" })).result.notes as Record<string, { text: string }>).map((n) => n.text);
       expect(await texts()).toEqual(["keys at the desk", "lights off"]);
+      expect(Object.values((await bo.call("open", { doc: "board:" })).result.notes as Record<string, { by: number }>).map((n) => n.by)).toEqual([ADMIN, ADMIN]);
       expect((await admin.call("delta", { doc: "board:", cursor: "admin", ops: [{ op: "remove", path: "/notes/1" }] })).error).toEqual({ code: 400, message: "A note stays: it is never removed" });
       // the admin's undo removes what it added, and the rule is not asked of it: it puts back what was
       expect((await admin.call("undo", { cursor: "admin" })).error).toBeUndefined();

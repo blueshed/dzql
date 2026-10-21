@@ -17,7 +17,7 @@ import { trackSubscribe, trackUnsubscribe, onClientDrop } from "@blueshed/delta/
 import { createLogger } from "@blueshed/delta/logger";
 import type { Pool, PoolClient } from "pg";
 import { callAs, docTypes, showAnswer } from "./registry";
-import { refusedBy, showDoc, showOps, type DocDef, type Schema } from "@blueshed/delta/backend";
+import { refusedBy, shapedBy, showDoc, showOps, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { resolveScope } from "@blueshed/delta/backend";
 import type { DocType } from "./registry";
 import type { DeltaAuth } from "@blueshed/delta/auth";
@@ -679,10 +679,16 @@ export async function createDocListener<I = unknown>(
     // the document's own rule (accept), asked of each op before any is applied, as SQLite asks it
     const refused = type.def ? refusedBy(type.def, docName, msg.ops as DeltaOp[], identity) : undefined;
     if (refused !== undefined) return respond({ error: { code: 400, message: refused } });
+    // ... then what the server makes of it (shape), validated by delta_apply as any write is
+    let ops = msg.ops as DeltaOp[];
+    if (type.def?.shape) {
+      try { ops = shapedBy(type.def, docName, ops, identity); }
+      catch (err) { log.error(`shape ${docName} failed: ${errMsg(err)}`); return respond({ error: { code: wireCode(err), message: errMsg(err) } }); }
+    }
     const writer = writerOf(identity, client);
     const kept = onLedger(type.prefix);
     const by = kept ? { who: whoOf(writer), cursor: cursorOf(msg, client, writer), undoable: msg.undoable !== false } : undefined;
-    const result = shownAnswer(type.def, await type.apply(ctx, docName, msg.ops, identity, by, declared));
+    const result = shownAnswer(type.def, await type.apply(ctx, docName, ops, identity, by, declared));
     respond({ result: kept ? { ack: true, version: Number(result.version), ops: result.ops, inverse: result.inverse, entry: result.entry == null ? undefined : Number(result.entry) } : { ack: true, version: Number(result.version), ...(msg.inverse ? { ops: result.ops } : {}) } });
     log.info(`delta ${docName} v${result.version}`);
   }));

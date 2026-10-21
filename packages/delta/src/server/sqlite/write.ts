@@ -16,7 +16,7 @@ import { type DeltaOp, splitPath, joinPath, changedFields } from "../../core";
 import { createLogger } from "../logger";
 import { rowAt, type Ledger } from "../ledger";
 import { meets, resolveScope, rowId, sameId, type Scope } from "../scope";
-import { hangsFrom, holdsField, isServerTime, q, refusedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { hangsFrom, holdsField, isServerTime, q, refusedBy, shapedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { keeping, scopeValue } from "./keep";
 import { impliedDoc, readDoc } from "./read";
 import { carryUndeclared, closeRow, columnsOf, undeclaredColumns, undeclaredOf, current, decodeRow, insertCollectionRow, insertRow, leftOut, named, now, refuse, sqliteTime, updateRow } from "./rows";
@@ -762,6 +762,11 @@ export function createWriter<I>(r: Registration<I>) {
     // the document's own rule, asked of a fresh write (never a walk: it puts back what was taken)
     const refused = by.undoes === undefined ? refusedBy(def, docName, ops, by.as) : undefined;
     if (refused !== undefined) return { error: { code: 400, message: refused } };
+    // ... and what the server makes of it (`shape`), then validated as any write is: what is applied is what is told and recorded
+    if (by.undoes === undefined && def.shape) {
+      try { ops = shapedBy(def, docName, ops, by.as); }
+      catch (err: any) { log.error(`delta shape failed: ${err?.message ?? err}`); return { error: failure(err) }; }
+    }
 
     let snapshot = structuredClone(doc); // for rollback, and for the inverse
     spent.length = 0;

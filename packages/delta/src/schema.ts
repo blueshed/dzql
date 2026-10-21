@@ -122,10 +122,32 @@ export interface DocDef {
    * changes. An undo or a redo is not asked: it puts back what was taken. Every backend asks it.
    */
   accept?: Accept;
+  /**
+   * What the server makes of a write as it is written: asked of each op of a fresh write, after
+   * `accept` has taken it, with the writer (`who`, as `accept` is told). It answers the op to
+   * apply in its place -- an add's value with a field filled ("a booking ends two weeks from its own
+   * day") -- which is then validated as any write is, applied, told and recorded: what is
+   * stored is what the server gave. An undo or a redo is never shaped: it puts back what was.
+   * Every backend asks it (dzql's thin client has the same hook, `Resource.shape`, for a page's writes).
+   */
+  shape?: Shape;
 }
 
 /** A document's own rule (`DocDef.accept`): `true` takes the op; `false` or a reason refuses the write. */
 export type Accept = (op: DeltaOp, by: { doc: string; who?: unknown }) => boolean | string;
+
+/** What the server makes of an op as it is written (`DocDef.shape`): the op to apply in its place. */
+export type Shape = (op: DeltaOp, by: { doc: string; who?: unknown }) => DeltaOp;
+
+/**
+ * A fresh write as the document's `shape` makes it, op by op, in order (asked after `accept`,
+ * before the ops are validated), as every backend asks it; each op is given as a copy, so a shape
+ * may change it. The write as sent where there is none.
+ */
+export function shapedBy(def: DocDef, doc: string, ops: DeltaOp[], who?: unknown): DeltaOp[] {
+  if (!def.shape) return ops;
+  return ops.map((op) => def.shape!(structuredClone(op), { doc, who }));
+}
 
 /** The refusal a document's rule gives a write (400), or none: each op asked before any is applied, as every backend asks it. */
 export function refusedBy(def: DocDef, doc: string, ops: DeltaOp[], who?: unknown): string | undefined {
@@ -320,7 +342,7 @@ export function defaultForType(type: ColumnType): unknown {
 
 export function defineDoc(
   prefix: string,
-  opts: { root: string; include: string[]; scope?: Record<string, string>; implied?: boolean; columns?: Record<string, string[]>; owns?: string; accept?: Accept },
+  opts: { root: string; include: string[]; scope?: Record<string, string>; implied?: boolean; columns?: Record<string, string[]>; owns?: string; accept?: Accept; shape?: Shape },
 ): DocDef {
   if (!DOC_PREFIX.test(prefix)) {
     throw new Error(
@@ -344,6 +366,7 @@ export function defineDoc(
     ...(opts.columns && Object.keys(opts.columns).length ? { columns: opts.columns } : {}),
     ...(opts.owns !== undefined ? { owns: ownsPath(prefix, opts.owns) } : {}),
     ...(opts.accept ? { accept: opts.accept } : {}),
+    ...(opts.shape ? { shape: opts.shape } : {}),
   };
 }
 

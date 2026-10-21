@@ -497,6 +497,8 @@ BEGIN
         END IF;
         v_op := jsonb_set(v_op, '{value}', jsonb_build_object(v_parts[2], v_op->'value'));
       END IF;
+      -- a time only the server sets, named by a fresh write, is refused for that alone
+      IF NOT COALESCE(p_walk, FALSE) THEN PERFORM _delta_server_set(v_cols, v_op->'value', v_op->>'path', array_length(v_parts, 1) = 2); END IF;
       PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 2,
         CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_missing(v_cols, v_op->'value', v_op->>'path') END);
       v_blank := CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_whole(v_cols) ELSE '{}'::jsonb END;
@@ -571,6 +573,7 @@ BEGIN
       IF v_id_text ~ '^[0-9]+$' THEN
         v_id := _delta_row_id(v_coll_key, v_id_text, v_op->>'path');
       END IF;
+      IF NOT COALESCE(p_walk, FALSE) THEN PERFORM _delta_server_set(v_cols, v_op->'value', v_op->>'path', FALSE); END IF;
       PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', TRUE, FALSE,
         _delta_missing(_delta_cols(v_coll_key, v_coll.columns_def),
           CASE WHEN v_is_list AND v_coll_key = v_def.root_collection
@@ -784,6 +787,7 @@ BEGIN
         END IF;
         v_op := jsonb_set(v_op, '{value}', jsonb_build_object(v_parts[3], v_op->'value'));
       END IF;
+      IF NOT COALESCE(p_walk, FALSE) THEN PERFORM _delta_server_set(v_cols, v_op->'value', v_op->>'path', array_length(v_parts, 1) = 3); END IF;
       PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 3,
         CASE WHEN array_length(v_parts, 1) = 2 THEN _delta_missing(v_cols, v_op->'value', v_op->>'path') END);
       v_blank := CASE WHEN array_length(v_parts, 1) = 2 THEN _delta_whole(v_cols) ELSE '{}'::jsonb END;
