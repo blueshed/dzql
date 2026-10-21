@@ -151,7 +151,7 @@ export interface Field {
   name: string;
   label: string;
   placeholder?: string;
-  type?: "text" | "email" | "number" | "date" | "url";
+  type?: "text" | "email" | "number" | "date" | "url" | "file";
   options?: { value: string; text: string }[];
   required?: boolean;
   value?: string;
@@ -585,11 +585,12 @@ export function bento(o: { undo?: Act; redo?: Act; leave?: { text: string; icon:
     );
   }
 
-  /** Adding a thing: the few fields it needs; `add` is given what was typed, by each field's name. */
-  function addModal(title: string, fields: Field[], add: (values: Record<string, string>) => void, close: Act, verb = "Add", told?: Node): Node {
+  /** Adding a thing: the few fields it needs; `add` is given what was typed, by each field's name, and the form's data (a file chosen is there). */
+  function addModal(title: string, fields: Field[], add: (values: Record<string, string>, form: FormData) => void, close: Act, verb = "Add", told?: Node): Node {
     const submit = (event: Event) => {
       event.preventDefault();
-      add(Object.fromEntries([...new FormData(event.currentTarget as HTMLFormElement)].map(([k, v]) => [k, String(v)])));
+      const form = new FormData(event.currentTarget as HTMLFormElement);
+      add(Object.fromEntries([...form].map(([k, v]) => [k, String(v)])), form);
     };
     return modal(
       title,

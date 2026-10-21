@@ -20,7 +20,7 @@ export async function startServer({
   // The documents, on one WebSocket: a page that opens one is subscribed to every change
   const ws = createWs();
   closing.push((await messageDoc(ws, dataDir)).persisted); // its last change in the file before the server is done
-  await orderDocs(ws, dataDir);
+  closing.push(await orderDocs(ws, dataDir)); // the database closed once the server stops
 
   return serve(
     {

@@ -10,6 +10,7 @@ export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
 export type Catalogue = { items: Record<string, Item> };
 export type Order = { lines: Record<string, Line> };
+export type Orders = { orders: Record<string, { id: number }> };
 /** What `kitchen:` holds: every order, and every line, each naming its order. */
 export type Kitchen = { orders: Record<string, { id: number }>; lines: Record<string, Line & { orders_id: number }> };
 
@@ -22,6 +23,7 @@ export const schema = defineSchema({
 export const docs = [
   defineDoc("catalogue:", { root: "items", include: [] }), // every item
   defineDoc("order:", { root: "orders", include: ["lines"], implied: true }), // order:1 is order 1 and its lines
+  defineDoc("orders:", { root: "orders", include: [] }), // every order's number: a page takes the next for its own
   defineDoc("kitchen:", { root: "orders", include: ["lines"] }), // every order, and every line
 ];
 
@@ -36,4 +38,5 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
   const file = `${dataDir}/order.json`;
   if (!db.query("SELECT 1 FROM items").get()) importTables(db, schema, existsSync(file) ? exportTables(file, schema) : catalogue);
   registerDocs(ws, db, schema, docs, [], { ledger: true }); // undo, redo and history
+  return async () => db.close(); // for the server to close as it stops
 }

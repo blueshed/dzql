@@ -63,6 +63,31 @@ section up.
 
 ### Fixed
 
+- **The migration's `up` keeps people's orders as they were** (21 October, the evolve evaluations'
+  round 3, finding 1). evolve's `references/migrations.md` counted every version of a line, so a
+  Tea taken off was counted back on, and its `DELETE` erased the history the temporal table keeps.
+  The `up` now counts only live lines (`current_lines`) and closes the lines it folds
+  (`valid_to` set), as delta closes a row; its test holds a Tea taken off, and every row kept. The
+  page says it once: an `up` on a temporal table reads and writes only live versions, and closes
+  rather than deletes. The orders fixture's `data/app.db` holds a line taken off, so the trap is in
+  scenario 4, and its README says how it is made. **To move across**: a migration that has run is never
+  edited. An app whose `up` was copied from the old page, and has not run anywhere, takes the new
+  one; one that has run lost its closed lines, which only a backup from before it holds.
+- **The page counts on the line once an order counts** (21 October, round 3, finding 2):
+  `migrations.md` said the page stayed as it was, and then a second Tea made a second line. Add now
+  puts one more on the item's line and × takes one off, each line saying how many, in your order
+  and in the kitchen; a browser test counts (`tests/order-count.test.ts`). One line says the limit:
+  a quantity read and written back is right for a document one person writes, like their order; a
+  count several people change at once is rows, never a number read and written back.
+- **The server waits for the last save, and closes the database** (21 October, round 3, finding
+  4). `document.md` and `two-documents.md` dropped the JSON file's `.persisted`, so a stopping
+  server might not finish writing the file; both push it onto `closing`, as the message does.
+  `sqlite.md`'s `orderDocs` returns the database's close, and `routes.ts` pushes that. **To move
+  across**: `closing.push((await notesDoc(ws, dataDir)).persisted)` in place of
+  `await notesDoc(ws, dataDir)`; on SQLite, return `async () => db.close()` and push it.
+- **The Undo test looks at the page** (21 October, round 3, finding 7): `sqlite.md`'s browser test
+  checks the Your order cell, as a person sees it, where it read the order's document.
+
 - **The step to Postgres takes every document, and its history moves without its `up`s** (20
   October, template #15 and #16, root #140). evolve's `references/postgres.md` now keeps every
   document in one store, `src/store.ts` (`appStore(ws)`, dzql's `openStore`), opened by
@@ -96,6 +121,19 @@ section up.
   commit, plainly.
 
 ### Added
+
+- **A customer has an order of their own** (21 October, the evolve evaluations' round 3, finding
+  5). `two-documents.md` gave everyone `order:1`. Before anyone signs in, the page keeps its
+  order's number (`localStorage`), and its first Add takes the next from the server (`add
+  /orders/-` on a new `orders:` document, `yourOrder()` in `order.ts`); once people sign in
+  (`auth.md`), an order is theirs by who they are. The ordering story and its test say it: your
+  order is there when you come back, and another window's is its own. `sqlite.md`, `postgres.md`
+  and the orders fixture carry `orders:`; the kitchen's tests no longer assume the page is on
+  order 1. The thin client keeps everyone on order 1, with its own order test (template #17, open).
+- **An upload is made in a modal** (21 October, round 3, finding 6). `http.md` has the page's view:
+  Upload beside the page's name opens `addModal` with a file field, and the Files cell keeps a link
+  to each file put, tested in the browser against the stand-in bucket. `addModal` takes `type:
+  "file"`, and hands `add` the form's data as a second argument.
 
 - **The thin-client step leaves the app as `bun create dzql` makes one** (20 October, root #130;
   needs dzql's next release, whose `openStore` takes several schemas): its `CLAUDE.md` and

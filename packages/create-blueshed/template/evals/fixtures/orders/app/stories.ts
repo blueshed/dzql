@@ -17,7 +17,7 @@ export const stories = {
     kitchen: story("The cook sees each open order: a line added to any order, or changed, reaches the kitchen."),
     undo: story("Undo takes back your last change, wherever it shows."),
     // The order
-    ordering: story("Someone ordering has the catalogue and their order on one page, with its total, and what one window orders shows in another."),
+    ordering: story("Someone ordering has the catalogue and an order of their own on one page, with its total, and finds it again when they come back."),
     // The message
     follows: story("Anyone who opens the page sees the message, and a change made anywhere else shows in it, with nothing to reload."),
     saves: story("Saving (the button, or Cmd+Enter or Ctrl+Enter in the box) says Saved once the server has it, and the message is still there after a reload."),

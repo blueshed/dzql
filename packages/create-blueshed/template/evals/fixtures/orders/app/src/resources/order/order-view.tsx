@@ -1,15 +1,16 @@
 import { joinPath, type DeltaOp } from "@blueshed/delta/core";
+import { computed } from "@blueshed/railroad";
 import { Plus, X } from "lucide";
 import { bento, rowsOf } from "../bento";
 import { toast } from "../toast";
-import { catalogue, kitchen, order } from "./order";
+import { catalogue, kitchen, order, yourOrder } from "./order";
 
 const { cell, row, tool } = bento();
 const items = catalogue.data.map((c) => Object.values(c?.items ?? {}));
-const lines = order.data.map((o) => Object.values(o?.lines ?? {}));
+const lines = computed(() => Object.values(order.get()?.data.get()?.lines ?? {}));
 const item = (id: number) => catalogue.data.get()?.items[id];
 const money = (n: number) => n.toFixed(2);
-const change = (ops: DeltaOp[]) => order.send(ops).catch(() => toast("Not saved", "alert"));
+const change = (ops: DeltaOp[]) => yourOrder().then((o) => o.send(ops)).catch(() => toast("Not saved", "alert"));
 
 /** The catalogue on the box: each item, its price, and Add, which puts a line on your order. */
 export function CatalogueCell() {
