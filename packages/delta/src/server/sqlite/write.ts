@@ -694,8 +694,39 @@ export function createWriter<I>(r: Registration<I>) {
       }
     }
     endRun();
+    refsHold(touched);
 
     return { applied: broadcastOps, touched, beyond, stored };
+  }
+
+  /**
+   * The columns that name a row of another collection (`refs`), asked once the write is done, so
+   * it may take a row and what names it away together, in either order: each row the write left
+   * naming a row it did not name before names one there (404); each row the write took away is
+   * named by no current row (409, saying who names it). A walk is held to it as any write is.
+   * `_delta_refs_hold` asks the same on Postgres.
+   */
+  function refsHold(touched: Touched[]): void {
+    const first = new Map<string, Touched>();   // each row the write changed, by its first touch: what it was before
+    for (const t of touched) if (!t.carried && !first.has(`${t.coll}/${t.id}`)) first.set(`${t.coll}/${t.id}`, t);
+    for (const t of first.values()) {
+      const table = schema.tables[t.coll];
+      if (!table?.refs && !table?.namedBy) continue;
+      const now = readRow(table, t.id);
+      if (now) {
+        for (const ref of table.refs ?? []) {
+          const v = now[ref.column];
+          if (v == null || (t.was && JSON.stringify(t.was[ref.column] ?? null) === JSON.stringify(v))) continue;
+          if (!readRow(schema.tables[ref.collection]!, v)) refuse(404, `Row not found: ${ref.collection}/${v} -- ${t.coll}/${t.id}'s ${ref.column} names it`);
+        }
+      } else {
+        for (const by of table.namedBy ?? []) {
+          const namer = schema.tables[by.collection]!;
+          const one = db.query(`SELECT id FROM ${current(namer)} WHERE ${q(by.column)} = ? ORDER BY id LIMIT 1`).get(t.id as any) as { id: unknown } | null;
+          if (one) refuse(409, `Still named: ${t.coll}/${t.id} is ${by.collection}/${one.id}'s ${by.column} -- change or remove that first`);
+        }
+      }
+    }
   }
 
   /**

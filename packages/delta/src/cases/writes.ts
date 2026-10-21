@@ -13,6 +13,7 @@
  *   uniqueCases(standUp);
  *   acceptCases(standUp);
  *   shapeCases(standUp);
+ *   refsCases(standUp);
  *   serverTimeCases(standUp);
  *
  * where `standUp({ schema, docs, seed })` makes a fresh store with that
@@ -673,6 +674,130 @@ export function uniqueCases(backend: CaseBackend): void {
       expect((await write("case-reader:1", [{ op: "remove", path: "/case_holds/1" }])).error).toBeUndefined();
       expect((await write("case-reader:2", [{ op: "add", path: "/case_holds/-", value: { book: 1 } }])).error).toBeUndefined();
       expect(await holds(2)).toEqual([{ book: 1, open: true }]);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// A cinema: a column that names a row of another collection (refs)
+// ---------------------------------------------------------------------------
+
+/**
+ * Screens and their showings, each showing naming a film (`refs`), and perhaps an usher: the films
+ * keep no versions, the showings and ushers do. Films and ushers are lists of their own.
+ */
+export const cinemaApp: CaseApp = {
+  schema: defineSchema({
+    case_films: { columns: { name: "text" }, temporal: false },
+    case_ushers: { columns: { name: "text" } },
+    case_screens: { columns: { name: "text" }, temporal: false },
+    case_showings: {
+      columns: { film: "integer", usher: "integer?" },
+      parent: { collection: "case_screens", fk: "case_screens_id" },
+      refs: { film: "case_films", usher: "case_ushers" },
+    },
+  }),
+  docs: [
+    defineDoc("case-films:", { root: "case_films", include: [] }),
+    defineDoc("case-ushers:", { root: "case_ushers", include: [] }),
+    defineDoc("case-screen:", { root: "case_screens", include: ["case_showings"] }),
+    defineDoc("case-program:", { root: "case_films", include: ["case_showings"] }),
+  ],
+  seed: {
+    tables: {
+      case_films: [{ id: 1, name: "metropolis" }, { id: 2, name: "vertigo" }],
+      case_ushers: [{ id: 1, name: "ida", valid_from: "2026-01-01T00:00:00.000Z", valid_to: null }],
+      case_screens: [{ id: 1, name: "one" }, { id: 2, name: "two" }],
+      case_showings: [{ id: 1, case_screens_id: 1, film: 1, usher: 1, valid_from: "2026-01-01T00:00:00.000Z", valid_to: null }],
+    },
+  },
+  ledger: true,
+};
+
+/**
+ * A column that names a row of another collection (`refs`), the same on every backend, asked at the
+ * end of the write: a write that leaves it naming a row not there is refused, 404; one that takes away
+ * a row a current row still names, 409, saying who names it; a closed version names nothing; and a
+ * walk is held to it as any write is.
+ */
+export function refsCases(backend: CaseBackend): void {
+  describe("a column that names a row of another collection (refs)", () => {
+    let up: Awaited<ReturnType<CaseBackend>>;
+    beforeEach(async () => { up = await backend(cinemaApp); });
+    afterEach(async () => { await up.end(); });
+
+    const write = async (doc: string, ops: unknown[], cursor = "box") => {
+      const c = mockClient({ local: true });
+      await sendAndAwait(up.ws, c, { action: "open", doc });
+      return sendAndAwait(up.ws, c, { action: "delta", doc, cursor, ops });
+    };
+    const films = async () => Object.keys((await fresh(up.ws, "case-films:")).case_films);
+    const showings = async () => Object.values((await fresh(up.ws, "case-screen:1")).case_showings ?? {}).map((s: any) => [s.id, s.film, s.usher]);
+
+    test("a write that names a row not there is refused, 404, and nothing changes", async () => {
+      expect((await write("case-screen:1", [{ op: "add", path: "/case_showings/-", value: { film: 99 } }])).error)
+        .toEqual({ code: 404, message: "Row not found: case_films/99 -- case_showings/2's film names it" });
+      expect((await write("case-screen:1", [{ op: "replace", path: "/case_showings/1/film", value: 99 }])).error)
+        .toEqual({ code: 404, message: "Row not found: case_films/99 -- case_showings/1's film names it" });
+      expect((await write("case-screen:1", [{ op: "replace", path: "/case_showings/1", value: { film: 2, usher: 7 } }])).error)
+        .toEqual({ code: 404, message: "Row not found: case_ushers/7 -- case_showings/1's usher names it" });
+      expect(await showings()).toEqual([[1, 1, 1]]);
+      // a row it names that is there, or none (null), is written
+      expect((await write("case-screen:1", [{ op: "add", path: "/case_showings/-", value: { film: 2, usher: null } }])).error).toBeUndefined();
+      expect((await showings()).length).toBe(2);
+    });
+
+    test("a row a current row still names is not removed, 409, saying who names it", async () => {
+      expect((await write("case-films:", [{ op: "remove", path: "/case_films/1" }])).error)
+        .toEqual({ code: 409, message: "Still named: case_films/1 is case_showings/1's film -- change or remove that first" });
+      expect((await write("case-ushers:", [{ op: "remove", path: "/case_ushers/1" }])).error)
+        .toEqual({ code: 409, message: "Still named: case_ushers/1 is case_showings/1's usher -- change or remove that first" });
+      expect(await films()).toEqual(["1", "2"]);
+    });
+
+    test("a write may take both away together, in any order, and a removal takes what it cascades to", async () => {
+      expect((await write("case-films:", [{ op: "remove", path: "/case_films/2" }])).error).toBeUndefined();   // named by none
+      // the film first, then the showing that names it: asked once the write is done
+      expect((await write("case-program:", [
+        { op: "remove", path: "/case_films/1" },
+        { op: "remove", path: "/case_showings/1" },
+      ])).error).toBeUndefined();
+      expect(await films()).toEqual([]);
+      expect((await write("case-films:", [{ op: "add", path: "/case_films/7", value: { name: "ran" } }])).error).toBeUndefined();
+      expect((await write("case-screen:2", [{ op: "add", path: "/case_showings/-", value: { film: 7 } }])).error).toBeUndefined();
+      expect((await write("case-films:", [{ op: "remove", path: "/case_films/7" }])).error?.code).toBe(409);
+      // a screen removed takes its showings with it: the film they named is free
+      expect((await write("case-screen:2", [{ op: "remove", path: "/case_screens/2" }])).error).toBeUndefined();
+      expect((await write("case-films:", [{ op: "remove", path: "/case_films/7" }])).error).toBeUndefined();
+    });
+
+    test("a closed version names nothing: a showing moved to another film, or removed, frees the one it named", async () => {
+      expect((await write("case-screen:1", [{ op: "replace", path: "/case_showings/1/film", value: 2 }])).error).toBeUndefined();
+      expect((await write("case-films:", [{ op: "remove", path: "/case_films/1" }])).error).toBeUndefined();
+      expect((await write("case-screen:1", [{ op: "remove", path: "/case_showings/1" }])).error).toBeUndefined();
+      expect((await write("case-ushers:", [{ op: "remove", path: "/case_ushers/1" }])).error).toBeUndefined();
+      // and a row whose version is closed is not there to name
+      expect((await write("case-screen:1", [{ op: "add", path: "/case_showings/-", value: { film: 2, usher: 1 } }])).error)
+        .toEqual({ code: 404, message: "Row not found: case_ushers/1 -- case_showings/2's usher names it" });
+    });
+
+    test("a walk is held to it as any write is", async () => {
+      // the film and its showing taken away together, and put back together by an undo
+      expect((await write("case-screen:1", [{ op: "remove", path: "/case_showings/1" }], "both")).error).toBeUndefined();
+      expect((await write("case-films:", [{ op: "remove", path: "/case_films/1" }], "both")).error).toBeUndefined();
+      const local = mockClient({ local: true });
+      expect((await sendAndAwait(up.ws, local, { action: "undo", cursor: "both" })).error).toBeUndefined();
+      expect((await sendAndAwait(up.ws, local, { action: "undo", cursor: "both" })).error).toBeUndefined();
+      expect(await showings()).toEqual([[1, 1, 1]]);
+      // a film made, then named by another's showing: undoing its making would leave the showing naming nothing
+      const made = await write("case-films:", [{ op: "add", path: "/case_films/-", value: { name: "ran" } }], "maker");
+      const id = made.result.ops[0].value.id;
+      expect((await write("case-screen:1", [{ op: "add", path: "/case_showings/-", value: { film: id } }], "other")).error).toBeUndefined();
+      const undone = await sendAndAwait(up.ws, local, { action: "undo", cursor: "maker" });
+      // refused by the store, it is walked as a conflict: nothing changes
+      expect(undone.error).toBeUndefined();
+      expect(undone.result.conflict).toEqual([`/case_films/${id}`]);
+      expect(await films()).toContain(String(id));
     });
   });
 }

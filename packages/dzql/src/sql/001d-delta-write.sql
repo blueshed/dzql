@@ -191,6 +191,17 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- _delta_refs_hold: the columns that name a row of another collection (delta's
+-- `refs`), asked once a write's ops are applied, of the rows it changed (its
+-- touches): each names a row there (P0002, 404), and none it took away is
+-- still named by a current row (23503, 409). generateSql writes it from the
+-- schema (compileRefs); before, no collection names another.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _delta_refs_hold(p_touched JSONB)
+RETURNS void LANGUAGE plpgsql STABLE AS $$ BEGIN NULL; END $$;
+
+-- ---------------------------------------------------------------------------
 -- _delta_assert_parent_held: a parent key written (in `p_value`, over the row
 -- as it is, `p_row`) moves the row, and only under a parent the document holds,
 -- as an add names one: through it, a row is never moved into another
@@ -877,6 +888,10 @@ BEGIN
 
     RAISE EXCEPTION '%: Invalid op: % %', v_op->>'path', v_op->>'op', v_op->>'path' USING ERRCODE = '22023';
   END LOOP;
+
+  -- what names a row of another collection (refs), once the ops are applied: so a write may take a
+  -- row and what names it away together, in either order (refsHold in delta's sqlite/write.ts)
+  PERFORM _delta_refs_hold(v_touched);
 
   -- Told: the writer's document and every other that holds a row changed,
   -- each what changed for it. The answer (and the ledger) keep the ops as

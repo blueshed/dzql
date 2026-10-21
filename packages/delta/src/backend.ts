@@ -8,7 +8,7 @@
  */
 export {
   defineDoc, defineSchema, defaultForType, holdsField, isIsoTime, isoTime, isServerTime, lastId, q, refusedBy, shapedBy, showDoc, showOps, showRow, uniqueIndexSql,
-  type Accept, type Shape, type ColumnDef, type ColumnShorthand, type ColumnType, type DocDef, type ResolvedTable, type ResolvedUnique, type Schema, type Snapshot,
+  type Accept, type Shape, type ColumnDef, type ColumnShorthand, type ColumnType, type DocDef, type ResolvedRef, type ResolvedTable, type ResolvedUnique, type Schema, type Snapshot,
   type TableDef, type UniqueDef, type ValidationError,
 } from "./schema";
 export { assertScopeKeys, pastSafeId, resolveScope, type Scope } from "./server/scope";

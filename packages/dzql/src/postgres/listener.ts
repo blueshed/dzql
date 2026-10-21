@@ -95,7 +95,8 @@ function errMsg(err: unknown, doc?: { name: string; owns?: string }): string {
  * op, 22P02 for a row id it could not mint, 22007 and 22008 for a time it
  * cannot read, and 23502 for an add that leaves out a required field (a
  * client's mistake, 400); P0002 for a row that is not
- * there (404); 23505 for an add of a row that is, and 40001 for an undo of an
+ * there (404); 23505 for an add of a row that is, 23503 for a removal of a row
+ * still named (`refs`), and 40001 for an undo of an
  * entry that is not the cursor's next (409). And 40P01, a write that met another
  * at once and gave way to it (two adds of temporal ids in opposite orders wait
  * on each other's row locks): nothing was written, and the same write
@@ -104,7 +105,7 @@ function errMsg(err: unknown, doc?: { name: string; owns?: string }): string {
  * read-only document's 403) is answered with it. Anything else is the
  * server's (500).
  */
-const CODE_OF_SQLSTATE: Record<string, number> = { "22023": 400, "22P02": 400, "22007": 400, "22008": 400, "23502": 400, "25006": 403, "42501": 403, P0002: 404, "23505": 409, "40001": 409, "40P01": 409 };
+const CODE_OF_SQLSTATE: Record<string, number> = { "22023": 400, "22P02": 400, "22007": 400, "22008": 400, "23502": 400, "25006": 403, "42501": 403, P0002: 404, "23503": 409, "23505": 409, "40001": 409, "40P01": 409 };
 function wireCode(err: unknown): number {
   const state = (err as { code?: unknown } | null)?.code;
   if (typeof state === "number" && state >= 400 && state < 500) return state;

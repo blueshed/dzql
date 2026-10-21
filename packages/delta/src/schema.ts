@@ -52,6 +52,14 @@ export interface TableDef {
    *  String = FK column name (collection derived by convention);
    *  object = explicit FK column + collection. */
   cascadeOn?: (string | { fk: string; collection: string })[];
+  /**
+   * Columns that name a row of another collection, by its key: `{ book: "books" }`. A write
+   * that names a row not there (a current one) is refused, 404; a row still named by a current
+   * row is not removed, 409, saying who names it -- on every backend, at the end of the write, so
+   * a write may take both away together. An integer column; null names nothing. A temporal
+   * row's closed versions name nothing. Rows imported are kept as they come.
+   */
+  refs?: Record<string, string>;
   /** Set to `false` to disable temporal versioning (valid_from/valid_to). Default: `true`. */
   temporal?: boolean;
   /**
@@ -93,6 +101,16 @@ export interface ResolvedTable {
   referencedBy: { collection: string; fkColumn: string }[];
   /** Its unique constraints (`TableDef.unique`); absent when it has none. */
   unique?: ResolvedUnique[];
+  /** The columns that name a row of another collection (`TableDef.refs`), by column; absent when none. */
+  refs?: ResolvedRef[];
+  /** Computed: the columns of other collections that name a row of this one, by collection then column; absent when none. */
+  namedBy?: ResolvedRef[];
+}
+
+/** A column that names a row of a collection: `collection` is the naming one in `namedBy`, the named one in `refs`. */
+export interface ResolvedRef {
+  column: string;
+  collection: string;
 }
 
 export interface DocDef {
@@ -290,6 +308,24 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
         target.referencedBy.push({ collection: key, fkColumn: fkCol });
       }
     }
+  }
+
+  // Third pass: the columns that name a row of another collection, checked against the tables.
+  for (const [key, table] of Object.entries(tables)) {
+    const given = Object.entries(defs[key]?.refs ?? {}).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    if (!given.length) continue;
+    const cascades = new Set((defs[key]?.cascadeOn ?? []).map((c) => (typeof c === "string" ? c : c.fk)));
+    table.refs = given.map(([column, collection]) => {
+      const col = Object.hasOwn(table.columns, column) ? table.columns[column]! : undefined;
+      if (!col) throw new Error(`${key}: refs names ${column}, which is not one of its columns`);
+      if (col.type !== "integer") throw new Error(`${key}: refs' ${column} names a row by its id, which an integer column holds (${column} is ${col.type})`);
+      if (!tables[collection]) throw new Error(`${key}: refs' ${column} names ${collection}, which the schema has no collection of`);
+      if (cascades.has(column)) throw new Error(`${key}: ${column} is in refs and cascadeOn: a row it names is either kept while named (refs) or takes this row with it (cascadeOn), not both`);
+      return { column, collection };
+    });
+  }
+  for (const [key, table] of Object.entries(tables).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    for (const ref of table.refs ?? []) (tables[ref.collection]!.namedBy ??= []).push({ collection: key, column: ref.column });
   }
 
   return { tables };

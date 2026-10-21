@@ -1,0 +1,58 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the text is pinned 1`] = `
+"CREATE OR REPLACE FUNCTION _delta_refs_hold(p_touched JSONB)
+RETURNS void AS $$
+DECLARE
+  v_t   RECORD;
+  v_now JSONB;
+  v_by  BIGINT;
+BEGIN
+  FOR v_t IN
+    SELECT t->>'coll' AS coll, (t->>'id')::bigint AS id, (array_agg(t->'was' ORDER BY n))[1] AS was
+      FROM jsonb_array_elements(COALESCE(p_touched, '[]'::jsonb)) WITH ORDINALITY AS e(t, n)
+     WHERE NOT COALESCE((t->>'carried')::boolean, FALSE)
+     GROUP BY 1, 2 ORDER BY min(n)
+  LOOP
+    CASE v_t.coll
+      WHEN 'case_films' THEN
+        SELECT _delta_strip_temporal(to_jsonb(r.*)) INTO v_now FROM "case_films" r WHERE r.id = v_t.id;
+        IF v_now IS NULL THEN
+          SELECT r.id INTO v_by FROM "current_case_showings" r WHERE r."film" = v_t.id ORDER BY r.id LIMIT 1;
+          IF v_by IS NOT NULL THEN
+            RAISE EXCEPTION 'Still named: %/% is %/%''s % -- change or remove that first', 'case_films', v_t.id, 'case_showings', v_by, 'film' USING ERRCODE = '23503';
+          END IF;
+        END IF;
+      WHEN 'case_ushers' THEN
+        SELECT _delta_strip_temporal(to_jsonb(r.*)) INTO v_now FROM "current_case_ushers" r WHERE r.id = v_t.id;
+        IF v_now IS NULL THEN
+          SELECT r.id INTO v_by FROM "current_case_showings" r WHERE r."usher" = v_t.id ORDER BY r.id LIMIT 1;
+          IF v_by IS NOT NULL THEN
+            RAISE EXCEPTION 'Still named: %/% is %/%''s % -- change or remove that first', 'case_ushers', v_t.id, 'case_showings', v_by, 'usher' USING ERRCODE = '23503';
+          END IF;
+        END IF;
+      WHEN 'case_showings' THEN
+        SELECT _delta_strip_temporal(to_jsonb(r.*)) INTO v_now FROM "current_case_showings" r WHERE r.id = v_t.id;
+        IF v_now IS NOT NULL THEN
+          IF jsonb_typeof(v_now->'film') = 'number' AND v_now->'film' IS DISTINCT FROM v_t.was->'film'
+             AND NOT EXISTS (SELECT 1 FROM "case_films" r WHERE r.id = (v_now->'film' #>> '{}')::bigint) THEN
+            RAISE EXCEPTION 'Row not found: %/% -- %/%''s % names it', 'case_films', v_now->'film' #>> '{}', 'case_showings', v_t.id, 'film' USING ERRCODE = 'P0002';
+          END IF;
+          IF jsonb_typeof(v_now->'usher') = 'number' AND v_now->'usher' IS DISTINCT FROM v_t.was->'usher'
+             AND NOT EXISTS (SELECT 1 FROM "current_case_ushers" r WHERE r.id = (v_now->'usher' #>> '{}')::bigint) THEN
+            RAISE EXCEPTION 'Row not found: %/% -- %/%''s % names it', 'case_ushers', v_now->'usher' #>> '{}', 'case_showings', v_t.id, 'usher' USING ERRCODE = 'P0002';
+          END IF;
+        END IF;
+      ELSE NULL;   -- a collection that names none, and none names
+    END CASE;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION _delta_refs_hold(jsonb) SET search_path = %s', v_path);
+END $$;
+"
+`;

@@ -159,6 +159,23 @@ describe("defineSchema", () => {
       { collection: "memberships", fkColumn: "team_ref" },
     ]);
   });
+
+  test("refs: each column names a collection, and the named one knows who names it; a wrong one is refused in the schema's words", () => {
+    const s = defineSchema({
+      films: { columns: { name: "text" } },
+      people: { columns: { name: "text" } },
+      showings: { columns: { film: "integer", usher: "integer?" }, refs: { usher: "people", film: "films" } },
+      reviews: { columns: { film: "integer" }, refs: { film: "films" } },
+    });
+    expect(s.tables["showings"]!.refs).toEqual([{ column: "film", collection: "films" }, { column: "usher", collection: "people" }]);
+    expect(s.tables["films"]!.namedBy).toEqual([{ collection: "reviews", column: "film" }, { collection: "showings", column: "film" }]);
+    expect(s.tables["reviews"]!.namedBy).toBeUndefined();
+    const films = { columns: { name: "text" as const } };
+    expect(() => defineSchema({ films, showings: { columns: { film: "integer" }, refs: { reel: "films" } } })).toThrow("showings: refs names reel, which is not one of its columns");
+    expect(() => defineSchema({ films, showings: { columns: { film: "text" }, refs: { film: "films" } } })).toThrow("showings: refs' film names a row by its id, which an integer column holds (film is text)");
+    expect(() => defineSchema({ films, showings: { columns: { film: "integer" }, refs: { film: "reels" } } })).toThrow("showings: refs' film names reels, which the schema has no collection of");
+    expect(() => defineSchema({ films, showings: { columns: { film: "integer" }, refs: { film: "films" }, cascadeOn: ["film"] } })).toThrow("showings: film is in refs and cascadeOn");
+  });
 });
 
 // ---------------------------------------------------------------------------
