@@ -1,7 +1,7 @@
 /**
  * `openStore`, the one way an app starts its store on Postgres: said as the app loads, opened by a
  * server as it starts -- its migrations (a folder or a list), the framework, its documents compiled
- * and served, in this process or on the socket it is given -- and closed as the server stops, the
+ * and served, in this process and on the socket it is given -- and closed as the server stops, the
  * listener, then the pool; opened again after, as the next server (or `bun --hot`) opens it.
  */
 import { describe, expect, test } from "bun:test";
@@ -19,14 +19,20 @@ const notes = defineDoc("notes:", { root: "notes", include: [] });
 const history = [{ id: "001-notes", changes: [createTable("notes", { columns: { text: { type: "text", nullable: false } }, temporal: true })] }];
 
 describe("openStore", () => {
-  test("its migrations a list; its documents served on the socket it is given; seeded between; closed", async () => {
+  test("its migrations a list; its documents served on the socket it is given, and in this process; seeded between; closed", async () => {
     const socket = createLocal(); // a WsServer, as createWs() is, with a caller to ask it
     const store = openStore({ schema, database: undefined, migrations: { list: history, app: "notes", schema }, ws: socket.server, prepare: async (pool) => void (await importTables(pool, schema, { tables: { notes: [{ id: 1, text: "first" }] } })) });
     store.register([notes]);
     await expect(store.pool.query("SELECT 1")).rejects.toThrow("The store is not open"); // said, not opened
     await store.open();
     expect((await socket.call("open", { doc: "notes:" })).result.notes).toMatchObject({ "1": { text: "first" } });
-    expect((await store.delta.call("open", { doc: "notes:" })).result).toBeUndefined(); // served on the socket, not in this process
+    // the server's own write, in this process, is told on the socket as a page's is
+    const told: unknown[] = [];
+    socket.onPublish((doc, change) => told.push([doc, change.ops]));
+    expect((await store.owner.call("delta", { doc: "notes:", ops: [{ op: "add", path: "/notes/-", value: { text: "second" } }] })).error).toBeUndefined();
+    for (let i = 0; i < 20 && !told.length; i++) await store.pool.query("SELECT 1");
+    expect(told).toEqual([["notes:", [{ op: "add", path: "/notes/2", value: expect.objectContaining({ id: 2, text: "second" }) }]]]);
+    expect(Object.keys((await store.delta.call("open", { doc: "notes:" })).result.notes)).toEqual(["1", "2"]); // in this process too
     expect((await store.pool.query("SELECT id FROM delta_migrations WHERE app = 'notes'")).rows).toEqual([{ id: "001-notes" }]);
     await store.close();
     await expect(store.pool.query("SELECT 1")).rejects.toThrow("The store is not open");
@@ -89,6 +95,22 @@ describe("openStore", () => {
     expect((await store.delta.call("delta", { doc: "notes:", ops: "not ops" })).error).toEqual({ code: 400, message: "ops must be an array" });
     expect((await store.delta.call("delta", { doc: "notes:", ops: [null] })).error).toEqual({ code: 400, message: "An op is an object: { op, path, value }" });
     await store.close();
+  });
+
+  test("everything it does to the database as it opens is in its own turn, an advisory lock, let go once it is open", async () => {
+    // the lock as pg_locks lists it: a key's high half in classid, its low half in objid
+    const held = (pool: { query: (sql: string) => Promise<{ rows: any[] }> }) => pool.query(`SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted AND objsubid = 1
+      AND ((classid::bigint << 32) | objid::bigint) = hashtext('dzql_open:' || current_schema())::bigint) AS held`).then((r) => r.rows[0].held);
+    let during: boolean | undefined;
+    const store = openStore({ schema, prepare: async (pool) => void (during = await held(pool)) });
+    store.register([notes]);
+    await store.open();
+    try {
+      expect(during).toBe(true); // the seed in the turn, so a second server's finds the first's rows
+      expect(await held(store.pool)).toBe(false);
+    } finally {
+      await store.close();
+    }
   });
 
   test("an open that fails leaves it closed, and the next open tries again", async () => {

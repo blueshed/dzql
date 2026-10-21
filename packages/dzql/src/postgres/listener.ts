@@ -16,7 +16,7 @@ import type { WsServer } from "@blueshed/delta/backend";
 import { trackSubscribe, trackUnsubscribe, onClientDrop } from "@blueshed/delta/backend";
 import { createLogger } from "@blueshed/delta/logger";
 import type { Pool, PoolClient } from "pg";
-import { callAs, docTypes, showAnswer } from "./registry";
+import { callAs, docTypes, OWNER, showAnswer } from "./registry";
 import { refusedBy, showDoc, showOps, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { resolveScope } from "@blueshed/delta/backend";
 import type { DocType } from "./registry";
@@ -192,9 +192,18 @@ export async function createDocListener<I = unknown>(
      * Without it, those of the schema the pool runs in, as always.
      */
     namespace?: string;
+    /**
+     * The in-process client that is the server itself (`openStore`'s `owner`: a `createLocal()`
+     * caller's client, which no socket can be). With `auth` it passes no gate, every document is its
+     * own, and it reads and writes as the tables' owner (`OWNER`); its write is still the document's
+     * (`accept`, told no one), on the ledger by no one, and told to everyone holding it.
+     */
+    owner?: object;
   },
 ) {
   const auth = opts?.auth;
+  /** Is `client` the server itself? Only with auth does it differ from any other in-process caller. */
+  const isOwner = (client: any): boolean => opts?.owner !== undefined && client === opts.owner;
   // Default-deny, as docTypeFromDef is: with auth, every document -- a custom
   // one, a registered type -- says who owns it, or that it is shared. Asked
   // before the pool is touched, so a refusal leaves nothing to clean up.
@@ -215,7 +224,7 @@ export async function createDocListener<I = unknown>(
   const offLedger = new Set(typeof opts?.ledger === "object" ? opts.ledger.except : []);
   /** Is a write to this document's type on the ledger? */
   const onLedger = (prefix: string): boolean => ledger && !offLedger.has(prefix);
-  const whoOf = (identity: I | undefined): string | null => ledgerWho(identity, opts?.who);
+  const whoOf = (identity: I | undefined): string | null => ((identity as unknown) === OWNER ? null : ledgerWho(identity, opts?.who));
   // The cursor undo walks: named by a caller in this process, and over the
   // socket the connection itself -- signed in, the person and the connection
   // together, so another person holding the same connection id (a client may
@@ -226,10 +235,11 @@ export async function createDocListener<I = unknown>(
   // an auth module; without one, the identity the client carries
   // (`createLocal().as(identity)`, or one set at upgrade) -- as the SQLite backend reads it.
   const writerOf = (identity: I | undefined, client: any): I | undefined =>
-    auth ? identity : (client?.data?.identity as I | undefined);
+    auth || isOwner(client) ? identity : (client?.data?.identity as I | undefined);
   /** The gate's identity (undefined without auth), or the 401 for a socket without one. */
   const gate = (client: any): { identity: I | undefined } | { error: Refusal } => {
     if (!auth) return { identity: undefined };
+    if (isOwner(client)) return { identity: OWNER as I };
     const gated = auth.gate(client);
     return isAuthError(gated) ? { error: { code: 401, message: gated.error } } : { identity: gated };
   };
@@ -286,13 +296,18 @@ export async function createDocListener<I = unknown>(
   // once per identity per change), so what a change costs is the identities a
   // document has open, not its sockets. Without auth nothing is asked. The
   // longest prefix answers a name: a type's longer than a custom doc's wins.
+  // The server itself (`owner`) may hear every document it opens: its gate is OWNER, and every owns says yes to it
+  const ownsToo = <F extends Owns<I>>(owns: F): Owns<I> => (identity, name) => (identity as unknown) === OWNER || owns(identity, name);
+  const heardBy: DeltaAuth<I> | undefined = auth && opts?.owner !== undefined
+    ? { ...auth, gate: (client: any) => (isOwner(client) ? (OWNER as I) : auth.gate(client)), ...(auth.asSqlArg && { asSqlArg: (i: I) => ((i as unknown) === OWNER ? "dzql:owner" : auth.asSqlArg!(i)) }) }
+    : auth;
   const custom = createCustomDocs<I, Pool>({
-    defs: opts?.custom ?? [], handle: pool, auth, publish: (channel, data) => ws.publish(channel, data), log,
+    defs: (opts?.custom ?? []).map((d) => (d.owns && heardBy !== auth ? { ...d, owns: ownsToo(d.owns) } : d)), handle: pool, auth: heardBy, publish: (channel, data) => ws.publish(channel, data), log,
     answers: (docName, length) => (resolveDoc(docName)?.type.prefix.length ?? 0) <= length,
   });
   const ownsOf = (docName: string): Owns<I> | undefined => {
     const type = resolveDoc(docName)?.type;
-    return type?.owns ? (identity, name) => type.owns!(identity, name) : undefined;
+    return type?.owns ? ownsToo((identity, name) => type.owns!(identity, name)) : undefined;
   };
 
   // Single LISTEN connection with auto-reconnect, on the app's own channel
@@ -561,7 +576,7 @@ export async function createDocListener<I = unknown>(
       try {
         // The document's name is its channel: one this identity does not own is
         // not there for it (404, as a missing one), so it never subscribes.
-        if (owned && auth && found.type.owns && !(await found.type.owns(identity as I, docName))) {
+        if (owned && auth && found.type.owns && (identity as unknown) !== OWNER && !(await found.type.owns(identity as I, docName))) {
           return respond({ error: NOT_FOUND });
         }
         await fn({ docName, type: found.type, ctx: found.ctx, msg, client, respond, identity });
@@ -593,7 +608,7 @@ export async function createDocListener<I = unknown>(
 
       try {
         // As withDoc asks a type's owns: a name this identity does not own is not there for it.
-        if (auth && match.def.owns && !(await match.def.owns(identity as I, docName))) return respond({ error: NOT_FOUND });
+        if (auth && match.def.owns && (identity as unknown) !== OWNER && !(await match.def.owns(identity as I, docName))) return respond({ error: NOT_FOUND });
         const doc = await custom.open(client, docName, match, identity);
         if (doc == null) return respond({ error: NOT_FOUND });
         trackSubscribe(client, docName);
@@ -677,7 +692,7 @@ export async function createDocListener<I = unknown>(
       return respond({ error: { code: 404, message: `Doc not loaded: open ${docName} before writing to it` } });
     }
     // the document's own rule (accept), asked of each op before any is applied, as SQLite asks it
-    const refused = type.def ? refusedBy(type.def, docName, msg.ops as DeltaOp[], identity) : undefined;
+    const refused = type.def ? refusedBy(type.def, docName, msg.ops as DeltaOp[], (identity as unknown) === OWNER ? undefined : identity) : undefined;
     if (refused !== undefined) return respond({ error: { code: 400, message: refused } });
     const writer = writerOf(identity, client);
     const kept = onLedger(type.prefix);
@@ -711,7 +726,7 @@ export async function createDocListener<I = unknown>(
         // A walk writes to its entry's document, so it asks owns as delta does:
         // under the cursor's lock (delta_walk takes it again), so the entry
         // asked about is the one walked.
-        if (auth && cursor !== null) {
+        if (auth && cursor !== null && (identity as unknown) !== OWNER) {
           await db.query("SELECT pg_advisory_xact_lock(hashtext('delta-cursor:' || $1::text))", [cursor]);
           const tip = (change === null
             ? await db.query("SELECT doc_name FROM _delta_ledger_tip($1, $2)", [cursor, way === "undo"])

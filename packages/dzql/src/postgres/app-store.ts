@@ -12,10 +12,18 @@
  * Postgres schema it is given (`namespace`), so several apps share one database, each with its own
  * tables, ledger and change channel. The migrations run first (each resource's history, in the
  * order given: a folder, when it is there, or a list); then the framework; then every registered
- * document is compiled from its definitions, `prepare` runs (to seed), and one listener answers for
- * them all and the custom documents beside them, each on the ledger unless it says not (a session
- * is no one's history): in this process (`delta`, as dzql's thin client reads them), or on the
- * socket it is given (`ws`, delta's `createWs`, as a page drawn in the browser reads them).
+ * document is compiled from its definitions, and `prepare` runs (to seed) -- all of it in the
+ * open's own turn, an advisory lock on the database, so two servers opening one new database at
+ * once take turns and the second finds it done. Then one listener answers for the documents and
+ * the custom documents beside them, each on the ledger unless it says not (a session is no one's
+ * history): in this process (`delta`, as dzql's thin client reads them) and, given one, on the
+ * socket too (`ws`, delta's `createWs`, as a page drawn in the browser reads them).
+ *
+ * `owner` is the server itself in this process: a command, a job, a route that writes for no one
+ * signed in. It writes and reads through the documents, as a page does -- the write the
+ * document's (`accept`), on the ledger (by no one, along the cursor it names) and told to everyone
+ * holding the document, on the socket and in this process -- and with `auth` it passes no gate,
+ * every document is its own, and it reads and writes as the tables' owner, past the paths' policies.
  * `close()` ends the listener, then the pool. Opened twice (two servers of one app at once), it is
  * closed by the second close. The store is also the app's stories' (`begin`, `end`, `last`,
  * `since`): each story runs on it and it is put back after each.
@@ -28,7 +36,7 @@
  */
 import { existsSync } from "node:fs";
 import type { Pool } from "pg";
-import { createLocal } from "@blueshed/delta/local";
+import { createLocal, type Caller } from "@blueshed/delta/local";
 import { authless, ownerless, type DeltaAuth } from "@blueshed/delta/auth";
 import { assertOwned, type DocDef, type Migration, type Schema } from "@blueshed/delta/backend";
 import type { WsServer } from "@blueshed/delta/server";
@@ -72,7 +80,7 @@ export type StoreOptions<I = unknown> = {
   auth?: DeltaAuth<I>;
   /** How an identity is written in the ledger. Default: a string or number as it is, anything else as JSON. */
   who?: (identity: I) => string;
-  /** The socket the documents are served on (`createWs()`); without one, they are served in this process (`delta`). */
+  /** The socket the documents are served on too (`createWs()`), as a page drawn in the browser reads them; with or without one, they are served in this process (`delta`, `owner`). */
   ws?: WsServer;
   /** The Postgres schema the app is kept in, made when it is not there: `public` without one, as a database has it. */
   namespace?: string;
@@ -105,6 +113,28 @@ function historiesOf(migrations: History | History[] | undefined): (History & { 
   return migrations as (History & { app: string })[];
 }
 
+/**
+ * `step` in the open's own turn: an advisory lock on the database (one per Postgres schema the app
+ * is kept in), held on a connection of its own until `step` is done, so a second server opening it
+ * at once waits, then finds the tables, the functions and the rows made. PGlite is one process's,
+ * one session: its turn is taken and let go all the same.
+ */
+async function inItsTurn(db: Pool, namespace: string | undefined, step: () => Promise<void>): Promise<void> {
+  const key = "hashtext('dzql_open:' || COALESCE($1::text, current_schema()::text, ''))";
+  const turn = await db.connect();
+  let lost: Error | undefined;
+  try {
+    await turn.query(`SELECT pg_advisory_lock(${key})`, [namespace ?? null]);
+    try {
+      await step();
+    } finally {
+      try { await turn.query(`SELECT pg_advisory_unlock(${key})`, [namespace ?? null]); } catch (err) { lost = err as Error; }
+    }
+  } finally {
+    turn.release(lost); // a connection that could not let go is ended, and its lock with it
+  }
+}
+
 /** Why the store cannot be used: it is not open. */
 const notOpen = () => new Error("The store is not open: a server opens it as it starts (appOf), and closes it as it stops");
 
@@ -113,6 +143,21 @@ export function openStore<I = unknown>({ schema: schemas, database, migrations, 
   const histories = historiesOf(migrations);
   /** The documents, in delta, in this process: one for the store's life, each open's listener on it. */
   const delta = createLocal();
+  /**
+   * The server itself, a caller of `delta` no socket can be: the listener knows it by its client.
+   * Its client carries no identity, as the server's own write does everywhere in dzql (a guard on
+   * `delta` lets it by).
+   */
+  const owner: Caller = delta.as("dzql: the server itself");
+  delete owner.client.data.identity;
+  /** Where the listener answers: in this process, and on the socket when there is one, each told every change. */
+  const served: WsServer = ws
+    ? {
+        ...ws,
+        on: (action, handler) => { ws.on(action, handler); delta.server.on(action, handler); },
+        publish: (channel, data) => { ws.publish(channel, data); delta.server.publish(channel, data); },
+      }
+    : delta.server;
   /** Each registered document, with who has it when it says no path. */
   const registered: { def: DocDef; owns?: Registration<I>["owns"]; shared?: boolean }[] = [];
   const custom: CustomDocDef<any, I>[] = [];
@@ -149,6 +194,13 @@ export function openStore<I = unknown>({ schema: schemas, database, migrations, 
     pool,
     delta,
     /**
+     * The server itself, in this process: `owner.call("delta", { doc, ops, cursor })`, and `open`,
+     * `undo`, `history` as any caller. Through the documents, as a page writes: the document's rule,
+     * the ledger (by no one), and every holder told. With `auth`: no gate, every document its own,
+     * read and written as the tables' owner. For a command, a job, the first person in.
+     */
+    owner,
+    /**
      * A resource's documents, opened with the rest by `open()`: on the ledger (undo, history) unless
      * it says not; with `auth`, each says who has it (a path, or `owns` or `shared` here); and its
      * custom documents beside them. One that says no owner is refused here, as the app loads.
@@ -177,17 +229,21 @@ export function openStore<I = unknown>({ schema: schemas, database, migrations, 
         try {
           const db: Pool = await openDatabase(where, { namespace });
           try {
-            if (namespace !== undefined) await ensureNamespace(db, namespace); // the migrations run in it
-            for (const h of histories) {
-              const list = "list" in h ? h.list : existsSync(h.dir) ? await fromFolder(h.dir) : undefined;
-              if (list) await migrate(db, list, { app: h.app, ...(h.schema && { schema: h.schema }), ...(h.imported && { imported: true }) });
-            }
-            await applyFramework(db, { namespace });
-            await applySql(db, generateSql(schema, registered.map((r) => r.def)), { namespace });
-            open = { pool: db, listener: undefined!, stories: storyStore(db, schema) };
-            await prepare?.(pool, { dataDir });
+            // in its turn: two servers opening one new database at once would make its types and functions twice
+            const opening: NonNullable<typeof open> = { pool: db, listener: undefined!, stories: storyStore(db, schema) };
+            await inItsTurn(db, namespace, async () => {
+              if (namespace !== undefined) await ensureNamespace(db, namespace); // the migrations run in it
+              for (const h of histories) {
+                const list = "list" in h ? h.list : existsSync(h.dir) ? await fromFolder(h.dir) : undefined;
+                if (list) await migrate(db, list, { app: h.app, ...(h.schema && { schema: h.schema }), ...(h.imported && { imported: true }) });
+              }
+              await applyFramework(db, { namespace });
+              await applySql(db, generateSql(schema, registered.map((r) => r.def)), { namespace });
+              open = opening;
+              await prepare?.(pool, { dataDir }); // a second server's finds the first's rows
+            });
             const types = registered.map(({ def, owns, shared }) => docTypeFromDef<I>(def, db, { auth, owns, shared }));
-            open.listener = await createDocListener<I>(ws ?? delta.server, db, { types, custom, auth, who, ledger: { except: offLedger }, schema, namespace });
+            opening.listener = await createDocListener<I>(served, db, { types, custom, auth, who, ledger: { except: offLedger }, schema, namespace, owner: owner.client });
           } catch (err) {
             open = undefined;
             await db.end();
