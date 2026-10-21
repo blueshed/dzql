@@ -6,7 +6,9 @@
  *   kanban_columns  parent: kanban_boards  → FK kanban_boards_id
  *   kanban_cards    parent: kanban_columns → FK kanban_columns_id
  *
- * `createTables(db, schema)` makes the tables in SQLite; `registerDocs` then
+ * `createTables(db, schema)` makes the tables in a SQLite database in memory,
+ * thrown away when the server stops (a kept file's tables are its migrations':
+ * the lists example); `registerDocs` then
  * opens `board:1` by walking the parent keys down from the board, and applies
  * each op to the table its path names. No hand-written SQL in this example.
  * (On Postgres the same schema and documents run on dzql: `dzql/postgres`.)
@@ -70,14 +72,10 @@ export const docs = [
   }),
 ];
 
-/** KANBAN_DB names a file; by default the board lives in memory, fresh each run. */
-export const DB_PATH = process.env.KANBAN_DB ?? ":memory:";
-
-/** The tables made, one board seeded (`board:1`, three columns, five cards) and its document registered; the database, for the server to close. */
+/** The tables made in memory, one board seeded (`board:1`, three columns, five cards) and its document registered; the database, for the server to close. */
 export function boardApi(ws: WsServer): Database {
-  const db = new Database(DB_PATH);
+  const db = new Database(":memory:");   // fresh each run
   createTables(db, schema);
-  for (const t of ["kanban_cards", "kanban_columns", "kanban_boards"]) db.run(`DELETE FROM ${t}`);   // each run starts afresh
   importTables(db, schema, {
     tables: {
       kanban_boards: [{ id: 1, owner_id: 1, title: "Product roadmap" }],

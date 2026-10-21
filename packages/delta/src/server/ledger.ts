@@ -305,17 +305,19 @@ export function createLedger(db: any): Ledger {
 }
 
 /**
- * The cursor of a socket connection: the connection id alone for someone not signed in, and the
- * person with it for someone who is -- so undo over a socket walks only what this person wrote
- * on this connection, whoever else learns the id. A socket that chose an id a live socket holds
- * (`connectWs(url, { clientId })`) has a fresh one until the holder closes (`createWs` then
- * gives it the id); signed in, it has the chosen id's cursor at once, since the person is in
- * it: the same person's, never another's.
+ * The cursor of a socket connection: signed in, the person with the connection id; signed out,
+ * the connection id with the key its upgrade gave it (`socketUpgrade`: the `delta_cursor` cookie,
+ * minted by the server) -- so undo over a socket walks only what this person, or this browser,
+ * wrote on this connection, whoever else learns the id. A socket that chose an id a live socket
+ * holds (`connectWs(url, { clientId })`) has that id's cursor at once, since the person or the key
+ * is in it: its own, never another's. A socket with no key (a test's stand-in) has its id alone.
  */
 export function socketCursor(who: string | null, client: any): string | null {
-  const clientId: string | undefined = (who === null ? undefined : client?.data?.chosenId) ?? client?.data?.clientId;
+  const key: string | undefined = client?.data?.cursorKey;
+  const clientId: string | undefined = (who === null && !key ? undefined : client?.data?.chosenId) ?? client?.data?.clientId;
   if (!clientId) return null;
-  return who === null ? clientId : JSON.stringify([who, clientId]);
+  if (who !== null) return JSON.stringify([who, clientId]);
+  return key ? JSON.stringify({ key, id: clientId }) : clientId;
 }
 
 /** How an identity is written in the ledger: by `who`, else a string or number as it is and anything else as JSON; none, null. */

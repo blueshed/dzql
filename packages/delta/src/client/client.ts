@@ -97,7 +97,22 @@ function freshen(doc: any, ops: DeltaOp[]): void {
  * Bun's WebSocket takes headers (`new WebSocket(url, { headers })`); a browser's takes only
  * protocols there, and sends its own cookies, so there they are left out.
  */
-const takesHeaders = typeof (globalThis as any).Bun !== "undefined";
+const takesHeaders = () =>
+  typeof (globalThis as any).Bun !== "undefined" && /\[native code\]/.test(Function.prototype.toString.call(globalThis.WebSocket));   // Bun's own, not a page's stand-in (happy-dom)
+
+/**
+ * Outside a browser, which keeps the server's `delta_cursor` cookie itself (`socketUpgrade` in
+ * `src/server/server.ts`): a key of this client's, the same on every connect, beside the cookies
+ * given, so a reconnect keeps its cursor. A `delta_cursor` already given is kept.
+ */
+function withCursorKey(headers?: Record<string, string>): Record<string, string> | undefined {
+  if (!takesHeaders()) return headers;
+  const given = Object.entries(headers ?? {}).find(([k]) => k.toLowerCase() === "cookie")?.[1];
+  if (given && /(?:^|;\s*)delta_cursor=/.test(given)) return headers;
+  const rest = Object.fromEntries(Object.entries(headers ?? {}).filter(([k]) => k.toLowerCase() !== "cookie"));
+  const mine = `delta_cursor=${crypto.randomUUID()}`;
+  return { ...rest, cookie: given ? `${given}; ${mine}` : mine };
+}
 
 function reconnectingWebSocket(url: string, first = 500, headers?: Record<string, string>): WebSocket {
   let ws!: WebSocket;
@@ -106,7 +121,7 @@ function reconnectingWebSocket(url: string, first = 500, headers?: Record<string
   let closed = false;
 
   function connect() {
-    ws = headers && takesHeaders ? new WebSocket(url, { headers } as any) : new WebSocket(url);
+    ws = headers && takesHeaders() ? new WebSocket(url, { headers } as any) : new WebSocket(url);
     ws.addEventListener("open", () => {
       backoff = first;
       proxy.dispatchEvent(new Event("open"));
@@ -246,7 +261,11 @@ function afterEcho(entry: OpenDocEntry, result: any): Promise<any> {
 export const WS = key<WsClient>("ws");
 
 export interface ConnectOptions {
-  /** Keep this id across reconnects (the server's `clientId`, and so the ledger's cursor). */
+  /**
+   * Keep this id across reconnects (the server's `clientId`). The ledger's cursor is this id with
+   * the person signed in, or with this browser's key (a cookie the server sets): naming another's
+   * id walks none of their writes.
+   */
   clientId?: string;
   /**
    * Runs on every connect -- the first and each reconnect -- before
@@ -296,7 +315,7 @@ export function connectWs(
   const url = socketUrl(wsPath);
   if (opts?.clientId) url.searchParams.set("clientId", opts.clientId);
   const connected = signal(false);
-  const ws = reconnectingWebSocket(url.href, opts?.backoff, opts?.headers);
+  const ws = reconnectingWebSocket(url.href, opts?.backoff, withCursorKey(opts?.headers));
   const pending = new Map<
     number,
     { resolve: (v: any) => void; reject: (e: any) => void }

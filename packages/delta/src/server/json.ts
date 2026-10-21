@@ -165,7 +165,7 @@ function engineOf(ws: WsServer, file: string, schema: Schema): Engine {
 /**
  * Serve the schema's documents from the file: as SQLite's `registerDocs`, with
  * the file in place of the database. `persisted()` resolves once every change
- * so far is in the file.
+ * so far is in the file; `close()` waits for it, then lets the file go.
  */
 export function registerDocs<I = unknown>(
   ws: WsServer,
@@ -192,5 +192,16 @@ export function registerDocs<I = unknown>(
     }
   }
 
-  return { ...handle, persisted: () => engine.saving };
+  return {
+    ...handle,
+    persisted: () => engine.saving,
+    /** Close the file once the server has stopped: its last change saved (a save that failed rejects), then let go (SQLite's `close`). */
+    async close(): Promise<void> {
+      try { await engine.saving; }
+      finally {
+        if (engines.get(ws)?.get(resolve(file)) === engine) engines.get(ws)!.delete(resolve(file));
+        db.close();
+      }
+    },
+  };
 }

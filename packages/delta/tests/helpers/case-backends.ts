@@ -13,24 +13,24 @@ import { createWs } from "../../src/server/server";
 import * as sqlite from "../../src/server/sqlite";
 import * as json from "../../src/server/json";
 
-export const sqliteBackend: CaseBackend = async ({ schema, docs, seed }) => {
+export const sqliteBackend: CaseBackend = async ({ schema, docs, seed, ledger }) => {
   const db = new Database(":memory:");
   sqlite.createTables(db, schema);
   sqlite.importTables(db, schema, seed);
   const ws = createWs();
   ws.setServer({ publish() {} });
-  sqlite.registerDocs(ws, db, schema, docs);
-  return { ws, end: async () => db.close() };
+  const store = sqlite.registerDocs(ws, db, schema, docs, [], { ledger });
+  return { ws, end: store.close };
 };
 
-export const jsonBackend: CaseBackend = async ({ schema, docs, seed }) => {
+export const jsonBackend: CaseBackend = async ({ schema, docs, seed, ledger }) => {
   const dir = mkdtempSync(join(tmpdir(), "delta-cases-"));
   const file = join(dir, "data.json");
   json.importTables(file, schema, seed);
   const ws = createWs();
   ws.setServer({ publish() {} });
-  const store = json.registerDocs(ws, file, schema, docs);
-  return { ws, end: async () => { await store.persisted(); rmSync(dir, { recursive: true, force: true }); } };
+  const store = json.registerDocs(ws, file, schema, docs, [], { ledger });
+  return { ws, end: async () => { await store.close(); rmSync(dir, { recursive: true, force: true }); } };
 };
 
 const upgradeDirs: string[] = [];

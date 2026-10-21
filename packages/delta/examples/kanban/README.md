@@ -61,8 +61,8 @@ one in a single `send`; the script prints what Bob was told and his board after 
 opens the board late and gets the same.
 
 `tests/examples.test.ts` runs both: two browsers on `routes.ts` (one clicks a card, both see it
-move), and `run.ts`. The board lives in memory, fresh each run; `KANBAN_DB=board.db` keeps it in
-a file. On Postgres the same schema and documents run on dzql (`dzql/postgres`).
+move), and `run.ts`. The board lives in memory, fresh each run: a board kept in a file takes its
+tables from its migrations, as `examples/lists` does. On Postgres the same schema and documents run on dzql (`dzql/postgres`).
 
 ## Left out
 

@@ -1,13 +1,13 @@
 /**
  * delta's write cases (@blueshed/delta/testing: the error table, a schema's refusals in delta's words, a row the
- * server names, write scope) on dzql's Postgres: in this process (PGlite),
+ * server names, write scope, the cursor over a socket) on dzql's Postgres: in this process (PGlite),
  * and on the test database the suite starts (DATABASE_URL), as on CI.
  */
 import { describe } from "bun:test";
 import { Pool } from "pg";
 import { createWs } from "@blueshed/delta/server";
 import { setLogLevel } from "@blueshed/delta/logger";
-import { acceptCases, serverTimeCases, createRowCases, errorCodeCases, refusalCases, uniqueCases, writeScopeCases, type CaseApp, type CaseBackend } from "@blueshed/delta/testing";
+import { acceptCases, cursorCases, serverTimeCases, createRowCases, errorCodeCases, refusalCases, uniqueCases, writeScopeCases, type CaseApp, type CaseBackend } from "@blueshed/delta/testing";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
 import { openPglite } from "../../src/postgres/pglite";
 import { PG_URL } from "../delta-pg/setup";
@@ -15,13 +15,13 @@ import { PG_URL } from "../delta-pg/setup";
 setLogLevel("silent");
 
 /** The app on a pool made ready for it: the framework, its tables and its rows. */
-async function onPool(pool: Pool, { schema, docs, seed }: CaseApp) {
+async function onPool(pool: Pool, { schema, docs, seed, ledger }: CaseApp) {
   await applyFramework(pool);
   await applySql(pool, generateSql(schema, docs));
   await importTables(pool, schema, seed);
   const ws = createWs();
   ws.setServer({ publish() {} });
-  const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)) });
+  const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)), ledger });
   return { ws, listener };
 }
 
@@ -57,5 +57,6 @@ for (const [name, backend] of [["PGlite", onPglite], ["a Postgres server", onSer
     uniqueCases(backend);
     acceptCases(backend);
     serverTimeCases(backend);
+    cursorCases(backend);
   });
 }

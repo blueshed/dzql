@@ -24,8 +24,8 @@ import { defineDoc, defineSchema, type DocDef, type Schema, type Snapshot } from
 import type { WsServer } from "../server/server";
 import { mockClient, sendAndAwait } from "./support";
 
-/** An app for a case: what a backend stands up on a fresh store. */
-export interface CaseApp { schema: Schema; docs: DocDef[]; seed: Snapshot }
+/** An app for a case: what a backend stands up on a fresh store (on the ledger, `ledger: true`). */
+export interface CaseApp { schema: Schema; docs: DocDef[]; seed: Snapshot; ledger?: boolean }
 /** A backend's stand-up: a server over a fresh store holding the app, and how to take it down. */
 export type CaseBackend = (app: CaseApp) => Promise<{ ws: WsServer; end(): Promise<void> }>;
 

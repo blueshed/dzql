@@ -126,8 +126,10 @@ exact version, or the setup stops reading it).
   answer; change them with the rule (`tests/walk-plan.test.ts`; `tests/ledger.test.ts`, "undo
   beside someone else"; `src/cases/path.ts`, "a change named by its entry").
 - **The cursor**: named by an in-process caller (`client.data.local`); over a socket the
-  connection's `clientId`, and signed in, the person with it (`socketCursor` in
-  `src/server/ledger.ts`). A socket client never names another's.
+  connection's `clientId` with the person signed in, else with the key the upgrade minted (the
+  `delta_cursor` cookie, `socketUpgrade` in `src/server/server.ts`; `socketCursor` in
+  `src/server/ledger.ts`). A socket client never claims another's, by naming its id or otherwise
+  (`cursorCases`, `src/cases/cursor.ts`).
 - **`who`** is `client.data.identity`, named by `registerDocs`' `who` when given (`ledgerWho` in
   `src/server/ledger.ts`).
 - **The skill's `metadata.version`** is stamped by `/publish`; don't bump it by hand.
@@ -190,7 +192,7 @@ exact version, or the setup stops reading it).
   `pointerVectors` and `walkVectors` (the pointer grammar and the walk guard as data,
   `src/*-vectors.json`, for dzql to answer), and the case suite every backend answers alike, for
   delta's tests and dzql's: `src/cases/` (`path`, `law`, `owns`, `permissions`, `isolation`,
-  `writes`, `migrations`, `upgrades`, `link-store`). delta's
+  `writes`, `cursor`, `migrations`, `upgrades`, `link-store`). delta's
   own tests import it as `@blueshed/delta/testing`, as a consumer would; what is a backend's own
   (SQLite's adapters, the stand-ups in `tests/helpers/case-backends.ts`) stays beside the tests.
   `createLocal()` is the lighter harness for SQLite and the kinds.

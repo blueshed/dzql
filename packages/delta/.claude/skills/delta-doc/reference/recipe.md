@@ -18,9 +18,10 @@ import { run, serve } from "@blueshed/delta/serve";
 import { roomApi } from "./resources/room/room-api";
 
 const ws = createWs();
-roomApi(ws);   // the room's document, on the socket
+const room = roomApi(ws);   // the room's document, on the socket
 
-await run(() => serve({ ws, routes: { "/": index } }, { port: 3100 }));
+// room.close: the file's last change saved once the server stops
+await run(() => serve({ ws, routes: { "/": index }, close: [room.close] }, { port: 3100 }));
 ```
 
 ### `resources/room/room-api.ts`
@@ -44,6 +45,7 @@ export interface Message { id: number; rooms_id: number; author: string; text: s
 export interface Room { rooms: { id: number; name: string | null }; messages: Record<string, Message> }
 
 // Where the documents are kept: chat.json in `dir` (a test gives a folder of its own).
+// What it returns has close(): the same on SQLite.
 export function roomApi(ws: WsServer, dir = ".") {
   return registerDocs(ws, `${dir}/chat.json`, schema, docs);
 }
@@ -147,7 +149,7 @@ import { roomApi, type Room } from "../resources/room/room-api";
 test("what one person says, the other is told", async () => {
   const dir = mkdtempSync(`${tmpdir()}/room-`);   // a folder of its own, never the app's data
   const ws = createWs();
-  await roomApi(ws, dir);
+  const room = await roomApi(ws, dir);
   const server = serve({ ws, routes: {} }, { port: 0, dev: false });
   const url = new URL(ws.path, server.url).href.replace("http", "ws");
   const ada = connectWs(url), bo = connectWs(url);   // two people, a socket each
@@ -160,6 +162,7 @@ test("what one person says, the other is told", async () => {
   } finally {
     ada.close(); bo.close();   // before the server stops, or they reconnect for ever
     await server.stop(true);
+    await room.close();   // the store let go: the file saved, or the database closed
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -169,7 +172,9 @@ Working: `tests/recipe.test.ts` saves each block under a `###` heading at its pa
 server, and has a message typed in one browser show in the other's log; then saves this test in the
 app's tests folder and runs it.
 
-**Moving to SQLite** changes `room-api.ts`, and `routes.ts` awaits `roomApi`: the tables are made
+**Moving to SQLite** changes `room-api.ts`, and `routes.ts` awaits `roomApi`
+(`const room = await roomApi(ws)`): the tables are made
 by the room's migrations, written by `delta migrations make`, run before the documents register,
 and the file's rows are carried in once. The whole of it is in `backends.md`. Ids carry, so the
-next message named follows on; the room's handle and view, the page and its test stay as they are.
+next message named follows on; the room's handle and view, the page and its test stay as they are,
+and `close()` closes the database.

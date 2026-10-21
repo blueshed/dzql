@@ -30,7 +30,8 @@
       "The buttons send { action: \"undo\" } and { action: \"redo\" } over the socket (the WS client's send or call) with no cursor: over a socket the connection is the cursor, so each browser walks only its own writes",
       "Treats a null answer as nothing to undo or redo",
       "Treats an answer with conflict as the walk refused (nothing changed) and says so, rather than forcing the old values back with its own replace ops",
-      "Does not apply the undo's ops to the page itself: the change arrives through onOps or doc.data like any other write"
+      "Does not apply the undo's ops to the page itself: the change arrives through onOps or doc.data like any other write",
+      "Says truly what a walk refuses: the guard is per field, so another person's later write to a different field of the same row does not stop an undo; only a field the undo would set back, written since, is a conflict"
     ],
     "copy": [
       {
@@ -53,6 +54,22 @@
       "Adds the room with add /rooms/- and reads its id from what comes back (the echo's /rooms/<id> path or the row's id), never by guessing or by position",
       "Adds the booking with add /bookings/- whose value carries rooms_id set to that room's id",
       "Makes the tables with migrate(db, migrations, …) before registerDocs, the migration written by delta migrations make; createTables only on a :memory: database in a test"
+    ]
+  },
+  {
+    "skills": [
+      "delta-doc"
+    ],
+    "query": "A notice board in a Bun app with @blueshed/delta on SQLite, with sign-in (each person has an admin flag). Everyone signed in reads the board and sees a new notice the moment it is posted. Only admins may post or take down a notice, whatever a page sends. Each notice shows when it was posted, and that time must be the server's, never the poster's clock.",
+    "files": [],
+    "expected_behavior": [
+      "Who may open the board is the document's owns (owns: \"AUTHENTICATED\", or shared: true) with auth in registerDocs' options, not a check in a socket handler",
+      "Who may write it is the document's accept rule, given who is writing (its { who }): an op from someone who is not an admin is refused with a reason (400) and nothing changes; not a check in a socket handler, and not only a button the page hides",
+      "The time is a timestamptz column with default: \"now\", left out of every write: the page never sends new Date() or its own time",
+      "The document's accept also refuses a time a client sends (an add whose value carries it, or a replace of that field), since default: \"now\" alone does not refuse one",
+      "A notice is posted as add /notices/- with the server naming the id, and taken down as remove /notices/<id>",
+      "The tables are made by migrate(db, migrations, …) before registerDocs, the migration written by delta migrations make; createTables only on a :memory: database in a test",
+      "Keeps a test on a real server: an admin's notice reaches another person signed in, with the server's time, and a post by someone not an admin is refused"
     ]
   }
 ]
