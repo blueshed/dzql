@@ -66,7 +66,10 @@ exact version, or the setup stops reading it).
 - **Three op verbs** (`add`, `replace`, `remove`) on `/<coll>/<id>[/field]` paths. No new verbs.
   They mean what RFC 6902 says on every backend: a replace of a row is the row (a field it
   leaves out takes its default; its id and parent key stay, and a time only the server sets,
-  `default: "now"`, which is when the row was made, keeps its own: `serverTimeCases`), never a merge.
+  `default: "now"`, which is when the row was made, keeps its own, and a write that names it is
+  refused, 400: `serverTimeCases`), never a merge. A document's `accept`, then its `shape`, are
+  asked of a fresh write before it is validated, never of a walk (`acceptCases`, `shapeCases`); a
+  `refs` column is held once the write is done, a walk's too (`refsCases`).
 - **One pointer grammar.** Strict RFC 6901: `splitPath` / `joinPath` in `src/core.ts` (which
   `applyOps`, `dom-ops` and every backend use). Its vectors (`src/pointer-vectors.json`) are
   published in `./testing` as `pointerVectors`, for dzql to answer; `tests/pointer-vectors.test.ts`
@@ -85,6 +88,8 @@ exact version, or the setup stops reading it).
   broadcast channel. `registerDocs` and a custom doc's registration throw without one
   (`ownerless` in `src/server/auth.ts`). A membership custom doc is queried, cached and fanned
   out per identity. `ownsCases` (`src/cases/owns.ts`) asks it of every backend.
+  A socket the gate refuses opens, hears and writes only a document `owns: "ANYONE"`, as no one
+  (`isAnyone` in `src/paths.ts`; `permissionCases`, "ANYONE").
 - **You may write what you may read.** Every row-addressed write is gated on the same scope as
   the read, on every backend.
 - **A connection writes only what it has opened** (404 `Doc not loaded`), on every backend;

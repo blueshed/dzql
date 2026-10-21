@@ -68,6 +68,9 @@ export type Resource = {
    *
    * - Return nothing to refuse without a word; throw `refuse(reason)` to say why.
    * - Only for a fresh write: an undo or redo is never shaped.
+   * - The page's alone. A value the server gives every writer as the row is written is the
+   *   document's own `shape` (delta's `defineDoc`), which delta asks after this one, as it asks
+   *   `accept`.
    */
   shape?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): PatchOp[];
   /**

@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- **A write that names a time only the server sets is refused** (21 October, the Shed's run 6,
+  finding 4). A `default: "now"` column filled a time a write left out, and stored one a write
+  sent unless each document wrote the rule (a member dated their own record 2020). Now an add, a
+  replace of the row whole or a replace of the field that names it is 400, in delta's words, for
+  that alone: `/entries/-/at: at is set by the server as the row is written (default: "now"):
+  leave it out` (`serverSets` in `sqlite/validate.ts`; Postgres's `_delta_server_set`). A walk
+  (undo, redo) is no write and puts back the time the row had; `importTables` keeps a row's; a
+  replace of the row whole that leaves it out keeps its own, as before. `serverTimeCases` asks it
+  of SQLite, the JSON file and dzql's Postgres; `stampedApp` loses the `accept` rule it carried
+  for this, and keeps a ledger. **To move across**: leave the column out of every write. A page
+  that sends a row back whole as it read it (`{ ...row, text }`) drops the column first; a
+  document's `accept` that refused it may go.
+
+- **`./testing`'s permission process gives `onPublish`, and its `as` takes no one** (21 October,
+  with `owns: "ANYONE"` below). `permissionCases` asks a caller nobody is signed in on, and hears
+  what it is told. **To move across**: a backend's `start` returns `{ as: (person?) =>
+  local.as(person), onPublish: local.onPublish }`, and compiles `permissionDocs.board`, whose
+  `owns` is `ANYONE`.
+
 - **A socket's cursor is bound to a key the server mints, never to the `clientId` alone** (21
   October, the delta-doc evals' round 3, finding 4). Signed out, a socket's cursor was its
   `clientId`, which a client chooses and sends in the URL: a socket that named another's id, once
@@ -120,6 +139,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it when you like.
 
 ### Added
+
+- **`shape` on `defineDoc`: what the server makes of a write** (21 October, the Shed's run 6,
+  finding 1). A value a rule gives as the row is written (a booking's last day two weeks from its
+  first) had no place on the server, so the page worked it out, never stored. `shape(op, { doc,
+  who })` is asked of each op of a fresh write, after `accept` has taken it, and answers the op to
+  apply in its place; what it answers is validated as any write is, then stored, told, answered
+  and recorded. An undo or a redo is never shaped. It mirrors dzql's thin-client
+  `Resource.shape`, for every writer. `shapedBy` (`./backend`, beside `refusedBy`) asks it as
+  every backend does; `shapeCases` and `shapedApp` (`./testing`) ask it of SQLite, the JSON file
+  and dzql's Postgres; `tests/accept.test.ts` that it is told who. `schema.md` says the rule
+  where a column is declared, as its own bullet: such a value is stored, set by the server, and a
+  migration fills the rows before.
+
+- **`refs` on a table: a column that names a row of another collection** (21 October, the Shed's
+  run 6, finding 6). A rule over other rows ("a row still named is not removed") had no home but a
+  socket handler. `refs: { film: "films" }` (an integer column) is held at the end of every write,
+  a walk's too, on every backend: a row the write left naming a row not there is 404 (`Row not
+  found: films/9 -- showings/2's film names it`); a row it took away that a current row names is
+  409 (`Still named: films/1 is showings/4's film -- change or remove that first`). A closed
+  version names nothing; one write may take both away in either order; an undo that would break it
+  is walked as a conflict. `defineSchema` refuses a refs column that is not an integer, not a
+  column, of no collection, or also in `cascadeOn`; the named table knows its namers
+  (`ResolvedTable.namedBy`). It is the definitions' alone, as `cascadeOn` is: no migration change,
+  and rows already kept are not asked (`changes.ts`). `refsCases` and `cinemaApp` (`./testing`).
+
+- **`owns: "ANYONE"`: a document anyone may have, signed in or not** (21 October, the Shed's run 6,
+  finding 5's first part). With `auth`, a socket with no identity was refused every document, so a
+  list everyone reads had to wrap the gate. Now a socket the gate refuses opens, hears and writes
+  through a document whose `owns` is `ANYONE` (and is never let go of it), as no one: `accept` and
+  `shape` are told `who` undefined, so the document's rule says who writes. Every other document
+  is still 401 to it: default-deny holds. `isAnyone` (`./paths`); `registerDocs` (SQLite, the JSON
+  file) and `letGo` (`./backend`'s custom documents, `anyone`) take it, and dzql's listener; a
+  path's SQL reads it as `TRUE`. `upgradeWithAuth` and `linkAuth`'s gate already admitted an
+  unsigned socket, and say so. `permissionCases` asks it ("ANYONE"), whose `PermissionProcess`
+  now takes `as()` with no one and gives `onPublish`; `tests/auth-link.test.ts` over a real
+  socket. `ownership.md` says it, and that a story naming who does a thing says who may write.
 
 - **`registerDocs` returns `close()`, the same on the JSON file and SQLite** (21 October, the
   delta-doc evals' round 3, finding 1). A test awaits it, and `serve`'s `close` takes it: the JSON

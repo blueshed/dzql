@@ -53,9 +53,12 @@ server names (on an array, append). The parsers are `splitPath` / `joinPath` in 
 `{ id, error: { code, message } }` on the wire, `DeltaError.code` on the client, the same on every
 backend (`errorCodeCases` in `src/cases/writes.ts`):
 
-- **400** malformed: no leading `/`, unknown field, missing required field, bad id.
-- **401** not signed in (an `auth` gate said no).
+- **400** malformed: no leading `/`, unknown field, missing required field, bad id, a time only
+  the server sets (`default: "now"`) named.
+- **401** not signed in (an `auth` gate said no; an `owns: "ANYONE"` document is open to it, `ownership.md`).
 - **403** read-only: custom, static and source documents; memory over a socket; a past (`at:`) name.
-- **404** not there: a document, row or path; a document the identity does not `own`.
-- **409** already there (an id taken, or a unique constraint's values: `schema.md`).
+- **404** not there: a document, row or path; a document the identity does not `own`; a row a
+  `refs` column names (`schema.md`).
+- **409** already there (an id taken, or a unique constraint's values: `schema.md`), or still
+  named (a row a current row's `refs` column names, removed).
 - **500** the server's own failure.

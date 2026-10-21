@@ -31,6 +31,10 @@ defineDoc("notices:", { root: "notices", include: [], owns: "AUTHENTICATED",
   accept: (_op, { who }) => (who as Person).admin === true || "Only an admin posts a notice" });
 ```
 
+**A story that names who does a thing says who may**: "the admin posts a notice" is that rule,
+written with the story, never left for later. A document with no `accept` is written by everyone
+who may have it.
+
 ## The shapes
 
 - **One's own**: `@column`, the root row's column is the person.
@@ -64,10 +68,22 @@ defineDoc("notices:", { root: "notices", include: [], owns: "AUTHENTICATED",
 - **Everything, for some people** (the staff, the admins): a list has no row to start from, so
   its path starts at a table with a filter: `people[admin=true].id`.
 - **Anyone signed in**: `AUTHENTICATED`; nobody: `FALSE`.
+- **Anyone at all, signed in or not** (a public menu, opening hours): `ANYONE`. A socket nobody is
+  signed in on (no session, one run out) may open and hear such a document, and no other: every
+  other document is still **401** to it. It writes through it as no one, so `accept` is told
+  `who` undefined, and the rule says who writes:
+
+  ```ts
+  defineDoc("hours:", { root: "hours", include: [], owns: "ANYONE",
+    accept: (_op, { who }) => (who as Person | undefined)?.admin === true || "Only an admin changes the hours" });
+  ```
+
+  No gate of the app's own, and no person with no row to stand for a visitor
+  (`src/cases/permissions.ts`, "ANYONE").
 
 ## The grammar
 
-`src/paths.ts`: `TRUE`, `FALSE`, `AUTHENTICATED`, `@field`, or hops
+`src/paths.ts`: `TRUE`, `FALSE`, `AUTHENTICATED`, `ANYONE`, `@field`, or hops
 `collection[filters]{conditions}.field`, each joining the value before it on its `$` filter, else
 its id; the last `.field` is compared with the person (`auth.asSqlArg`, else the identity's `id`).
 
@@ -90,7 +106,7 @@ Nothing checks it against the schema, and dzql cannot compile it.
 ## Default-deny, with `auth`, on every backend
 
 Every document says `owns` (a path, or a function) or `shared: true`; the error names the
-prefix and says what to add. Without `auth`, `owns` or `shared` is refused too: it would claim
+prefix and says what to add. A socket the gate refuses opens only an `ANYONE` document. Without `auth`, `owns` or `shared` is refused too: it would claim
 a guard nothing asks.
 
 ## When it is asked

@@ -13,7 +13,6 @@ import { defineDoc, defineSchema, type DocDef } from "../schema";
 import type { DeltaAuth } from "../server/auth";
 import { waitFor } from "./support";
 
-
 export type Person = { id: number; name: string };
 
 /** Who is signed in is what the caller carries (`createLocal().as(person)`); the path compares their id. */

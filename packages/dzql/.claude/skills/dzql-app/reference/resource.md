@@ -58,7 +58,10 @@ control sends the write (`may`, `resources/team/team-api.ts`).
    (`onlyManagerAnswers`); a last day before the first is typed into a field, so `shape` refuses it.
 3. **`shape`:** what the page sent, as the document keeps it: checked, trimmed, an id made, a wire
    path (`/guests/2/minifigure/top`) turned into the rows it moves. Shaped to nothing is refused.
-4. **delta:** is it valid data?
+4. **delta:** is it valid data? The document's own `accept` and `shape` (`defineDoc`, delta-doc's
+   `schema.md`) are asked here, of every writer, not only this page's: a value a rule gives as the
+   row is written (a booking's last day) is the document's `shape`, so a script or the CLI gets it
+   too; this `shape` is the page's (its wire paths, its ids).
 
 Undo and redo are delta's inverses, never shaped. Never write another resource's document from
 `shape`. `kind` is which of delta's documents it is: omitted, a stored document, the only kind written from
