@@ -25,6 +25,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **A model where a teller has nowhere to add a row is open, and its proof drops no story** (21
+  October, found by the evals' round 3: the bakery's customer held an order only as the order's own
+  document). The Authorization closure has a gap, `nowhere-to-add`, where a story adds rows its
+  teller holds only as the root of a one-row document, which is opened at a row already there
+  (`closure.ts`). `model.test.ts` (`testsOf`) no longer leaves out a story it cannot tell: one
+  whose writes no document it is done on holds fails, saying so, and one it has nothing to prove
+  for (a form posted to a route, a story that says no write, a document's own row) is a
+  `test.todo` saying why. **To move across**: a model the new gap opens holds the entity under its
+  parent in a document the teller holds, or in a list (the cafe's customer adds orders on `table`,
+  under its invoice); `dzql model check` makes `model/` again once it closes. The cafe's
+  `model/model.test.ts` gains its one `test.todo` (the scan, a route's).
+
 - **A scoped list holds what hangs under the roots it admits, on Postgres** (20 October, root
   #137), as delta's SQLite now does. The compiled open of a list with conditions reads an included
   collection that hangs from its root through the parent chain to the root rows its name admits
@@ -205,6 +217,21 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   needed by that module alone.
 
 ### Changed
+
+- **The two skills, from round 3 of their evals** (21 October). dzql-app: `bento.md`'s *Undo
+  follows the role* and `scope.md`'s *Today's* take their examples from a gym, not the eval's front
+  desk; SKILL step 1 and `stories.md` list, in order, what to make before the first run (`links.ts`,
+  its sign-in route, an empty resource for each document the stories write); `stories.md` says
+  another person's Undo never reaches yours, the cursor being the session, and needs no story;
+  `refusal.md` gives every `refuse(words)` its `cannot` story with `told`, a bullet of its own;
+  `where-an-app-lives.md` says only the cafe ships in `node_modules/dzql`; `tests.md` names
+  `open(server, cookie)`, `nextMessage` and `sessions.start`; SKILL step 8 reads the app back
+  (`bun run model:check --against-page model.json`). modelling: step 6 and `reference.md` run the
+  model's proof (`bun test model`), a failure a gap; step 2 keeps the teller's word in the story
+  and says the entity's name once; `reference.md` *Documents* says where a row is added. The
+  evals: dzql-app's scenario 1 builds no Undo and scenario 3 adds it; modelling's scenario 1 names
+  the command that opens the page, runs the proof, and with scenario 2 stops the page; scenario 3
+  builds a dog-walking model (`evals/fixtures/dog-walks/`) no example builds.
 
 - **The dzql-app skill, from two rounds of its evals** (20 October, root #113). `stories.md` says
   what the harness does with undo (every landed `does` story undone and redone, every page
@@ -571,6 +598,14 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   for the CLI and the model's page).
 
 ### Fixed
+
+- **A story that writes a document no resource owns fails in its own words** (21 October, found
+  by the evals' round 3): `no resource owns desk, which the story writes: list its resource in the
+  app's resources` (or a premise's write, the same), where the harness crashed on `owner.permit`
+  looking for hidden verbs (`harness.ts`).
+
+- **`dzql model --help` (or `-h`) says the model's verbs and exits** (21 October, found by the
+  evals' round 3), anywhere among the words: it started the page, which never exits.
 
 - **A thin app type-checks as npm installs it** (21 October, found by the evals' round 3): `bun
   check` in a new `bun create dzql` app failed in `node_modules/@blueshed/delta/src/client`,

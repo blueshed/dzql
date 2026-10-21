@@ -1237,6 +1237,15 @@ describe("a failure that says why", () => {
     expect(await failuresOf(example, [{ name: "Bob closes his tab, and Cy sees it", as: "bob", closesTab: true, seen: ["ada", "cy"] }])).toEqual(["cy did not see it: cy's page read session, here:kitchen, room:kitchen; the tab closing changed here:general"]);
   }, 30000);
 
+  test("A story fails, and says which page read what, so the fix is first time: a story that writes a document no resource owns says so, in its own words, and the run goes on", async () => {
+    const unowned: Example = { ...example, resources: example.resources.filter((c) => c.docType !== "room") }; // the page still reads the room: a resource left out of the list
+    const report = await run(unowned, { ...stories, stories: keyed([...only("Ada says hello"), { name: "Ada says hello in the kitchen first", as: "ada", premise: { ada: [{ doc: "room:kitchen", ops: [{ op: "add", path: "/messages/-", value: "hi" }] }] }, does: enter("kitchen"), seen: ["ada"] }]) });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([
+      ["no resource owns room, which the story writes: list its resource in the app's resources"],
+      ["no resource owns room:kitchen, which ada's premise writes: list its resource in the app's resources"],
+    ]);
+  }, 30000);
+
   test("A story fails, and says which page read what, so the fix is first time: a write refused says which check refused it, in the resource's words", async () => {
     const saying = withOwner("room", (room) => ({
       ...room,

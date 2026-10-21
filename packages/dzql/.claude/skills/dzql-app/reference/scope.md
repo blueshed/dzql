@@ -18,12 +18,12 @@ none yet.
 
 ## Today's, or one shift's
 
-Today's rows, flat, with nothing of the day's own to keep (a front desk's visitors), are a list
-scoped by their date column, named by the date: `desk:2026-10-20`, which `resolveDoc` works out
+Today's rows, flat, with nothing of the day's own to keep (a gym's check-ins), are a list scoped
+by their date column, named by the date: `checkins:2026-03-02`, which `resolveDoc` works out
 (`new Date().toISOString().slice(0, 10)`: the day in UTC, as leave's page takes today).
 
 ```ts
-defineDoc("desk:", { root: "visitors", include: [], scope: { day: ":id" } }), // desk:2026-10-20, today's and nothing older
+defineDoc("checkins:", { root: "checkins", include: [], scope: { day: ":id" } }), // checkins:2026-03-02, today's and nothing older
 ```
 
 Make the day, or the shift, a root row of its own when what happens in it hangs beneath it (bills,

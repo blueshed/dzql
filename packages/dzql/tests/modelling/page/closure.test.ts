@@ -72,6 +72,26 @@ describe("hjeli's six registers, over the model as it is told", () => {
     expect(of(r, "authorization-closure").gaps).toEqual([{ kind: "unscoped-write", where: "story 5 (ann)", detail: "ann touches holidays, held by no document ann holds" }]);
   });
 
+  test("authorization closure: a teller who adds rows they hold only as a one-row document's root has nowhere to add them", () => {
+    const bakery: Raw = {
+      models: { name: "Bakery" },
+      stories: {
+        "1": { id: 1, text: "A customer orders loaves", actor: "customer", kind: "does", writes: [{ entity: "orders", op: "add" }] },
+        "2": { id: 2, text: "The baker opens a day", actor: "baker", kind: "does", writes: [{ entity: "days", op: "add" }] },
+        "3": { id: 3, text: "The baker bakes an order", actor: "baker", kind: "does", writes: [{ entity: "orders", op: "replace", path: "baked", to: "true" }] },
+      },
+      documents: {
+        "1": { id: 1, name: "day", root: "days", holds: { days: { parent: null, fields: [field("date")] }, orders: { parent: "days", fields: [field("baked", "boolean")] } }, held_by: ["baker"], stories: [2, 3] },
+        "2": { id: 2, name: "order", root: "orders", holds: { orders: { parent: null, fields: [field("baked", "boolean")] } }, held_by: ["customer"], stories: [1] },
+      },
+    };
+    expect(of(closureOf(bakery), "authorization-closure").gaps).toEqual([
+      { kind: "nowhere-to-add", where: "story 1 (customer)", detail: "customer adds orders, and holds orders only as the root of order, one row opened where it already is: there is nowhere to add one. Hold orders under its days in a document customer holds, or in a list (heldby 1 ... customer)" },
+    ]);
+    // held under its day too, the customer has somewhere to add it
+    expect(of(closureOf({ ...bakery, documents: { ...bakery.documents, "1": { ...bakery.documents!["1"]!, held_by: ["baker", "customer"] } } }), "authorization-closure").gaps).toEqual([]);
+  });
+
   test("an empty model: every register closed but the one not asked", () => {
     expect(closureOf({ models: { name: "Cafe" } }).map((x) => x.gaps.length)).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });

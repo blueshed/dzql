@@ -31,8 +31,10 @@ least that makes the next story pass; `bun run stories` after each.
 
 1. **The story**, `stories.ts`: a member of the cast (`as`) `does` or `cannot` a write -- a
    document and its ops -- and who then sees it (`seen`). Watch it fail on its own terms: a module
-   that will not load is not a story failing, so make what `stories.ts` imports first. A teller
-   asking to see the page now is no reason to skip it. If the stories were modelled, `dzql model`
+   that will not load is not a story failing. Before the first run make only, in order: `links.ts`,
+   its sign-in route (`/in/:token`) in `routes.ts`, and an empty resource, listed, for each
+   document the stories write. Then run, and build. A teller asking to see the page now is no
+   reason to skip it. If the stories were modelled, `dzql model`
    has already made `model/` (the definitions, the guards, the migrations), and each story names
    the model story it tells (`model: 6`; `model: false` for the app's own). →
    [stories](reference/stories.md), [failing](reference/stories.md#watch-it-fail-on-its-own-terms)
@@ -68,6 +70,9 @@ least that makes the next story pass; `bun run stories` after each.
    come in by a link each (`links.ts`); what is no document's is a route that writes as the server
    (`serverWrite`, the cafe's `/scan`). → [example](reference/example.md), [signin](reference/signin.md)
 7. **Tests**, `routes.test.ts`: what a story cannot say, then the gate. → [tests](reference/tests.md)
+8. **Read it back**, if the stories were modelled: `bun run model:check --against-page model.json`
+   compares the app with the model, until it says no gaps. Plain `model:check` reads only the app.
+   (modelling's `reference.md`, *From the model to the app*, step 6.)
 
 Beyond the cafe, dzql's other examples are laid out the same way, on SQLite (`openTables`,
 `dzql/rendering/db`, in their `store.ts`): a document the server works out (chat's `here`, kept

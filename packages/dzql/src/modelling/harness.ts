@@ -203,6 +203,21 @@ function misshapen(story: Story): string[] {
   return why;
 }
 
+/**
+ * Why a story writes a document nothing takes, if it does: its write, or a write of its premise,
+ * names a document of a type no resource owns (one left out of the app's `resources`), which the
+ * server would refuse whoever sent it.
+ */
+function unownedIn(r: Run, story: Story): string[] {
+  const owned = (doc: string): boolean => r.byDocType.has(doc.includes(":") ? splitDoc(doc).docType : doc);
+  const said = (doc: string, whose: string): string => `no resource owns ${doc}, which ${whose} writes: list its resource in the app's resources`;
+  const write = writeOf(story);
+  return [
+    ...Object.entries(story.premise ?? {}).flatMap(([name, writes]) => writes.filter((w) => !owned(w.doc)).map((w) => said(w.doc, `${name}'s premise`))),
+    ...(write && !owned(write.doc) ? [said(write.doc, "the story")] : []),
+  ];
+}
+
 /** Why a budget is not a number of bytes, if it is not: a whole one, more than none. `whose` begins what is said. */
 const unbudgeted = (budget: unknown, whose: string): string[] =>
   budget === undefined || (Number.isInteger(budget) && (budget as number) > 0) ? [] : [`${whose} budget is a whole number of bytes: this one is ${JSON.stringify(budget)}`];
@@ -654,6 +669,8 @@ async function stale(r: Run, cast: Member[], when: string, failures: string[]): 
 async function tell(r: Run, story: Story): Promise<Outcome> {
   const unshaped = [...misshapen(story), ...(story.budget === undefined ? unbudgeted(r.stories.budget, "the example's") : [])];
   if (unshaped.length > 0) return { name: story.name, failures: unshaped }; // not a story the harness can tell: nothing is run
+  const unowned = unownedIn(r, story);
+  if (unowned.length > 0) return { name: story.name, failures: unowned }; // nothing would take its write: nothing is run
   const failures: string[] = [];
   const outcome: Outcome = { name: story.name, failures };
   r.failing = failures;
@@ -1193,8 +1210,8 @@ async function hiddenVerbs(r: Run): Promise<Warning[]> {
       const ws = m.socket;
       for (const doc of r.met.get(m.name)!.reads) {
         const { docType, docId } = doc.includes(":") ? splitDoc(doc) : { docType: doc, docId: m.sessionId };
-        const owner = r.byDocType.get(docType)!;
-        if (!owner.permit || docType === "ledger" || !isStored(owner)) continue;
+        const owner = r.byDocType.get(docType);
+        if (!owner?.permit || docType === "ledger" || !isStored(owner)) continue; // none owns it: nothing takes a write, and a story writing it says so (`unownedIn`)
         const value = valueAt(await settled(r.documents, () => r.documents.read(prefixDoc(docType, docId))), owner.under ?? "");
         const saying = (op: string, path: string): string => `${op} ${anyOne(asHeld(value, path), value) || "the document"}`; // a verb, as the warning says it: a path as delta takes it
         const known = new Set(toldTo(doc, m.name).map((w) => saying(w.op, w.path)));

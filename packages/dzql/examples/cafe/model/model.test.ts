@@ -71,3 +71,6 @@ describe("each story, on the store, each guarded", () => {
       }
     });
 });
+
+// each story the proof cannot tell, and why
+test.todo("A customer scans the code on their table -- not proved here: a form posted to a route, which the app's stories prove");

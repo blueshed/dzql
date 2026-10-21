@@ -258,8 +258,27 @@ const made = (m: Reading): string[] => [...new Set(m.documents.flatMap((d) => (m
 export function testsOf(model: Model, app = "model", types = "./types", guards?: string): string {
   const m = readingOf(model);
   const holds = (d: Document, w: StoryWrite) => w.entity in d.holds && (!w.path || d.holds[w.entity]!.fields.some((f) => f.name === w.path));
+  // a story the proof cannot tell is said, never dropped: a gap in the model fails, and the rest are
+  // left to do, each saying why (an evaluation's feedback: the bakery's refusal had no case at all)
+  const unproved: string[] = [];
   const cases = planOf(m).flatMap(({ s, writes, premise, serving }) => {
-    if (!writes.length || (s.kind === "cannot" && !guards)) return [];
+    const nowhere = [...new Set(s.writes.map((w) => w.entity))].filter((e) => !serving.some((d) => e in d.holds));
+    const why =
+      s.post ? "a form posted to a route, which the app's stories prove"
+      : !s.writes.length ? "it says nothing it writes (writes <story> add <entity>...)"
+      : nowhere.length ? undefined
+      : s.kind === "cannot" && !guards ? "a refusal is proved through the guards, and none were made"
+      : !writes.length ? "what it writes is its document's own row, there before any write: nothing to prove"
+      : "";
+    if (why === undefined) {
+      const at = serving.length ? `no document it is done on (${serving.map((d) => d.name).join(", ")}) holds ${nowhere.join(", ")}` : "no document serves it";
+      unproved.push(`test(${lit(s.text)}, () => {`, `  throw new Error(${lit(`not proved: ${at}, so it is done nowhere`)});`, "});");
+      return [];
+    }
+    if (why) {
+      unproved.push(`test.todo(${lit(`${s.text} -- not proved here: ${why}`)});`);
+      return [];
+    }
     const told = [...new Set([s.actor, ...serving.flatMap((d) => d.held_by)])];
     // what is there after the whole story: an entity it removes is checked as nothing more
     const removed = new Set(s.writes.filter((w) => w.op === "remove" && !w.path).map((w) => w.entity));
@@ -331,5 +350,6 @@ export function testsOf(model: Model, app = "model", types = "./types", guards?:
     "    });",
     "});",
     "",
+    ...(unproved.length ? ["// each story the proof cannot tell, and why", ...unproved, ""] : []),
   ].join("\n");
 }

@@ -30,8 +30,17 @@ Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dz
   (`bun test examples/<name>`); the full gate before a commit.
 - A test for each document's rules and shapes, called directly, without a server.
 - A `server.test.ts` that drives writes and undo over a real websocket (two writes racing), and checks
-  that a value is drawn, which no story's `seen` does. `write(ws, doc, ops)` (`src/rendering/test-socket.ts`)
-  gives each write an id and returns it, so a refused one is answered: `expectMessage(ws, "refused")`.
+  that a value is drawn, which no story's `seen` does. From `dzql/rendering/test-socket`:
+  - `open(server, cookie)` opens a socket as the session that cookie names, and waits for its
+    first page (`pageOf(ws)` is the page it holds);
+  - `write(ws, doc, ops)` gives each write an id and returns it, so a refused one is answered:
+    `expectMessage(ws, "refused")`;
+  - `nextMessage(ws)` is the next message the socket was sent, whatever its type.
+
+  A person signed in is `(await sessions.start({ person_id: 1 })).cookie`: `sessions` is the app's
+  own (`sessionRows`, its session's api), and `start` makes a fresh session holding that value.
+  Two, each opened, are two people at once. The cafe's `routes.test.ts` takes its cookies from
+  its links instead.
 - A `client/app.test.ts` for what only a browser can show (`Bun.WebView`, on Chrome).
 - Open a view with `webview()`, never `new Bun.WebView()`: only `webview()` is measured for the
   client's coverage (`src/rendering/client-coverage.ts`).

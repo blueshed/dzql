@@ -169,12 +169,36 @@ export async function modelRoute({ file = process.env.MODEL_FILE ?? "model.json"
   return app;
 }
 
+/** What `dzql model --help` says: the command and its verbs, as the modelling skill's reference.md has them. */
+export const USAGE = `Usage: dzql model [<verb>]
+
+  (no verb) [--out model]        start the model's page (MODEL_PORT, 3001), the model in model.json (MODEL_FILE)
+  check [--out model] [--drops]  every check once; makes model/ while none is open, else exits 1
+  show                           the model read back: its stories, documents and checks
+  login <link>                   sign the CLI in, with the link the page printed for it
+  story <actor> <does|cannot> <words>     reword <n> <words>     teller <n> <actor>     unsay <n>
+  touches <n> <entity>...        writes <n> add <entity> replace <entity>.<field>=<value> remove <entity>...
+  requires <n> <entity>.<field>=<value>...
+  document <name> <root> <story>...       holds <doc> <entity> [under <parent>] <field[:type]>...
+  heldby <doc> <actor>...        own <doc>     list <doc>     serves <doc> <story>...
+  rename <doc> <name>            drop <doc>    unhold <doc> <entity>     root <doc> <entity>
+  undo, redo
+  site, guards, mcp              the model as a site, its guards, its verbs over MCP
+
+Stop a page started here with \`delta stop\` (\`bun run stop\` in a project).
+`;
+
 /** Runs `dzql model`; false for any other command. */
 export async function run(argv: string[]): Promise<boolean> {
   const [verb, sub, ...rest] = argv;
   const flag = (name: string, or: string) => (rest.includes(name) ? rest[rest.indexOf(name) + 1] ?? or : or);
   const file = process.env.MODEL_FILE ?? "model.json";
   if (verb !== "model") return false;
+  // asked how, it says so and stops: never the page, which would not exit (an evaluation's feedback)
+  if ([sub, ...rest].some((a) => a === "--help" || a === "-h")) {
+    process.stdout.write(USAGE);
+    process.exit(0);
+  }
   const port = process.env.MODEL_PORT ?? "3001";
   if (sub === "check") {
     if (!existsSync(file)) {

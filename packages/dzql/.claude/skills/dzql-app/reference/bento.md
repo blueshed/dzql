@@ -82,11 +82,11 @@ Where only some people write, make a bento per role in `surfaces.ts`, and let `p
 who the session is:
 
 ```ts
-// surfaces.ts: the receptionist signs visitors in; the rest of the team only reads
+// surfaces.ts: the coach sets the week's classes; the members only read them
 const surfacesOf = (undo: boolean) => bento({ icon, session: "session", undo, leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
 const writes = surfacesOf(true);
 const reads = surfacesOf(false);
-export const surfacesFor = (role: string | null) => (role === "receptionist" ? writes : reads);
+export const surfacesFor = (role: string | null) => (role === "coach" ? writes : reads);
 ```
 
 Where everyone shown Undo writes on the ledger (the cafe, leave), one bento is enough.

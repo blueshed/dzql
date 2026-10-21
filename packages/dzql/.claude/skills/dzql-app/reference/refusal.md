@@ -36,10 +36,12 @@ answers closed against Undo too (`permitUndo`) and what a walk did, told (`after
 - `permit` returns `false` for a write no control of that person's could send: there is nowhere to
   say why, and its `cannot` story has no `told`. Throw `refuse(reason)`, from `permit` or `shape`,
   only for a write a control did send and a rule turns down: the words are drawn beside that
-  control, and its story says them (`told`). Leave's member has no Approve, so `may` is `false`
-  (`onlyManagerAnswers`); a last day before the first is typed into a field, so `shape` refuses it.
-  The stories hold one half: a control on the page refused without a word fails as a control that
-  always fails.
+  control. Leave's member has no Approve, so `may` is `false` (`onlyManagerAnswers`); a last day
+  before the first is typed into a field, so `shape` refuses it. The stories hold one half: a
+  control on the page refused without a word fails as a control that always fails.
+- **Every `refuse(words)` has its `cannot` story, with `told: words`**, told from where the
+  control that sends it is (`from: "?new"`). A refusal checked only in a server test is a rule no
+  story carries.
 - `toldAt(sessionId, doc, path)`, where `doc` and `path` are the control's `data-write`, draws
   `<p class="refused" role="alert">`, `<p class="said" role="status">` for a success, or nothing.
 - A success is told, not thrown: `tell(sessionId, { doc, path, said })`, from `afterWrite`,
