@@ -22,8 +22,9 @@
  * installs (`bun add`) comes from npm, so a skill is measured against what npm has.
  */
 import { $ } from "bun";
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { packer } from "./packed";
 
 const root = join(import.meta.dir, "..");
 const args = process.argv.slice(2);
@@ -56,57 +57,8 @@ const OWNER: Record<string, string> = { railroad: "railroad", "bun-route": "rail
 
 const sh = (cmd: string[], cwd: string) => Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, CI: "" } });
 
-/** The checkout's packages as npm would ship them: one tarball each, packed once a run. */
-const LOCAL: Record<string, string> = { dzql: "dzql", "@blueshed/delta": "delta", "@blueshed/railroad": "railroad" };
-const tarballs = new Map<string, string>();
-function tarball(pkg: string): string {
-  if (!tarballs.has(pkg)) {
-    const dest = join(out, ".packed");
-    mkdirSync(dest, { recursive: true });
-    const packed = sh(["bun", "pm", "pack", "--destination", dest, "--ignore-scripts", "--quiet"], join(root, "packages", pkg));
-    tarballs.set(pkg, packed.stdout.toString().trim().split("\n").at(-1)!);
-  }
-  return tarballs.get(pkg)!;
-}
-
-/**
- * A `file:` install is a folder of links into the checkout, which a session's search does not
- * follow (it then reads the checkout, outside its project): each is put back as the package ships,
- * its own node_modules kept, at every depth. A peer the install nested under it (a second railroad,
- * whose signals the page's never see) goes, as npm would: the app's own is the one, or the first,
- * hoisted, where the app has none.
- */
-function shipped(modules: string, top = modules): void {
-  if (!existsSync(modules)) return;
-  if (modules !== top)
-    for (const name of Object.keys(LOCAL)) {
-      if (!existsSync(join(modules, name))) continue;
-      if (existsSync(join(top, name))) rmSync(join(modules, name), { recursive: true, force: true });
-      else (mkdirSync(dirname(join(top, name)), { recursive: true }), renameSync(join(modules, name), join(top, name)), shipped(top)); // hoisted, the one copy
-    }
-  for (const [name, pkg] of Object.entries(LOCAL)) {
-    const at = join(modules, name);
-    if (!existsSync(at) || !readdirSync(at).some((f) => lstatSync(join(at, f)).isSymbolicLink())) continue;
-    const tmp = mkdtempSync(join(modules, ".shipped-"));
-    sh(["tar", "-xzf", tarball(pkg), "-C", tmp], tmp);
-    if (existsSync(join(at, "node_modules"))) renameSync(join(at, "node_modules"), join(tmp, "package", "node_modules"));
-    rmSync(at, { recursive: true, force: true });
-    renameSync(join(tmp, "package"), at);
-    rmSync(tmp, { recursive: true, force: true });
-    shipped(join(at, "node_modules"), top);
-  }
-}
-
-/** A package.json's `file:` links to the checkout's packages pointed at their tarballs instead; whether any was. */
-function packed(file: string): boolean {
-  const pkg = JSON.parse(readFileSync(file, "utf8")) as Record<string, Record<string, string> | undefined>;
-  let changed = false;
-  for (const field of ["dependencies", "devDependencies", "peerDependencies", "overrides"])
-    for (const [name, dir] of Object.entries(LOCAL))
-      if (pkg[field]?.[name]?.startsWith("file:") && !pkg[field]![name]!.endsWith(".tgz")) (pkg[field]![name] = `file:${tarball(dir)}`), (changed = true);
-  if (changed) writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
-  return changed;
-}
+/** The checkout's packages as npm would ship them: one tarball each, packed once a run (`packed.ts`). */
+const { tarball, ship } = packer(join(out, ".packed"));
 
 /** A copied tsconfig that extends one outside what was copied stands alone: what it extends, inlined. */
 function standalone(copied: string, from: string): void {
@@ -173,12 +125,9 @@ async function make(r: (typeof runs)[number], dir: string): Promise<void> {
       standalone(to, join(root, c.from));
     }
   }
-  // a copy that brings a package.json is installed as it would be (an empty start's from npm, as a person's)
-  // the checkout's packages as tarballs (a starter's --local names their folders, whose devDependencies
-  // come along and hide what the app never added); then installed, and anything still linked unlinked
-  if (existsSync(join(dir, "package.json")) && packed(join(dir, "package.json"))) rmSync(join(dir, "node_modules"), { recursive: true, force: true });
-  if (existsSync(join(dir, "package.json")) && !existsSync(join(dir, "node_modules"))) sh(["bun", "install"], dir);
-  shipped(join(dir, "node_modules"));
+  // a copy that brings a package.json is installed as it would be (an empty start's from npm, as a person's),
+  // the checkout's packages as tarballs
+  ship(dir);
   if (!existsSync(join(dir, ".git"))) sh(["git", "init", "-q"], dir);
   if (!existsSync(join(dir, ".gitignore"))) writeFileSync(join(dir, ".gitignore"), "node_modules/\n");
   sh(["git", "add", "-A"], dir);

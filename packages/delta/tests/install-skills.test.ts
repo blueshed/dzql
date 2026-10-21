@@ -90,15 +90,20 @@ describe("install-skills", () => {
     expect(second.code).toBe(0);
     // Marker '=' means unchanged in the CLI's tight format.
     expect(second.stderr).toMatch(/=.*SKILL\.md/);
-    // No .bak files appear if nothing was overwritten.
+    // No backup appears if nothing was overwritten.
     expect(existsSync(join(dir, ".claude/skills/delta-doc/SKILL.md.bak"))).toBe(false);
+    expect(existsSync(join(dir, ".claude/skills-backup"))).toBe(false);
   });
 
-  test("overwrites a locally edited file and leaves a .bak behind", async () => {
+  // An app's prepare runs install-skills: a backup beside the page it replaced was committed with
+  // the app's skills (the Shed's run 6, finding 9). It is kept outside the skills folder instead.
+  test("overwrites a locally edited file and keeps the edit outside the skills folder", async () => {
     await runInstall(dir);
     const target = join(dir, ".claude/skills/delta-doc/SKILL.md");
+    const page = join(dir, ".claude/skills/delta-doc/reference/recipe.md");
     const original = readFileSync(target, "utf8");
     writeFileSync(target, "locally edited\n");
+    writeFileSync(page, "a page edited\n");
 
     const res = await runInstall(dir);
     expect(res.code).toBe(0);
@@ -106,7 +111,10 @@ describe("install-skills", () => {
     expect(res.stderr).toMatch(/~.*SKILL\.md/);
 
     expect(readFileSync(target, "utf8")).toBe(original);
-    expect(readFileSync(target + ".bak", "utf8")).toBe("locally edited\n");
+    expect(existsSync(target + ".bak")).toBe(false);
+    expect(existsSync(page + ".bak")).toBe(false);
+    expect(readFileSync(join(dir, ".claude/skills-backup/delta-doc/SKILL.md.bak"), "utf8")).toBe("locally edited\n");
+    expect(readFileSync(join(dir, ".claude/skills-backup/delta-doc/reference/recipe.md.bak"), "utf8")).toBe("a page edited\n");
   });
 
   test("installs a third-party @scope/pkg's skills only when package.json claudeSkills names it", async () => {
@@ -241,7 +249,8 @@ describe("install-skills", () => {
     expect(existsSync(join(installed, "reference.md"))).toBe(false);
     expect(readFileSync(join(installed, "reference/paths.md"), "utf8")).toBe("paths\n");
     expect(readFileSync(join(installed, "reference/wire.md"), "utf8")).toBe("wire\n");
-    expect(existsSync(join(installed, "SKILL.md.bak"))).toBe(true);               // a backup is the consumer's
+    expect(existsSync(join(installed, "SKILL.md.bak"))).toBe(false);              // a backup an older install left beside it...
+    expect(readFileSync(join(dir, ".claude/skills-backup/widgets/SKILL.md.bak"), "utf8")).toBe("an edit kept by an earlier upgrade\n"); // ...is the consumer's, moved out
     expect(existsSync(join(dir, ".claude/skills/mine/SKILL.md"))).toBe(true);     // not a folder it installs
 
     // A folder the source drops goes too.
@@ -253,12 +262,13 @@ describe("install-skills", () => {
   test("does not clobber a pre-existing .bak when re-upgrading", async () => {
     await runInstall(dir);
     const target = join(dir, ".claude/skills/delta-doc/SKILL.md");
+    const backup = join(dir, ".claude/skills-backup/delta-doc/SKILL.md");
     const original = readFileSync(target, "utf8");
 
     // First local edit → upgrade leaves the edit in .bak.
     writeFileSync(target, "edit one\n");
     await runInstall(dir);
-    expect(readFileSync(target + ".bak", "utf8")).toBe("edit one\n");
+    expect(readFileSync(backup + ".bak", "utf8")).toBe("edit one\n");
 
     // Second local edit → upgrade must NOT destroy the first .bak; the new
     // backup lands at .bak.1 instead.
@@ -267,8 +277,8 @@ describe("install-skills", () => {
     expect(res.code).toBe(0);
     expect(readFileSync(target, "utf8")).toBe(original);
     // Original backup preserved.
-    expect(readFileSync(target + ".bak", "utf8")).toBe("edit one\n");
+    expect(readFileSync(backup + ".bak", "utf8")).toBe("edit one\n");
     // New backup written to a non-colliding name.
-    expect(readFileSync(target + ".bak.1", "utf8")).toBe("edit two\n");
+    expect(readFileSync(backup + ".bak.1", "utf8")).toBe("edit two\n");
   });
 });

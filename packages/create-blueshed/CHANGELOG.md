@@ -63,6 +63,28 @@ section up.
 
 ### Fixed
 
+- **Rows that name each other live in one store** (21 October, the Shed's run 6, finding 2).
+  Sign-in put the people in SQLite while the documents their rows named stayed in a JSON file, so
+  nothing held the two together. evolve's `references/auth.md` says what moves with the people:
+  every document whose rows theirs name, or that names theirs. `references/two-documents.md`'s
+  kitchen and undo need no move to SQLite only while the documents share one store. The Shed's
+  `expected.md` stage 3 says the same rule, in place of every document in SQLite.
+- **A story that names who does a thing says who may** (21 October, the Shed's run 6, finding 3).
+  The rule (`accept`, told who is writing) is written with the story, never kept as an item for
+  later: one line each in evolve's `references/auth.md` and `references/document.md`, and the
+  template's `CLAUDE.md` where stories are described.
+- **The last Shed noun out of the skill** (21 October, the Shed's run 6, finding 6): evolve's
+  `references/sqlite.md` named a due date; it is now an order's pickup time. The root's
+  `scripts/docs.ts` holds `due` out of every skill page (but "due to").
+- **The Shed's driver installs what ships** (21 October, the Shed's run 6, finding 8). An app made
+  with `--local` names the checkout's folders, and a session followed `node_modules`' links into
+  the repository. `evals/shed/driver/run.ts` now installs the app from packed tarballs before stage
+  1 (kept beside the app), fails if any link into the checkout is left, and commits that as its own
+  step (`--installed-only` stops there). The packing is the root's `scripts/packed.ts`, which
+  `scripts/evals.ts` imports.
+- **A new app git-ignores `.claude/skills-backup/`**, where delta's `install-skills` now keeps a
+  page it replaced (the Shed's run 6, finding 9: `prepare` left `.bak` files in the app's skills,
+  committed with a stage). create-dzql's template too.
 - **The migration's `up` keeps people's orders as they were** (21 October, the evolve evaluations'
   round 3, finding 1). evolve's `references/migrations.md` counted every version of a line, so a
   Tea taken off was counted back on, and its `DELETE` erased the history the temporal table keeps.

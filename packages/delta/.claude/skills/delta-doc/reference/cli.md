@@ -77,6 +77,7 @@ bunx @blueshed/delta install-skills --skip bun-route   # all but the skills name
   ships `railroad` and `bun-route`).
 - Another package's skills only when `package.json` names it: `"claudeSkills": ["@acme/widgets"]`
   (a skill is instructions an agent follows). Others are skipped, with a line saying so.
-- Re-runs skip identical files; a locally edited copy is overwritten and kept as `.bak`; a file
-  the source no longer has is removed (never a `.bak`, never outside the folders it installs).
-  Re-run after upgrading a package that ships a skill.
+- Re-runs skip identical files; a locally edited copy is overwritten and kept as `.bak` in
+  `.claude/skills-backup/<skill>/`, outside the skills (git-ignore it); a file the source no longer
+  has is removed (never outside the folders it installs). Re-run after upgrading a package that
+  ships a skill.

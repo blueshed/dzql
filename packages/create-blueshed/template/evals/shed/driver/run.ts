@@ -1,8 +1,20 @@
-// A Shed run: the app made from the checkout (--local), then each stage a fresh session, committed
-// after it by this driver; per stage the minutes, the tests, and the lines of src/ and tests/.
+// A Shed run: the app made from the checkout (--local), installed as it ships, then each stage a
+// fresh session, committed after it by this driver; per stage the minutes, the tests, and the lines
+// of src/ and tests/. `bun run.ts <app> --installed-only` stops after the install (to check it).
 import { $ } from "bun";
-const app = process.argv[2] ?? `${process.env.HOME}/Workshop/shed`; // made with create-blueshed --local
+import { join, resolve } from "node:path";
+import { besides, linksInto, packer } from "../../../../../../scripts/packed";
+const app = resolve(process.argv.slice(2).find((a) => !a.startsWith("--")) ?? `${process.env.HOME}/Workshop/shed`); // made with create-blueshed --local
 const S = import.meta.dir;
+
+// What ships, never the checkout: --local names the checkout's folders, and a session follows
+// node_modules' links into the repository (run 6, finding 8). The app's package.json names packed
+// tarballs instead (kept beside the app), installed again, before stage 1.
+packer(besides(app)).ship(app);
+const linked = linksInto(join(app, "node_modules"));
+if (linked.length) throw new Error(`still linked into the checkout:\n${linked.join("\n")}`);
+await $`git add -A && git commit -q -m ${"Installed as it ships: railroad, delta and dzql from packed tarballs"}`.cwd(app).nothrow();
+if (process.argv.includes("--installed-only")) process.exit(0);
 const logs = process.env.SHED_LOGS ?? (await import("node:os")).tmpdir(); // each stage's log and prompt, and score.json
 const titles = ["the shed's list", "borrowing", "the shed knows what is out", "kits and due dates", "two sheds, and each member's own"];
 const lines = async (dir: string) => {

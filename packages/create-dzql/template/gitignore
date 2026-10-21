@@ -4,5 +4,6 @@ data/
 .env
 .DS_Store
 .claude/settings.local.json
+.claude/skills-backup/
 .eta-session*
 db.sqlite*

@@ -211,4 +211,4 @@ test(`${stories.stories.ordering.name} -- your order: added to, there when you c
 
 Working: `tests/evolve.ts` makes a new app from this template, applies this page and runs its type check and tests (`bun run test:evolve`).
 
-- The kitchen (every order, a third document over the same rows) and undo need no move to SQLite: the JSON file holds both. [sqlite.md](sqlite.md) has them worked: the `kitchen:` document, the cook's cell, Undo and Redo on the page, and their test. Take those, and keep `@blueshed/delta/json`, turning on the ledger in its `registerDocs(ws, file, schema, docs, [], { ledger: true })`.
+- The kitchen (every order, a third document over the same rows) and undo need no move to SQLite while the documents share one store: the JSON file holds both. Once rows they name, or rows that name theirs, are in SQLite (sign-in puts the people there, [auth.md](auth.md)), they move with them. [sqlite.md](sqlite.md) has them worked: the `kitchen:` document, the cook's cell, Undo and Redo on the page, and their test. Take those, and keep `@blueshed/delta/json`, turning on the ledger in its `registerDocs(ws, file, schema, docs, [], { ledger: true })`.

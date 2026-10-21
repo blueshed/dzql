@@ -57,8 +57,9 @@ for (const page of pages) {
   if (!/^Working: /m.test(readFileSync(join(root, page), "utf8"))) wrong.push(`${page}: says nowhere where its rules are shown working (a line starting "Working:")`);
 }
 // the Shed (create-blueshed's template's evals/shed/) is held out: no skill page names its nouns, or
-// a run measures what the page said, not what the skills lead to (run 5 found four such lines)
-const shed = /\b(allotment|plots?|plotholders?|strimmer|shears|spade|rake|committee|borrow\w*|loans?|shed)\b/i;
+// a run measures what the page said, not what the skills lead to (run 5 found four such lines; run 6
+// a due date): "due to" is plain English, not the Shed's
+const shed = /\b(allotment|plots?|plotholders?|strimmer|shears|spade|rake|committee|borrow\w*|loans?|due(?!\s+to\b)|shed)\b/i;
 const skillFiles = (await $`git ls-files ${skills.map(dirname)}`.cwd(root).quiet().text()).split("\n").filter((f) => f.endsWith(".md"));
 for (const file of skillFiles)
   readFileSync(join(root, file), "utf8").split("\n").forEach((line, i) => {

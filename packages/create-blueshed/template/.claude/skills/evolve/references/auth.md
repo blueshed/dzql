@@ -1,6 +1,6 @@
 # Sign in, with no passwords
 
-When people should be someone: their own things, a list only some may see, who wrote what. delta's link sign-in: **a link is someone**. Its tap makes a session, a cookie the page never reads, and the socket is signed in by it. Anyone signed in sends anyone their link; the first person's comes from a command. In development the page asks "Who are you?" and you pick: two windows are two people, and nobody remembers a password. People are a resource of their own, kept in SQLite with a history, as [sqlite.md](sqlite.md) keeps the order.
+When people should be someone: their own things, a list only some may see, who wrote what. delta's link sign-in: **a link is someone**. Its tap makes a session, a cookie the page never reads, and the socket is signed in by it. Anyone signed in sends anyone their link; the first person's comes from a command. In development the page asks "Who are you?" and you pick: two windows are two people, and nobody remembers a password. People are a resource of their own, kept in SQLite with a history, as [sqlite.md](sqlite.md) keeps the order. What moves with them: every document whose rows theirs name, or that names theirs, goes to SQLite with the people, in the same step. Rows that name each other live in one store; only a document that names nobody's rows, like `message`, stays a JSON file.
 
 ```ts
 // src/resources/people/people-api.ts
@@ -331,5 +331,6 @@ test(`${stories.stories.invite.name} -- on the page: pick who you are, add someo
 Working: `tests/evolve.ts` makes a new app from this template, applies this page and runs its type check and tests (`bun run test:evolve`).
 
 - How a link, a session and `mayLink` work: delta-doc's `reference/auth.md`. Who may open a document once there is sign-in: `owns`, a path in the document's definition from its row to the person (`@person` for one's own), or `shared: true`; its `reference/ownership.md` has each shape. Documents registered without `auth`, like `message`, stay open to anyone.
+- **A story that names who does a thing says who may.** Write the rule with the story: `accept` on the document's `defineDoc`, told who is writing (delta-doc's `reference/ownership.md`). Never an item kept for later.
 - **In production** nobody is listed: set `ORIGIN` (the site's address, which links name; Railway sets `RAILWAY_PUBLIC_DOMAIN`), and give the first person their link with `bun run link <name>` on the server.
 - On Postgres, the links and sessions are dzql's: `postgresLinkStore` from `dzql/auth-link`, and `bunx dzql link`.

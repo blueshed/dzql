@@ -254,6 +254,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`install-skills` keeps its backups outside the skills** (21 October, the Shed's run 6, finding
+  9). A page it replaced was backed up beside it, `.bak` in `.claude/skills/<skill>/`, so an app
+  whose `prepare` runs it (both starters') committed the copies with its skills, and a session read
+  them as pages. A backup is now `.claude/skills-backup/<skill>/<path>.bak` (`.bak.1`, … beside an
+  earlier one), the same under `~/.claude` with `--user`, and one an older install left in the
+  skills folder is moved there (`>` in its line). `tests/install-skills.test.ts`; delta-doc's
+  `reference/cli.md` says where. **To move across**: git-ignore `.claude/skills-backup/` (both
+  starters' `.gitignore` now do), and run `install-skills` once to move the old `.bak` files out.
+
 - **`migrate` puts a SQLite file in WAL mode, as `createTables` does** (20 October, found with
   the delta-doc evals, root #113): an app whose tables come from its migrations, as the skill
   teaches, ran in the rollback journal, so a second process sharing the file waited on every read.

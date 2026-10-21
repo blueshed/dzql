@@ -49,9 +49,11 @@ same thing pass.
 ## Stage 3: rows shared between documents, and undo
 
 **Structure.**
-- The documents move to delta's SQLite store. The list, each member's loan and Sam's board are
-  documents over the same rows: tools, loans and their lines, members. The tables follow from the
-  documents.
+- Rows that name each other live in one store. The list, each member's loan and Sam's board are
+  documents over the same rows: tools, loans and their lines, members. So they are in delta's
+  SQLite store together, moved with the members whenever sign-in put those there, never the list
+  left in a JSON file while loans in SQLite name its tools. A document that names nobody's rows
+  (the message) may stay a JSON file. The tables follow from the documents.
 - Sam's board is one document over every loan.
 - "Out" comes from the open loans themselves, shown on every list, and changes when a loan is made
   or returned (story 2). The list says a tool is out, never who has it: the borrower is Sam's

@@ -10,36 +10,42 @@
  *
  * Skills aren't versioned like SQL — we always overwrite, but back up the
  * existing file as `.bak` so a consumer who edited their copy doesn't lose
- * it. Bytewise-identical destinations are skipped. Each skill folder installed
+ * it. The backup is kept outside the skills folder, in `.claude/skills-backup/
+ * <skill>/` (an app's `prepare` runs this, and a backup beside the page was
+ * committed with its skills), and one an older install left beside a page is
+ * moved there. Bytewise-identical destinations are skipped. Each skill folder installed
  * mirrors its source: a file the source no longer has is removed (a skill
  * that split reference.md into reference/ leaves no stale reference.md
- * beside it), but never a `.bak`, and never outside the folders installed.
+ * beside it), never outside the folders installed.
  * @internal
  */
 import { resolve, basename, join, dirname } from "node:path";
 import { homedir } from "node:os";
-import { mkdirSync, copyFileSync, existsSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, type Dirent } from "node:fs";
+import { mkdirSync, copyFileSync, existsSync, readFileSync, readdirSync, renameSync, rmSync, rmdirSync, statSync, type Dirent } from "node:fs";
 
 /** The package this ships in: its own skills, and its node_modules during development. */
 const packageRoot = resolve(import.meta.dir, "../..");
 
 /**
- * Back up `dest` to `dest + ".bak"` without destroying a pre-existing backup.
- * If `dest.bak` already exists, fall back to `.bak.1`, `.bak.2`, … so an
- * earlier backup the user may still need is preserved. Returns the path the
- * backup was written to.
+ * Back up `dest` to `backup + ".bak"` (its place in the backup folder) without
+ * destroying a pre-existing backup. If that already exists, fall back to
+ * `.bak.1`, `.bak.2`, … so an earlier backup the user may still need is
+ * preserved. Moves the file there with `move`, else copies it. Returns the path
+ * the backup was written to.
  */
-function backupFile(dest: string): string {
-  let bak = dest + ".bak";
+function backupFile(dest: string, backup: string, move = false): string {
+  mkdirSync(dirname(backup), { recursive: true });
+  let bak = backup + ".bak";
   if (existsSync(bak)) {
     let n = 1;
-    while (existsSync(`${dest}.bak.${n}`)) n++;
-    bak = `${dest}.bak.${n}`;
+    while (existsSync(`${backup}.bak.${n}`)) n++;
+    bak = `${backup}.bak.${n}`;
     process.stderr.write(
-      `Note: ${basename(dest)}.bak already exists; backing up to ${basename(bak)} instead.\n`,
+      `Note: ${basename(backup)}.bak already exists; backing up to ${basename(bak)} instead.\n`,
     );
   }
-  copyFileSync(dest, bak);
+  if (move) renameSync(dest, bak);
+  else copyFileSync(dest, bak);
   return bak;
 }
 
@@ -161,9 +167,11 @@ function discoverSkillSources(): SkillSource[] {
 
 type CopyAction = "created" | "upgraded" | "unchanged";
 
+/** Copy `src` over `dest`, a file it replaces backed up at its place under `backups`. */
 function copyDirWithBackup(
   src: string,
   dest: string,
+  backups: string,
   dryRun: boolean,
   onFile: (relPath: string, action: CopyAction) => void,
   prefix = "",
@@ -174,7 +182,7 @@ function copyDirWithBackup(
     const destPath = join(dest, entry.name);
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (isDir(src, entry)) {
-      copyDirWithBackup(srcPath, destPath, dryRun, onFile, rel);
+      copyDirWithBackup(srcPath, destPath, join(backups, entry.name), dryRun, onFile, rel);
       continue;
     }
     if (!isFile(src, entry)) continue;
@@ -183,7 +191,7 @@ function copyDirWithBackup(
       const b = readFileSync(destPath);
       if (a.equals(b)) { onFile(rel, "unchanged"); continue; }
       if (!dryRun) {
-        backupFile(destPath);
+        backupFile(destPath, join(backups, entry.name));
         copyFileSync(srcPath, destPath);
       }
       onFile(rel, "upgraded");
@@ -194,18 +202,19 @@ function copyDirWithBackup(
   }
 }
 
-/** A backup install-skills left (`x.bak`, `x.bak.1`): the consumer's, never pruned. */
-const isBackup = (name: string) => /\.bak(\.\d+)?$/.test(name);
+/** A backup an older install-skills left beside a page (`x.bak`, `x.bak.1`): the consumer's, moved out, never pruned. */
+const backupOf = (name: string) => /^(.+)\.bak(\.\d+)?$/.exec(name)?.[1];
 
 /**
  * Remove from `dest` what `src` no longer has (`src` null: a folder the source
- * dropped), keeping backups; a folder left empty goes too.
+ * dropped), a backup moved to its place under `backups`; a folder left empty goes too.
  */
 function pruneDir(
   src: string | null,
   dest: string,
+  backups: string,
   dryRun: boolean,
-  onRemove: (relPath: string) => void,
+  onRemove: (relPath: string, moved: boolean) => void,
   prefix = "",
 ): void {
   if (!existsSync(dest)) return;
@@ -215,13 +224,19 @@ function pruneDir(
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
       const kept = srcPath && existsSync(srcPath) ? srcPath : null;
-      pruneDir(kept, destPath, dryRun, onRemove, rel);
+      pruneDir(kept, destPath, join(backups, entry.name), dryRun, onRemove, rel);
       if (!kept && !dryRun && readdirSync(destPath).length === 0) rmdirSync(destPath);
       continue;
     }
-    if (isBackup(entry.name) || (srcPath && existsSync(srcPath))) continue;
+    const page = backupOf(entry.name);
+    if (page) {
+      if (!dryRun) backupFile(destPath, join(backups, page), true);
+      onRemove(rel, true);
+      continue;
+    }
+    if (srcPath && existsSync(srcPath)) continue;
     if (!dryRun) rmSync(destPath);
-    onRemove(rel);
+    onRemove(rel, false);
   }
 }
 
@@ -242,18 +257,23 @@ export function installSkills(values: Record<string, unknown>): void {
     process.exit(2);
   }
 
+  // backups beside the skills, never in them: an app commits its skills (`prepare` runs this)
+  const backupRoot = join(dirname(root), "skills-backup");
   process.stderr.write(
     `${dryRun ? "[dry-run] " : ""}Installing ${sources.length} skill(s) → ${root}\n`,
   );
 
   for (const { name, srcDir, origin } of sources) {
     const destDir = join(root, name);
-    const did: Record<CopyAction | "removed", string[]> = { created: [], removed: [], upgraded: [], unchanged: [] };
-    copyDirWithBackup(srcDir, destDir, dryRun, (rel, action) => did[action].push(rel));
-    pruneDir(srcDir, destDir, dryRun, (rel) => did.removed.push(rel));
-    const mark = { created: "+", removed: "-", upgraded: "~", unchanged: "=" } as const;
+    const backups = join(backupRoot, name);
+    const did: Record<CopyAction | "removed" | "moved", string[]> = { created: [], removed: [], moved: [], upgraded: [], unchanged: [] };
+    // an older install's backups moved out first, so they keep the earlier names
+    pruneDir(srcDir, destDir, backups, dryRun, (rel, moved) => did[moved ? "moved" : "removed"].push(rel));
+    copyDirWithBackup(srcDir, destDir, backups, dryRun, (rel, action) => did[action].push(rel));
+    const mark = { created: "+", removed: "-", moved: ">", upgraded: "~", unchanged: "=" } as const;
+    const said = { upgraded: " (.bak in .claude/skills-backup)", moved: " (to .claude/skills-backup)" } as Record<string, string>;
     const parts = (Object.keys(mark) as (keyof typeof mark)[]).filter((k) => did[k].length)
-      .map((k) => `${mark[k]}${did[k].join(", ")}${k === "upgraded" ? " (.bak)" : ""}`);
+      .map((k) => `${mark[k]}${did[k].join(", ")}${said[k] ?? ""}`);
     process.stderr.write(`  ${name}  [${origin}]  ${parts.join("  ") || "nothing to do"}\n`);
   }
 }

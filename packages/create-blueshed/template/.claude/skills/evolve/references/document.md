@@ -108,6 +108,7 @@ Working: `tests/evolve.ts` makes a new app from this template, applies this page
 - The page is the bento's (`src/resources/bento.tsx`): a document is a cell on the box, changed in a drawer, made or removed in a modal, each opened by where you are (`go("", "<what>", id)`), so Back closes it. A list is `rowsOf`, keyed by id. Say "Not saved" when a `send` rejects, and leave the modal open with what was typed.
 - The schema says what a write may be: a field it does not declare, a value of the wrong type, a path outside the document, is refused with 400 and the reason, and nothing changes. An empty write writes nothing.
 - What the schema cannot say (a note that is not blank, a list only some people write) is the document's own rule, `accept` on its `defineDoc`, given each op and who is writing: delta-doc's `schema.md`. Never a socket handler of the app's: the rule holds for every writer.
+- A story that names who does a thing says who may: write the rule with the story, `accept` told who is writing, not later ([auth.md](auth.md)).
 - Build a path from ids with `joinPath`, never a template.
 - The page has one socket, in `src/app.tsx`; every document rides it, and it reconnects and reopens them itself.
 - The JSON file is saved after each change, in the background. A resource pushes onto `closing` what the server waits for as it stops: the file's last save (`.persisted`), or a database's close ([sqlite.md](sqlite.md)).
