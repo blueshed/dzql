@@ -486,7 +486,7 @@ BEGIN
     BEGIN
       RETURN delta_apply_logged(v_entry.doc_name, v_plan->'ops', p_who, p_cursor, TRUE, v_entry.id)
         || jsonb_build_object('doc', v_entry.doc_name);
-    EXCEPTION WHEN SQLSTATE '22023' OR SQLSTATE '22P02' OR SQLSTATE '23502' OR SQLSTATE '23505' OR SQLSTATE 'P0002' THEN
+    EXCEPTION WHEN SQLSTATE '22023' OR SQLSTATE '22P02' OR SQLSTATE '23502' OR SQLSTATE '23503' OR SQLSTATE '23505' OR SQLSTATE 'P0002' THEN
       v_plan := jsonb_build_object('ops', '[]'::jsonb,
         'conflict', (SELECT jsonb_agg(o->>'path') FROM jsonb_array_elements(v_plan->'ops') o));
     END;

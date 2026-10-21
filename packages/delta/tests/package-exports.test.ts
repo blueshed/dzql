@@ -137,7 +137,7 @@ describe("package exports", () => {
       "migrationCases", "schemaContractCases", "upgradeCases",
       "drive", "onSqlite", "onJson", "lawSeeds", "lawSteps",
       "ownsCases", "permissionCases", "assertDocIsolation",
-      "errorCodeCases", "refusalCases", "refusals", "shelvesApp", "createRowCases", "writeScopeCases", "uniqueCases", "acceptCases", "ruledApp", "serverTimeCases", "stampedApp", "cursorCases", "ledgerRoomsApp", "libraryApp", "roomsApp", "tenantsApp", "membershipsApp",
+      "errorCodeCases", "refusalCases", "refusals", "shelvesApp", "createRowCases", "writeScopeCases", "uniqueCases", "acceptCases", "ruledApp", "shapeCases", "shapedApp", "refsCases", "cinemaApp", "serverTimeCases", "stampedApp", "cursorCases", "ledgerRoomsApp", "libraryApp", "roomsApp", "tenantsApp", "membershipsApp",
     ]) {
       expect([name, typeof (testing as any)[name]]).not.toEqual([name, "undefined"]);
     }
@@ -148,7 +148,7 @@ describe("package exports", () => {
     expect(Object.keys(backend).sort()).toEqual([
       "NOT_FOUND", "appOf", "assertOnePrefix", "assertOwned", "assertScopeKeys", "authless", "createCustomDocs", "defaultForType", "defineDoc", "defineSchema",
       "dropClientSubscriptions", "fenced", "fromFolder", "holdsField", "isAuthError", "isDeltasOwn", "isEntryId", "isIsoTime", "isServerTime",
-      "isoTime", "lastId", "ledgerWho", "onClientDrop", "ownerless", "pastSafeId", "q", "refusedBy", "resolveScope", "runMigrations", "sendTo",
+      "isoTime", "lastId", "ledgerWho", "onClientDrop", "ownerless", "pastSafeId", "q", "refusedBy", "resolveScope", "runMigrations", "sendTo", "shapedBy",
       "showDoc", "showOps", "showRow", "socketCursor", "statusOf", "trackSubscribe", "trackUnsubscribe", "uniqueIndexSql",
     ]);
   });

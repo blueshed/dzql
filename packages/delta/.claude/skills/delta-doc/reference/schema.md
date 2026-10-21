@@ -35,8 +35,20 @@ rows under it, and a column with a default (`done`), in `resources/lists/lists-a
   (when a row was written) is `default: "now"`: below.
 - A column neither nullable nor defaulted is **required**: an add without it is 400 `Required
   field missing`. Give it a default or make it nullable.
+- **A value a rule gives as the row is written is stored, set by the server**: a booking's last
+  day two weeks from its first, an invoice's pay-by date thirty days from when it is raised.
+  Declare the column, and let the document's `shape` (below) fill it on the add, never the page;
+  its `accept` refuses one a client sends. A migration's `up` fills it for the rows before
+  (`migrations.md`). Worked out on each read instead, it moves when the rule does.
 - `parent: "lists"` makes the key column `lists_id`; `cascadeOn: ["user_id"]` removes a row when
   the row its key names is removed (`writes.md`).
+- **A column that names a row of another collection** is `refs: { film: "films" }` (an integer
+  column, the row's id; null names nothing). A write that leaves it naming a row not there is
+  refused, **404**; removing a row a current row still names is refused, **409**, naming who
+  names it (`Still named: films/1 is showings/4's film -- change or remove that first`). Asked
+  when the write is done, so one write may take both away, in either order; a removal's cascade
+  takes what it reaches. A version closed names nothing. It is the definitions' alone: no
+  migration, and rows already kept are not asked. The cases are `refsCases`.
 - `temporal` defaults to true (`valid_from` / `valid_to`, read with `open_at`); rows come back
   without those columns.
 - Table names are lowercase snake_case on every backend: `{ prMixed: { table: "pr_mixed", … } }`;
@@ -58,8 +70,8 @@ rows under it, and a column with a default (`done`), in `resources/lists/lists-a
 - **A fact that comes from other rows is worked out, never stored**: whether a room is taken, from
   its open stays. A recompute document reads it (`custom-docs.md`); a column written beside each
   stay is a second copy the app must keep honest. Its limit: a value a person may change (a stay's
-  last night, which a guest extends), or one from a rule that may change, is the row's own and is stored, set as
-  the row is written; when the rule changes, a migration fills it for the rows before.
+  last night, which a guest extends), or one a rule gives as the row is written, is the row's own
+  and is stored (above).
 
 ## Validating before a write
 
@@ -91,23 +103,43 @@ delta's words), and nothing changes. An undo or a redo is not asked: it puts bac
 taken. It holds for every writer, a page's socket, `createLocal()` and the CLI alike, so a rule
 never lives in a socket handler of the app's. The cases are `acceptCases` (`src/cases/writes.ts`).
 
+## What the server makes of a write: `shape`
+
+A value a rule gives as the row is written is the server's: the document's `shape` is asked of
+each op of a write, after `accept` has taken it, with who is writing, and answers the op to apply
+in its place. dzql's thin client has the same hook for a page's writes (`Resource.shape`); this
+one holds for every writer.
+
+```ts
+const DAY = 86_400_000;
+defineDoc("desk:", {
+  root: "desks",
+  include: ["bookings"],
+  accept: (op) => !(op.path.endsWith("/ends") || (op.value as { ends?: unknown } | undefined)?.ends !== undefined) || "The desk sets when a booking ends",
+  shape: (op) => op.op === "add" && op.path.startsWith("/bookings/")
+    ? { ...op, value: { ...(op.value as object), ends: new Date(Date.now() + 14 * DAY).toISOString() } }
+    : op,
+});
+```
+
+What it answers is validated as any write is (a field the schema does not declare is 400), then
+stored, told to every holder, answered and recorded: the ledger keeps what was applied. An undo or
+a redo is never shaped. The cases are `shapeCases` (`src/cases/writes.ts`).
+
 ## A time only the server sets: `default: "now"`
 
 When something happened (a message said, an order placed) is the server's to say, never the
-page's clock. Give the `timestamptz` column `default: "now"`, leave it out of every write, and let
-the rule refuse one a client sends:
+page's clock. Give the `timestamptz` column `default: "now"` and leave it out of every write:
 
 ```ts
 const schema = defineSchema({
   entries: { columns: { text: "text", at: { type: "timestamptz", default: "now" } } },
 });
-const docs = [defineDoc("log:", {
-  root: "entries",
-  include: [],
-  accept: (op) => !(op.path.endsWith("/at") || (typeof op.value === "object" && op.value !== null && "at" in op.value)) || "The server sets the time",
-})];
 ```
 
+- A write that names it is refused, **400**, on every backend: `/entries/-/at: at is set by the
+  server as the row is written (default: "now"): leave it out`. A walk (undo, redo) puts back the
+  time the row had, and rows imported keep theirs.
 - A row a write makes takes the server's time as it is written, every row of the write the same
   time, back in UTC to the millisecond; on SQLite, the JSON file and Postgres alike.
 - A replace of the row whole that leaves it out keeps the row's own: it is when the row was made.

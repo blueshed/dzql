@@ -41,6 +41,8 @@ item removed by its ×, through the list (`resources/lists/lists-view.tsx`).
   document it goes through. Every document that held them is told.
 - A document removes only a row it holds. The answer and the ledger keep every cascaded
   remove, so undo puts them all back, parent first; redo takes them again, children first.
+- A row a current row still names through a `refs` column is not removed: **409**, saying who
+  names it, once the write is done (`schema.md`). Take the namer away in the same write, or first.
 
 ## Removing a single document's root
 

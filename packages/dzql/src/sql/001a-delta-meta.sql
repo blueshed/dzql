@@ -290,6 +290,28 @@ RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
   SELECT COALESCE(p_col_def->>'default' = 'now' AND jsonb_typeof(p_col_def->'default') = 'string', FALSE);
 $$;
 
+-- _delta_server_set: a write that names a time only the server sets, among
+-- the columns it writes (`p_columns`), is refused (22023, 400) for that alone,
+-- in delta's words (SQLite's validateOps): after the op's path, a row's field
+-- after the field's, each by name. delta_apply asks it of a fresh write: a walk
+-- puts back the time the row had, as importTables keeps a row's.
+CREATE OR REPLACE FUNCTION _delta_server_set(p_columns JSONB, p_value JSONB, p_path TEXT, p_field BOOLEAN)
+RETURNS void LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE
+  v_said TEXT;
+BEGIN
+  IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN RETURN; END IF;
+  SELECT string_agg(CASE WHEN p_field THEN p_path ELSE p_path || '/' || k END
+                    || ': ' || k || ' is set by the server as the row is written (default: "now"): leave it out', '; ' ORDER BY k COLLATE "C")
+    INTO v_said
+    FROM jsonb_object_keys(p_value) AS k
+   WHERE _delta_server_time(p_columns->k);
+  IF v_said IS NOT NULL THEN
+    RAISE EXCEPTION '%', v_said USING ERRCODE = '22023';
+  END IF;
+END;
+$$;
+
 -- _delta_default: what a column a row's value leaves out takes as a write
 -- makes the row: its declared default -- a time only the server sets, the
 -- write's time (`p_ts`), to the millisecond as delta keeps a time, in UTC as

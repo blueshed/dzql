@@ -56,7 +56,8 @@ export interface DeltaAuth<Identity = unknown> {
 
   /**
    * Called before every authenticated message (open, delta). Return the
-   * identity to continue, or `{ error }` to reject with a 401.
+   * identity to continue, or `{ error }` to reject with a 401 -- but for a document anyone's
+   * (`owns: "ANYONE"`), which every backend opens to a socket the gate refuses, as no one.
    */
   gate(client: any): Identity | AuthError;
 
@@ -147,7 +148,8 @@ export function wireAuth<I>(ws: WsServer, auth: DeltaAuth<I>): void {
  * new upgrade function that calls `auth.onUpgrade` (if defined) and stashes
  * the resulting identity on `client.data.identity`. A browser on another
  * origin than the server's, and not in `createWs({ origins })`, is refused
- * with 403 first, before `onUpgrade` reads a cookie it sent.
+ * with 403 first, before `onUpgrade` reads a cookie it sent. A socket with no identity is upgraded
+ * all the same: the gate refuses it every document but those anyone's (`owns: "ANYONE"`).
  *
  *   serve({ ws, routes: { [ws.path]: upgradeWithAuth(ws, auth), ...otherRoutes } });   // its own route on the path wins over delta's
  */

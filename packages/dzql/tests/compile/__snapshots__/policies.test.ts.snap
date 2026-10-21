@@ -16,6 +16,7 @@ exports[`permissions: the rows each person reads on the seed 1`] = `
     ],
     "posts": [
       "1",
+      "2",
     ],
     "tasks": [
       "1",
@@ -39,6 +40,7 @@ exports[`permissions: the rows each person reads on the seed 1`] = `
       "2",
     ],
     "posts": [
+      "1",
       "2",
     ],
     "tasks": [
@@ -61,7 +63,10 @@ exports[`permissions: the rows each person reads on the seed 1`] = `
     "people": [
       "3",
     ],
-    "posts": [],
+    "posts": [
+      "1",
+      "2",
+    ],
     "tasks": [
       "3",
     ],
@@ -73,7 +78,10 @@ exports[`permissions: the rows each person reads on the seed 1`] = `
     "members": [],
     "orgs": [],
     "people": [],
-    "posts": [],
+    "posts": [
+      "1",
+      "2",
+    ],
     "tasks": [],
     "venues": [],
   },
@@ -97,6 +105,7 @@ exports[`permissions: the rows each person reads after writes: a membership let 
     ],
     "posts": [
       "1",
+      "2",
     ],
     "tasks": [
       "1",
@@ -118,6 +127,7 @@ exports[`permissions: the rows each person reads after writes: a membership let 
       "2",
     ],
     "posts": [
+      "1",
       "2",
     ],
     "tasks": [
@@ -141,7 +151,10 @@ exports[`permissions: the rows each person reads after writes: a membership let 
     "people": [
       "3",
     ],
-    "posts": [],
+    "posts": [
+      "1",
+      "2",
+    ],
     "tasks": [
       "3",
     ],
@@ -153,7 +166,10 @@ exports[`permissions: the rows each person reads after writes: a membership let 
     "members": [],
     "orgs": [],
     "people": [],
-    "posts": [],
+    "posts": [
+      "1",
+      "2",
+    ],
     "tasks": [],
     "venues": [],
   },
@@ -392,7 +408,9 @@ DECLARE
 BEGIN
   PERFORM set_config('dzql.definer', 'on', true);
   v_may := -- post:
-    COALESCE(((p_row)."author_id" = v_person), FALSE);
+    COALESCE(((p_row)."author_id" = v_person), FALSE)
+    OR -- board:
+    COALESCE(TRUE, FALSE);
   PERFORM set_config('dzql.definer', COALESCE(v_was_past, ''), true);
   RETURN v_may;
 END;

@@ -31,7 +31,7 @@ describe("pglite, through registerDocs", () => permissionCases("registerDocs", (
     listeners.push(listener);
     await pool.query(`TRUNCATE ${tables.join(", ")}, _delta_versions, _delta_ops_log, _delta_ledger RESTART IDENTITY`);
     await importTables(pool, permissionSchema, permissionSeed);
-    return { as: (person: Person) => local.as(person) };
+    return { as: (person?: Person) => local.as(person), onPublish: local.onPublish };
   },
 })));
 

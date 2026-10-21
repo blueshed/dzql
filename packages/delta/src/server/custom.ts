@@ -187,11 +187,11 @@ export function createCustomDocs<I, H>(opts: {
   type Asked = Map<string, MaybePromise<Refusal | null>>;
 
   /** Why `client` may no longer hear `docName`, or null. `as`: a membership view's identity, which the socket must still be. */
-  function mayHear(client: any, docName: string, owns: Owns<I> | undefined, asked: Asked, as?: string): MaybePromise<Refusal | null> {
+  function mayHear(client: any, docName: string, owns: Owns<I> | undefined, asked: Asked, as?: string, anyone = false): MaybePromise<Refusal | null> {
     let gated: I | { error: string };
     try { gated = auth!.gate(client); }
     catch (err) { log.error(`gate for ${docName}: ${message(err)}`); return { code: 401, message: "Authentication failed" }; }
-    if (isAuthError(gated)) return { code: 401, message: gated.error };
+    if (isAuthError(gated)) return anyone ? null : { code: 401, message: gated.error };   // a document anyone's is heard by a socket nobody is signed in on
     const key = identityKey(gated);
     if (as !== undefined && key !== as) return NOT_FOUND;   // the socket is someone else now: the view is not theirs
     if (!owns) return null;
@@ -207,10 +207,11 @@ export function createCustomDocs<I, H>(opts: {
 
   /**
    * Let go of `docName` each of `subs` that may no longer hear it: taken off
-   * it (`dropped` says so to the backend) and told why. At once, unless an
+   * it (`dropped` says so to the backend) and told why -- but for a socket nobody is signed in on, of
+   * a document anyone's (`anyone`: `owns: "ANYONE"`). At once, unless an
    * `owns` answers with a promise.
    */
-  function letGo(docName: string, subs: Set<any> | undefined, owns: Owns<I> | undefined, { as, dropped }: { as?: string; dropped?: () => void } = {}): MaybePromise<void> {
+  function letGo(docName: string, subs: Set<any> | undefined, owns: Owns<I> | undefined, { as, dropped, anyone }: { as?: string; dropped?: () => void; anyone?: boolean } = {}): MaybePromise<void> {
     if (!subs?.size) return;
     const asked: Asked = new Map();
     const go = (client: any, refused: Refusal | null) => {
@@ -220,7 +221,7 @@ export function createCustomDocs<I, H>(opts: {
     };
     const waiting: Promise<void>[] = [];
     for (const client of [...subs]) {
-      const refused = mayHear(client, docName, owns, asked, as);
+      const refused = mayHear(client, docName, owns, asked, as, anyone);
       if (isPromise(refused)) waiting.push(refused.then((r) => go(client, r)));
       else go(client, refused);
     }

@@ -78,4 +78,5 @@ const me = await call<Person | null>("me");          // null: nobody: show "Who 
 - **A token that runs out** (`exp`): the gate refuses the socket and drops its subscriptions, at
   a request or before a change is told. The socket is told `{ doc, error: { code: 401 } }` and the
   client reconnects, so `onConnect` signs in again. A request's own 401 leaves the socket as is.
-- `gate` is asked before every open, delta, open_at, history, undo, redo and close.
+- `gate` is asked before every open, delta, open_at, history, undo, redo and close; a socket it
+  refuses opens, hears and writes only a document `owns: "ANYONE"` (`ownership.md`).

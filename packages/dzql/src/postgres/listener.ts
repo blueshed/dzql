@@ -17,12 +17,13 @@ import { trackSubscribe, trackUnsubscribe, onClientDrop } from "@blueshed/delta/
 import { createLogger } from "@blueshed/delta/logger";
 import type { Pool, PoolClient } from "pg";
 import { callAs, docTypes, OWNER, showAnswer } from "./registry";
-import { refusedBy, showDoc, showOps, type DocDef, type Schema } from "@blueshed/delta/backend";
+import { refusedBy, shapedBy, showDoc, showOps, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { resolveScope } from "@blueshed/delta/backend";
 import type { DocType } from "./registry";
 import type { DeltaAuth } from "@blueshed/delta/auth";
 import { isAuthError } from "@blueshed/delta/auth";
 import { splitPath, type DeltaOp } from "@blueshed/delta/core";
+import { isAnyone } from "@blueshed/delta/paths";
 import { isEntryId, ledgerWho, socketCursor } from "@blueshed/delta/backend";
 import { assertOwned, createCustomDocs, NOT_FOUND, sendTo, type CustomDoc, type Owns, type Refusal } from "@blueshed/delta/backend";
 import { namespaceOf } from "./sql";
@@ -95,7 +96,8 @@ function errMsg(err: unknown, doc?: { name: string; owns?: string }): string {
  * op, 22P02 for a row id it could not mint, 22007 and 22008 for a time it
  * cannot read, and 23502 for an add that leaves out a required field (a
  * client's mistake, 400); P0002 for a row that is not
- * there (404); 23505 for an add of a row that is, and 40001 for an undo of an
+ * there (404); 23505 for an add of a row that is, 23503 for a removal of a row
+ * still named (`refs`), and 40001 for an undo of an
  * entry that is not the cursor's next (409). And 40P01, a write that met another
  * at once and gave way to it (two adds of temporal ids in opposite orders wait
  * on each other's row locks): nothing was written, and the same write
@@ -104,7 +106,7 @@ function errMsg(err: unknown, doc?: { name: string; owns?: string }): string {
  * read-only document's 403) is answered with it. Anything else is the
  * server's (500).
  */
-const CODE_OF_SQLSTATE: Record<string, number> = { "22023": 400, "22P02": 400, "22007": 400, "22008": 400, "23502": 400, "25006": 403, "42501": 403, P0002: 404, "23505": 409, "40001": 409, "40P01": 409 };
+const CODE_OF_SQLSTATE: Record<string, number> = { "22023": 400, "22P02": 400, "22007": 400, "22008": 400, "23502": 400, "25006": 403, "42501": 403, P0002: 404, "23503": 409, "23505": 409, "40001": 409, "40P01": 409 };
 function wireCode(err: unknown): number {
   const state = (err as { code?: unknown } | null)?.code;
   if (typeof state === "number" && state >= 400 && state < 500) return state;
@@ -459,7 +461,7 @@ export async function createDocListener<I = unknown>(
         more = page.length >= FETCH_PAGE && rows.length === page.length;
         // Told to those who may still hear it: the document's own subscribers
         if (auth && rows.length > 0) {
-          await custom.letGo(docName, state.subscribers, ownsOf(docName));
+          await custom.letGo(docName, state.subscribers, ownsOf(docName), { anyone: isAnyone(resolveDoc(docName)?.type.def) });
           if (resync) await custom.letGoWatching(rows.flatMap(appliedOf));
         }
         for (const row of rows) {
@@ -563,8 +565,10 @@ export async function createDocListener<I = unknown>(
     return async (msg: any, client: any, respond: (r: any) => void) => {
       if (destroyed) return; // a listener ended answers nothing: its socket may have the next one's
       const g = gate(client);
-      if ("error" in g) return respond(g);
-      const { identity } = g;
+      // a document anyone's (owns: "ANYONE") is open to a socket the gate refuses, as no one; no other is
+      const nobody = "error" in g && isAnyone(typeof msg?.doc === "string" ? resolveDoc(msg.doc)?.type.def : undefined);
+      if ("error" in g && !nobody) return respond(g);
+      const identity = "error" in g ? undefined : g.identity;
       const docName = msg.doc as string;
       if (!docName) {
         return respond({ error: { code: 400, message: "doc is required" } });
@@ -576,7 +580,7 @@ export async function createDocListener<I = unknown>(
       try {
         // The document's name is its channel: one this identity does not own is
         // not there for it (404, as a missing one), so it never subscribes.
-        if (owned && auth && found.type.owns && (identity as unknown) !== OWNER && !(await found.type.owns(identity as I, docName))) {
+        if (owned && auth && !nobody && found.type.owns && (identity as unknown) !== OWNER && !(await found.type.owns(identity as I, docName))) {
           return respond({ error: NOT_FOUND });
         }
         await fn({ docName, type: found.type, ctx: found.ctx, msg, client, respond, identity });
@@ -694,10 +698,16 @@ export async function createDocListener<I = unknown>(
     // the document's own rule (accept), asked of each op before any is applied, as SQLite asks it
     const refused = type.def ? refusedBy(type.def, docName, msg.ops as DeltaOp[], (identity as unknown) === OWNER ? undefined : identity) : undefined;
     if (refused !== undefined) return respond({ error: { code: 400, message: refused } });
+    // ... then what the server makes of it (shape), validated by delta_apply as any write is
+    let ops = msg.ops as DeltaOp[];
+    if (type.def?.shape) {
+      try { ops = shapedBy(type.def, docName, ops, identity); }
+      catch (err) { log.error(`shape ${docName} failed: ${errMsg(err)}`); return respond({ error: { code: wireCode(err), message: errMsg(err) } }); }
+    }
     const writer = writerOf(identity, client);
     const kept = onLedger(type.prefix);
     const by = kept ? { who: whoOf(writer), cursor: cursorOf(msg, client, writer), undoable: msg.undoable !== false } : undefined;
-    const result = shownAnswer(type.def, await type.apply(ctx, docName, msg.ops, identity, by, declared));
+    const result = shownAnswer(type.def, await type.apply(ctx, docName, ops, identity, by, declared));
     respond({ result: kept ? { ack: true, version: Number(result.version), ops: result.ops, inverse: result.inverse, entry: result.entry == null ? undefined : Number(result.entry) } : { ack: true, version: Number(result.version), ...(msg.inverse ? { ops: result.ops } : {}) } });
     log.info(`delta ${docName} v${result.version}`);
   }));

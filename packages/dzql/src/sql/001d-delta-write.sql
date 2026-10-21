@@ -191,6 +191,17 @@ END;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- _delta_refs_hold: the columns that name a row of another collection (delta's
+-- `refs`), asked once a write's ops are applied, of the rows it changed (its
+-- touches): each names a row there (P0002, 404), and none it took away is
+-- still named by a current row (23503, 409). generateSql writes it from the
+-- schema (compileRefs); before, no collection names another.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _delta_refs_hold(p_touched JSONB)
+RETURNS void LANGUAGE plpgsql STABLE AS $$ BEGIN NULL; END $$;
+
+-- ---------------------------------------------------------------------------
 -- _delta_assert_parent_held: a parent key written (in `p_value`, over the row
 -- as it is, `p_row`) moves the row, and only under a parent the document holds,
 -- as an add names one: through it, a row is never moved into another
@@ -497,6 +508,8 @@ BEGIN
         END IF;
         v_op := jsonb_set(v_op, '{value}', jsonb_build_object(v_parts[2], v_op->'value'));
       END IF;
+      -- a time only the server sets, named by a fresh write, is refused for that alone
+      IF NOT COALESCE(p_walk, FALSE) THEN PERFORM _delta_server_set(v_cols, v_op->'value', v_op->>'path', array_length(v_parts, 1) = 2); END IF;
       PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 2,
         CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_missing(v_cols, v_op->'value', v_op->>'path') END);
       v_blank := CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_whole(v_cols) ELSE '{}'::jsonb END;
@@ -571,6 +584,7 @@ BEGIN
       IF v_id_text ~ '^[0-9]+$' THEN
         v_id := _delta_row_id(v_coll_key, v_id_text, v_op->>'path');
       END IF;
+      IF NOT COALESCE(p_walk, FALSE) THEN PERFORM _delta_server_set(v_cols, v_op->'value', v_op->>'path', FALSE); END IF;
       PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', TRUE, FALSE,
         _delta_missing(_delta_cols(v_coll_key, v_coll.columns_def),
           CASE WHEN v_is_list AND v_coll_key = v_def.root_collection
@@ -784,6 +798,7 @@ BEGIN
         END IF;
         v_op := jsonb_set(v_op, '{value}', jsonb_build_object(v_parts[3], v_op->'value'));
       END IF;
+      IF NOT COALESCE(p_walk, FALSE) THEN PERFORM _delta_server_set(v_cols, v_op->'value', v_op->>'path', array_length(v_parts, 1) = 3); END IF;
       PERFORM _delta_assert_fields(v_coll_key, v_cols, v_coll.parent_fk, v_op->'value', v_op->>'path', FALSE, array_length(v_parts, 1) = 3,
         CASE WHEN array_length(v_parts, 1) = 2 THEN _delta_missing(v_cols, v_op->'value', v_op->>'path') END);
       v_blank := CASE WHEN array_length(v_parts, 1) = 2 THEN _delta_whole(v_cols) ELSE '{}'::jsonb END;
@@ -873,6 +888,10 @@ BEGIN
 
     RAISE EXCEPTION '%: Invalid op: % %', v_op->>'path', v_op->>'op', v_op->>'path' USING ERRCODE = '22023';
   END LOOP;
+
+  -- what names a row of another collection (refs), once the ops are applied: so a write may take a
+  -- row and what names it away together, in either order (refsHold in delta's sqlite/write.ts)
+  PERFORM _delta_refs_hold(v_touched);
 
   -- Told: the writer's document and every other that holds a row changed,
   -- each what changed for it. The answer (and the ledger) keep the ops as

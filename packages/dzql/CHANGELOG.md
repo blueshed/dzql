@@ -25,6 +25,27 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **A write that names a time only the server sets is refused on Postgres, as on delta's
+  backends** (21 October, the Shed's run 6, finding 4; delta's changelog). `delta_apply` asks
+  `_delta_server_set` (001a) of each op of a fresh write before its fields: an add, a replace of
+  the row whole or of the field that names a `default: "now"` column is 22023 (400), in delta's
+  words; a walk (`p_walk`) is not asked. The framework SQL changes, so `applyFramework` runs again
+  as it always does on start. **To move across**: leave the column out of every write.
+
+- **`refs` and `owns: "ANYONE"` and `shape`, on Postgres** (21 October, the Shed's run 6, findings
+  1, 5 and 6; delta's changelog). `generateSql` writes `_delta_refs_hold` (`compileRefs`,
+  `src/compile/refs.ts`, a new snapshot), which `delta_apply` asks once its ops are applied (001d;
+  a no-op before generateSql): 404 (P0002) for a row a `refs` column names that is not there, 409
+  (23503, now in the wire's table and among the SQLSTATEs `delta_walk` takes for a conflict) for a
+  row still named; it reads as the functions' owner, so a row the writer may not read still holds
+  what it names. The listener asks the document's `shape` after `accept` (`shapedBy`) and sends
+  what it answers to `delta_apply`; and admits a socket the gate refuses to a document `owns:
+  "ANYONE"` (opened, heard, written as no one; never let go of it) and to no other (401), its
+  path's SQL `TRUE` (an RLS policy too: `tests/compile/policies.test.ts`'s snapshot moves, since
+  delta's permission cases now hold `board:`, every post for anyone). **To move across**: an app's SQL is generated again by
+  `generateSql` (as `openStore` does at every start); a test that stands up `permissionCases`
+  returns `onPublish` beside `as` (delta's changelog).
+
 - **A model where a teller has nowhere to add a row is open, and its proof drops no story** (21
   October, found by the evals' round 3: the bakery's customer held an order only as the order's own
   document). The Authorization closure has a gap, `nowhere-to-add`, where a story adds rows its

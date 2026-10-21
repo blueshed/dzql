@@ -6,7 +6,7 @@
  *
  * The grammar, parsed once here for every backend:
  *
- *   rule    := TRUE | FALSE | AUTHENTICATED | @field | chain
+ *   rule    := TRUE | FALSE | AUTHENTICATED | ANYONE | @field | chain
  *   chain   := start ('->' hop)+ | table '[' filters ']' conds? '.' field
  *   start   := @field
  *   hop     := table ('[' filters ']')? conds? ('.' field)?
@@ -21,8 +21,13 @@
  * Where a path starts: a single document's root row (`@owner_id` is the row's); a document with a
  * scope, the row its name points at (`@org_id` is the name's value for that key). A document whose
  * name gives no row (a list with no scope) has no @field to start from: an @field there reaches
- * nobody, and its path starts at a table (`members[org_id=1].person_id`) or is TRUE, FALSE or
- * AUTHENTICATED.
+ * nobody, and its path starts at a table (`members[org_id=1].person_id`) or is TRUE, FALSE,
+ * AUTHENTICATED or ANYONE.
+ *
+ * TRUE and AUTHENTICATED are everyone signed in (past the gate). ANYONE is everyone, signed in or
+ * not: a socket the gate refuses (`isAnyone`) may open and hear such a document, and no other, and
+ * writes through it as no one (`accept` and `shape` told `who` undefined): the document's rule
+ * says who writes it.
  *
  * `checkPath` says what is wrong with a path against the schema (thrown at registration, naming
  * the document); `pathSql` lowers it to a boolean SQL expression, the same on SQLite and Postgres
@@ -37,7 +42,7 @@ export type Condition =
   | { type: "equality"; field: string; value: string }
   | { type: "temporal"; field: string; op: string; value: string };
 export type Hop = { table: string; filters: Filter[]; conditions: Condition[]; field: string };
-export type PathLiteral = "TRUE" | "FALSE" | "AUTHENTICATED";
+export type PathLiteral = "TRUE" | "FALSE" | "AUTHENTICATED" | "ANYONE";
 
 /** A path parsed: a literal, or a start field (absent for a table-first chain) and its hops. */
 export type ParsedPath =
@@ -57,10 +62,18 @@ const NOW_RE = /^(now\(\)|current_date|current_timestamp)$/i;
 const TEMPORAL_RE = new RegExp(`^(${IDENT})\\s*(<=|>=|<>|!=|<|>)\\s*(now\\(\\)|current_date|current_timestamp|NULL|-?\\d+(?:\\.\\d+)?|'(?:[^']|'')*')$`, "i");
 
 /** Parse a path; a path that cannot be read throws `PathError`, saying where. */
+/**
+ * Is a document anyone's (`owns: "ANYONE"`): open to a socket nobody is signed in on? With auth,
+ * every backend lets such a socket open, hear and write through it, and no other document.
+ */
+export function isAnyone(def: { owns?: string } | undefined): boolean {
+  return typeof def?.owns === "string" && def.owns.trim().toUpperCase() === "ANYONE";
+}
+
 export function parsePath(text: string): ParsedPath {
   const path = (text ?? "").trim();
   const upper = path.toUpperCase();
-  if (upper === "TRUE" || upper === "FALSE" || upper === "AUTHENTICATED") return { path, literal: upper };
+  if (upper === "TRUE" || upper === "FALSE" || upper === "AUTHENTICATED" || upper === "ANYONE") return { path, literal: upper };
   const own = FIELD_RE.exec(path) ?? new RegExp(`^@(${IDENT})\\s*==\\s*@user_id$`).exec(path);
   if (own) return { path, start: own[1]!, hops: [] };
   if (!path.includes("->") && !new RegExp(`^${IDENT}\\[`).test(path)) throw new PathError(`cannot read the path '${path}'`);
@@ -210,7 +223,7 @@ const literal = (v: string) => (/^-?\d+(\.\d+)?$/.test(v) || v === "true" || v =
 
 /** A parsed path as a boolean SQL expression: does it reach the person? */
 export function pathSql(parsed: ParsedPath, schema: Schema, names: PathSqlNames): string {
-  if ("literal" in parsed) return parsed.literal === "AUTHENTICATED" ? `(${names.person} IS NOT NULL)` : parsed.literal;
+  if ("literal" in parsed) return parsed.literal === "AUTHENTICATED" ? `(${names.person} IS NOT NULL)` : parsed.literal === "ANYONE" ? "TRUE" : parsed.literal;
   if (!parsed.hops.length) return `(${names.start(parsed.start!)} = ${names.person})`;
   const used = new Map<string, number>();
   const alias = (table: string) => {

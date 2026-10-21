@@ -28,7 +28,9 @@ const ben: Person = { id: 2, name: "Ben" };
 const NOT_FOUND = { code: 404, message: "Not found" };
 /** One's own posts, a list scoped by the author: beside delta's documents, each with its path. */
 const postsBy = defineDoc("posts-by:", { root: "posts", include: [], scope: { author_id: ":id" }, owns: "@author_id" });
-const docs = [...Object.values(permissionDocs), postsBy];
+// delta's documents but board:, which is every post for anyone (owns: "ANYONE"): its policy would open
+// every post to every role, and the backstop here is that a post is its author's
+const docs = [...Object.values(permissionDocs).filter((d) => d !== permissionDocs.board), postsBy];
 const tables = Object.values(permissionSchema.tables).map((t) => q(t.name));
 
 let db: PGlite;

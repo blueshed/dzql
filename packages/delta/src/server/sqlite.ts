@@ -33,7 +33,7 @@ import { waitForLocks } from "./sqlite/ddl";
 import { keeping } from "./sqlite/keep";
 import { impliedDoc, loadDocAt, readDoc } from "./sqlite/read";
 import { named } from "./sqlite/rows";
-import { assertPath, parsePath, pathSql, startOf } from "../paths";
+import { assertPath, isAnyone, parsePath, pathSql, startOf } from "../paths";
 import { createWriter, type Registration, type Written } from "./sqlite/write";
 import { registerWalks } from "./sqlite/walk";
 
@@ -262,7 +262,8 @@ export function registerDocs<I = unknown>(
       const mine = custom.find(docName);
       if (mine ? !gatesCustom : !findDoc(docName)) return handler(msg, client, respond);   // not gated here, or another backend's
       const g = gated(client);
-      if ("error" in g) return respond(g);
+      // a document anyone's (owns: "ANYONE") is open to a socket the gate refuses, as no one; no other is
+      if ("error" in g) return !mine && isAnyone(findDoc(docName)?.def) ? handler(msg, client, respond) : respond(g);
       const owns = mine ? mine.def.owns : ownsOf(docName);
       if (!owned || !owns) return handler(msg, client, respond);
       return whenOwned(owns(g.identity, docName), respond, () => handler(msg, client, respond));

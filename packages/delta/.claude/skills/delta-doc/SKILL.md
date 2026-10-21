@@ -13,9 +13,8 @@ and your order, two documents over shared rows. Open one and you are subscribed;
 is where they are kept (a JSON file, SQLite, Postgres on dzql); the client stays the same.
 
 **The shape**: an app is routes and resources on both sides of the socket, joined by documents:
-delta's `serve` (the one server) serves the server's, railroad's `routes()` draw the client's.
-Entities (`defineSchema`'s collections) are behind the documents. Think in documents; the tables
-follow.
+delta's `serve` serves the server's, railroad's `routes()` draw the client's. Think in documents;
+the tables follow.
 
 ## Order of work
 
@@ -42,29 +41,29 @@ follow.
   told replace may be one field: never assume a whole row.
 - Undo is the ledger's (`{ ledger: true }`), never a hand-rolled stack.
 - A line is a row under its parent, never JSON of ids; a fact from other rows is a recompute
-  document, never a stored copy; "one at a time" is `unique` (`schema.md`).
+  document, never a stored copy; "one at a time" is `unique`; a value a rule gives at the write
+  is stored, by the server (`shape`); a column naming another's row is `refs` (`schema.md`).
 - The schema is the contract: delta sends and writes only declared columns. An app's tables are
   made by its migrations: change the schema, `delta migrations make` writes the next, `migrate`
   runs it. `createTables` is for a database thrown away (`:memory:` in a test).
-- With `auth`, every document says who may have it: `owns`, a path from its row to the person,
-  or `shared: true`. A name is its broadcast channel.
-- Tokens never in the socket URL (`connectWs(url, { onConnect })`). No Redux, REST, `fetch` of
-  state or React patterns: `doc.data` is a signal.
+- With `auth`, every document says who may have it (`owns`, a path, `ANYONE` for those not signed
+  in; or `shared: true`) and its `accept` who writes it. A name is its broadcast channel.
+- Tokens never in the socket URL (`connectWs(url, { onConnect })`). No Redux, REST or `fetch` of
+  state: `doc.data` is a signal.
 
 ## The types are the contract
 
-In the package (`node_modules/@blueshed/delta/`): `src/` (`core.ts`, `schema.ts`, `client/`,
-`server/`, `paths.ts`), and the exports map in `package.json`.
+`node_modules/@blueshed/delta/src/` (`core.ts`, `schema.ts`, `paths.ts`), and its exports map.
 
 ## Which reference for which job
 
 - First app: `reference/recipe.md`. Storage: `reference/backends.md`, `reference/sqlite.md`,
-  `reference/postgres.md`; upgrading, data kept: `reference/migrations.md`.
-- JSON Pointer paths, ids, error codes: `reference/paths.md`. Tables: `reference/schema.md`.
-- Document shapes: `reference/documents.md`; names and filters: `reference/scope.md`.
-- What a write may do: `reference/writes.md`; who is told: `reference/fanout.md`.
-- Derived views: `reference/custom-docs.md`. Other kinds: `reference/kinds.md`.
-- The page: `reference/rendering.md`, `reference/write-loop.md`. The server: `reference/server.md`.
-- Sign-in: `reference/auth.md`. Who opens what: `reference/ownership.md`.
-- Undo and history: `reference/ledger.md`. In-process: `reference/local.md`.
-- The wire: `reference/wire.md`. CLI: `reference/cli.md`. Tests and scripts: `reference/testing.md`.
+  `reference/postgres.md`; upgrading: `reference/migrations.md`.
+- Paths and error codes: `reference/paths.md`. Tables: `reference/schema.md`.
+- Shapes: `reference/documents.md`; names: `reference/scope.md`.
+- Writes: `reference/writes.md`; who is told: `reference/fanout.md`.
+- Derived views: `reference/custom-docs.md`; other kinds: `reference/kinds.md`.
+- The page: `reference/rendering.md`, `reference/write-loop.md`; the server: `reference/server.md`.
+- Sign-in: `reference/auth.md`; who opens what: `reference/ownership.md`.
+- Undo: `reference/ledger.md`. In-process: `reference/local.md`.
+- Wire: `reference/wire.md`. CLI: `reference/cli.md`. Tests: `reference/testing.md`.

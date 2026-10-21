@@ -11,8 +11,10 @@
  *   export const changes = [createTable("people", { columns: { name: { type: "text" } }, temporal: false })];
  *
  * What a table is here is what the database holds of it: its name, its columns, its parent's key,
- * whether it keeps versions, and its unique constraints. `cascadeOn` is the definitions' alone (a remove's reach, not a
- * column), and is not part of a migration.
+ * whether it keeps versions, and its unique constraints. `cascadeOn` and `refs` are the
+ * definitions' alone (a remove's reach; what a write may name or take away, asked by every
+ * backend's write path): no column and no constraint, so neither is part of a migration, and a
+ * `refs` added holds from the next write on, never over the rows already kept.
  */
 import { defineSchema, uniqueOf, type ColumnDef, type ColumnShorthand, type Schema, type TableDef, type UniqueDef } from "../schema";
 

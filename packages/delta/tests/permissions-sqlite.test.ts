@@ -20,7 +20,7 @@ const over = (register: (local: ReturnType<typeof createLocal>, docs: Parameters
   async start(docs: Parameters<typeof registerDocs>[3]) {
     const local = createLocal();
     register(local, docs);
-    return { as: (person: Person) => local.as(person) };
+    return { as: (person?: Person) => local.as(person), onPublish: local.onPublish };
   },
 });
 

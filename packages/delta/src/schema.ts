@@ -52,6 +52,14 @@ export interface TableDef {
    *  String = FK column name (collection derived by convention);
    *  object = explicit FK column + collection. */
   cascadeOn?: (string | { fk: string; collection: string })[];
+  /**
+   * Columns that name a row of another collection, by its key: `{ book: "books" }`. A write
+   * that names a row not there (a current one) is refused, 404; a row still named by a current
+   * row is not removed, 409, saying who names it -- on every backend, at the end of the write, so
+   * a write may take both away together. An integer column; null names nothing. A temporal
+   * row's closed versions name nothing. Rows imported are kept as they come.
+   */
+  refs?: Record<string, string>;
   /** Set to `false` to disable temporal versioning (valid_from/valid_to). Default: `true`. */
   temporal?: boolean;
   /**
@@ -93,6 +101,16 @@ export interface ResolvedTable {
   referencedBy: { collection: string; fkColumn: string }[];
   /** Its unique constraints (`TableDef.unique`); absent when it has none. */
   unique?: ResolvedUnique[];
+  /** The columns that name a row of another collection (`TableDef.refs`), by column; absent when none. */
+  refs?: ResolvedRef[];
+  /** Computed: the columns of other collections that name a row of this one, by collection then column; absent when none. */
+  namedBy?: ResolvedRef[];
+}
+
+/** A column that names a row of a collection: `collection` is the naming one in `namedBy`, the named one in `refs`. */
+export interface ResolvedRef {
+  column: string;
+  collection: string;
 }
 
 export interface DocDef {
@@ -122,10 +140,32 @@ export interface DocDef {
    * changes. An undo or a redo is not asked: it puts back what was taken. Every backend asks it.
    */
   accept?: Accept;
+  /**
+   * What the server makes of a write as it is written: asked of each op of a fresh write, after
+   * `accept` has taken it, with the writer (`who`, as `accept` is told). It answers the op to
+   * apply in its place -- an add's value with a field filled ("a booking ends two weeks from its own
+   * day") -- which is then validated as any write is, applied, told and recorded: what is
+   * stored is what the server gave. An undo or a redo is never shaped: it puts back what was.
+   * Every backend asks it (dzql's thin client has the same hook, `Resource.shape`, for a page's writes).
+   */
+  shape?: Shape;
 }
 
 /** A document's own rule (`DocDef.accept`): `true` takes the op; `false` or a reason refuses the write. */
 export type Accept = (op: DeltaOp, by: { doc: string; who?: unknown }) => boolean | string;
+
+/** What the server makes of an op as it is written (`DocDef.shape`): the op to apply in its place. */
+export type Shape = (op: DeltaOp, by: { doc: string; who?: unknown }) => DeltaOp;
+
+/**
+ * A fresh write as the document's `shape` makes it, op by op, in order (asked after `accept`,
+ * before the ops are validated), as every backend asks it; each op is given as a copy, so a shape
+ * may change it. The write as sent where there is none.
+ */
+export function shapedBy(def: DocDef, doc: string, ops: DeltaOp[], who?: unknown): DeltaOp[] {
+  if (!def.shape) return ops;
+  return ops.map((op) => def.shape!(structuredClone(op), { doc, who }));
+}
 
 /** The refusal a document's rule gives a write (400), or none: each op asked before any is applied, as every backend asks it. */
 export function refusedBy(def: DocDef, doc: string, ops: DeltaOp[], who?: unknown): string | undefined {
@@ -270,6 +310,24 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
     }
   }
 
+  // Third pass: the columns that name a row of another collection, checked against the tables.
+  for (const [key, table] of Object.entries(tables)) {
+    const given = Object.entries(defs[key]?.refs ?? {}).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    if (!given.length) continue;
+    const cascades = new Set((defs[key]?.cascadeOn ?? []).map((c) => (typeof c === "string" ? c : c.fk)));
+    table.refs = given.map(([column, collection]) => {
+      const col = Object.hasOwn(table.columns, column) ? table.columns[column]! : undefined;
+      if (!col) throw new Error(`${key}: refs names ${column}, which is not one of its columns`);
+      if (col.type !== "integer") throw new Error(`${key}: refs' ${column} names a row by its id, which an integer column holds (${column} is ${col.type})`);
+      if (!tables[collection]) throw new Error(`${key}: refs' ${column} names ${collection}, which the schema has no collection of`);
+      if (cascades.has(column)) throw new Error(`${key}: ${column} is in refs and cascadeOn: a row it names is either kept while named (refs) or takes this row with it (cascadeOn), not both`);
+      return { column, collection };
+    });
+  }
+  for (const [key, table] of Object.entries(tables).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    for (const ref of table.refs ?? []) (tables[ref.collection]!.namedBy ??= []).push({ collection: key, column: ref.column });
+  }
+
   return { tables };
 }
 
@@ -320,7 +378,7 @@ export function defaultForType(type: ColumnType): unknown {
 
 export function defineDoc(
   prefix: string,
-  opts: { root: string; include: string[]; scope?: Record<string, string>; implied?: boolean; columns?: Record<string, string[]>; owns?: string; accept?: Accept },
+  opts: { root: string; include: string[]; scope?: Record<string, string>; implied?: boolean; columns?: Record<string, string[]>; owns?: string; accept?: Accept; shape?: Shape },
 ): DocDef {
   if (!DOC_PREFIX.test(prefix)) {
     throw new Error(
@@ -344,6 +402,7 @@ export function defineDoc(
     ...(opts.columns && Object.keys(opts.columns).length ? { columns: opts.columns } : {}),
     ...(opts.owns !== undefined ? { owns: ownsPath(prefix, opts.owns) } : {}),
     ...(opts.accept ? { accept: opts.accept } : {}),
+    ...(opts.shape ? { shape: opts.shape } : {}),
   };
 }
 
