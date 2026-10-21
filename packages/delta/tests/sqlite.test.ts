@@ -183,6 +183,10 @@ describe("defineSchema", () => {
 // ---------------------------------------------------------------------------
 
 describe("defineDoc", () => {
+  test("a document anyone may open says who may write it: owns ANYONE with no accept is refused", () => {
+    expect(() => defineDoc("board:", { root: "posts", include: [], owns: "ANYONE" })).toThrow('doc "board:": owns ANYONE opens it to anyone, signed in or not: say who may write it (accept), or that nobody may (accept: () => false)');
+    expect(() => defineDoc("board:", { root: "posts", include: [], owns: "ANYONE", accept: () => false })).not.toThrow();
+  });
   test("creates doc definition with defaults", () => {
     const doc = defineDoc("item:", { root: "items", include: ["parts"] });
     expect(doc.prefix).toBe("item:");

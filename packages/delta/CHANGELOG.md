@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- **An `owns: "ANYONE"` document says who may write it** (21 October, delta #94): `defineDoc`
+  refuses one with no `accept`, since every socket, signed in or not, would write it (the hole
+  the Shed's run 6 found). To move across: give it a rule, or `accept: () => false` for one nobody
+  writes.
+
 - **A write that names a time only the server sets is refused** (21 October, the Shed's run 6,
   finding 4). A `default: "now"` column filled a time a write left out, and stored one a write
   sent unless each document wrote the rule (a member dated their own record 2020). Now an add, a

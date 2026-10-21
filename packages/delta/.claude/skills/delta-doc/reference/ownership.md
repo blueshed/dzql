@@ -71,7 +71,8 @@ who may have it.
 - **Anyone at all, signed in or not** (a public menu, opening hours): `ANYONE`. A socket nobody is
   signed in on (no session, one run out) may open and hear such a document, and no other: every
   other document is still **401** to it. It writes through it as no one, so `accept` is told
-  `who` undefined, and the rule says who writes:
+  `who` undefined, and the rule says who writes. `defineDoc` refuses an `ANYONE` document with
+  no `accept`: one nobody writes says so (`accept: () => false`).
 
   ```ts
   defineDoc("hours:", { root: "hours", include: [], owns: "ANYONE",

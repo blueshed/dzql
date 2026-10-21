@@ -14,7 +14,7 @@
  * mappings — this module is the vocabulary only.
  */
 import { splitPath, type DeltaOp } from "./core";
-import { parsePath } from "./paths";
+import { isAnyone, parsePath } from "./paths";
 
 export type ColumnType =
   | "text" | "integer" | "real" | "boolean" | "json" | "timestamptz";
@@ -386,6 +386,8 @@ export function defineDoc(
     );
   }
   assertIdentifier(opts.root, "doc root");
+  // default-deny for writing, as for opening: a document anyone may open says who may write it
+  if (isAnyone(opts) && !opts.accept) throw new Error(`doc "${prefix}": owns ANYONE opens it to anyone, signed in or not: say who may write it (accept), or that nobody may (accept: () => false)`);
   if (opts.implied && opts.scope && Object.keys(opts.scope).length > 0) {
     throw new Error(`An implied doc is keyed by its root id: ${prefix} cannot also declare a scope`);
   }

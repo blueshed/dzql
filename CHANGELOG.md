@@ -6,6 +6,21 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### What the Shed's run 6 found, built (21 October)
+
+- **Breaking**, delta: a write naming a `default: "now"` column is refused (the server sets it);
+  an `owns: "ANYONE"` document must say who writes it (`accept`).
+- delta, on every backend: `shape` on `defineDoc` (a value a rule gives at the write, stored and set
+  by the server), `refs` on a table (a column names a row: a missing one 404, removing a named one
+  409), and `owns: "ANYONE"` (a document anyone may open, signed in or not; every other still 401).
+- dzql: `openStore` takes its own lock as it opens, so two servers on one new database wait for
+  each other; `store.owner`, the server writing through the documents; how old links and sessions
+  move to Postgres.
+- The pages: rows that name each other live in one store (and the Shed's `expected.md` agrees); a
+  story that names who does a thing says who may; the last Shed noun reworded and `due` held out.
+- The Shed's driver installs the packed packages (`scripts/packed.ts`, shared with
+  `scripts/evals.ts`); `install-skills` keeps its backups out of an app's skills.
+
 ### Round 3 of the evaluations, and what it found fixed (21 October)
 
 - Round 3 ran every skill's scenarios on the packed packages (`evals/runs/2026-10-21-<skill>.md`):
