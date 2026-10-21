@@ -162,17 +162,29 @@ export function docTypes(initial: DocType[], taken: string[], auth: boolean) {
 }
 
 /**
+ * The server itself, as the identity a listener hands its documents (`createDocListener`'s
+ * `owner`, `openStore`'s `owner`): no person, every document its own, read and written as the
+ * tables' owner -- `dzql.definer` raised for the call, past the policies the paths make, and no
+ * `app.user_id`, so a write keeps every reach (`_delta_keeps_reach`). Never on a socket.
+ */
+export const OWNER: unique symbol = Symbol("dzql: the server itself");
+
+/**
  * `SELECT fn(args) AS result` on `db`, as `identity` when the auth module
  * says how to name it (`asSqlArg`): `fn_as(user, args)`, which sets
- * `app.user_id` and calls `fn` in one round-trip (001f).
+ * `app.user_id` and calls `fn` in one round-trip (001f). As `OWNER`, `fn`
+ * itself with `dzql.definer` raised for the call's transaction.
  */
-export async function callAs<I>(db: { query(sql: string, params: unknown[]): Promise<{ rows: any[] }> }, fn: string, args: unknown[], auth?: DeltaAuth<I>, identity?: I, declared?: string): Promise<any> {
-  const as = auth?.asSqlArg && identity !== undefined ? [String(auth.asSqlArg(identity))] : [];
+export async function callAs<I>(db: { query(sql: string, params: unknown[]): Promise<{ rows: any[] }> }, fn: string, args: unknown[], auth?: DeltaAuth<I>, identity?: I | typeof OWNER, declared?: string): Promise<any> {
+  const owner = identity === OWNER;
+  const as = !owner && auth?.asSqlArg && identity !== undefined ? [String(auth.asSqlArg(identity as I))] : [];
   const all = [...as, ...args];
   const call = `${as.length ? `${fn}_as` : fn}(${all.map((_, i) => `$${i + 1}`).join(", ")})`;
-  if (declared === undefined) return (await db.query(`SELECT ${call} AS result`, all)).rows[0]?.result;
-  // the columns this process declares, for the call's transaction (`_delta_cols`, 001b): set first, then the call
-  const { rows } = await db.query(`WITH d AS MATERIALIZED (SELECT set_config('delta.declared', $${all.length + 1}, true)) SELECT ${call} AS result FROM d`, [...all, declared]);
+  // set first, then the call, in its one statement's transaction: the columns this process
+  // declares (`_delta_cols`, 001b), and as the owner, `dzql.definer`
+  const set = [...(declared !== undefined ? [`set_config('delta.declared', $${all.length + 1}, true)`] : []), ...(owner ? ["set_config('dzql.definer', 'on', true)"] : [])];
+  if (!set.length) return (await db.query(`SELECT ${call} AS result`, all)).rows[0]?.result;
+  const { rows } = await db.query(`WITH d AS MATERIALIZED (SELECT ${set.join(", ")}) SELECT ${call} AS result FROM d`, declared !== undefined ? [...all, declared] : all);
   return rows[0]?.result;
 }
 

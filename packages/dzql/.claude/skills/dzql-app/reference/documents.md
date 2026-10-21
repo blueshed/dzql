@@ -88,6 +88,12 @@ ref's surrogate (`orderOf`, `resources/kitchen/kitchen-api.ts`) and a seed in `p
   empty all the same.
 - `serverWrite(doc, ops)` is the server's own write: no person, never undone. Its paths are the
   document's own, `under` not added (`/sessions/person_id`, not `/person_id`).
+- Outside any page (a command, a job, a seed once the server is up), the server writes through the
+  store: `store.owner`, the server itself, in this process. `await store.owner.call("delta", { doc:
+  "floor:", cursor: "nightly", ops: [{ op: "replace", path: "/tables/1/seated", value: false }] })`
+  is the document's write, as a page's is: its rule asked, on the ledger along the cursor it names,
+  and told to every page holding it; `open` reads. With `openStore`'s `auth` it passes no gate and
+  reads and writes as the tables' owner. Never `delta_apply` called by hand.
 - Tests and scripts write as a person would, through the same `shape`.
 - A page reads through `read()`. Go to the tables only for what no page reads as a document: what a
   memory document is computed from, a credential, a blob, a rule `shape` checks across rows.

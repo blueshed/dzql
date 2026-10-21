@@ -218,6 +218,11 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **`openStore` serves its documents in this process as well as on the socket it is given** (21
+  October, the Shed's run 6, finding 5): `store.delta` answers with `ws` too, so the server's own
+  callers reach the documents a page holds, and a change is told on both. A guard put on `delta`
+  now stands in front of in-process callers alone; a guard for the socket goes on the socket.
+
 - **The two skills, from round 3 of their evals** (21 October). dzql-app: `bento.md`'s *Undo
   follows the role* and `scope.md`'s *Today's* take their examples from a gym, not the eval's front
   desk; SKILL step 1 and `stories.md` list, in order, what to make before the first run (`links.ts`,
@@ -488,6 +493,20 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **`store.owner`, the server itself, writing and reading through the documents** (21 October,
+  the Shed's run 6, finding 5: a command wrote by calling `delta_apply` as the owner, so no
+  document's rule asked it and no ledger kept it). `openStore` gives a caller in this process
+  (`owner.call("delta", { doc, ops, cursor })`, `open`, `undo`, `history`): its write is the
+  document's, `accept` asked (told no one), on the ledger by no one along the cursor it names, and
+  told to everyone holding the document, on the socket and in this process. With `auth` it passes no
+  gate, every document (custom ones too) is its own, and it reads and writes as the tables' owner,
+  `dzql.definer` raised for each call (`callAs`'s `OWNER`, `registry.ts`), so a write of its keeps
+  every reach and meets no policy. A caller with no identity is still refused (401), as delta's
+  cases say. `createDocListener` takes the client that is the owner (`owner`); no socket can be
+  it. Proved on PGlite as a role that owns the tables and is held by them
+  (`tests/delta-pg/app-store-owner-pglite.test.ts`). Taught in dzql-app's `documents.md` and
+  evolve's `postgres.md`.
+
 - **A time only the server sets (`default: "now"`) on Postgres** (20 October, root #138), as delta
   keeps it on SQLite and the JSON file: `delta_apply` gives a column it names that an add leaves out
   the write's time to the millisecond (`_delta_default`, `_delta_server_time` in 001a), a replace
@@ -598,6 +617,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   for the CLI and the model's page).
 
 ### Fixed
+
+- **Two servers opening one new database at once both open** (21 October, the Shed's run 6,
+  finding 5: dzql locked its migrations, not the framework or the compiled SQL, so the second
+  failed making a type twice, and each found the database new and seeded it). `openStore` takes its
+  own turn, an advisory lock per Postgres schema, around everything it does as it opens (the
+  schema made, the migrations, the framework, the compiled SQL, `prepare`); the second server waits,
+  then finds it done, the rows imported once. Shown taken and let go on PGlite
+  (`app-store-pglite.test.ts`), and raced on the server in `test:pg`
+  (`tests/delta-pg/postgres-open-race.test.ts`). An app's own lock around `open` can go.
 
 - **A story that writes a document no resource owns fails in its own words** (21 October, found
   by the evals' round 3): `no resource owns desk, which the story writes: list its resource in the

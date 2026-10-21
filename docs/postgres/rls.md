@@ -48,8 +48,11 @@ and wrote. A policy that let the writer read those rows for the fan-out would le
 any query, so there is none.
 
 The owner's maintenance raises it too: `exportTables`, `importTables` (so the stories' store) and
-`migrate` read and write every row as the owner. A seed or a report of your own on a forced table
-binds a person, or goes through them.
+`migrate` read and write every row as the owner. So does `openStore`'s `owner`, the server's own
+caller in its process (a command, a job), raising it for each call it makes through the documents:
+it is no person, so a write of its keeps every reach, and its writes are the documents' (their
+rule, the ledger, the fan-out). A seed or a report of your own on a forced table binds a person,
+goes through them, or goes through the owner.
 
 ## By hand, for a table no path governs
 

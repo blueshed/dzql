@@ -212,6 +212,15 @@ section up.
 
 ### Changed
 
+- **evolve's `postgres.md`: what the server writes, how sign-in moves, and two servers at once** (21
+  October, the Shed's run 6, finding 5; needs dzql's next release). A command, a job or a route that
+  writes for no one signed in writes through the documents, `store.owner.call("delta", ...)`, its
+  write the document's (its rule, the ledger, every page told), never `delta_apply` by hand. The
+  links and sessions move by the link store's own calls (`addSession`, `addLink` for those still
+  standing), since `importTables` carries only the documents' rows: never an `INSERT` into dzql's
+  tables. The store takes its own turn as it opens, so two servers on one new database need no
+  lock of the app's.
+
 - **The evolve skill and its evals, from round 2** (20 October, root #113). `http.md` says why
   files go in the bucket and never on the data volume (a volume is one service's; a redirect keeps
   the bytes off the app's server), and what a test stands in for. `two-documents.md` says the
