@@ -362,7 +362,8 @@ describe("modeling, served", () => {
       if (message.type === "inspect") answered();
       else inbox.push(message.type);
     });
-    await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
+    // the page it opens with, before the first write (on Bun 1.4.4 it comes after `open`)
+    await new Promise((resolve) => ws.addEventListener("message", resolve, { once: true }));
     const send = async (doc: string, ops: PatchOp[]) => {
       inbox.length = 0;
       ws.send(JSON.stringify({ id: 1, doc, ops }));

@@ -434,12 +434,7 @@ export const app: Example = {
   address: { doc: "session", path: "/page" }, // a tab's URL is where it stands: the session says where it may (./resources/session/session.ts)
 };
 
-export async function startServer({
-  port = undefined as number | undefined,
-  dev = undefined as boolean | undefined,
-  dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data`,
-  model = process.argv.includes("--model"),
-} = {}) {
+export async function startServer({ port = undefined as number | undefined, dev = undefined as boolean | undefined, dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data`, model = process.argv.includes("--model") } = {}) {
   const status = statusApi();
   // in development (`bun dev`), the model's page beside the app at /model; production never registers it
   const modelling = model && (await (await import("dzql/model")).modelRoute());

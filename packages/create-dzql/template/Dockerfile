@@ -1,7 +1,7 @@
 # The app in a container: `bun start`, on the Bun package.json's packageManager names (keep the two
 # in step). Production sets DATABASE_URL: PGlite is for development and the tests. The environment,
 # the database and the platforms: the dzql-app skill's reference/deploy.md.
-FROM oven/bun:1.4.3-slim
+FROM oven/bun:1.4.4-slim
 WORKDIR /app
 ENV NODE_ENV=production
 

@@ -6,7 +6,7 @@ than a small server has). The starter's `Dockerfile` is the whole of the contain
 
 ```dockerfile
 # Dockerfile (its comments trimmed)
-FROM oven/bun:1.4.3-slim
+FROM oven/bun:1.4.4-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json bun.lock ./

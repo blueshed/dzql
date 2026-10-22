@@ -6,6 +6,14 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### Bun 1.4.4 (22 October)
+
+- The root's `packageManager` (CI's Bun) and each template's are `bun@1.4.4`; every `engines.bun`
+  floor stays. `@types/bun` stays `^1.4.3`: npm has no 1.4.4 types yet, so `scripts/ranges.ts`
+  holds each package's `@types/bun` to the root's, a range that must hold the root's Bun and start
+  in its minor (`^1.4.3` holds 1.4.4; it would not hold 1.5.0). dzql's changelog has the three
+  socket tests 1.4.4 changed; create-blueshed's the template's coverage on 1.4.4.
+
 ### A production review, and what it found (22 October)
 
 - Six reviewers read dzql for production (security, Postgres operations, the rendering runtime,

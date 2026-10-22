@@ -116,11 +116,7 @@ import { appStore } from "./store";
 
 // The app is its routes and its resources. The server is delta's: `serve` puts these routes and
 // the socket on Bun.serve (with /health and a 404); `run`, at the bottom, is the process around it.
-export async function startServer({
-  port = undefined as number | undefined,
-  dev = undefined as boolean | undefined,
-  dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data`,
-} = {}) {
+export async function startServer({ port = undefined as number | undefined, dev = undefined as boolean | undefined, dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data` } = {}) {
   const status = statusApi();
 
   // What a resource opens that must be closed (a database), closed once the server stops

@@ -69,7 +69,8 @@ delta's all along (the `evolve` skill takes its storage to Postgres).
   `todo.jsonl` is one JSON object: `n`, `status` (open / fixed / not fixed), `severity`, `area`,
   `file`, `summary`, `detail`, and a dated `note` once worked on. Code comments cite only open items.
 - Bun only, on the one the root package.json's `packageManager` names (CI reads it;
-  `scripts/ranges.ts` holds each package's `@types/bun` to it, and each README's "or later" to its floor).
+  `scripts/ranges.ts` holds each package's `@types/bun` to the root's, a range that holds it, and
+  each README's "or later" to its floor).
 
 ## The shape of a package
 

@@ -309,6 +309,14 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **Made on Bun 1.4.4** (22 October). create-dzql's template says `bun@1.4.4` and its `Dockerfile`
+  (and the `dzql-app` skill's `reference/deploy.md`) `oven/bun:1.4.4-slim`; `engines.bun` stays
+  `>=1.4.3`. Three tests read what Bun 1.4.4 does on the socket: a compressed page is inflated to
+  the sync flush, as a browser does (1.4.4 ends no message with a final deflate block); a message
+  past 1 MiB inflated is refused with a close frame (1009), which the test counts as closed (1.4.4
+  sends one and waits for the closing handshake); and the model's sign-out test waits for the page
+  a socket opens with before its first write (on 1.4.4 it comes after `open`). Each passes on 1.4.3
+  and 1.4.4.
 - **A page's parts are laid out from where each stands on it** (22 October, #89): in time that grows
   with the page, not with its parts squared. 1,000 rows went from 200 ms to 6 ms; a test holds a
   1,000-part page well under 20 ms of CPU. The every-pair layout stays for what offsets cannot say

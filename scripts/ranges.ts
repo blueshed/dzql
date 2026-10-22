@@ -8,8 +8,9 @@
  * Every published package carries its licence (the field, and LICENSE in its files).
  *
  * And the Bun every package is made on, said once: the root's `packageManager` (which CI reads,
- * `.github/actions/setup`). A package's types (`@types/bun`, `^` it) and
- * a new app's own `packageManager` follow it. A package's floor (`engines.bun`) is its own, lower
+ * `.github/actions/setup`). A package's types (`@types/bun`) are the root's, a range that holds that
+ * Bun (`^` it, or `^` the one before while its types are not yet on npm, a day or so after a Bun), and
+ * a new app's own `packageManager` follows it. A package's floor (`engines.bun`) is its own, lower
  * where it runs on an older Bun (railroad's, which publish.yml's floor job runs on), and its README's
  * "Bun <version> or later" says that floor.
  */
@@ -34,20 +35,25 @@ for (const f of [...files, ...templates]) {
     }
 }
 const bun = /^bun@(\d+\.\d+\.\d+)$/.exec(read("package.json").packageManager ?? "")?.[1];
+const types: string | undefined = read("package.json").devDependencies?.["@types/bun"];
 if (!bun) wrong.push(`package.json: packageManager must be bun@<an exact version>`);
-else
+else {
+  const minor = bun.replace(/\.\d+$/, "");
+  if (!types?.startsWith(`^${minor}.`) || !Bun.semver.satisfies(bun, types))
+    wrong.push(`package.json: @types/bun is ${types ?? "none"}, not ^${bun} (or ^ an earlier ${minor}.x, until its types are on npm)`);
   for (const f of ["package.json", ...files, ...templates]) {
     const json = read(f);
-    const said: [string, string | undefined, string][] = [
-      ["@types/bun", json.devDependencies?.["@types/bun"], `^${bun}`],
+    const said: [string, string | undefined, string | undefined][] = [
+      ["@types/bun", json.devDependencies?.["@types/bun"], types],
       ["packageManager", json.packageManager, `bun@${bun}`],
     ];
-    for (const [what, is, want] of said) if (is !== undefined && is !== want) wrong.push(`${f}: ${what} is ${is}, not ${want} (the root's packageManager)`);
+    for (const [what, is, want] of said) if (is !== undefined && is !== want) wrong.push(`${f}: ${what} is ${is}, not ${want} (the root's)`);
     const readme = f.replace(/package\.json$/, "README.md");
     const floor = /^>=(\S+)$/.exec(json.engines?.bun ?? "")?.[1];
     for (const m of existsSync(join(root, readme)) ? readFileSync(join(root, readme), "utf8").matchAll(/Bun (\d+\.\d+\.\d+) or later/g) : [])
       if (m[1] !== floor) wrong.push(`${readme}: says Bun ${m[1]} or later, its package.json's floor is ${json.engines?.bun ?? "none"}`);
   }
+}
 // every package npm publishes carries its licence: the field, and the text in the tarball (MIT asks
 // that the notice go with the code)
 for (const f of files) {

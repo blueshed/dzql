@@ -345,7 +345,8 @@ describe("createServer, generically (no example from the examples directory invo
       expect(frame[1]! & 0x7f).toBeLessThan(126); // a short page, its length in the one byte
       const payload = frame.subarray(2, 2 + (frame[1]! & 0x7f));
       const compressed = (frame[0]! & 0x40) !== 0; // RSV1: this message is compressed
-      const text = compressed ? inflateRawSync(Buffer.concat([payload, Buffer.from([0, 0, 0xff, 0xff])])) : payload;
+      // inflated as a browser does, to the sync flush (RFC 7692): Bun 1.4.4 ends no message with a final block
+      const text = compressed ? inflateRawSync(Buffer.concat([payload, Buffer.from([0, 0, 0xff, 0xff])]), { finishFlush: constants.Z_SYNC_FLUSH }) : payload;
       return { extension: /^sec-websocket-extensions: (.*)$/im.exec(answer)?.[1], compressed, message: JSON.parse(text.toString("utf8")) };
     }
     const page = { type: "render", html: '<p class="note"></p>', wire: WIRE };
@@ -362,11 +363,12 @@ describe("createServer, generically (no example from the examples directory invo
           `Sec-WebSocket-Extensions: permessage-deflate\r\nCookie: session_id=${sessionId}\r\n\r\n`,
       );
       const closed = new Promise<"closed">((done) => socket.on("close", () => done("closed")));
-      let heard = (): void => {};
-      socket.on("data", () => heard());
-      await new Promise<void>((paged) => (heard = paged)); // the answer, and the page
+      let heard = (_chunk: Buffer): void => {};
+      socket.on("data", (chunk: Buffer) => heard(chunk));
+      await new Promise<void>((paged) => (heard = () => paged())); // the answer, and the page
       await Bun.sleep(20);
-      const answered = new Promise<"answered">((done) => (heard = () => done("answered")));
+      // a close frame (1009, too big) is closed too: Bun 1.4.4 sends one and waits for the closing handshake
+      const answered = new Promise<"closed" | "answered">((done) => (heard = (chunk) => done(chunk[0] === 0x88 ? "closed" : "answered")));
       // a client's frame is masked; compressed, it ends without deflate's last four bytes (RFC 7692)
       const body = deflateRawSync(JSON.stringify({ doc: "note", ops: [{ op: "replace", path: "/text", value: text }] }), { finishFlush: constants.Z_SYNC_FLUSH }).subarray(0, -4);
       const mask = Buffer.from([1, 2, 3, 4]);
