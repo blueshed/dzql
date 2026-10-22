@@ -82,3 +82,15 @@ describe("the ops log pruned while it is open", () => {
     await store.close();
   }, 60_000);
 });
+
+describe("healthy", () => {
+  test("false until it is open and after it closes, true while it is open and answers (delta's /health asks it)", async () => {
+    const store = openStore({ schema, database: ":memory:" });
+    store.register([notes]);
+    expect(await store.healthy()).toBe(false);
+    await store.open();
+    expect(await store.healthy()).toBe(true);
+    await store.close();
+    expect(await store.healthy()).toBe(false);
+  }, 60_000);
+});

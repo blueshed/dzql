@@ -36,7 +36,7 @@ the database and the platforms, none: it is configuration outside the app.
 
 | Variable | What it does |
 | --- | --- |
-| `NODE_ENV` | `production` (`bun start` sets it): no hot reload or browser console (delta's `serve`), the session cookie `Secure`, so the site must be HTTPS; the starter's `routes.ts` skips the pid guard; and `openStore` will not start PGlite without a `DATABASE_URL` unless the app says it may |
+| `NODE_ENV` | `production` (`bun start` sets it): no hot reload or browser console (delta's `serve`), the session cookie `Secure`, so the site must be HTTPS; the starter's `routes.ts` skips the pid guard; and `openStore` refuses to start PGlite without a `DATABASE_URL` (`openStore({ pgliteInProduction: true })` or `DZQL_PGLITE_IN_PRODUCTION=1` says it is meant, for a smoke test of a production build) |
 | `PORT` | where it listens; 3000 without it. Every platform sets it |
 | `DATABASE_URL` | the Postgres server, `postgres://<role>:<password>@<host>:5432/<db>?sslmode=verify-full`; without it, PGlite |
 | `DATA_PATH` | the data folder (`data/`): PGlite's `pg/` in development, and what `prepare` is given. With `DATABASE_URL` nothing is kept there |

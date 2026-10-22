@@ -374,6 +374,16 @@ export function openStore<I = unknown>({ schema: schemas, database, migrations, 
         await was.listener.destroy();
         if (!own) await was.pool.end();
       }),
+    /** Whether it is open and its database answers: what delta's `/health` asks (`appOf` gives it as the app's `health`). */
+    healthy: async (): Promise<boolean> => {
+      if (!open) return false;
+      try {
+        await open.pool.query("SELECT 1");
+        return true;
+      } catch {
+        return false;
+      }
+    },
     /** The stories begin and end each story on this store, and read its ledger (`Example.store`). */
     begin: () => stories().begin(),
     end: () => stories().end(),

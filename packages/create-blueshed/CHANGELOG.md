@@ -63,6 +63,9 @@ section up.
 
 ### Fixed
 
+- **The `postgres` reference says PGlite is never deployed** (22 October, dzql #92): under
+  `NODE_ENV=production` dzql's `openStore` refuses PGlite unless `DZQL_PGLITE_IN_PRODUCTION=1` says it
+  is meant.
 - **The thin-client reference says the sign-in links are a demo door** (22 October, dzql #83): its
   copy of the starter's CLAUDE.md says each link is used once and shut under `NODE_ENV=production`.
 - **The `auth` reference passes `mayLink`** (22 October, delta #95): delta's link sign-in now lets a

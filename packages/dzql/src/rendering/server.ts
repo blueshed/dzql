@@ -558,7 +558,11 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
     // screen, served the same shell, whose socket names the address (`/ws?at=`), and the tab is
     // routed there as it opens: its first page is drawn there, for it alone.
     "/*": shell,
-    "/api/health": () => Response.json({ ok: true }),
+    // as delta's `/health` says: the store answers (503 when it does not), or there is none to ask
+    "/api/health": async () => {
+      const ok = (await example.store?.healthy?.()) ?? true;
+      return Response.json({ ok }, { status: ok ? 200 : 503 });
+    },
     "/ws": async (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
         // A socket is not bound by the same-origin policy: one opened from another site is refused
         // before it is a session (delta's rule: no Origin, or the page's own, or ETA_ORIGINS).
@@ -635,6 +639,8 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
     routes: routes as App["routes"],
     websocket: { ...SOCKET, ...handlers },
     scope: app,
+    // delta's `/health` asks the store (503 when it does not answer); an app with none has nothing to ask
+    ...(example.store?.healthy && { health: () => example.store!.healthy!() }),
     /** Resolves when every event so far has been handled and everything it set going is done. */
     idle: async () => {
       do {
@@ -696,6 +702,9 @@ export function compose(...apps: (App | false | undefined)[]): App & { close: ((
     ...(ws && { ws }),
     websocket: { ...SOCKET, open: dispatch("open"), message: dispatch("message"), close: dispatch("close") } as Bun.WebSocketHandler<any>,
     close: all.flatMap((a) => a.close ?? []),
+    // healthy when every app is; idle when every app is (delta's `/health`, and its stop)
+    health: async () => (await Promise.all(all.map((a) => a.health?.() ?? true))).every(Boolean),
+    idle: async () => void (await Promise.all(all.map((a) => a.idle?.()))),
   };
 }
 

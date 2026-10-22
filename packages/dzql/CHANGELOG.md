@@ -25,6 +25,49 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **The wire is 5: a page the server could not draw is told so** (22 October, the production review,
+  #108, #90). A drawing that throws is logged as before, and its page is sent `{type: "failed"}`: the
+  client says "This page could not be drawn just now." in its status region until the next drawing,
+  so a first drawing that fails no longer leaves "Connecting…" up for good. The client also asks for
+  the page whole when a part names something the page does not have, or a patch skips past the next
+  version a watching applet holds. **To move across**: nothing in an app; a tab open over the deploy
+  loads itself again once (`WIRE`). A test that reads messages by position may meet `{type:
+  "failed"}` after a drawing that throws.
+- **A page is drawn once for the changes told while it waited, so echoes may come before the parts
+  that show them** (22 October, #89: 50 messages in a room of 200 took 24.7 s to reach everyone, now
+  3.7 s). Each connection's events are handled in a queue of its own, in order; another connection's
+  no longer wait behind them. An `inspect` is still answered after every event before it, any
+  connection's, so `heard` is unchanged. Every change is still told at once (its echo); a page then
+  waits a turn of the event loop before it is drawn again, unless its own connection is waiting on
+  it. **To move across**: a test that expects `patch` then `render` for each change finds them by
+  document, not position (`heard`, then by `doc`), as chat's and the ticker's tests now do.
+- **A write of more than 1,000 ops is refused; a connection with more than 100 messages waiting, or
+  1 MiB unread, is closed** (22 October, #90, #91). Refused with `TOO_MANY_OPS` (`MOST_OPS`,
+  `MOST_WAITING`, from `dzql/rendering/server`); closed 1008 for messages waiting, and by Bun's
+  `closeOnBackpressureLimit` past a 1 MiB `backpressureLimit` for unread data, where Bun had dropped
+  what it sent past 16 MB and kept the socket open. Its page connects again and is drawn afresh.
+  **To move across**: a script that sends more at once sends it in parts.
+- **`settled`'s third argument counts rounds, not tries, and inside it a read not held is nothing**
+  (22 October, #107). It loads every document the drawing read and did not hold together, and runs
+  again: a page that reads its documents and then draws them waits once, where it waited once for
+  each and failed past 20. The bound is 1,000 rounds. **To move across**: a render that caught
+  `Pending` itself gets `undefined` inside `settled` (outside it, `read` still throws `Pending`).
+- **`openStore` refuses PGlite under `NODE_ENV=production`** (22 October, the production review,
+  #92). With no Postgres server named (`DATABASE_URL`, or `database` a URL), `open()` throws, naming
+  `DATABASE_URL`. **To move across**: set `DATABASE_URL`; to run PGlite in production all the same (a
+  smoke test of a production build), say `pgliteInProduction: true` or `DZQL_PGLITE_IN_PRODUCTION=1`.
+- **`jwtAuth`'s secret is 32 bytes at least, refused as it is made** (#105), not at the first login.
+  **To move across**: a longer `JWT_SECRET` (`openssl rand -base64 48`).
+- **A 5xx from the Postgres listener says only `The server failed: what went wrong is in its log`**
+  (#103): the database's words (tables, constraints, types, `no doc def for`) are logged, never
+  sent. **To move across**: read the server's log; a client that matched a 500's message matches its
+  code.
+- **An older server's compiled documents never replace a newer one's** (#87). Each set gets a
+  generation in `_delta_compiled`; a replaced set is not applied again: that server runs on the newer
+  set and warns. **To move across**: a rollback is said (`rollback: true`, or `DZQL_ROLLBACK=1`); a
+  deploy that drops a document waits until no older server still serves it.
+- **`history` answers 100 entries at most, and a socket holds 1000 documents open at most (429)**
+  (#106). **To move across**: ask for 100 or fewer; close documents a page has left.
 - **`generateSql` makes an index for each column a document looks rows up by, and the framework one
   for the change log** (22 October, the production review, #96 and #95). Beside the parent keys and
   temporal (id, valid_to), each `refs` or `cascadeOn` column, each column a scope reads its root rows
@@ -266,6 +309,32 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **A page's parts are laid out from where each stands on it** (22 October, #89): in time that grows
+  with the page, not with its parts squared. 1,000 rows went from 200 ms to 6 ms; a test holds a
+  1,000-part page well under 20 ms of CPU. The every-pair layout stays for what offsets cannot say
+  (`drawPartsByIncludes`, which the tests hold it to page by page). A list's rows are compared by
+  sets. A key with `$&` or `$'` in it is no longer mangled as its tag is written.
+- **A change copies only what it touches** (22 October, #112): the containers on each op's path, once
+  a change, the rest shared, where it cloned the whole held document (26 ms at 10,000 messages).
+- **Naming a document on the wire asks an index of who is open by session** (22 October, #113), not
+  every open socket for each recipient.
+- **A dropped connection tries again after a random share of its wait** (22 October, #109), the wait
+  still doubling to 10 s, so the tabs a restart closes no longer all come back at once.
+- **A write's tests read its page once** (22 October, #91: `drawnFields`, `dzql/rendering/parts`).
+- docs/rendering.md (*Under load*) and dzql-app's `wire.md`, `documents.md` and `resource.md` say all
+  of the above.
+- **`openStore` applies the framework and the compiled SQL together, in one transaction, and only
+  when they changed** (#86): no other server sees the uncompiled forms between the two, and a second
+  open of an unchanged app runs no DDL (a migration that ran, or `applyFramework` by hand since,
+  applies the set again). The DDL waits `lockTimeout` (5000 ms) per lock, tries 3 times, then fails
+  saying why, having changed nothing. `applyCompiled` is exported from `dzql/postgres`.
+- **The migration fence runs ahead of the migration's transaction** (#98): a short SHARE lock on
+  `_delta_ledger` reads its last id, then batches of 10,000 are fenced, and `_delta_fences` keeps how
+  far each app is fenced, so the transaction that alters the tables reads only entries since.
+  Migrations take a `lock_timeout` with 3 tries.
+- **What an app's own constraints and triggers refuse is the writer's** (#94): CHECK (23514) and a
+  trigger's `RAISE` (P0001) answer 400, an exclusion constraint (23P01) 409. They were 500.
+- **Custom documents read the log only while one is open** (#101).
 - **A ledger write costs what it touches, not what its document holds** (22 October, #88).
   `delta_apply_logged` no longer reads `_delta_open(name, TRUE)`: `_delta_apply` (001d;
   `delta_apply` is its wrapper) keeps each row the write touches as it found it, and the inverse is
@@ -553,6 +622,24 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **`/health` asks the store** (22 October, delta #99 as dzql takes it): an app's store has
+  `healthy()` (`openStore`'s: open, and `SELECT 1` answers), `appOf` gives it as the app's `health`,
+  and `compose` is healthy when every app it holds is and idle when every app is, so delta's
+  `/health` answers 503 once the database does not, and a stop waits for every app's work. dzql's own
+  `/api/health` answers from the same check. `tests/rendering/health.test.ts`.
+- **`openStore` options** (#99, #95, #92, #87, #86): `pool` (a `PoolConfig`, or the app's own `Pool`,
+  used as is and never ended), `prune` (the ops log pruned every 10 minutes, keeping an hour, under a
+  try-lock so one server prunes; `false` opts out), `pgliteInProduction`, `lockTimeout`, `rollback`;
+  and `database: ":memory:"`, PGlite in memory whatever `DATABASE_URL` says. An idle connection's
+  error is logged, not thrown.
+- **The RLS warning** (#102): with `auth`, on a server, `openStore` warns when the pool's role is a
+  superuser or `BYPASSRLS`; `rls.md` gains *Where it applies, and where it does not* (a dzql/rendering
+  app reads as no one: `resolveDoc`, `permit` and how documents are cut protect it).
+- **`jwtAuth`'s `maxFailedLogins` and `lockout`** (#105): 5 wrong passwords per email within 60 s, then
+  refused without a bcrypt until it has waited.
+- **`createDocListener`'s `maxOpen`** (#106).
+- **`docs/postgres/postgres.md` gains *Deploying***: versions, locks, the fence, the pool,
+  transaction-mode poolers (#100), PGlite, retention.
 - **`delta_touch(collection, id)`: a row a trigger changes is told** (22 October, #123). Called from
   a trigger a write sets off, before it changes the row, it adds the row to the write's touched set,
   and every open document that held the row before or holds it after is told what changed for it;
