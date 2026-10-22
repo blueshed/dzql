@@ -25,6 +25,16 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **`generateSql` makes an index for each column a document looks rows up by, and the framework one
+  for the change log** (22 October, the production review, #96 and #95). Beside the parent keys and
+  temporal (id, valid_to), each `refs` or `cascadeOn` column, each column a scope reads its root rows
+  by (an equality or a range), and each column an `owns` path's hop filters by gets
+  `idx_<table>_<column>` on (column, id) (`src/compile/indexes.ts`); booleans, json and `like`/`at`
+  scopes are left out. `_delta_ops_log` gets `idx_delta_ops_log_created` for pruning by age (001a).
+  On 1M rows: removing a film no showing names 228 → 2 ms, a scoped open 85 → 2 ms, an owns check
+  that reaches no one 130 → 1 ms. **To move across**: nothing for a small database: the next start
+  builds the indexes, locking each table while it does. For a large table, build them first with
+  `CREATE INDEX CONCURRENTLY` under the same names, and the apply skips them.
 - **Sign-in links are a demo door: used once, running out, shut in production** (22 October, the
   production review, #83). `signInLinks` keeps each link as its token's hash, used once and gone
   after `ttl` (`signInLinks(key, sessions, people, at, { ttl })`, 15 minutes); a person's link stays
@@ -256,6 +266,18 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **A ledger write costs what it touches, not what its document holds** (22 October, #88).
+  `delta_apply_logged` no longer reads `_delta_open(name, TRUE)`: `_delta_apply` (001d;
+  `delta_apply` is its wrapper) keeps each row the write touches as it found it, and the inverse is
+  taken from those, unchanged (`tests/compile/inverse.test.ts` holds it to the whole document's over
+  31 kinds of write; delta's cases walk every inverse). One field replaced on a document of 10k rows:
+  149 → 3.8 ms; of 100k: 1,523 → 3.9 ms. A walk's guard (`_delta_walk_plan`) still reads the
+  document whole.
+- **A write tells documents in one lock order** (22 October, #97): `_delta_tell` bumps every told
+  document's version in name order, then logs and notifies them, the writer's first as before
+  (`_delta_log_and_notify`, 001c). Two writes through documents that hold each other's rows wait for
+  each other instead of deadlocking (409); `tests/delta-pg/tell-order.test.ts` meets the race every
+  time.
 - **`openStore` serves its documents in this process as well as on the socket it is given** (21
   October, the Shed's run 6, finding 5): `store.delta` answers with `ws` too, so the server's own
   callers reach the documents a page holds, and a change is told on both. A guard put on `delta`
@@ -531,6 +553,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **`delta_touch(collection, id)`: a row a trigger changes is told** (22 October, #123). Called from
+  a trigger a write sets off, before it changes the row, it adds the row to the write's touched set,
+  and every open document that held the row before or holds it after is told what changed for it;
+  called after the change, every field is told; outside a write it does nothing. A trigger's rows
+  are not in the ledger entry (an undo runs the trigger again). `docs/postgres/sql.md`;
+  `tests/delta-pg/touch-pglite.test.ts`.
 - **Sessions that run out on the server** (22 October, #85). `sessionRows(delta, collection, visit,
   { seen, days, expired })` keeps a session's last use in a `timestamptz?` column its own document
   leaves out, renewed at most once a day: past `days` (30) unused, its cookie names a fresh session,
@@ -698,6 +726,11 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **A named id of 2^53 − 1 no longer leaves its table unable to mint** (22 October, #82).
+  `_delta_serial_past` moves a serial at most to 2^53 − 1 less 2^32, so `add /<coll>/-` always mints
+  an id a path can name; an id named past that bound is kept, but is not one the serial hands out.
+  `_delta_next_id` refuses a mint past 2^53 − 1 (2200H) instead of making a row no number holds.
+  `tests/compile/serial.test.ts`.
 - **`inspect` names a change of yours by its handle** (22 October, #115): an entry carries `change`
   (the handle its echo gave), never delta's ledger id (`InspectEntry.id` is gone). WIRE is not
   bumped: no page reads inspect replies, and the CLI reads only their ops.
