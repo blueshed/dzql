@@ -15,7 +15,7 @@ import { openStore } from "dzql/postgres";
 import { schema, docs } from "./schema";
 
 const ws = createWs();
-// DATABASE_URL's server, else PGlite in the data folder's pg/ (in memory without one), or `database`: a URL or a folder
+// DATABASE_URL's server, else PGlite in the data folder's pg/ (in memory without one), or `database`: a URL, a folder, or ":memory:"
 const store = openStore({ schema, migrations: { dir: "migrations", app: "board", schema }, ws }); // said: nothing opened yet
 store.register(docs);
 await store.open({ dataDir: process.env.DATA_PATH });   // as the server starts: the tables, each document compiled, then served on the socket
@@ -26,7 +26,9 @@ serve({ routes: { "/": index }, ws, close: [store.close] });
 Without `ws`, the documents are served in the process (`store.delta`), as dzql's thin client reads
 them; there the app's `store` is the `Example`'s, and `appOf` opens it as the server starts and
 closes it as it stops. `prepare` (an option) runs at each open between the tables made and the
-documents served: a seed. A store closed is opened again by the next start, its listener a new one. The steps it takes are below, for a database something else sets up; the
+documents served: a seed. A store closed is opened again by the next start, its listener a new one.
+How it behaves beside other servers of the app (a deploy, a pool, the ops log): *Deploying*,
+below. The steps it takes are below, for a database something else sets up; the
 documents' step is one call, `registerDocs(ws, pool, schema, docs, customDocs, options)`, which
 takes what delta's SQLite `registerDocs` takes (`ledger`, `who`, `auth`, `owns`, `shared`; and
 `namespace`), awaited: an app moving from SQLite changes its import. Its options are in
@@ -47,7 +49,8 @@ takes what delta's SQLite `registerDocs` takes (`ledger`, `who`, `auth`, `owns`,
   SQLite (`delta migrations make` writes them from the definitions): a new database runs them from
   the first; one made the older way, holding their tables, adopts them. A change the definitions
   make is the next migration (delta-doc's `migrations.md`). The listener sends and writes the
-  columns your `schema` declares, so two versions on one database each see their own.
+  columns your `schema` declares, so two versions on one database each see their own columns; the
+  compiled documents are the newest version's (below, *Deploying*).
 - **After upgrading dzql**, run `init <dir> --upgrade` (it keeps `.bak`s and says what changed)
   or `applyFramework` again. Never edit `001*` by hand: it is the stored-function contract.
 - Mount `init_db/` at `/docker-entrypoint-initdb.d`: Postgres applies it alphabetically on the
@@ -133,7 +136,10 @@ Three rules follow:
   document's name is refused (`no doc def for: <name>`) until `generateSql` is applied again.
   Re-apply it after `applyFramework` and after `init --upgrade`. Vendored, `003-tables.sql` sorts
   after `001*`, so a tool that re-applies the directory in order gets this right; one that
-  re-applies only `001*` must re-apply `003` too.
+  re-applies only `001*` must re-apply `003` too. `openStore` applies both together, in one
+  transaction (`applyCompiled`), so no other server ever sees the uncompiled forms between them;
+  and an `applyFramework` by hand since is noticed at its next open (the functions changed), which
+  applies them again.
 - **One app per schema.** Each `generateSql` writes the whole set of an app's documents and
   collections; a later one, with other definitions, takes their place. Two apps on one database
   each have a Postgres schema of their own (below), or a database of their own.
@@ -143,6 +149,59 @@ Three rules follow:
 The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their `_as` forms
 (`sql.md`), which reach them. What a write costs, compiled, is in `packages/dzql/bench/results-2026-10-15.md`
 (under RLS, as an app role).
+
+## Deploying
+
+Several servers of one app on one database, started one after another as a deploy rolls, and
+restarted when they fail. What `openStore` does so that none breaks another
+(`packages/dzql/src/postgres/app-store.ts`, `bootstrap.ts`, `migrate.ts`):
+
+- **A server starting changes nothing the others use, unless its documents are new.** The
+  framework and the compiled SQL are applied together, in one transaction, and only when they are
+  not the database's already: the database keeps each set it has had in `_delta_compiled` (its
+  hash, a generation, its document types), and a second server of an unchanged app runs no DDL and
+  takes no lock. A migration that ran at this start, or the framework applied by hand since, has
+  the set applied again.
+- **An older server never undoes a newer one's documents.** A set a newer one has replaced (a v1
+  instance restarting while v2 rolls out) is not applied: that server runs on the newer set, as a
+  v1 still running does, and logs a warning naming both generations. It keeps its own columns (the
+  listener writes and sends what its `schema` declares). A rollback is said:
+  `openStore({ ..., rollback: true })` or `DZQL_ROLLBACK=1` puts the older set back, as the newest.
+  A newer server must keep the documents an older one still serves while both run; dropping a
+  document is for a deploy after the last older server is gone. PGlite is one process's: its set
+  is always the server's own.
+- **The DDL gives way.** As it opens, each lock the migrations and the compiled SQL take is waited
+  for `lockTimeout` ms (default 5000), then the transaction gives way and tries again, three
+  times, then the open fails saying why, having changed nothing: a long transaction on a table it
+  alters holds up the start, never every read queued behind its lock. While a new set is applied
+  its transaction holds the framework's tables (an index's lock), so writes wait for it: a moment,
+  once per deploy.
+- **A migration fences the ledger ahead of its own transaction.** The app's entries before it are
+  made not undoable a batch at a time before the migration begins, and `_delta_fences` keeps how
+  far that has gone, so the transaction that alters the tables reads only the entries written
+  since. A migration that then fails has still fenced them.
+- **The pool.** `openStore({ pool })` takes pg's `PoolConfig` (`max`, `ssl`,
+  `statement_timeout`, `idleTimeoutMillis`, ...), opened at the URL, or a `Pool` of the app's own,
+  used as it is and never ended by the store (in a `namespace`, its connections must run in it:
+  `options: "-c search_path=<schema>"`). An idle connection the server ends (a restart, a failover)
+  is logged and replaced, never thrown.
+- **A real session.** The listener's `LISTEN`, the session-level advisory locks (the listener's
+  holder, the open's turn, the migrations') and the session-level `dzql.definer` setting need a
+  connection that stays the server's: a pooler in transaction mode (PgBouncer's
+  `pool_mode = transaction`, a provider's "pooled" URL on port 6543 and the like) cannot carry
+  them. Use session mode, or the database's direct URL.
+- **Never PGlite.** Under `NODE_ENV=production` with no Postgres server named (`DATABASE_URL`, or
+  `database` a URL), `openStore` refuses to start PGlite, naming `DATABASE_URL`;
+  `pgliteInProduction: true` (or `DZQL_PGLITE_IN_PRODUCTION=1`, a smoke test of a production
+  build) says it may.
+- **What is kept, and for how long.** `_delta_ops_log` is a catch-up buffer: while a store is open
+  it prunes it (`delta_prune_ops`) every 10 minutes, what is older than an hour, one server at a
+  time (an advisory lock: the rest pass), and with it `_delta_versions` of the names nobody holds;
+  `prune: { every, keep }` says otherwise, `prune: false` leaves it to the app (`pruneOpsLog`).
+  Keep it longer than a listener may be away (a lost connection): it catches up from the log.
+  The ledger (`_delta_ledger`: undo, redo, history) is kept whole, as every write's record: it grows
+  with the writes, and nothing of dzql's prunes it; an app that must keeps it short itself (entries
+  past a migration's fence are history only). `history` answers 50 entries, 100 at most.
 
 ## Gotchas
 
@@ -162,9 +221,20 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
   per person, each holding the same new post) costs the write one telling for each. Keep
   documents to what someone needs in front of them, scoped by a parent, a status or a time, never
   a whole table that only grows: a document is opened whole.
-- `_delta_ops_log` is a catch-up buffer: prune it with `pruneOpsLog(pool)` (`delta_prune_ops`).
+- `_delta_ops_log` is a catch-up buffer: `openStore` prunes it (*Deploying*); without it, prune it
+  with `pruneOpsLog(pool)` (`delta_prune_ops`).
+- A 5xx answer says only that the server failed (`The server failed: what went wrong is in its
+  log`): the database's words, which name tables, constraints and types, are logged, never sent.
+  An app's own CHECK constraint or trigger `RAISE` is a 400 in the database's words, an exclusion
+  constraint (a double booking) a 409.
+- A socket holds 1000 documents open at most (`createDocListener`'s `maxOpen`): one more is 429.
 - PGlite (`openPglite(dir?)`, `bun add @electric-sql/pglite`) is one process: a `Pool` that
   `dzql/postgres` runs on unchanged.
-- **Never deploy PGlite**: it needs far more memory than a small server has. Tests and development only.
+- **Never deploy PGlite**: it needs far more memory than a small server has. Tests and development
+  only: under `NODE_ENV=production`, `openStore` refuses it (*Deploying*).
 - **The superuser bypasses RLS**, even with `FORCE`: the policies derived from the paths, and a
-  hand-written one, hold only a pool that is neither a superuser nor `BYPASSRLS` (`rls.md`).
+  hand-written one, hold only a pool that is neither a superuser nor `BYPASSRLS` (`rls.md`). With
+  `auth`, `openStore` warns as it opens on a server when its pool's role is either.
+- `jwtAuth`'s `secret` is 32 bytes at least, refused as it is made; a login's wrong passwords
+  count against their email, five a minute, then it waits (`maxFailedLogins`, `lockout`), in each
+  process.

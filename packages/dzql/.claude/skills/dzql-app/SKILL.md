@@ -39,8 +39,9 @@ least that makes the next story pass; `bun run stories` after each.
    the model story it tells (`model: 6`; `model: false` for the app's own). →
    [stories](reference/stories.md), [failing](reference/stories.md#watch-it-fail-on-its-own-terms)
 2. **The store**, `store.ts`: Postgres, through dzql's `openStore({ schema, migrations })` -- PGlite
-   in the process (in the data folder's `pg/`: `DATA_PATH`, a Railway volume, else `data/`; in
-   memory for the tests, `DATA_PATH=:memory:`), or a server at `DATABASE_URL`. The tables, said
+   in the process (in the data folder's `pg/`: `DATA_PATH`, else `data/`; in memory for the
+   tests, `DATA_PATH=:memory:`; never deployed: under `NODE_ENV=production` it refuses), or a
+   server at `DATABASE_URL`. The tables, said
    here and only here (`defineSchema`: the model's `tables`, and the app's own beside them), the
    model's migrations, `prepare` to seed it (`importTables`, into empty tables), `delta` (the
    model's guards put on it as the app loads, before any listener), `register` for each resource's

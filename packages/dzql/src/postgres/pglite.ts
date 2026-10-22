@@ -15,8 +15,11 @@
  * Optional, like `pg`: `bun add @electric-sql/pglite` to use it.
  */
 import { mkdirSync } from "node:fs";
-import type { Pool } from "pg";
+import type { Pool, PoolConfig } from "pg";
+import { createLogger } from "@blueshed/delta/logger";
 import { namespaceOf } from "./sql";
+
+const log = createLogger("[pool]");
 
 /** The slice of PGlite this drives (structural: no hard import). */
 interface PGliteish {
@@ -140,11 +143,12 @@ export function pglitePool(db: PGliteish, opts: { namespace?: string } = {}): Po
 class Rollback extends Error {}
 
 /**
- * Open (or create) an in-process Postgres: in `dir`, or in memory when none
+ * Open (or create) an in-process Postgres: in `dir`, or in memory when none (or `:memory:`)
  * is given, as the Pool delta's Postgres backend takes; in `namespace`, a
  * Postgres schema, when it is given (`pglitePool`).
  */
 export async function openPglite(dir?: string, opts: { namespace?: string } = {}): Promise<Pool> {
+  if (dir === ":memory:") dir = undefined;
   let PGlite: any;
   try {
     ({ PGlite } = await import("@electric-sql/pglite"));
@@ -160,15 +164,34 @@ export async function openPglite(dir?: string, opts: { namespace?: string } = {}
   return pglitePool(db, opts);
 }
 
+/** Is `target` a Postgres server's URL (else a PGlite folder, or none: in memory)? */
+export const isServerUrl = (target: string | undefined): target is string => !!target && /^postgres(ql)?:\/\//.test(target);
+
+/**
+ * An idle client's error logged, never thrown: a pool with no `error` listener crashes the
+ * process when the server ends a connection it is not using (a restart, a failover,
+ * `pg_terminate_backend`), and the pool makes a new one at the next query. A pool with a
+ * listener of its own (an app's) is left to it.
+ */
+export function logPoolErrors(pool: Pool): Pool {
+  if (typeof (pool as any).listenerCount !== "function" || (pool as any).listenerCount("error") === 0) {
+    pool.on("error", (err: Error) => log.error(`an idle connection failed (the pool opens another): ${err.message}`));
+  }
+  return pool;
+}
+
 /**
  * A Postgres to talk to, said one way everywhere (`dzql migrate`, `dzql link`, `openStore`): a server
  * at a `postgres://` URL, else PGlite in a folder, else PGlite in memory. With a `namespace`, every
- * query runs in that Postgres schema (its search path): a server's connections are opened so.
+ * query runs in that Postgres schema (its search path): a server's connections are opened so. A
+ * server's pool is opened with `pool` (pg's `PoolConfig`: `max`, `ssl`, `statement_timeout`...)
+ * beside its URL, and an idle connection's error is logged (`logPoolErrors`).
  */
-export async function openDatabase(target?: string, opts: { namespace?: string } = {}): Promise<Pool> {
-  if (target && /^postgres(ql)?:\/\//.test(target)) {
+export async function openDatabase(target?: string, opts: { namespace?: string; pool?: PoolConfig } = {}): Promise<Pool> {
+  if (isServerUrl(target)) {
     const namespace = opts.namespace === undefined ? undefined : namespaceOf(opts.namespace);
-    return new (await import("pg")).Pool({ connectionString: target, ...(namespace && { options: `-c search_path=${namespace}` }) });
+    const options = [opts.pool?.options, namespace && `-c search_path=${namespace}`].filter(Boolean).join(" ");
+    return logPoolErrors(new (await import("pg")).Pool({ ...opts.pool, connectionString: target, ...(options && { options }) }));
   }
   return openPglite(target, opts);
 }

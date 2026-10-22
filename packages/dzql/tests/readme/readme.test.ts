@@ -146,7 +146,8 @@ describe("Install dzql and compile a Postgres server", () => {
   test("dzql sql prints what it compiles, and the server keeps the team and tells whoever holds it", async () => {
     const [sql, serve] = blocks[2]!;
     expect(ran(sql!, dir)).toContain(`CREATE TABLE IF NOT EXISTS "requests"`);
-    const url = await serving(serve!, dir);
+    // started as production is (serving's NODE_ENV) with no DATABASE_URL: PGlite, said to be meant (openStore refuses it unsaid)
+    const url = await serving(serve!, dir, { DZQL_PGLITE_IN_PRODUCTION: "1" });
     expect(await (await fetch(new URL("/health", url))).text()).toBe("ok");
     const [ann, mo] = [await socket(url), await socket(url)];
     await ann.ask({ action: "open", doc: "team:1" });

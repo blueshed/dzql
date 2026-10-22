@@ -21,7 +21,7 @@ const history = [{ id: "001-notes", changes: [createTable("notes", { columns: { 
 describe("openStore", () => {
   test("its migrations a list; its documents served on the socket it is given, and in this process; seeded between; closed", async () => {
     const socket = createLocal(); // a WsServer, as createWs() is, with a caller to ask it
-    const store = openStore({ schema, database: undefined, migrations: { list: history, app: "notes", schema }, ws: socket.server, prepare: async (pool) => void (await importTables(pool, schema, { tables: { notes: [{ id: 1, text: "first" }] } })) });
+    const store = openStore({ schema, database: ":memory:", migrations: { list: history, app: "notes", schema }, ws: socket.server, prepare: async (pool) => void (await importTables(pool, schema, { tables: { notes: [{ id: 1, text: "first" }] } })) });
     store.register([notes]);
     await expect(store.pool.query("SELECT 1")).rejects.toThrow("The store is not open"); // said, not opened
     await store.open();
@@ -41,7 +41,7 @@ describe("openStore", () => {
 
   test("several schemas, each a resource's, are one store's tables; a table two of them declare is refused as the store is said", async () => {
     const said = defineSchema({ messages: { columns: { text: { type: "text", default: "Hello" } }, temporal: false } });
-    const store = openStore({ schema: [schema, said] });
+    const store = openStore({ database: ":memory:", schema: [schema, said] });
     store.register([notes, defineDoc("message:", { root: "messages", include: [], implied: true })]);
     await store.open();
     expect((await store.delta.call("open", { doc: "message:1" })).result.messages).toMatchObject({ text: "Hello" });
@@ -51,7 +51,7 @@ describe("openStore", () => {
   });
 
   test("without a socket, served in this process; a folder of migrations not there runs none", async () => {
-    const store = openStore({ schema, migrations: { dir: `${import.meta.dir}/no-such-folder` } });
+    const store = openStore({ database: ":memory:", schema, migrations: { dir: `${import.meta.dir}/no-such-folder` } });
     store.register([notes]);
     await store.open();
     expect((await store.delta.call("open", { doc: "notes:" })).result.notes).toEqual({});
@@ -78,7 +78,7 @@ describe("openStore", () => {
   });
 
   test("opened by two servers at once, it is closed by the second close; a close with none open does nothing", async () => {
-    const store = openStore({ schema });
+    const store = openStore({ database: ":memory:", schema });
     store.register([notes]);
     await Promise.all([store.open(), store.open()]);
     await store.close();
@@ -89,7 +89,7 @@ describe("openStore", () => {
   });
 
   test("a write that is no list of ops, or holds one that is no op, is refused as delta's SQLite refuses it: 400, in its words", async () => {
-    const store = openStore({ schema });
+    const store = openStore({ database: ":memory:", schema });
     store.register([notes]);
     await store.open();
     expect((await store.delta.call("delta", { doc: "notes:", ops: "not ops" })).error).toEqual({ code: 400, message: "ops must be an array" });
@@ -102,7 +102,7 @@ describe("openStore", () => {
     const held = (pool: { query: (sql: string) => Promise<{ rows: any[] }> }) => pool.query(`SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted AND objsubid = 1
       AND ((classid::bigint << 32) | objid::bigint) = hashtext('dzql_open:' || current_schema())::bigint) AS held`).then((r) => r.rows[0].held);
     let during: boolean | undefined;
-    const store = openStore({ schema, prepare: async (pool) => void (during = await held(pool)) });
+    const store = openStore({ database: ":memory:", schema, prepare: async (pool) => void (during = await held(pool)) });
     store.register([notes]);
     await store.open();
     try {
@@ -115,7 +115,7 @@ describe("openStore", () => {
 
   test("an open that fails leaves it closed, and the next open tries again", async () => {
     let failing = true;
-    const store = openStore({ schema, prepare: () => { if (failing) throw new Error("the seed failed"); } });
+    const store = openStore({ database: ":memory:", schema, prepare: () => { if (failing) throw new Error("the seed failed"); } });
     store.register([notes]);
     await expect(store.open()).rejects.toThrow("the seed failed");
     await expect(store.pool.query("SELECT 1")).rejects.toThrow("The store is not open");

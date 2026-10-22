@@ -95,7 +95,7 @@ describe("openStore, an app with sign-in", () => {
     const signedIn = openStore<Person>({ schema: people, auth });
     expect(() => signedIn.register(everyone)).toThrow(/openStore's register\("people:"\)/);
     expect(() => signedIn.register([], { custom: [defineCustomDoc("count:", { watch: ["notes"], parse: (id) => id, recompute: async () => ({}) })] })).toThrow(/defineCustomDoc\("count:"\)/);
-    const open = openStore({ schema: people });
+    const open = openStore({ database: ":memory:", schema: people });
     expect(() => open.register(own)).toThrow(/openStore's register\("mine:"\): owns and shared are asked only with an auth module/);
     expect(() => open.register(everyone, { shared: true })).toThrow(/owns and shared are asked only with an auth module/);
   });

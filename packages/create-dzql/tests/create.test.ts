@@ -71,7 +71,8 @@ test("it type-checks, and its own tests pass", () => {
 }, 60_000);
 
 test("it starts on delta's one server: the page, drawn over the socket, and /health", async () => {
-  const proc = Bun.spawn(["bun", "run", "start"], { cwd: app, stdout: "pipe", stderr: "inherit", env: { ...process.env, PORT: "0" } });
+  // a production start with no DATABASE_URL: PGlite, said to be meant (dzql's openStore refuses it unsaid)
+  const proc = Bun.spawn(["bun", "run", "start"], { cwd: app, stdout: "pipe", stderr: "inherit", env: { ...process.env, PORT: "0", DZQL_PGLITE_IN_PRODUCTION: "1" } });
   try {
     let out = "";
     for await (const chunk of proc.stdout) {

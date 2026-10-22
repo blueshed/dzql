@@ -9,6 +9,20 @@ invoker, so a compiler bug in one of them (a scope, a hold, an open that reads t
 policy compiled independently from the same paths, and a person still reads and writes only a row
 some document they may have holds. `generateSql` derives it; nothing is written by hand.
 
+## Where it applies, and where it does not
+
+- **On delta's socket**: a page drawn in the browser, delta's client, each socket signed in
+  (`openStore`'s `auth`). Its opens, writes, history and walks run as that person, so `owns` and
+  the policies both hold. Only for a pool whose role is neither a superuser nor `BYPASSRLS`
+  (below): `openStore` warns as it opens, on a server, when its role is either.
+- **Not for an app dzql draws** (`dzql/rendering`, the thin client): its kernel reads each document
+  once, in the process, as no one (`src/rendering/documents.ts`), and draws each page from that, so
+  neither `owns` nor row-level security ever meets a person there. What protects its data is each
+  resource's `resolveDoc` (which document a person sees) and `permit` (what they may write), and
+  how its documents are cut: a person is drawn only what the document they see holds, so keep each
+  to what its people may read (`packages/dzql/src/rendering/resources/resource.ts`; the dzql-app
+  skill's `documents.md`).
+
 ## Derived from the paths
 
 For each table **every** document holding it says by a path (`owns` as a string), `generateSql`
@@ -30,7 +44,9 @@ so a row is never handed away here either: SQLSTATE 42501, a 403). `packages/dzq
 ## Who it holds
 
 **A superuser bypasses RLS, even forced, and so does a role with `BYPASSRLS`** (PGlite's
-`postgres`; the repo's compose `dzql_test`). Serve the documents as a role that is neither:
+`postgres`; the repo's compose `dzql_test`; the role many hosts hand you first). With `auth`,
+`openStore` warns as it opens on a server whose pool's role is either
+(`packages/dzql/tests/delta-pg/postgres-pool.test.ts`). Serve the documents as a role that is neither:
 
 - **One role** (`openStore` with one pool): the role that applies the SQL owns the tables, and
   serves them. Forced, its own queries meet the policies too.
@@ -93,10 +109,11 @@ table's `current_<table>` view is `security_invoker` (Postgres 15+), so a policy
 - `SET LOCAL` cannot bind parameters: use `set_config(name, value, true)`.
 - **Apply the framework, then `generateSql`, as the role that owns the tables**: `_delta_govern`
   (001b) puts each policy on, which only the owner may, and names that role as the one let past.
-- **Errors name names, not values.** A bad prefix, root or scope key comes back as a 500 naming
-  it, which helps debugging but lets a tenant probe prefixes and columns. Do not put
-  tenant-sensitive identifiers in prefixes (`boards:42`, not `tenant-42:`); on a public server
-  with sensitive column names, scrub the 500 branch in `createDocListener`.
+- **A 5xx names nothing.** A bad prefix, root or scope key, or anything else the server fails at,
+  is answered `The server failed: what went wrong is in its log`, and the database's words
+  (tables, constraints, types) are logged, never sent. A 4xx is in the database's words or
+  delta's, and may name a column or a constraint: do not put tenant-sensitive identifiers in
+  prefixes (`boards:42`, not `tenant-42:`) or in constraint names.
 - `packages/dzql/tests/delta-pg/rls-backstop-pglite.test.ts` shows each: a compiled check made wrong on purpose
   leaks as the superuser and is refused as a role RLS holds; and `tests/delta/permissions-pglite.test.ts`
   answers delta's permission cases as such a role, the same as the superuser.

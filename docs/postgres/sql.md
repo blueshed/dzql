@@ -30,7 +30,8 @@ functions you call stay these:
 - Ledger (`001g`): `delta_apply_logged`, `delta_walk`, `delta_undo`, `delta_redo`,
   `delta_history`, and their `_as` forms (delta-doc's `ledger.md`).
 - `delta_snapshot(name, at)` / `delta_resolve_snapshot(name)`: pin a time to a label.
-- `delta_prune_ops(interval)` (`pruneOpsLog(pool)`): trims the log and forgets names nobody holds.
+- `delta_prune_ops(interval)` (`pruneOpsLog(pool)`): trims the log and forgets names nobody holds; an
+  open `openStore` calls it every 10 minutes (`postgres.md`, *Deploying*).
 
 ## Rules
 
