@@ -61,10 +61,14 @@ functions you call stay these:
   are not in the ledger's entry: an undo walks back the write's ops, and the trigger runs again.
   Outside a write (a statement of the app's own) `delta_touch` does nothing. Working:
   `packages/dzql/tests/delta-pg/touch-pglite.test.ts`.
+- **A later op names a row an earlier op adds with `-` as `$<k>`** (delta's `writes.md`), in
+  `delta_apply` as over the wire: `_delta_with_minted` reads each op of a fresh write before it is
+  asked anything else, `_delta_refs_of` (compiled) saying which columns name a row by `refs`.
 - **What runs as the owner answers, never reads out.** The compiled reads and writes run as the
   caller, under the policies the paths make (`rls.md`). The few `SECURITY DEFINER` functions answer
   yes, no or a name: the policies' lookups (`dzql_may__`), the ownership answers (`dzql_owns__`),
-  the fan-out (`_delta_holders`, names only), and a named add (an id the writer chose), judged by
+  the fan-out (`_delta_holders`, names only), the holds a write is asked once it is done
+  (`_delta_refs_hold`, `_delta_overlaps_hold`: a refusal, never a row), and a named add (an id the writer chose), judged by
   the session's role's privileges on the table (`_delta_serial_new` / `_delta_serial_past`,
   `packages/dzql/src/compile/lookups.ts`). Each pins the path it was applied with, `pg_temp` last.
 - Never edit `001*`, nor `_delta_collections` by hand: `generateSql` fills it. `_delta_docs` is a

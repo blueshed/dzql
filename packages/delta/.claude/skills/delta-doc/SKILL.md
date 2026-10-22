@@ -41,7 +41,7 @@ the tables follow.
   told replace may be one field: never assume a whole row.
 - Undo is the ledger's (`{ ledger: true }`), never a hand-rolled stack.
 - A line is a row under its parent, never JSON of ids; a fact from other rows is a recompute
-  document, never a stored copy; "one at a time" is `unique`; a value a rule gives at the write
+  document, never a stored copy; "one at a time" is `unique`, "not at the same time" `noOverlap`; a value a rule gives at the write
   is stored, by the server (`shape`); a column naming another's row is `refs` (`schema.md`).
 - The schema is the contract: delta sends and writes only declared columns. An app's tables are
   made by its migrations: change the schema, `delta migrations make` writes the next, `migrate`

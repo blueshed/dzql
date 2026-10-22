@@ -20,7 +20,7 @@
  * A collection none was compiled for is refused (`unknown collection`), and a row of it is not there.
  */
 import { q, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
-import { lit, noCollection, standingRows, caseOf } from "./opens";
+import { lit, noCollection, rowJson, rowTexts, standingRows, caseOf } from "./opens";
 import { seqOf } from "../postgres/sql";
 
 /** A CASE over the collections, each branch from `branch`, any other collection to `fallback`. */
@@ -40,8 +40,8 @@ function putInPlace(t: ResolvedTable): string {
   const cols = [...(t.parent ? [t.parent.fkColumn] : []), ...Object.keys(t.columns)].map(q);
   const set = cols.length
     ? `UPDATE ${q(t.name)} AS t SET (${cols.join(", ")}) = (SELECT ${cols.map((c) => `r.${c}`).join(", ")} FROM jsonb_populate_record(null::${q(t.name)}, p_row) r)
-        WHERE t.id = p_id RETURNING to_jsonb(t.*) INTO v_row;`
-    : `SELECT to_jsonb(t.*) INTO v_row FROM ${q(t.name)} t WHERE t.id = p_id;`;
+        WHERE t.id = p_id RETURNING ${rowJson(t, "t")} INTO v_row;`
+    : `SELECT ${rowJson(t, "t")} INTO v_row FROM ${q(t.name)} t WHERE t.id = p_id;`;
   return `${set}
       RETURN v_row;`;
 }
@@ -59,7 +59,7 @@ ${dispatch(schema, (_, t) => {
     // or put again): the row it locked is not the standing one. Asked afresh (each statement sees what
     // has committed since), a standing row is locked in its turn; none standing is not there.
     return `LOOP
-        SELECT to_jsonb(t.*) INTO v_row FROM ${q(t.name)} t WHERE ${standing} FOR UPDATE;
+        SELECT ${rowJson(t, "t")} INTO v_row FROM ${q(t.name)} t WHERE ${standing} FOR UPDATE;
         IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM ${q(t.name)} t WHERE ${standing}) THEN RETURN v_row; END IF;
       END LOOP;`;
   }, noCollection("p_coll"))}
@@ -75,7 +75,7 @@ ${dispatch(schema, (_, t) => (t.temporal
     ? `DELETE FROM ${q(t.name)} WHERE id = p_id AND valid_to IS NULL AND valid_from = p_ts;
       UPDATE ${q(t.name)} SET valid_to = p_ts WHERE id = p_id AND valid_to IS NULL;
       INSERT INTO ${q(t.name)} AS t SELECT * FROM jsonb_populate_record(null::${q(t.name)}, p_row || jsonb_build_object('valid_from', p_ts, 'valid_to', NULL))
-        RETURNING to_jsonb(t.*) INTO v_row;
+        RETURNING ${rowJson(t, "t")} INTO v_row;
       RETURN v_row;`
     : putInPlace(t)), noCollection("p_coll"))}
 END;
@@ -120,7 +120,7 @@ RETURNS JSONB AS $$
 DECLARE
   v_row JSONB;
 BEGIN
-${dispatch(schema, (_, t) => `SELECT _delta_strip_temporal(to_jsonb(t.*)) INTO v_row FROM ${standingRows(t)} t WHERE t.id = p_id;
+${dispatch(schema, (_, t) => `SELECT _delta_strip_temporal(${rowJson(t, "t")}) INTO v_row FROM ${standingRows(t)} t WHERE t.id = p_id;
       RETURN v_row;`, noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
@@ -134,10 +134,11 @@ ${dispatch(schema, (_, t) => {
     const keys = [...new Set(["id", ...(t.parent ? [t.parent.fkColumn] : []), ...Object.keys(t.columns), ...(t.temporal ? ["valid_from", "valid_to"] : [])])];
     const cols = keys.map((k) => q(k)).join(", ");
     return `IF p_row ?& ARRAY[${keys.map(lit).join(", ")}] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = ${keys.length} THEN
-        INSERT INTO ${q(t.name)} AS t (${cols}) SELECT ${cols} FROM jsonb_populate_record(null::${q(t.name)}, p_row) RETURNING to_jsonb(t.*) INTO v_row;
+        INSERT INTO ${q(t.name)} AS t (${cols}) SELECT ${cols} FROM jsonb_populate_record(null::${q(t.name)}, p_row) RETURNING ${rowJson(t, "t")} INTO v_row;
         RETURN v_row;
       END IF;
-      RETURN _delta_row_add_given(p_table, p_row);   -- some other set of keys: the INSERT names those it gives`;
+      ${rowTexts(t, "v_row") === "v_row" ? "RETURN _delta_row_add_given(p_table, p_row);" : `v_row := _delta_row_add_given(p_table, p_row);
+      RETURN ${rowTexts(t, "v_row")};`}   -- some other set of keys: the INSERT names those it gives`;
   }, noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql;`;

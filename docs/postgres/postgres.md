@@ -128,6 +128,7 @@ delta's path cases, on the seed and after writes, and its text.
 | A collection's definition, a table's serial | `_delta_collection`, `_delta_serial_new`, `_delta_serial_past`, per collection |
 | Who may have a document (`owns` as a path), and a write that keeps it in reach | `dzql_owns__<doc>`; `_delta_keeps_reach`, asked by `delta_apply` |
 | May the person have a document that holds a row (the table's row-level security) | `dzql_may__<coll>`, the policy `dzql_owns`, put on by `_delta_govern` |
+| No two current rows overlap (`noOverlap`), and what `$<k>` names | `_delta_overlaps_hold` and each table's `excl_<table>_<start>_<end>` (`packages/dzql/src/compile/overlaps.ts`); `_delta_refs_of` |
 | What a remove takes with it, and what a moved row carries | `dzql_cascade_remove__<coll>`, `dzql_cascade_rows__<coll>`, `dzql_hanging_rows__<coll>`, via `_delta_cascade_remove`, `_delta_cascade_rows`, `_delta_hanging_rows` |
 
 Three rules follow:
@@ -207,6 +208,21 @@ restarted when they fail. What `openStore` does so that none breaks another
 ## Gotchas
 
 - `bun add pg`, and `bun add -d @types/pg` to type-check (dzql ships TS source).
+- A scope's values are compiled into each document's reads: a column given several conditions
+  (`{ lng: [">=:west", "<=:east"] }`) is a condition each, and a timestamptz's value in ISO 8601's
+  basic format (`20261020T0800Z`) is read as the instant it names, as delta's `nameInstant` reads it.
+- **A `noOverlap` is held twice**: `delta_apply` asks it once the write is done, under an advisory
+  lock on the constraint and the row's `same` values, so two writes at once take turns and the second
+  is told in delta's words (`_delta_overlaps_hold`, SQLSTATE 23P01, 409); and `generateSql` makes it
+  an `EXCLUDE USING gist` constraint on the current rows (`excl_<table>_<start>_<end>`, a
+  `tstzrange`, `daterange` or `numrange`, deferred to the commit), the database's own for SQL that
+  writes past `delta_apply`. Equal columns need `btree_gist`: `generateSql` makes it where it may
+  (PGlite's `openPglite` loads it, as a server's contrib has it); where it cannot, the constraint is
+  not made and the write path's check holds alone. Rows that already overlap refuse the constraint,
+  so `generateSql` fails until they are moved. One the definitions no longer say is dropped.
+- **A `date` is a `DATE`, a `numeric` a `NUMERIC`**, and every read gives a numeric back as its
+  text (`"10.50"`, the compiled `rowJson`): `to_jsonb` would write it as a JSON number, which a
+  client reads as a float. SQL of your own that hands rows on does the same: `t.amount::text`.
 - Ids are BIGINTs from `seq_<table>`: a client id that is not a number, or past 2^53 - 1, is a
   400; one that is moves the sequence past it, but never past 2^53 - 1 less 2^32, so the table
   always has ids left to mint (an id named past that is not one the sequence hands out: once its

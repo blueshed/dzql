@@ -14,7 +14,7 @@
  *   the schema; NULL for one there is not.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, noDoc, openFunction, openWholeFunction, readOf, standingRows, prefixDispatch, caseOf } from "./opens";
+import { lit, noDoc, openFunction, openWholeFunction, readOf, rowJson, standingRows, prefixDispatch, caseOf } from "./opens";
 
 /** The SQL the ledger reads by, for `schema` and each of `docs`. */
 export function compileLedger(schema: Schema, docs: DocDef[]): string {
@@ -52,7 +52,7 @@ $$ LANGUAGE plpgsql STABLE;`;
   const standing = `CREATE OR REPLACE FUNCTION _delta_row_standing(p_coll TEXT, p_id BIGINT)
 RETURNS JSONB AS $$
 BEGIN
-${caseOf("p_coll", colls.map(([coll, t]) => `    WHEN ${lit(coll)} THEN RETURN jsonb_build_object('row', (SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM ${standingRows(t)} t WHERE t.id = p_id));`), "RETURN NULL;   -- a collection there is not")}
+${caseOf("p_coll", colls.map(([coll, t]) => `    WHEN ${lit(coll)} THEN RETURN jsonb_build_object('row', (SELECT _delta_strip_temporal(${rowJson(t, "t")}) FROM ${standingRows(t)} t WHERE t.id = p_id));`), "RETURN NULL;   -- a collection there is not")}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 

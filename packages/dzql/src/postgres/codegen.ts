@@ -38,6 +38,7 @@ import { compileColumns } from "../compile/columns";
 import { compileRows } from "../compile/rows";
 import { compileCascades } from "../compile/cascades";
 import { compileRefs } from "../compile/refs";
+import { compileOverlaps } from "../compile/overlaps";
 import { compileLedger } from "../compile/ledger";
 import { compileLookups } from "../compile/lookups";
 import { compileTold } from "../compile/told";
@@ -92,7 +93,7 @@ export function generateSql(
   for (const doc of docs) assertScopeKeys(doc, schema);   // its scope's keys and the columns it names are its collections' columns
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
-  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileRescopes(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileRefs(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs), "", compilePolicies(schema, docs));
+  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileRescopes(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema), "", compileCascades(schema), "", compileRefs(schema), "", compileOverlaps(schema), "", compileLedger(schema, docs), "", compileLookups(schema, docs), "", compileOwns(schema, docs), "", compilePolicies(schema, docs));
   return lines.join("\n");
 }
 

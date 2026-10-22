@@ -14,6 +14,8 @@ import {
   type Schema,
   type DocDef,
   type ValidationError,
+  isDate,
+  isDecimal,
   isIsoTime,
 } from "@blueshed/delta/backend";
 import { pastSafeId, resolveScope } from "@blueshed/delta/backend";
@@ -100,7 +102,8 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
       // a value of its column's type, not cast (_delta_assert_fields)
       const of: Record<string, [boolean, string]> = {
         text: [typeof v === "string", "a string"], integer: [Number.isInteger(v), "an integer"], real: [typeof v === "number", "a number"],
-        boolean: [typeof v === "boolean", "a boolean"], timestamptz: [isIsoTime(v) || v instanceof Date, "an ISO-8601 time"],   // what timestamptz holds: a zone to ±15:59, a year from 0001
+        boolean: [typeof v === "boolean", "a boolean"], timestamptz: [isIsoTime(v) || v instanceof Date, "an ISO-8601 time"],
+        date: [isDate(v), "a date, YYYY-MM-DD"], numeric: [isDecimal(v), `a decimal, written as a string ("10.50")`],   // what timestamptz holds: a zone to ±15:59, a year from 0001
       };
       const [ok, what] = of[col.type] ?? [true, ""];
       return ok ? null : `${field} must be ${what}`;

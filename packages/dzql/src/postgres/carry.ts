@@ -8,6 +8,7 @@
 import type { Pool } from "pg";
 import { isoTime, lastId, q, type Schema, type Snapshot } from "@blueshed/delta/backend";
 import { asOwner, seqOf } from "./sql";
+import { rowJson } from "../compile/opens";
 
 /** Every row of the schema's tables (every version of a temporal row), and each sequence's last id. */
 export async function exportTables(pool: Pool, schema: Schema): Promise<Snapshot> {
@@ -16,7 +17,8 @@ export async function exportTables(pool: Pool, schema: Schema): Promise<Snapshot
     const sequences: Record<string, number> = {};
     for (const [key, table] of Object.entries(schema.tables)) {
       const order = table.temporal ? "id, valid_from" : "id";
-      const { rows } = await db.query(`SELECT to_jsonb(t.*) AS row FROM ${q(table.name)} t ORDER BY ${order}`);
+      // a numeric column as its text, as every backend carries an exact decimal (rowJson)
+      const { rows } = await db.query(`SELECT ${rowJson(table, "t")} AS row FROM ${q(table.name)} t ORDER BY ${order}`);
       tables[key] = rows.map(({ row }: { row: Record<string, unknown> }) =>
         table.temporal ? { ...row, valid_from: isoTime(row.valid_from), valid_to: isoTime(row.valid_to) } : row,
       );

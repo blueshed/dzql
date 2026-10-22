@@ -16,11 +16,11 @@ import { type DeltaOp, splitPath, joinPath, changedFields } from "../../core";
 import { createLogger } from "../logger";
 import { rowAt, type Ledger } from "../ledger";
 import { meets, resolveScope, rowId, sameId, type Scope } from "../scope";
-import { hangsFrom, holdsField, isServerTime, q, refusedBy, shapedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { hangsFrom, holdsField, isServerTime, overlap, overlapSentence, q, rangeOf, refusedBy, reversedSentence, scopeEntries, shapedBy, showRow, withMinted, type Minted, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { isAnyone } from "../../paths";
 import { keeping, scopeValue } from "./keep";
 import { impliedDoc, readDoc } from "./read";
-import { carryUndeclared, closeRow, columnsOf, undeclaredColumns, undeclaredOf, current, decodeRow, insertCollectionRow, insertRow, leftOut, named, now, refuse, sqliteTime, updateRow } from "./rows";
+import { carryUndeclared, closeRow, columnsOf, undeclaredColumns, undeclaredOf, current, decodeRow, encodeValue, insertCollectionRow, insertRow, leftOut, named, now, refuse, sqliteTime, updateRow } from "./rows";
 import { namesRootRow, validateOps } from "./validate";
 
 const log = createLogger("[delta-sqlite]");
@@ -240,7 +240,7 @@ export function createWriter<I>(r: Registration<I>) {
     const cols = new Set<string>();
     for (const def of r.docs) {
       if (def.root !== coll || !def.include.some((c) => hangsFrom(schema, c, coll))) continue;
-      for (const [col, binding] of Object.entries(def.scope)) if (col !== "id" && !binding.startsWith("at:")) cols.add(col);
+      for (const [col, binding] of scopeEntries(def.scope)) if (col !== "id" && !binding.startsWith("at:")) cols.add(col);
     }
     return [...cols];
   }
@@ -540,7 +540,11 @@ export function createWriter<I>(r: Registration<I>) {
     // Each op lands in the order sent: a field written and then
     // its row removed is written first, and a row removed is not there for an
     // op after it.
-    for (const op of ops) {
+    // the rows this write's adds with "-" were given, by the op's index: a later op names one `$<k>` (`withMinted`)
+    const minted: Minted = new Map();
+    for (const [at, given] of ops.entries()) {
+      // a walk puts back what was recorded, its ids the store's; a fresh write's `$k` is read first
+      const op = walk ? given : withMinted(schema, given, at, minted);
       if (op.op !== "replace") endRun();
       // A single document whose root is not there takes no writes (404), as it
       // opens: asked before each op, so one that takes its root out writes
@@ -610,6 +614,7 @@ export function createWriter<I>(r: Registration<I>) {
         // carried by the broadcast path and the row.
         const mint = op.op === "add" && parts[1] === "-";
         const id = mint ? nextId(table) : rowId(parts[1]!);
+        if (mint) minted.set(at, { coll: collKey, id });
         if (op.op === "add") {
           // An add makes a new row, under an id the serial has not handed out
           // (#71): one it has (minted, or passed for an add that named it) is
@@ -696,6 +701,7 @@ export function createWriter<I>(r: Registration<I>) {
     }
     endRun();
     refsHold(touched);
+    overlapsHold(touched);
 
     return { applied: broadcastOps, touched, beyond, stored };
   }
@@ -725,6 +731,37 @@ export function createWriter<I>(r: Registration<I>) {
           const namer = schema.tables[by.collection]!;
           const one = db.query(`SELECT id FROM ${current(namer)} WHERE ${q(by.column)} = ? ORDER BY id LIMIT 1`).get(t.id as any) as { id: unknown } | null;
           if (one) refuse(409, `Still named: ${t.coll}/${t.id} is ${by.collection}/${one.id}'s ${by.column} -- change or remove that first`);
+        }
+      }
+    }
+  }
+
+  /**
+   * The noOverlap constraints (`TableDef.noOverlap`), asked once the write is done, as `refsHold` is,
+   * in the write's transaction: of each row the write changed that is current now, by its first
+   * touch, its range is no range ending before it starts (400), and no other current row of the same
+   * `same` values holds a range overlapping it (409, naming both, the first such row by id).
+   * `_delta_overlaps_hold` asks the same on Postgres.
+   */
+  function overlapsHold(touched: Touched[]): void {
+    const first = new Map<string, Touched>();
+    for (const t of touched) if (!t.carried && !first.has(`${t.coll}/${t.id}`)) first.set(`${t.coll}/${t.id}`, t);
+    for (const t of first.values()) {
+      const table = schema.tables[t.coll];
+      if (!table?.noOverlap) continue;
+      const now = readRow(table, t.id);
+      if (!now) continue;
+      for (const n of table.noOverlap) {
+        const mine = rangeOf(n, now);
+        if (mine === "reversed") refuse(400, reversedSentence(t.coll, n, t.id));
+        if (mine === "none") continue;
+        const same = n.same.map((c) => `${q(c)} = ?`);
+        const others = db.query(`SELECT ${columnsOf(table)} FROM ${current(table)} WHERE id <> ?${same.length ? ` AND ${same.join(" AND ")}` : ""} ORDER BY id`)
+          .all(t.id as any, ...n.same.map((c) => encodeValue(table, c, now[c]))) as any[];
+        for (const o of others) {
+          decodeRow(table, o);
+          const theirs = rangeOf(n, o);
+          if (typeof theirs === "object" && overlap(n, mine, theirs)) refuse(409, overlapSentence(t.coll, n, t.id, o.id));
         }
       }
     }

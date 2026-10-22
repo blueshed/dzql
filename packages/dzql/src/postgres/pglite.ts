@@ -158,9 +158,11 @@ export async function openPglite(dir?: string, opts: { namespace?: string } = {}
   // pgcrypto, which dzql/auth-jwt hashes passwords with: PGlite has an extension only when it is
   // given one at start (loaded when a database creates it)
   const { pgcrypto } = await import("@electric-sql/pglite/contrib/pgcrypto");
+  // and btree_gist, which a noOverlap's exclusion constraint compares its equal columns with
+  const { btree_gist } = await import("@electric-sql/pglite/contrib/btree_gist");
   // its folder made, parents and all, as a new app's `data/pg` needs (PGlite makes only the last)
   if (dir) mkdirSync(dir, { recursive: true });
-  const db: PGliteish = await PGlite.create(dir, { extensions: { pgcrypto } });
+  const db: PGliteish = await PGlite.create(dir, { extensions: { pgcrypto, btree_gist } });
   return pglitePool(db, opts);
 }
 

@@ -8,7 +8,7 @@
  * conditions admit (list mode), with the rows of its included collections
  * that hang under those (one that hangs from no root row, in full).
  *
- * `scope` maps a root column to a binding:
+ * `scope` maps a root column to a binding, or to several (`{ lng: [">=:west", "<=:east"] }`), each a condition:
  *   ":name" or "=:name"  column = the name's value     (equality)
  *   "<=:name" ">=:name" "<:name" ">:name" "!=:name"     (range)
  *   "like:name"          column starts with the value, any case
@@ -16,12 +16,14 @@
  *   "name"               the same as ":name"
  * The values come from the document's id, split on ":", in order: a param
  * named "id" first, the rest alphabetically. An empty value sets no condition.
+ * A timestamptz's value is a date (midnight UTC) or an instant in ISO 8601's
+ * basic format, `20261020T0800Z` (`nameInstant`): the extended one has ":".
  * With no scope, the id is the root row's id -- or, empty, every root row.
  * A condition compares its value as the column takes it (`Keep`), as Postgres
  * casts the text: a boolean's "yes" is true, a time the instant it names; one
  * the column cannot take is a 400.
  */
-import { q, type DocDef, type Schema } from "../schema";
+import { q, scopeEntries, type DocDef, type Schema } from "../schema";
 
 export type Op = "=" | "!=" | "<" | ">" | "<=" | ">=" | "like";
 export type Cond = { col: string; op: Op; value: string };
@@ -56,14 +58,14 @@ export function assertScopeKeys(def: DocDef, schema: Schema): void {
     for (const col of cols) if (!table || !Object.hasOwn(table.columns, col)) throw new Error(`doc "${def.prefix}" names column "${col}" of ${coll}, which has no such column`);
   }
   const valid = ["id", ...(root.parent ? [root.parent.fkColumn] : []), ...Object.keys(root.columns)];
-  for (const [key, binding] of Object.entries(def.scope)) {
+  for (const [key, binding] of scopeEntries(def.scope)) {
     if (valid.includes(key) || binding.startsWith("at:")) continue;
     throw new Error(`scope key "${key}" is not a column of "${def.root}" (valid keys: ${valid.join(", ")})`);
   }
 }
 
 export function resolveScope(def: DocDef, docId: string): Scope {
-  const entries = Object.entries(def.scope);
+  const entries = scopeEntries(def.scope);
   if (entries.length === 0) {
     return docId === ""
       ? { mode: "list", conds: [], values: {} }
@@ -90,8 +92,9 @@ export function resolveScope(def: DocDef, docId: string): Scope {
     if (value === "") continue;
     if (op === "at") {
       // a date, as Postgres's resolver reads one: the instant midnight UTC begins it
-      if (!isDay(value.trim())) throw Object.assign(new Error(`${col} must be a date, YYYY-MM-DD, not "${value}"`), { code: 400 });
-      scope.at = value.trim();
+      const at = isDay(value.trim()) ? value.trim() : nameInstant(value.trim());
+      if (at === undefined) throw Object.assign(new Error(notAnInstant(col, value)), { code: 400 });
+      scope.at = at;
       continue;
     }
     scope.conds.push({ col, op, value });
@@ -103,6 +106,23 @@ export function resolveScope(def: DocDef, docId: string): Scope {
   }
   return scope;
 }
+
+/**
+ * An instant a document's name may carry, in ISO 8601's basic format -- a name's ":" splits the
+ * extended one -- as the extended one every store reads: `20261020T0800Z` is
+ * `2026-10-20T08:00:00Z`, `20261020T080000.5+0100` is `2026-10-20T08:00:00.5+01:00`. A date, `T`,
+ * hours and minutes, perhaps seconds and a fraction (to the microsecond), and a zone (`Z`, `±hh`
+ * or `±hhmm`, to ±15:59, as a timestamptz holds); undefined for text that is none.
+ */
+export function nameInstant(text: string): string | undefined {
+  const m = /^(\d{4})(\d{2})(\d{2})T([01]\d|2[0-3])([0-5]\d)(?:([0-5]\d)(\.\d{1,6})?)?(Z|[+-](?:0\d|1[0-5])(?:[0-5]\d)?)$/.exec(text);
+  if (!m || !isDay(`${m[1]}-${m[2]}-${m[3]}`)) return undefined;
+  const zone = m[8] === "Z" ? "Z" : `${m[8]!.slice(0, 3)}:${m[8]!.slice(3) || "00"}`;
+  return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6] ?? "00"}${m[7] ?? ""}${zone}`;
+}
+
+/** What a timestamptz's value in a name is refused with, when it is no date and no instant. */
+export const notAnInstant = (col: string, text: string): string => `${col} must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "${text}"`;
 
 /** A day, YYYY-MM-DD, that the calendar has (2021-02-30 is none) -- a name's ":" separates its values, so it holds no time of day. */
 export function isDay(text: string): boolean {

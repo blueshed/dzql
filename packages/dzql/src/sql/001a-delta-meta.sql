@@ -196,6 +196,15 @@ RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
             FROM regexp_match(p_time, '^(\d{4})-(\d{2})-(\d{2})') AS v) AS day;
 $$;
 
+-- Is the text an exact decimal, as a write gives a numeric column one (delta's
+-- isDecimal): digits, a sign and a fraction perhaps -- no exponent, no +, no
+-- space, no NaN -- within what NUMERIC holds (131072 digits before the point,
+-- 16383 after; a regex counts no further than 255).
+CREATE OR REPLACE FUNCTION _delta_is_decimal(p_text TEXT)
+RETURNS BOOLEAN LANGUAGE sql IMMUTABLE AS $$
+  SELECT p_text ~ '^-?\d+(\.\d+)?$' AND length(split_part(ltrim(p_text, '-'), '.', 1)) <= 131072 AND length(split_part(p_text, '.', 2)) <= 16383;
+$$;
+
 -- Refuse a value that is not an object, names a field the collection does
 -- not have, or gives a column a value not of its type (SQLSTATE 22023 → 400),
 -- so nothing is stored otherwise than told. id, the parent key and
@@ -250,9 +259,13 @@ BEGIN
           -- cast raises 22009, a 500), and a day the calendar has (_delta_on_calendar)
           WHEN 'timestamptz' THEN jsonb_typeof(val) = 'string' AND (val #>> '{}') ~ '^\d{4}-\d{2}-\d{2}([T ]([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,6})?)?(Z|[+-](0\d|1[0-5])(:?[0-5]\d)?)?)?$'
             AND _delta_on_calendar(val #>> '{}')
+          -- a day, no instant (delta's isDate); an exact decimal as a string, never a number (isDecimal)
+          WHEN 'date' THEN jsonb_typeof(val) = 'string' AND (val #>> '{}') ~ '^\d{4}-\d{2}-\d{2}$' AND _delta_on_calendar(val #>> '{}')
+          WHEN 'numeric' THEN jsonb_typeof(val) = 'string' AND _delta_is_decimal(val #>> '{}')
           ELSE TRUE END THEN NULL
         ELSE k || ' must be ' || CASE c->>'type' WHEN 'text' THEN 'a string' WHEN 'integer' THEN 'an integer'
-          WHEN 'real' THEN 'a number' WHEN 'boolean' THEN 'a boolean' ELSE 'an ISO-8601 time' END
+          WHEN 'real' THEN 'a number' WHEN 'boolean' THEN 'a boolean' WHEN 'date' THEN 'a date, YYYY-MM-DD'
+          WHEN 'numeric' THEN 'a decimal, written as a string ("10.50")' ELSE 'an ISO-8601 time' END
         END AS m
         FROM jsonb_each(p_value) AS v(k, val), LATERAL (SELECT p_columns->k AS c) col
     ) AS checked

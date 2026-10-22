@@ -953,7 +953,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:notadate 1
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -965,7 +965,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:notadate 2
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "notadate"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
     "values": {},
     "where": "FALSE",
   },
@@ -1444,7 +1444,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:notadate 1
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -1456,7 +1456,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:notadate 2
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "notadate"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
     "values": {},
     "where": "FALSE",
   },
@@ -8292,7 +8292,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:1 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "1"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -8304,7 +8304,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:1 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "1"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -8317,7 +8317,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by: 2  1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not " 2 "",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
   },
 }
 `;
@@ -8329,7 +8329,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by: 2  2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not " 2 "",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
     "values": {},
     "where": "FALSE",
   },
@@ -8342,7 +8342,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:+3 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "+3"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
   },
 }
 `;
@@ -8354,7 +8354,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:+3 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "+3"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
     "values": {},
     "where": "FALSE",
   },
@@ -8367,7 +8367,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:-4 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "-4"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
   },
 }
 `;
@@ -8379,7 +8379,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:-4 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "-4"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
     "values": {},
     "where": "FALSE",
   },
@@ -8392,7 +8392,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:0 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "0"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
   },
 }
 `;
@@ -8404,7 +8404,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:0 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "0"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
     "values": {},
     "where": "FALSE",
   },
@@ -8417,7 +8417,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:9007199254
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
   },
 }
 `;
@@ -8429,7 +8429,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:9007199254
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
     "values": {},
     "where": "FALSE",
   },
@@ -8442,7 +8442,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:1.5 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "1.5"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
   },
 }
 `;
@@ -8454,7 +8454,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:1.5 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "1.5"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
     "values": {},
     "where": "FALSE",
   },
@@ -8467,7 +8467,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:abc 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "abc"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
   },
 }
 `;
@@ -8479,7 +8479,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:abc 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "abc"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
     "values": {},
     "where": "FALSE",
   },
@@ -8492,7 +8492,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:a'b 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "a'b"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
   },
 }
 `;
@@ -8504,7 +8504,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:a'b 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "a'b"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
     "values": {},
     "where": "FALSE",
   },
@@ -8543,7 +8543,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:2026-02-29
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
   },
 }
 `;
@@ -8555,7 +8555,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:2026-02-29
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
     "values": {},
     "where": "FALSE",
   },
@@ -8594,7 +8594,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:true 1`] =
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "true"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
   },
 }
 `;
@@ -8606,7 +8606,7 @@ exports[`every name resolves as the framework resolved it fo-slots-by:true 2`] =
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "true"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
     "values": {},
     "where": "FALSE",
   },
@@ -8619,7 +8619,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:1 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "1"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -8631,7 +8631,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:1 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "1"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -8644,7 +8644,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on: 2  1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not " 2 "",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
   },
 }
 `;
@@ -8656,7 +8656,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on: 2  2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not " 2 "",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
     "values": {},
     "where": "FALSE",
   },
@@ -8669,7 +8669,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:+3 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "+3"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
   },
 }
 `;
@@ -8681,7 +8681,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:+3 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "+3"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
     "values": {},
     "where": "FALSE",
   },
@@ -8694,7 +8694,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:-4 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "-4"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
   },
 }
 `;
@@ -8706,7 +8706,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:-4 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "-4"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
     "values": {},
     "where": "FALSE",
   },
@@ -8719,7 +8719,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:0 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "0"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
   },
 }
 `;
@@ -8731,7 +8731,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:0 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "0"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
     "values": {},
     "where": "FALSE",
   },
@@ -8744,7 +8744,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:9007199254
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
   },
 }
 `;
@@ -8756,7 +8756,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:9007199254
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
     "values": {},
     "where": "FALSE",
   },
@@ -8769,7 +8769,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:1.5 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "1.5"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
   },
 }
 `;
@@ -8781,7 +8781,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:1.5 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "1.5"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
     "values": {},
     "where": "FALSE",
   },
@@ -8794,7 +8794,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:abc 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "abc"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
   },
 }
 `;
@@ -8806,7 +8806,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:abc 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "abc"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
     "values": {},
     "where": "FALSE",
   },
@@ -8819,7 +8819,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:a'b 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "a'b"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
   },
 }
 `;
@@ -8831,7 +8831,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:a'b 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "a'b"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
     "values": {},
     "where": "FALSE",
   },
@@ -8870,7 +8870,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:2026-02-29
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
   },
 }
 `;
@@ -8882,7 +8882,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:2026-02-29
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
     "values": {},
     "where": "FALSE",
   },
@@ -8925,7 +8925,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:true 1`] =
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "starts must be a date, YYYY-MM-DD, not "true"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
   },
 }
 `;
@@ -8937,7 +8937,7 @@ exports[`every name resolves as the framework resolved it fo-slots-on:true 2`] =
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "starts must be a date, YYYY-MM-DD, not "true"",
+    "refused": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
     "values": {},
     "where": "FALSE",
   },
@@ -13249,7 +13249,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:1 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -13261,7 +13261,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:1 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -13274,7 +13274,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on: 2  1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not " 2 "",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
   },
 }
 `;
@@ -13286,7 +13286,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on: 2  2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not " 2 "",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
     "values": {},
     "where": "FALSE",
   },
@@ -13299,7 +13299,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:+3 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "+3"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
   },
 }
 `;
@@ -13311,7 +13311,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:+3 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "+3"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
     "values": {},
     "where": "FALSE",
   },
@@ -13324,7 +13324,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:-4 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "-4"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
   },
 }
 `;
@@ -13336,7 +13336,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:-4 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "-4"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
     "values": {},
     "where": "FALSE",
   },
@@ -13349,7 +13349,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:0 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "0"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
   },
 }
 `;
@@ -13361,7 +13361,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:0 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "0"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
     "values": {},
     "where": "FALSE",
   },
@@ -13374,7 +13374,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:9007199254
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
   },
 }
 `;
@@ -13386,7 +13386,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:9007199254
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
     "values": {},
     "where": "FALSE",
   },
@@ -13399,7 +13399,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:1.5 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1.5"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
   },
 }
 `;
@@ -13411,7 +13411,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:1.5 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1.5"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
     "values": {},
     "where": "FALSE",
   },
@@ -13424,7 +13424,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:abc 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "abc"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
   },
 }
 `;
@@ -13436,7 +13436,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:abc 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "abc"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
     "values": {},
     "where": "FALSE",
   },
@@ -13449,7 +13449,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:a'b 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "a'b"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
   },
 }
 `;
@@ -13461,7 +13461,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:a'b 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "a'b"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
     "values": {},
     "where": "FALSE",
   },
@@ -13500,7 +13500,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:2026-02-29
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
   },
 }
 `;
@@ -13512,7 +13512,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:2026-02-29
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
     "values": {},
     "where": "FALSE",
   },
@@ -13551,7 +13551,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:true 1`] =
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "true"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
   },
 }
 `;
@@ -13563,7 +13563,7 @@ exports[`every name resolves as the framework resolved it fo-notes-on:true 2`] =
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "true"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
     "values": {},
     "where": "FALSE",
   },
@@ -13576,7 +13576,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:1 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -13588,7 +13588,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:1 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -13601,7 +13601,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on: 2
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not " 2 "",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
   },
 }
 `;
@@ -13613,7 +13613,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on: 2
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not " 2 "",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
     "values": {},
     "where": "FALSE",
   },
@@ -13626,7 +13626,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:+3
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "+3"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
   },
 }
 `;
@@ -13638,7 +13638,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:+3
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "+3"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
     "values": {},
     "where": "FALSE",
   },
@@ -13651,7 +13651,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:-4
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "-4"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
   },
 }
 `;
@@ -13663,7 +13663,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:-4
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "-4"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
     "values": {},
     "where": "FALSE",
   },
@@ -13676,7 +13676,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:0 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "0"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
   },
 }
 `;
@@ -13688,7 +13688,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:0 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "0"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
     "values": {},
     "where": "FALSE",
   },
@@ -13701,7 +13701,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:90
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
   },
 }
 `;
@@ -13713,7 +13713,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:90
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
     "values": {},
     "where": "FALSE",
   },
@@ -13726,7 +13726,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:1.
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1.5"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
   },
 }
 `;
@@ -13738,7 +13738,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:1.
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1.5"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
     "values": {},
     "where": "FALSE",
   },
@@ -13751,7 +13751,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:ab
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "abc"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
   },
 }
 `;
@@ -13763,7 +13763,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:ab
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "abc"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
     "values": {},
     "where": "FALSE",
   },
@@ -13776,7 +13776,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:a'
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "a'b"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
   },
 }
 `;
@@ -13788,7 +13788,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:a'
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "a'b"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
     "values": {},
     "where": "FALSE",
   },
@@ -13827,7 +13827,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:20
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
   },
 }
 `;
@@ -13839,7 +13839,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:20
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
     "values": {},
     "where": "FALSE",
   },
@@ -13878,7 +13878,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:tr
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "true"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
   },
 }
 `;
@@ -13890,7 +13890,7 @@ exports[`every name resolves as the framework resolved it fo-courses-noted-on:tr
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "true"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
     "values": {},
     "where": "FALSE",
   },
@@ -13903,7 +13903,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:1 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -13915,7 +13915,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:1 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -13928,7 +13928,7 @@ exports[`every name resolves as the framework resolved it fo-board-on: 2 :1 1`] 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -13940,7 +13940,7 @@ exports[`every name resolves as the framework resolved it fo-board-on: 2 :1 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -13953,7 +13953,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1: 2  1`] 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not " 2 "",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
   },
 }
 `;
@@ -13965,7 +13965,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1: 2  2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not " 2 "",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not " 2 "",
     "values": {},
     "where": "FALSE",
   },
@@ -13978,7 +13978,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:+3:1 1`] =
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -13990,7 +13990,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:+3:1 2`] =
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14003,7 +14003,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:+3 1`] =
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "+3"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
   },
 }
 `;
@@ -14015,7 +14015,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:+3 2`] =
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "+3"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "+3"",
     "values": {},
     "where": "FALSE",
   },
@@ -14028,7 +14028,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:-4:1 1`] =
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14040,7 +14040,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:-4:1 2`] =
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14053,7 +14053,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:-4 1`] =
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "-4"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
   },
 }
 `;
@@ -14065,7 +14065,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:-4 2`] =
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "-4"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "-4"",
     "values": {},
     "where": "FALSE",
   },
@@ -14078,7 +14078,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:0:1 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14090,7 +14090,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:0:1 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14103,7 +14103,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:0 1`] = 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "0"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
   },
 }
 `;
@@ -14115,7 +14115,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:0 2`] = 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "0"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "0"",
     "values": {},
     "where": "FALSE",
   },
@@ -14128,7 +14128,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:9007199254
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14140,7 +14140,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:9007199254
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14153,7 +14153,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:90071992
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
   },
 }
 `;
@@ -14165,7 +14165,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:90071992
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "9007199254740992"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "9007199254740992"",
     "values": {},
     "where": "FALSE",
   },
@@ -14178,7 +14178,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1.5:1 1`] 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14190,7 +14190,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1.5:1 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14203,7 +14203,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:1.5 1`] 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1.5"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
   },
 }
 `;
@@ -14215,7 +14215,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:1.5 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1.5"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1.5"",
     "values": {},
     "where": "FALSE",
   },
@@ -14228,7 +14228,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:abc:1 1`] 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14240,7 +14240,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:abc:1 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14253,7 +14253,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:abc 1`] 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "abc"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
   },
 }
 `;
@@ -14265,7 +14265,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:abc 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "abc"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "abc"",
     "values": {},
     "where": "FALSE",
   },
@@ -14278,7 +14278,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:a'b:1 1`] 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14290,7 +14290,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:a'b:1 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14303,7 +14303,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:a'b 1`] 
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "a'b"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
   },
 }
 `;
@@ -14315,7 +14315,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:a'b 2`] 
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "a'b"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "a'b"",
     "values": {},
     "where": "FALSE",
   },
@@ -14328,7 +14328,7 @@ exports[`every name resolves as the framework resolved it fo-board-on::1 1`] = `
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14340,7 +14340,7 @@ exports[`every name resolves as the framework resolved it fo-board-on::1 2`] = `
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14383,7 +14383,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:2026-02-29
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14395,7 +14395,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:2026-02-29
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14408,7 +14408,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:2026-02-
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
   },
 }
 `;
@@ -14420,7 +14420,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:2026-02-
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "2026-02-29"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "2026-02-29"",
     "values": {},
     "where": "FALSE",
   },
@@ -14433,7 +14433,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:2024-02-29
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14445,7 +14445,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:2024-02-29
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14488,7 +14488,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:true:1 1`]
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "1"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
   },
 }
 `;
@@ -14500,7 +14500,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:true:1 2`]
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "1"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "1"",
     "values": {},
     "where": "FALSE",
   },
@@ -14513,7 +14513,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:true 1`]
   "refuse": true,
   "scope": {
     "code": "22P02",
-    "error": "at must be a date, YYYY-MM-DD, not "true"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
   },
 }
 `;
@@ -14525,7 +14525,7 @@ exports[`every name resolves as the framework resolved it fo-board-on:1:true 2`]
   "scope": {
     "at": null,
     "mode": "list",
-    "refused": "at must be a date, YYYY-MM-DD, not "true"",
+    "refused": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "true"",
     "values": {},
     "where": "FALSE",
   },
@@ -15943,14 +15943,17 @@ BEGIN
   v_s1 := NULLIF(v_parts[1], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      IF p_refuse THEN RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('starts must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      IF p_refuse THEN RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('starts must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   IF v_s1 IS NOT NULL THEN v_where := v_where || CASE WHEN v_where <> '' THEN ' AND ' ELSE '' END || format('%I <= %L', 'starts', v_s1); END IF;
   IF v_where = '' THEN v_where := 'TRUE'; END IF;
@@ -15972,14 +15975,17 @@ BEGIN
   v_s1 := NULLIF(v_parts[1], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      IF p_refuse THEN RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('starts must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      IF p_refuse THEN RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('starts must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   IF v_s1 IS NOT NULL THEN v_where := v_where || CASE WHEN v_where <> '' THEN ' AND ' ELSE '' END || format('%I = %L', 'starts', v_s1); END IF;
   IF v_s1 IS NOT NULL THEN v_values := v_values || jsonb_build_object('starts', v_s1); END IF;
@@ -16195,14 +16201,17 @@ BEGIN
   v_s1 := NULLIF(v_parts[1], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   IF v_s1 IS NOT NULL THEN v_at := v_s1; END IF;
   IF v_where = '' THEN v_where := 'TRUE'; END IF;
@@ -16224,14 +16233,17 @@ BEGIN
   v_s1 := NULLIF(v_parts[1], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   IF v_s1 IS NOT NULL THEN v_at := v_s1; END IF;
   IF v_where = '' THEN v_where := 'TRUE'; END IF;
@@ -16255,14 +16267,17 @@ BEGIN
   v_s1 := NULLIF(v_parts[2], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
-      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, not "%s"', v_s1));
+      IF p_refuse THEN RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+      RETURN jsonb_build_object('where', 'FALSE', 'values', '{}'::jsonb, 'mode', 'list', 'at', NULL, 'refused', format('at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%s"', v_s1));
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   v_s2 := NULLIF(v_parts[1], '');
   IF v_s2 IS NOT NULL THEN

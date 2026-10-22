@@ -27,8 +27,18 @@ rows under it, and a column with a default (`done`), in `resources/lists/lists-a
 
 ## Rules
 
-- Column types: `text`, `integer`, `real`, `boolean`, `json`, `timestamptz`; append `?` for
-  nullable, or `{ type, default, nullable }`.
+- Column types: `text`, `integer`, `real`, `boolean`, `json`, `timestamptz`, `date`, `numeric`;
+  append `?` for nullable, or `{ type, default, nullable }`.
+- **A day with no instant is a `date`**: `"2026-10-20"` on the wire, as written, on every backend
+  (an all-day booking, a birthday, the day a bill is paid). A write that is no day the calendar has, or a time,
+  is 400 (`day must be a date, YYYY-MM-DD`). SQLite and the JSON file keep the text; Postgres a `DATE`.
+- **Money and any exact decimal is a `numeric`**, a string on the wire (`"10.50"`), never `real`
+  (`0.1 + 0.2`). A number on the wire is 400, so no float slips in, and so is text that is no
+  decimal (`"1e3"`, `"NaN"`, `"+1"`, `".5"`). It is kept exactly and given back as Postgres's
+  `NUMERIC` writes it, on every backend: no leading zeros, no sign on zero, the scale as written
+  (`"007.50"` is `"7.50"`). SQLite keeps it as that text, and a scope compares it by value (as a
+  number there: exact to 15 significant digits; Postgres compares exactly). It is not `unique`'s
+  (`1.5` and `1.50` are one number, two texts): `defineSchema` throws. A required one defaults to `"0"`.
 - **A time is a `timestamptz` column, never `text`.** A write gives ISO 8601 with a zone
   (`new Date().toISOString()`); what is no time is 400, and every backend gives it back in UTC
   (`2026-10-20T09:00:00+00:00`). The zone's rules: `scope.md`. A time only the server sets
@@ -60,6 +70,20 @@ rows under it, and a column with a default (`done`), in `resources/lists/lists-a
   ["left"] }` holds it only among rows where `left` is null: a room in one open stay at a
   time. A table that keeps versions holds it among its current rows. A migration adds it with
   `addUnique` (`migrations.md`).
+- **Two rows that may not hold the same time** (a room booked twice, a person on leave twice) is
+  `noOverlap: [{ range: ["starts", "ends"], same: ["room_id"] }]`: two current rows with equal
+  `same` columns whose ranges overlap are refused, **409**, on every backend, naming both
+  (`Overlaps: bookings/3 and bookings/1, of the same room_id, both hold starts to ends at once --
+  move or remove one first`). A range is half open, `[starts, ends)` (a meeting until ten leaves ten
+  free), unless `bounds: "[]"` (leave from the 5th to the 9th holds the 9th); a null bound is open on
+  that side; one that ends before it starts is 400. Its columns are times, dates or numbers (of one
+  type); `same` is text, integer, boolean, date or the parent key, and may be left out (no two rows
+  at all). Asked once the write is done, in its transaction, so a batch may swap two bookings in any
+  order; a closed version holds nothing; a walk is held to it (a conflict). On Postgres it is an
+  `EXCLUDE` constraint besides (`postgres.md`); it is the definitions' alone, no migration, so rows
+  kept before it are asked only when next written there. The cases are `noOverlapCases`
+  (`src/cases/planning.ts`). A rule that reads other stored rows (no cycle in a tree, a period
+  closed) is none of these yet: a recompute document shows it.
 - **A line or a part is a row under its parent** (`lines` with `parent: "orders"`), never a
   JSON column of ids or a link column on the other row: a document includes its rows, and every
   holder is told each one that arrives or leaves. **A part goes where its whole goes**: a write
@@ -149,5 +173,5 @@ const schema = defineSchema({
   row of its own, added then, with its own `default: "now"`.
 
 The cases are `serverTimeCases` (`src/cases/writes.ts`); the recipe's messages are timed so
-(`recipe.md`).
+(`recipe.md`). A day and an exact decimal: `columnTypeCases` (`src/cases/planning.ts`).
 

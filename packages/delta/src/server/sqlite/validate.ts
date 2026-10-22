@@ -1,6 +1,6 @@
 /** What a write may say (`validateOps`): its paths, collections, fields and values, against the schema. */
 import { joinPath, splitPath, type DeltaOp } from "../../core";
-import { holdsField, isIsoTime, isServerTime, type ColumnDef, type DocDef, type ResolvedTable, type Schema, type ValidationError } from "../../schema";
+import { holdsField, isDate, isDecimal, isIsoTime, isServerTime, type ColumnDef, type DocDef, type ResolvedTable, type Schema, type ValidationError } from "../../schema";
 import { pastSafeId, rowId, sameId } from "../scope";
 
 /**
@@ -234,6 +234,13 @@ function validateFieldType(def: ColumnDef, field: string, value: unknown): strin
     case "timestamptz":
       // ISO-8601 (isIsoTime) it; kept in UTC as Postgres gives it back
       if (!isIsoTime(value) && !(value instanceof Date && Number.isFinite(value.getTime()))) return `${field} must be an ISO-8601 time`;
+      break;
+    case "date":
+      if (!isDate(value)) return `${field} must be a date, YYYY-MM-DD`;
+      break;
+    case "numeric":
+      // a string, never a number: a number has been a float already
+      if (!isDecimal(value)) return `${field} must be a decimal, written as a string ("10.50")`;
       break;
   }
   return null;

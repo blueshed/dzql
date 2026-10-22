@@ -11,7 +11,7 @@
  * policies let it past (`compilePolicies`): who is told does not depend on what the writer may read.
  * It answers names, never a row; why a definer and not a policy is 001b's to say (`_delta_holders`).
  */
-import type { DocDef, Schema } from "@blueshed/delta/backend";
+import { scopeEntries, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { chainRoot, holdsFunction } from "./holds";
 import { hangsFrom, lit, need, caseOf } from "./opens";
 import { PAST } from "./policies";
@@ -46,7 +46,7 @@ ${longer.length ? `           AND NOT (${longer.map((d) => `starts_with(v_cand, 
 export function compileRescopes(schema: Schema, docs: DocDef[]): string {
   const branches = Object.keys(schema.tables).flatMap((coll) => {
     const cols = [...new Set(docs.filter((d) => d.root === coll && d.include.some((c) => hangsFrom(schema, c, coll)))
-      .flatMap((d) => Object.entries(d.scope ?? {}).filter(([col, binding]) => col !== "id" && !binding.startsWith("at:")).map(([col]) => col)))].sort();
+      .flatMap((d) => scopeEntries(d.scope ?? {}).filter(([col, binding]) => col !== "id" && !binding.startsWith("at:")).map(([col]) => col)))].sort();
     return cols.length ? [`    WHEN ${lit(coll)} THEN RETURN EXISTS (SELECT 1 FROM unnest(ARRAY[${cols.map(lit).join(", ")}]) AS c WHERE p_value ? c AND (p_value->c) IS DISTINCT FROM (p_was->c));`] : [];
   });
   return `CREATE OR REPLACE FUNCTION _delta_rescopes(p_coll TEXT, p_was JSONB, p_value JSONB)

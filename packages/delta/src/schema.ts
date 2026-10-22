@@ -9,15 +9,16 @@
  * resolution, or cascade wiring.
  *
  * Column type union: the superset of what both backends accept. SQLite maps
- * `timestamptz` to `TEXT` (ISO-8601); Postgres uses the native type. Each
+ * `timestamptz`, `date` and `numeric` to `TEXT` (ISO-8601; YYYY-MM-DD; the
+ * decimal's text); Postgres uses the native types. Each
  * backend's codegen / default / validation helpers own the per-type
  * mappings — this module is the vocabulary only.
  */
-import { splitPath, type DeltaOp } from "./core";
+import { joinPath, splitPath, type DeltaOp } from "./core";
 import { isAnyone, parsePath } from "./paths";
 
 export type ColumnType =
-  | "text" | "integer" | "real" | "boolean" | "json" | "timestamptz";
+  | "text" | "integer" | "real" | "boolean" | "json" | "timestamptz" | "date" | "numeric";
 
 export interface ColumnDef {
   type: ColumnType;
@@ -37,8 +38,8 @@ export function isServerTime(def: ColumnDef): boolean {
 
 /** Compact shorthand: `"text"` or `"text?"` (nullable). */
 export type ColumnShorthand =
-  | "text" | "integer" | "real" | "boolean" | "json" | "timestamptz"
-  | "text?" | "integer?" | "real?" | "boolean?" | "json?" | "timestamptz?";
+  | "text" | "integer" | "real" | "boolean" | "json" | "timestamptz" | "date" | "numeric"
+  | "text?" | "integer?" | "real?" | "boolean?" | "json?" | "timestamptz?" | "date?" | "numeric?";
 
 export interface TableDef {
   /** SQL table name (defaults to the schema key). */
@@ -68,6 +69,34 @@ export interface TableDef {
    * (`{ columns: ["book"], whereNull: ["ended"] }`: a book is on one open hold at a time).
    */
   unique?: (string | string[] | UniqueDef)[];
+  /**
+   * Ranges two current rows may not both hold at once: `{ range: ["starts", "ends"], same: ["room_id"] }`
+   * -- two rows with equal `same` columns whose ranges overlap are refused, 409, on every backend, once
+   * the write is done (Postgres: an EXCLUDE constraint besides). Half open, `[starts, ends)`, unless
+   * `bounds: "[]"` (a last day held too); a null bound is open on that side; a range whose end is
+   * before its start is refused, 400.
+   */
+  noOverlap?: NoOverlapDef[];
+}
+
+/** A noOverlap constraint as given (`TableDef.noOverlap`). */
+export interface NoOverlapDef {
+  /** The range's two columns, its start and its end: both timestamptz, date, numeric, integer or real. */
+  range: [string, string];
+  /** The columns two rows must share to clash (a room, a person); none: every row clashes with every other. */
+  same?: string[];
+  /** Whether a range holds its end: `"[)"` (the default: a meeting from 9 until 10) or `"[]"` (leave from the 5th to the 9th). */
+  bounds?: "[)" | "[]";
+}
+
+/** A noOverlap constraint as every backend holds it, named `excl_<table>_<start>_<end>`. */
+export interface ResolvedNoOverlap {
+  name: string;
+  range: [string, string];
+  same: string[];
+  bounds: "[)" | "[]";
+  /** The range columns' type. */
+  type: ColumnType;
 }
 
 /** A unique constraint: the columns no two current rows share, among those where `whereNull` are null. */
@@ -101,6 +130,8 @@ export interface ResolvedTable {
   referencedBy: { collection: string; fkColumn: string }[];
   /** Its unique constraints (`TableDef.unique`); absent when it has none. */
   unique?: ResolvedUnique[];
+  /** Its noOverlap constraints (`TableDef.noOverlap`); absent when it has none. */
+  noOverlap?: ResolvedNoOverlap[];
   /** The columns that name a row of another collection (`TableDef.refs`), by column; absent when none. */
   refs?: ResolvedRef[];
   /** Computed: the columns of other collections that name a row of this one, by collection then column; absent when none. */
@@ -117,7 +148,11 @@ export interface DocDef {
   prefix: string;
   root: string;
   include: string[];
-  scope: Record<string, string>;
+  /**
+   * What the document's name selects (`../server/scope.ts`): a root column to a binding, or to
+   * several, each a condition (`{ lng: [">=:west", "<=:east"] }`, a range).
+   */
+  scope: Record<string, string | string[]>;
   /** There before its root row is: opens empty, and its first write makes the row. */
   implied?: boolean;
   /**
@@ -149,6 +184,65 @@ export interface DocDef {
    * Every backend asks it (dzql's thin client has the same hook, `Resource.shape`, for a page's writes).
    */
   shape?: Shape;
+}
+
+/** A later op's name for a row an earlier op of the same write adds with "-": `$<k>`, k that op's 0-based index in the write. */
+const MINTED = /^\$(\d+)$/;
+
+/** The rows a write's adds with "-" were given so far, by the op's index in the write: what `$<k>` names. */
+export type Minted = Map<number, { coll: string; id: string | number }>;
+
+/**
+ * An op of a write with each `$<k>` it says as the id the store gave the row op k of the same
+ * write added with "-" (`add /<coll>/-`), as every backend reads it before it validates the op:
+ * the row of a path (`/entries/$0/memo`), and the value of a column that names a row by its id --
+ * the parent key, a `refs` column -- in a row's value or a field's (`{ entries_id: "$0" }`). Ids are
+ * numbers, so a `$` names no row else; in any other column `"$0"` is text. A `$k` that names no
+ * earlier add with "-", or a row of another collection than the path or the column names, is
+ * refused (400), in delta's words. The ops it makes are what is applied, answered and recorded.
+ */
+export function withMinted(schema: Schema, op: DeltaOp, at: number, minted: Minted): DeltaOp {
+  let parts: string[];
+  try { parts = splitPath(op.path); } catch { return op; }   // not a pointer: refused as it is
+  const named = (where: string, said: string, coll: string, why: (got: string) => string): string | number => {
+    const k = Number(MINTED.exec(said)![1]);
+    const row = k < at ? minted.get(k) : undefined;
+    if (!row) throw Object.assign(new Error(`${where}: ${said} names no row an earlier op of this write adds with "-"`), { code: 400 });
+    if (row.coll !== coll) throw Object.assign(new Error(`${where}: ${said} ${why(row.coll)}`), { code: 400 });
+    return row.id;
+  };
+  const [collKey, segment, field] = parts;
+  const table = collKey === undefined ? undefined : schema.tables[collKey];
+  if (!table) return op;
+  let out = op;
+  if (segment !== undefined && MINTED.test(segment)) {
+    const id = named(op.path, segment, collKey!, (got) => `names a row of ${got}, not of ${collKey}`);
+    out = { ...out, path: joinPath(collKey!, String(id), ...(parts.length > 2 ? parts.slice(2) : [])) } as DeltaOp;
+  }
+  // the collection a column names a row of: its parent's (the parent key), or its refs'
+  const namesOf = (col: string): string | undefined =>
+    col === table.parent?.fkColumn ? table.parent.collection : table.refs?.find((r) => r.column === col)?.collection;
+  const value = (out as { value?: unknown }).value;
+  const minting = (v: unknown): v is string => typeof v === "string" && MINTED.test(v);
+  if (parts.length === 2 && value !== null && typeof value === "object" && !Array.isArray(value)) {
+    let row: Record<string, unknown> | undefined;
+    for (const [col, v] of Object.entries(value)) {
+      const target = minting(v) ? namesOf(col) : undefined;
+      if (!target) continue;
+      row ??= { ...(value as Record<string, unknown>) };
+      row[col] = named(`${op.path}/${col}`, v as string, target, (got) => `names a row of ${got}, and ${col} names one of ${target}`);
+    }
+    if (row) out = { ...out, value: row } as DeltaOp;
+  } else if (parts.length === 3 && field !== undefined && minting(value)) {
+    const target = namesOf(field);
+    if (target) out = { ...out, value: named(op.path, value, target, (got) => `names a row of ${got}, and ${field} names one of ${target}`) } as DeltaOp;
+  }
+  return out;
+}
+
+/** A document's scope as its bindings, one by one: a column given several conditions gives each, in the order it says them. */
+export function scopeEntries(scope: Record<string, string | string[]>): [col: string, binding: string][] {
+  return Object.entries(scope).flatMap(([col, b]) => (Array.isArray(b) ? b.map((x) => [col, x] as [string, string]) : [[col, b] as [string, string]]));
 }
 
 /** A document's own rule (`DocDef.accept`): `true` takes the op; `false` or a reason refuses the write. */
@@ -271,6 +365,12 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
       seen.add(u.name);
     }
 
+    const noOverlap = (def.noOverlap ?? []).map((n) => resolveNoOverlap(key, name, n, columns, parent?.fkColumn));
+    for (const n of noOverlap) {
+      if (seen.has(n.name)) throw new Error(`${key}: noOverlap ${JSON.stringify(n.range)} is named twice`);
+      seen.add(n.name);
+    }
+
     tables[key] = {
       name,
       docKey: key,
@@ -280,6 +380,7 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
       children: [],
       referencedBy: [],
       ...(unique.length ? { unique } : {}),
+      ...(noOverlap.length ? { noOverlap } : {}),
     };
   }
 
@@ -345,10 +446,95 @@ function resolveUnique(key: string, table: string, given: string | string[] | Un
   for (const col of [...u.columns, ...(u.whereNull ?? [])]) {
     if (!Object.hasOwn(columns, col) && col !== fk) throw new Error(`${key}: unique names ${col}, which is not one of its columns`);
   }
+  for (const col of u.columns) {
+    // Postgres's NUMERIC is one value for 1.5 and 1.50, SQLite's text two: not held alike, so not held
+    if (Object.hasOwn(columns, col) && columns[col]!.type === "numeric") throw new Error(`${key}: unique names ${col}, a numeric column, which is not held alike on every backend (1.5 and 1.50 are one number, two texts): keep a unique key in an integer or text column`);
+  }
   for (const col of u.whereNull ?? []) {
     if (Object.hasOwn(columns, col) && !columns[col]!.nullable) throw new Error(`${key}: unique's whereNull names ${col}, which is never null`);
   }
   return { name: `idx_${table}_unique_${u.columns.join("_")}`, columns: u.columns, whereNull: u.whereNull ?? [] };
+}
+
+/** The types a noOverlap's range may be of, and those its `same` columns may (each compared alike on every backend). */
+const RANGED = new Set(["timestamptz", "date", "numeric", "integer", "real"]);
+const SAME = new Set(["text", "integer", "boolean", "date"]);
+
+/** Checked against the table's columns, and named. */
+function resolveNoOverlap(key: string, table: string, given: NoOverlapDef, columns: Record<string, ColumnDef>, fk: string | undefined): ResolvedNoOverlap {
+  const range = given?.range;
+  if (!Array.isArray(range) || range.length !== 2) throw new Error(`${key}: noOverlap's range is two columns, its start and its end: { range: ["starts", "ends"] }`);
+  const [from, to] = range;
+  for (const col of range) if (!Object.hasOwn(columns, col)) throw new Error(`${key}: noOverlap names ${col}, which is not one of its columns`);
+  const type = columns[from]!.type;
+  if (columns[to]!.type !== type) throw new Error(`${key}: noOverlap's ${from} and ${to} are of one type to make a range (${from} is ${type}, ${to} is ${columns[to]!.type})`);
+  if (!RANGED.has(type)) throw new Error(`${key}: noOverlap's range is of times, dates or numbers (${from} is ${type})`);
+  const same = [...(given.same ?? [])];
+  for (const col of same) {
+    if (col === fk) continue;
+    if (!Object.hasOwn(columns, col)) throw new Error(`${key}: noOverlap's same names ${col}, which is not one of its columns`);
+    if (!SAME.has(columns[col]!.type)) throw new Error(`${key}: noOverlap's same names ${col}, a ${columns[col]!.type} column: a value two rows share is text, an integer, a boolean, a date or the parent key`);
+  }
+  const bounds = given.bounds ?? "[)";
+  if (bounds !== "[)" && bounds !== "[]") throw new Error(`${key}: noOverlap's bounds is "[)" (its end not held) or "[]" (held)`);
+  return { name: `excl_${table}_${from}_${to}`, range: [from, to], same, bounds, type };
+}
+
+/** Two values of a range's type in order: negative, zero or positive (an instant by its time, a day by the calendar, a decimal by value). */
+export function compareIn(type: ColumnType, a: unknown, b: unknown): number {
+  if (type === "timestamptz") return Date.parse(utcTime(a) as string) - Date.parse(utcTime(b) as string);
+  if (type === "date") return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
+  if (type === "numeric") return compareDecimal(String(a), String(b));
+  return Number(a) - Number(b);
+}
+
+/** Two exact decimals (`isDecimal`) in order, by value: no float between them. */
+export function compareDecimal(a: string, b: string): number {
+  const parts = (d: string) => {
+    const negative = d.startsWith("-");
+    const [whole, fraction = ""] = (negative ? d.slice(1) : d).split(".");
+    const w = whole!.replace(/^0+/, ""), f = fraction.replace(/0+$/, "");
+    return { negative: negative && (w !== "" || f !== ""), w, f };
+  };
+  const x = parts(a), y = parts(b);
+  if (x.negative !== y.negative) return x.negative ? -1 : 1;
+  const sign = x.negative ? -1 : 1;
+  if (x.w.length !== y.w.length) return sign * (x.w.length - y.w.length);
+  if (x.w !== y.w) return sign * (x.w < y.w ? -1 : 1);
+  const n = Math.max(x.f.length, y.f.length);
+  const fx = x.f.padEnd(n, "0"), fy = y.f.padEnd(n, "0");
+  return fx === fy ? 0 : sign * (fx < fy ? -1 : 1);
+}
+
+/**
+ * How a row holds a noOverlap's range: `reversed` (its end before its start: refused), `none` (it
+ * holds nothing: an empty range, or a `same` column null), or the range, a null bound open.
+ */
+export function rangeOf(n: ResolvedNoOverlap, row: Record<string, unknown>): "reversed" | "none" | { from: unknown; to: unknown } {
+  const from = row[n.range[0]], to = row[n.range[1]];
+  if (from != null && to != null) {
+    const c = compareIn(n.type, from, to);
+    if (c > 0) return "reversed";
+    if (c === 0 && n.bounds === "[)") return "none";
+  }
+  if (n.same.some((col) => row[col] == null)) return "none";
+  return { from, to };
+}
+
+/** Do two rows' ranges (`rangeOf`) overlap: each begins before the other ends (or at its end, where it is held)? */
+export function overlap(n: ResolvedNoOverlap, a: { from: unknown; to: unknown }, b: { from: unknown; to: unknown }): boolean {
+  const before = (from: unknown, to: unknown) => from == null || to == null || (n.bounds === "[]" ? compareIn(n.type, from, to) <= 0 : compareIn(n.type, from, to) < 0);
+  return before(a.from, b.to) && before(b.from, a.to);
+}
+
+/** A noOverlap's refusal, as every backend says it (409): the row the write left, the row it clashes with. */
+export function overlapSentence(coll: string, n: ResolvedNoOverlap, id: unknown, other: unknown): string {
+  return `Overlaps: ${coll}/${id} and ${coll}/${other}${n.same.length ? `, of the same ${n.same.join(" and ")},` : ""} both hold ${n.range[0]} to ${n.range[1]} at once -- move or remove one first`;
+}
+
+/** A row whose range ends before it starts, as every backend refuses it (400). */
+export function reversedSentence(coll: string, n: ResolvedNoOverlap, id: unknown): string {
+  return `${coll}/${id}: its ${n.range[1]} is before its ${n.range[0]} (noOverlap holds a range from ${n.range[0]} to ${n.range[1]})`;
 }
 
 /**
@@ -369,6 +555,8 @@ export function defaultForType(type: ColumnType): unknown {
     case "boolean": return false;
     case "json": return null;
     case "timestamptz": return null;   // no sensible default — must be supplied
+    case "date": return null;          // nor for a day
+    case "numeric": return "0";        // an exact decimal is a string on the wire
   }
 }
 
@@ -378,7 +566,7 @@ export function defaultForType(type: ColumnType): unknown {
 
 export function defineDoc(
   prefix: string,
-  opts: { root: string; include: string[]; scope?: Record<string, string>; implied?: boolean; columns?: Record<string, string[]>; owns?: string; accept?: Accept; shape?: Shape },
+  opts: { root: string; include: string[]; scope?: Record<string, string | string[]>; implied?: boolean; columns?: Record<string, string[]>; owns?: string; accept?: Accept; shape?: Shape },
 ): DocDef {
   if (!DOC_PREFIX.test(prefix)) {
     throw new Error(
@@ -388,6 +576,13 @@ export function defineDoc(
   assertIdentifier(opts.root, "doc root");
   // default-deny for writing, as for opening: a document anyone may open says who may write it
   if (isAnyone(opts) && !opts.accept) throw new Error(`doc "${prefix}": owns ANYONE opens it to anyone, signed in or not: say who may write it (accept), or that nobody may (accept: () => false)`);
+  for (const [col, bindings] of Object.entries(opts.scope ?? {})) {
+    if (!Array.isArray(bindings)) continue;
+    // several conditions on one column: each a condition, so none the time the document is read at
+    if (bindings.length === 0 || bindings.some((b) => typeof b !== "string" || b.startsWith("at:"))) {
+      throw new Error(`doc "${prefix}": scope's ${col} is a list of conditions (">=:from", "<=:to"), at least one, and none "at:" (the time a document is read at names no column)`);
+    }
+  }
   if (opts.implied && opts.scope && Object.keys(opts.scope).length > 0) {
     throw new Error(`An implied doc is keyed by its root id: ${prefix} cannot also declare a scope`);
   }
@@ -544,6 +739,40 @@ export function utcTime(value: unknown): unknown {
   const t = typeof value === "string" ? value.replace(" ", "T") : "";
   const d = value instanceof Date ? value : new Date(/T/.test(t) ? (/(Z|[+-]\d{2}(:?\d{2})?)$/.test(t.slice(10)) ? t : `${t}Z`) : `${t}T00:00:00Z`);
   return d.toISOString().replace(/\.000Z$/, "+00:00").replace(/(\.\d*?)0*Z$/, "$1+00:00");
+}
+
+/**
+ * A day a write may give a `date` column: YYYY-MM-DD, on the calendar, a year from 0001 to 9999
+ * (what Postgres's DATE holds of it, written with four digits). No instant and no zone.
+ */
+export function isDate(value: unknown): boolean {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && isIsoTime(value);
+}
+
+/**
+ * An exact decimal a write may give a `numeric` column: a string, digits with an optional sign
+ * and fraction (`"10.50"`, `"-3"`), no exponent, no `+`, no space, no NaN or Infinity -- within
+ * what Postgres's NUMERIC holds (131072 digits before the point, 16383 after). A number is never
+ * one: it has been a float already (0.1 + 0.2).
+ */
+const DECIMAL = /^-?\d{1,131072}(\.\d{1,16383})?$/;
+export function isDecimal(value: unknown): boolean {
+  return typeof value === "string" && DECIMAL.test(value);
+}
+
+/**
+ * A decimal as every backend keeps and gives it back: as Postgres's NUMERIC writes it -- no
+ * leading zeros, no sign on a zero, the scale as written ("007.50" is "7.50", "-0.00" is "0.00").
+ * Anything that is no decimal stays as it is.
+ */
+export function decimalText(value: unknown): unknown {
+  if (!isDecimal(value)) return value;
+  const text = value as string;
+  const negative = text.startsWith("-");
+  const [whole, fraction] = (negative ? text.slice(1) : text).split(".");
+  const digits = whole!.replace(/^0+(?=\d)/, "");
+  const zero = /^0+$/.test(digits) && /^0*$/.test(fraction ?? "");
+  return `${negative && !zero ? "-" : ""}${digits}${fraction !== undefined ? `.${fraction}` : ""}`;
 }
 
 /** A timestamp as a snapshot carries it: ISO-8601 in UTC, or null. */

@@ -72,6 +72,8 @@ export function columnSqlType(def: ColumnDef): string {
     case "boolean": return "BOOLEAN";
     case "real": return "DOUBLE PRECISION";
     case "timestamptz": return "TIMESTAMPTZ";
+    case "date": return "DATE";
+    case "numeric": return "NUMERIC";   // exact; read back as its text (rowJson), never a JSON number
   }
 }
 

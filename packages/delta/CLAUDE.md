@@ -198,7 +198,7 @@ exact version, or the setup stops reading it).
   `pointerVectors` and `walkVectors` (the pointer grammar and the walk guard as data,
   `src/*-vectors.json`, for dzql to answer), and the case suite every backend answers alike, for
   delta's tests and dzql's: `src/cases/` (`path`, `law`, `owns`, `permissions`, `isolation`,
-  `writes`, `cursor`, `migrations`, `upgrades`, `link-store`). delta's
+  `writes`, `planning`, `cursor`, `migrations`, `upgrades`, `link-store`). delta's
   own tests import it as `@blueshed/delta/testing`, as a consumer would; what is a backend's own
   (SQLite's adapters, the stand-ups in `tests/helpers/case-backends.ts`) stays beside the tests.
   `createLocal()` is the lighter harness for SQLite and the kinds.

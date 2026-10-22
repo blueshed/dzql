@@ -60,6 +60,8 @@ export const stories = {
     onlyManagerAnswers: story("Only a manager answers: Ann cannot approve Bo's week", { as: "ann", from: "2026-10?request=1", cannot: answer(1, "approved") }),
     annCannotMoveBo: story("Ann cannot move Bo's week", { as: "ann", from: "2026-10", cannot: move(1, "2026-10-12", "2026-10-16") }),
     annCannotMoveDays: story("Ann cannot move days Mo has already approved", { as: "ann", from: "2026-12?request=3", cannot: move(3, "2026-12-28", "2026-12-31") }),
+    // the store refuses it (the requests' noOverlap: nobody holds two requests over one day), not the page
+    annCannotAskTwice: story("Ann cannot ask for days she already has: the days before Christmas are hers", { as: "ann", from: "2026-12", cannot: { doc: "team", ops: [{ op: "add", path: "/requests/-", value: { starts: "2026-12-23", ends: "2026-12-29" } }] } }),
     annCannotTakeBackMos: story("Ann cannot take back Mo's week", { as: "ann", from: "2026-10?request=4", cannot: withdraw(4) }),
     annCannotTakeBackBos: story("Ann cannot take back Bo's request", { as: "ann", cannot: withdraw(1) }),
     visitorCannotAsk: story("A visitor who has not signed in cannot ask for leave", { as: "visitor", cannot: askDraft }),

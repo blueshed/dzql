@@ -120,6 +120,22 @@ export function migrationCases<H>(name: string, b: MigrationBackend<H>) {
       expect(await kept("at", "visits")).toEqual([{ kept: "a time" }]);
     });
 
+    test("a date and a numeric column, made and added: each row already there takes its default, and each keeps its text exactly", async () => {
+      const h = await b.open();
+      await b.migrate(h, history);
+      await b.query(h, "INSERT INTO people (id, name) VALUES (1, 'Ann')");
+      const dated: Migration[] = [...history,
+        { id: "003-owed", changes: [addColumn("people", "owed", { type: "numeric", default: "0.00" }), addColumn("people", "born", "date?")] },
+        { id: "004-dues", changes: [createTable("dues", { columns: { day: "date", amount: "numeric" }, temporal: false })] },
+      ];
+      expect((await b.migrate(h, dated)).ran).toEqual(["003-owed", "004-dues"]);
+      expect(await b.query(h, "SELECT CAST(owed AS TEXT) AS owed, CAST(born AS TEXT) AS born FROM people")).toEqual([{ owed: "0.00", born: null }]);
+      await b.query(h, "UPDATE people SET born = '2026-10-20', owed = '12345678901234567890.25'");
+      await b.query(h, "INSERT INTO dues (id, day, amount) VALUES (1, '2026-10-22', '10.50')");
+      expect(await b.query(h, "SELECT CAST(owed AS TEXT) AS owed, CAST(born AS TEXT) AS born FROM people")).toEqual([{ owed: "12345678901234567890.25", born: "2026-10-20" }]);
+      expect(await b.query(h, "SELECT CAST(day AS TEXT) AS day, CAST(amount AS TEXT) AS amount FROM dues")).toEqual([{ day: "2026-10-22", amount: "10.50" }]);
+    });
+
     test("an up's nextId takes the collection's next serial, past any id it holds", async () => {
       const h = await b.open();
       await b.migrate(h, history);

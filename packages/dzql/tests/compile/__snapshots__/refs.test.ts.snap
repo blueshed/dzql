@@ -1,7 +1,17 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`the text is pinned 1`] = `
-"CREATE OR REPLACE FUNCTION _delta_refs_hold(p_touched JSONB)
+"CREATE OR REPLACE FUNCTION _delta_refs_of(p_coll TEXT)
+RETURNS JSONB AS $$
+BEGIN
+  CASE p_coll
+    WHEN 'case_showings' THEN RETURN '{"film":"case_films","usher":"case_ushers"}'::jsonb;
+    ELSE RETURN '{}'::jsonb;   -- a collection that names none by refs
+  END CASE;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION _delta_refs_hold(p_touched JSONB)
 RETURNS void AS $$
 DECLARE
   v_t   RECORD;

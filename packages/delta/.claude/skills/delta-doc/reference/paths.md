@@ -44,6 +44,8 @@ server names (on an array, append). The parsers are `splitPath` / `joinPath` in 
   moves the serial past it. One already handed out is 409 whether or not a row holds it, so the
   answer leaks nothing. Undo, redo, and a row the same write removed or made are let through.
 - `-` never collides; a client clock (`Date.now() * 1000`) collides once one client is behind.
+- A later op of the same write names a row an earlier one adds with `-` as `$<k>` (k that op's index):
+  `/entries/$0/memo`, `{ entries_id: "$0" }` (`writes.md`). Ids are numbers, so a `$` names no row else.
 - A refused write that took a serial has spent it.
 - Text ids: keep them to session tokens (a uuid), for documents that never move. A taken text id
   is 409, so make it unguessable.
@@ -60,7 +62,8 @@ backend (`errorCodeCases` in `src/cases/writes.ts`):
 - **404** not there: a document, row or path; a document the identity does not `own`; a row a
   `refs` column names (`schema.md`).
 - **409** already there (an id taken, or a unique constraint's values: `schema.md`), or still
-  named (a row a current row's `refs` column names, removed).
+  named (a row a current row's `refs` column names, removed), or overlapping (a `noOverlap`'s range
+  another row of the same values holds).
 - **429** too many: an `open` past what one socket may hold open (`createWs({ maxDocs })`, 1000);
   the socket's, asked before any backend (`server.md`). Close one first.
 - **500** the server's own failure.
