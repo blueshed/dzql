@@ -72,6 +72,10 @@ ref's surrogate (`orderOf`, `resources/kitchen/kitchen-api.ts`) and a seed in `p
   reads as the tables' owner, `asOwner(pool, (db) => db.query(...))` (`dzql/postgres`), never by
   raising dzql's settings itself. `openStore`'s `auth` is for a page that is delta's client; a page
   dzql draws signs in by its session ([signin.md](signin.md)).
+- A page dzql draws reads each document once, as no one, so a document's `owns` and the
+  row-level security beneath it never meet a person here: what keeps a person's data from another
+  is each resource's `resolveDoc` and `permit`, and how its documents are cut (each holds only what
+  its people may read). dzql's `docs/postgres/rls.md`, *Where it applies*.
 - A row that names a row of another document (a **ref**, `dish: menu:/items`, kept as `dish_id`)
   keeps its **surrogate** beside the key when a story can remove what it names: what it shows of
   it, copied as it is written (`dish_name`, `dish_price`). Show the named row while it stands, and

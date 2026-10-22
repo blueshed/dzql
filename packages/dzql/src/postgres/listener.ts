@@ -101,16 +101,36 @@ function errMsg(err: unknown, doc?: { name: string; owns?: string }): string {
  * entry that is not the cursor's next (409). And 40P01, a write that met another
  * at once and gave way to it (two adds of temporal ids in opposite orders wait
  * on each other's row locks): nothing was written, and the same write
- * sent again goes through, or meets the rows the other made (409). A document
+ * sent again goes through, or meets the rows the other made (409). What an
+ * app's own constraints and triggers refuse (todo #94) is the writer's too: a
+ * CHECK constraint (23514) and a trigger's `RAISE EXCEPTION` (P0001) 400, an
+ * exclusion constraint (23P01: a double booking) 409. A document
  * type that refuses with a wire code of its own (a number, 400 to 499: a
  * read-only document's 403) is answered with it. Anything else is the
- * server's (500).
+ * server's (500), answered with no more than that (`answerOf`).
  */
-const CODE_OF_SQLSTATE: Record<string, number> = { "22023": 400, "22P02": 400, "22007": 400, "22008": 400, "23502": 400, "25006": 403, "42501": 403, P0002: 404, "23503": 409, "23505": 409, "40001": 409, "40P01": 409 };
+const CODE_OF_SQLSTATE: Record<string, number> = {
+  "22023": 400, "22P02": 400, "22007": 400, "22008": 400, "23502": 400, "23514": 400, P0001: 400,
+  "25006": 403, "42501": 403, P0002: 404,
+  "23503": 409, "23505": 409, "23P01": 409, "40001": 409, "40P01": 409,
+};
 function wireCode(err: unknown): number {
   const state = (err as { code?: unknown } | null)?.code;
   if (typeof state === "number" && state >= 400 && state < 500) return state;
   return (typeof state === "string" && CODE_OF_SQLSTATE[state]) || 500;
+}
+
+/** What a 5xx tells the client: no more than that it failed, never the database's words (a table, a constraint, a type); the detail is logged (todo #103). */
+export const SERVER_FAILED = "The server failed: what went wrong is in its log";
+
+/**
+ * The answer to an error, and the line it is logged with: a 4xx in delta's words (`errMsg`), a 5xx
+ * as `SERVER_FAILED`, its detail in the log alone.
+ */
+function answerOf(err: unknown, doc?: { name: string; owns?: string }): { error: { code: number; message: string }; logged: string } {
+  const code = wireCode(err);
+  const message = errMsg(err, doc);
+  return { error: { code, message: code >= 500 ? SERVER_FAILED : message }, logged: message };
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +165,14 @@ const FETCH_PAGE = 1000;
  * heard twice. An entry logged some other way carries null too: heard as told.
  */
 const appliedOf = (row: any): DeltaOp[] => (row.applied ?? row.ops) as DeltaOp[];
+
+/** How many documents a socket may hold open at once, unless the listener is told otherwise (`maxOpen`). */
+const MAX_OPEN = 1000;
+
+/** The most entries a `history` answers, whatever its `limit` asks (todo #106); 50 when it asks none. */
+const HISTORY_MAX = 100;
+const historyLimit = (limit: unknown): number =>
+  typeof limit === "number" && Number.isFinite(limit) ? Math.min(Math.max(Math.floor(limit), 1), HISTORY_MAX) : 50;
 
 /** How the listener reads a document's log: `_delta_fetch_log` (001e), each entry with the write as applied, for custom documents. */
 const FETCH_LOG = "SELECT version, ops, applied FROM _delta_fetch_log($1, $2)";
@@ -201,8 +229,15 @@ export async function createDocListener<I = unknown>(
      * (`accept`, told no one), on the ledger by no one, and told to everyone holding it.
      */
     owner?: object;
+    /**
+     * How many documents one socket may hold open at once (todo #106): each held is a row in
+     * `_delta_held` and a channel, so a socket opening name after name is refused past it, 429.
+     * In-process callers (`createLocal()`) are not held to it. Default 1000.
+     */
+    maxOpen?: number;
   },
 ) {
+  const maxOpen = opts?.maxOpen ?? MAX_OPEN;
   const auth = opts?.auth;
   /** Is `client` the server itself? Only with auth does it differ from any other in-process caller. */
   const isOwner = (client: any): boolean => opts?.owner !== undefined && client === opts.owner;
@@ -282,6 +317,37 @@ export async function createDocListener<I = unknown>(
     await asked.get(client)?.get(docName)?.catch(() => {});
     return tracked.get(docName)?.subscribers.has(client) ?? false;
   }
+  /**
+   * Would opening `docName` take this socket past `maxOpen`: the documents it holds (its channels),
+   * and those it is opening, but not one it holds already. An in-process caller is never refused.
+   */
+  function crowded(client: any, docName: string): boolean {
+    if (client?.data?.local) return false;
+    const held: Set<string> | undefined = client?.data?.channels;
+    if (held?.has(docName)) return false;
+    let count = held?.size ?? 0;
+    for (const name of asked.get(client)?.keys() ?? []) if (name !== docName && !held?.has(name)) count++;
+    for (const name of customOpening.get(client) ?? []) if (name !== docName && !held?.has(name)) count++;
+    return count >= maxOpen;
+  }
+  const TOO_MANY: Refusal = { code: 429, message: `Too many documents open on this connection (${maxOpen}): close one before opening another` };
+  /**
+   * The custom documents each socket holds or is opening (todo #101): while none is, a
+   * notification tells them nothing, and the log is not read for them. A socket let go of one by
+   * its `owns` stays counted until it closes it or goes: it reads the log for nothing, never misses it.
+   */
+  const customOpening = new Map<any, Set<string>>();
+  const holdCustom = (client: any, docName: string) => {
+    const mine = customOpening.get(client) ?? new Set<string>();
+    customOpening.set(client, mine);
+    mine.add(docName);
+  };
+  const dropCustom = (client: any, docName?: string) => {
+    const mine = customOpening.get(client);
+    if (!mine) return;
+    if (docName === undefined) mine.clear(); else mine.delete(docName);
+    if (!mine.size) customOpening.delete(client);
+  };
   let holder: number | null = null;
   /** `sql` for `docName`, after what was asked for it before. */
   function inOrder(docName: string, sql: string): Promise<unknown> {
@@ -402,7 +468,8 @@ export async function createDocListener<I = unknown>(
   let inCommitOrder: Promise<void> = Promise.resolve();
   function heard(msg: any) {
     void onNotification(msg);
-    if (custom.size > 0) inCommitOrder = inCommitOrder.then(() => hearCustom(msg));
+    // only while a custom document is open here, or opening: else there is no one to tell, and the log is not read
+    if (custom.size > 0 && customOpening.size > 0) inCommitOrder = inCommitOrder.then(() => hearCustom(msg));
   }
 
   /** The custom documents told the one write a notification announces: its document's entry at that version. */
@@ -543,6 +610,7 @@ export async function createDocListener<I = unknown>(
       if (state.subscribers.size === 0) { tracked.delete(docName); release(docName); }
     }
     custom.leave(client);
+    dropCustom(client);
   }
 
   // ---------------------------------------------------------------------------
@@ -585,9 +653,9 @@ export async function createDocListener<I = unknown>(
         }
         await fn({ docName, type: found.type, ctx: found.ctx, msg, client, respond, identity });
       } catch (err) {
-        const m = errMsg(err, { name: docName, owns: found.type.def?.owns });
-        log.error(`${label} failed: ${m}`);
-        respond({ error: { code: wireCode(err), message: m } });
+        const { error, logged } = answerOf(err, { name: docName, owns: found.type.def?.owns });
+        log.error(`${label} ${docName} failed: ${logged}`);
+        respond({ error });
       }
     };
   }
@@ -610,6 +678,10 @@ export async function createDocListener<I = unknown>(
       if ("error" in g) return respond(g);
       const { identity } = g;
 
+      if (crowded(client, docName)) return respond({ error: TOO_MANY });
+      const had = client?.data?.channels?.has(docName) === true;
+      holdCustom(client, docName); // counted from before its read: a write meanwhile reads the log for it
+      let opened = false;
       try {
         // As withDoc asks a type's owns: a name this identity does not own is not there for it.
         if (auth && match.def.owns && (identity as unknown) !== OWNER && !(await match.def.owns(identity as I, docName))) return respond({ error: NOT_FOUND });
@@ -617,11 +689,14 @@ export async function createDocListener<I = unknown>(
         if (doc == null) return respond({ error: NOT_FOUND });
         trackSubscribe(client, docName);
         onClientDrop(client, releaseClient);
+        opened = true;
         respond({ result: doc });
         log.info(`opened ${docName} (custom${match.def.recompute ? ", recompute" : ""})`);
       } catch (err) {
         log.error(`open custom ${docName} failed: ${errMsg(err)}`);
-        respond({ error: { code: 500, message: errMsg(err) } });
+        respond({ error: { code: 500, message: SERVER_FAILED } });
+      } finally {
+        if (!opened && !had) dropCustom(client, docName);
       }
     });
 
@@ -638,12 +713,14 @@ export async function createDocListener<I = unknown>(
       if (!custom.find(docName)) return;                       // fall through to standard
       trackUnsubscribe(client, docName);
       custom.leave(client, docName);
+      dropCustom(client, docName);
       respond({ result: { ack: true } });
       log.debug(`closed ${docName} (custom)`);
     });
   }
 
   ws.on("open", askedOpen(withDoc("open", async ({ docName, type, ctx, msg, client, respond, identity }) => {
+    if (crowded(client, docName)) return respond({ error: TOO_MANY });
     opening.set(docName, (opening.get(docName) ?? 0) + 1);
     try {
       // held before the read: a write from now is told to this name; one lost
@@ -702,7 +779,11 @@ export async function createDocListener<I = unknown>(
     let ops = msg.ops as DeltaOp[];
     if (type.def?.shape) {
       try { ops = shapedBy(type.def, docName, ops, identity); }
-      catch (err) { log.error(`shape ${docName} failed: ${errMsg(err)}`); return respond({ error: { code: wireCode(err), message: errMsg(err) } }); }
+      catch (err) {
+        const { error, logged } = answerOf(err);
+        log.error(`shape ${docName} failed: ${logged}`);
+        return respond({ error });
+      }
     }
     const writer = writerOf(identity, client);
     const kept = onLedger(type.prefix);
@@ -755,8 +836,9 @@ export async function createDocListener<I = unknown>(
         respond({ result: result && { ...result, ...(result.version != null ? { version: Number(result.version) } : {}), entry: result.entry == null ? undefined : Number(result.entry) } });
       } catch (err) {
         try { await db.query("ROLLBACK"); } catch { /* the connection may be gone */ }
-        log.error(`${way} failed: ${errMsg(err)}`);
-        respond({ error: { code: wireCode(err), message: errMsg(err) } });
+        const { error, logged } = answerOf(err);
+        log.error(`${way} failed: ${logged}`);
+        respond({ error });
       } finally {
         db.release();
       }
@@ -764,9 +846,10 @@ export async function createDocListener<I = unknown>(
     ws.on("undo", walk("undo"));
     ws.on("redo", walk("redo"));
     // A document's recent history, to whoever may open it: each entry says `mine`, never who wrote it.
+    // Its last `limit` entries: 50 unless it asks, never more than 100.
     ws.on("history", withDoc("history", async ({ docName, type, ctx, msg, client, respond, identity }) => {
       if (!(await type.open(ctx, docName, msg, identity))) return respond({ error: NOT_FOUND });
-      const { rows } = await pool.query("SELECT delta_history($1, $2, $3) AS entries", [docName, cursorOf(msg, client, writerOf(identity, client)), msg.limit ?? 50]);
+      const { rows } = await pool.query("SELECT delta_history($1, $2, $3) AS entries", [docName, cursorOf(msg, client, writerOf(identity, client)), historyLimit(msg.limit)]);
       respond({ result: await Promise.all((rows[0]?.entries ?? []).map(async (e: any) => shownAnswer(type.def, await showAnswer(pool, docName, e, type.def)))) });
     }));
   }

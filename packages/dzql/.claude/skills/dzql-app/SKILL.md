@@ -41,7 +41,7 @@ least that makes the next story pass; `bun run stories` after each.
 2. **The store**, `store.ts`: Postgres, through dzql's `openStore({ schema, migrations })` -- a
    server at `DATABASE_URL`, else PGlite in the process (in the data folder's `pg/`: `DATA_PATH`,
    else `data/`; in memory for the tests, `DATA_PATH=:memory:`), for development and the tests
-   alone. The tables, said
+   alone: under `NODE_ENV=production` it refuses. The tables, said
    here and only here (`defineSchema`: the model's `tables`, and the app's own beside them), the
    model's migrations, `prepare` to seed it (`importTables`, into empty tables), `delta` (the
    model's guards put on it as the app loads, before any listener), `register` for each resource's

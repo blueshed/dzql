@@ -91,7 +91,8 @@ test("it type-checks, and its own tests pass", () => {
 test("it starts on delta's one server: the page, drawn over the socket, and /health; in production over a pid file a container left", async () => {
   // a pid file naming a live process not the server's, as a container restarted can leave (its pid reused): production starts all the same
   writeFileSync(join(app, ".server.pid"), String(process.pid));
-  const proc = Bun.spawn(["bun", "run", "start"], { cwd: app, stdout: "pipe", stderr: "inherit", env: { ...process.env, PORT: "0" } });
+  // a production start with no DATABASE_URL: PGlite, said to be meant (dzql's openStore refuses it unsaid)
+  const proc = Bun.spawn(["bun", "run", "start"], { cwd: app, stdout: "pipe", stderr: "inherit", env: { ...process.env, PORT: "0", DZQL_PGLITE_IN_PRODUCTION: "1" } });
   try {
     let out = "";
     for await (const chunk of proc.stdout) {

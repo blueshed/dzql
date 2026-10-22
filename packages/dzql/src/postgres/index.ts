@@ -12,7 +12,8 @@
  *   await registerDocs(ws, pool, schema, docs, customDocs, { auth, ledger: true });
  *
  * `registerDocs` takes what delta's SQLite `registerDocs` takes; `openStore`
- * does the whole start (migrations, framework, documents) for an app. The
+ * does the whole start (migrations, then the framework and documents together,
+ * `applyCompiled`, only when they changed) for an app. The
  * stored functions are `src/sql/001*.sql`: `applyFramework(pool)` applies
  * them, or `bunx dzql init <dir>` copies them for a migration tool
  * (plain idempotent SQL; order is alphabetical).
@@ -40,10 +41,12 @@ export type { Snapshot } from "@blueshed/delta/backend";
 export type { GenerateSqlOptions } from "./codegen";
 
 export {
+  applyCompiled,
   applyFramework,
   applySql,
   frameworkSqlFiles,
 } from "./bootstrap";
+export type { ApplyCompiledOptions, ApplyCompiledResult, CompiledSet } from "./bootstrap";
 
 export { migrate, migrationStatus, renameColumn, dropColumn, renameTable, fromFolder } from "./migrate";
 export type { Migration, MigrateOptions, MigrateResult, MigrationStatus } from "./migrate";

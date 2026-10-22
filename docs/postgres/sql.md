@@ -32,7 +32,8 @@ functions you call stay these:
 - `delta_touch(collection, id)`: from a trigger a write sets off, a row it changes told as the
   write's own (below).
 - `delta_snapshot(name, at)` / `delta_resolve_snapshot(name)`: pin a time to a label.
-- `delta_prune_ops(interval)` (`pruneOpsLog(pool)`): trims the log and forgets names nobody holds.
+- `delta_prune_ops(interval)` (`pruneOpsLog(pool)`): trims the log and forgets names nobody holds; an
+  open `openStore` calls it every 10 minutes (`postgres.md`, *Deploying*).
 
 ## Rules
 

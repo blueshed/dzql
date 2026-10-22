@@ -17,8 +17,12 @@
  *
  *   const auth = jwtAuth({
  *     pool,
- *     secret: process.env.JWT_SECRET!,
+ *     secret: process.env.JWT_SECRET!,   // 32 bytes at least, or jwtAuth throws as it is made
  *   });
+ *
+ * A login with a wrong password counts against its email: past `maxFailedLogins` (5), each
+ * within `lockout` (a minute) of the last, the email is refused unchecked until it has waited,
+ * so a flood of guesses costs the database no bcrypt. Per process: two servers count apart.
  *
  *   wireAuth(ws, auth);
  *   await createDocListener(ws, pool, { auth });
@@ -54,8 +58,17 @@ export interface User {
 
 export interface JwtAuthOpts {
   pool: Pool;
+  /** What signs the tokens: 32 bytes at least (256 bits, as HS256 wants), checked as `jwtAuth` is made. `openssl rand -base64 48` makes one. */
   secret: string | Uint8Array;
   expirationTime?: string;
+  /**
+   * Wrong passwords for one email, each within `lockout` of the last, before that email is refused
+   * unchecked (no hash worked out) until it has waited `lockout`: a guess costs the database a
+   * bcrypt, so a flood of them is stopped here. Unknown emails are counted too. Default 5.
+   */
+  maxFailedLogins?: number;
+  /** How long, in ms, an email guessed at too often waits (and how long a wrong try is remembered). Default 60000. */
+  lockout?: number;
   loginSql?: string;
   registerSql?: string;
   /**
@@ -86,12 +99,31 @@ function switchIdentity(client: any, user: User, expires: number | undefined): v
 /** When a token's `exp` says it runs out, in ms since the epoch. */
 const expiresOf = (exp: unknown): number | undefined => (typeof exp === "number" ? exp * 1000 : undefined);
 
+/** The fewest bytes a secret may have: HS256 signs with a 256-bit key. */
+const SECRET_BYTES = 32;
+
 export function jwtAuth(opts: JwtAuthOpts): DeltaAuth<User> {
   const secret =
     typeof opts.secret === "string"
       ? new TextEncoder().encode(opts.secret)
       : opts.secret;
+  if (!(secret instanceof Uint8Array) || secret.length < SECRET_BYTES) {
+    throw new Error(`jwtAuth: the secret must be at least ${SECRET_BYTES} bytes (it signs every token; ${secret instanceof Uint8Array ? `this one is ${secret.length}` : "none was given"}): set JWT_SECRET to one, e.g. \`openssl rand -base64 48\``);
+  }
   const expirationTime = opts.expirationTime ?? "7d";
+  const maxFailed = opts.maxFailedLogins ?? 5;
+  const lockout = opts.lockout ?? 60_000;
+  /** Wrong tries at each email's password, and when the last was: `lockout` old, forgotten. */
+  const guesses = new Map<string, { tries: number; last: number }>();
+  const guessed = (email: string): void => {
+    const now = Date.now();
+    for (const [e, g] of guesses) if (now - g.last >= lockout) guesses.delete(e);
+    guesses.set(email, { tries: (guesses.get(email)?.tries ?? 0) + 1, last: now });
+  };
+  const slowed = (email: string): boolean => {
+    const g = guesses.get(email);
+    return !!g && g.tries >= maxFailed && Date.now() - g.last < lockout;
+  };
   const loginSql = opts.loginSql ?? "SELECT login($1, $2) AS result";
   const registerSql = opts.registerSql ?? "SELECT register($1, $2, $3) AS result";
 
@@ -130,9 +162,15 @@ export function jwtAuth(opts: JwtAuthOpts): DeltaAuth<User> {
       async login(params, client) {
         const { email, password } = params ?? {};
         if (!email || !password) return { error: "email and password required" };
+        const key = String(email).trim().toLowerCase();
+        if (slowed(key)) return { error: "Too many tries for that email: wait a while, then try again." }; // not even checked
         const { rows } = await opts.pool.query(loginSql, [email, password]);
         const user = rows[0]?.result as User | null;
-        if (!user) return { error: "Invalid credentials" };
+        if (!user) {
+          guessed(key);
+          return { error: "Invalid credentials" };
+        }
+        guesses.delete(key);
         const token = await signToken(user);
         switchIdentity(client, user, expiresOf(decodeJwt(token).exp));
         log.info(`login user=${user.id}`);

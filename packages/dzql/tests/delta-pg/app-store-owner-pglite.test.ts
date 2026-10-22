@@ -52,7 +52,7 @@ const hear = (local: ReturnType<typeof createLocal>) => {
 
 describe("openStore's owner, an app with sign-in", () => {
   const socket = createLocal(); // the pages' socket, as createWs() is
-  const store = openStore<Person>({ schema, auth, who: (p) => String(p.id), ws: socket.server, prepare: (pool) => importTables(pool, schema, seed) });
+  const store = openStore<Person>({ database: ":memory:", schema, auth, who: (p) => String(p.id), ws: socket.server, prepare: (pool) => importTables(pool, schema, seed) });
   store.register([mine, everyone], { custom: [counted] });
   beforeAll(() => store.open());
   afterAll(() => store.close());
@@ -87,7 +87,7 @@ describe("openStore's owner, an app with sign-in", () => {
 describe("openStore's owner, an app with no sign-in", () => {
   test("it is a caller in this process, on the ledger by no one", async () => {
     const plain = defineSchema({ people: { columns: { name: "text" }, temporal: false } });
-    const store = openStore({ schema: plain });
+    const store = openStore({ database: ":memory:", schema: plain });
     store.register([defineDoc("people:", { root: "people", include: [] })]);
     await store.open();
     try {

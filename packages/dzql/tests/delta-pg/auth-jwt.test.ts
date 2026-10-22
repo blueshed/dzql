@@ -4,7 +4,7 @@
  * Requires a live Postgres with the delta framework and auth-jwt.sql
  * applied. Uses the compose stack by default.
  */
-import { describe, test, expect, beforeAll, beforeEach, afterAll } from "bun:test";
+import { describe, test, expect, beforeAll, beforeEach, afterAll, setSystemTime } from "bun:test";
 import { Pool } from "pg";
 import { SignJWT } from "jose";
 import { jwtAuth } from "../../src/postgres/auth-jwt";
@@ -28,7 +28,7 @@ import { setLogLevel } from "@blueshed/delta/logger";
 setLogLevel("silent");
 
 let pool: Pool;
-const SECRET = "test-secret-do-not-use-in-prod";
+const SECRET = "test-secret-do-not-use-in-production-32+"; // 32 bytes at least, as jwtAuth asks
 
 beforeAll(async () => {
   pool = await newPool();
@@ -143,6 +143,35 @@ describe("jwtAuth.actions.login", () => {
     const auth = jwtAuth({ pool, secret: SECRET });
     const outcome = await auth.actions!.login({ email: "x" }, mockClient());
     expect("error" in outcome).toBe(true);
+  });
+
+  test("an email guessed at too often is refused, unchecked, until it has waited; a right password then clears it (todo #105)", async () => {
+    const now = Date.now();
+    setSystemTime(new Date(now)); // the clock held still, so a bcrypt's time counts for nothing
+    try {
+      const auth = jwtAuth({ pool, secret: SECRET, maxFailedLogins: 3, lockout: 60_000 });
+      await auth.actions!.register({ name: "G", email: "g@example.com", password: "right" }, mockClient());
+      const login = (password: string, email = "g@example.com") => auth.actions!.login({ email, password }, mockClient());
+      for (let i = 0; i < 3; i++) expect(await login("wrong")).toEqual({ error: "Invalid credentials" });
+      // the right password too: not even checked (no hash worked out for it)
+      expect(await login("right")).toEqual({ error: "Too many tries for that email: wait a while, then try again." });
+      expect(await login("right", " G@Example.com ")).toEqual({ error: "Too many tries for that email: wait a while, then try again." }); // the same email, however written
+      expect("result" in (await auth.actions!.login({ email: "b@example.com", password: "nope" }, mockClient()))).toBe(false); // another email's own count
+      setSystemTime(new Date(now + 60_000)); // a minute on
+      expect("result" in (await login("right"))).toBe(true);
+      expect(await login("wrong")).toEqual({ error: "Invalid credentials" }); // counted afresh
+    } finally {
+      setSystemTime(); // the real clock again
+    }
+  }, 30_000);
+});
+
+describe("jwtAuth's secret (todo #105)", () => {
+  test("shorter than 32 bytes, or none, is refused as it is made, not at the first login", () => {
+    expect(() => jwtAuth({ pool, secret: "x" })).toThrow("at least 32 bytes");
+    expect(() => jwtAuth({ pool, secret: undefined as unknown as string })).toThrow("at least 32 bytes");
+    expect(() => jwtAuth({ pool, secret: new Uint8Array(31) })).toThrow("at least 32 bytes");
+    expect(() => jwtAuth({ pool, secret: new Uint8Array(32) })).not.toThrow();
   });
 });
 
