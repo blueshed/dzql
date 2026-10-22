@@ -191,15 +191,17 @@ describe("a save that fails", () => {
     const onReject = (err: unknown) => seen.push(err);
     process.on("unhandledRejection", onReject);
     try {
-      chmodSync(dir, 0o500);   // no file may be made in it: the save fails
+      // a folder, not empty, where the file goes: no rename may replace it, root's neither (a
+      // read-only folder blocks nothing for root, the user a container runs as): the save fails
+      mkdirSync(file);
+      writeFileSync(join(file, "in-the-way"), "");
       await local.call("delta", { doc: "notes:", ops: [{ op: "add", path: "/notes/-", value: { text: "one" } }] });
       expect(store.persisted()).rejects.toThrow();
       await Bun.sleep(20);
-      chmodSync(dir, 0o700);
+      rmSync(file, { recursive: true });
       await local.call("delta", { doc: "notes:", ops: [{ op: "add", path: "/notes/-", value: { text: "two" } }] });
       await store.persisted();
     } finally {
-      chmodSync(dir, 0o700);
       process.off("unhandledRejection", onReject);
     }
     expect(seen).toEqual([]);

@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- **A person signed in makes only their own link, unless the app says** (22 October, delta #95).
+  `linkAuth`'s `link` action let anyone signed in make anyone's sign-in link, an admin's included,
+  unless `mayLink` said otherwise. Now, with no `mayLink`, a person makes only their own (`by.id ===
+  person`); another's is refused, `Not yours to send`. `mayLink` is asked before the person is
+  looked up, so a refusal reads the same for someone and for nobody. The lists example (and the
+  evolve skill's `auth` reference) lets anyone send anyone's. **To move across**: an app whose
+  people send each other links passes `mayLink: () => true`, or a rule (an admin's, a team's).
+- **linkAuth's development routes answer only where development is asked for** (22 October, delta
+  #96). `GET /api/dev/people`, `POST /api/dev/as/:id` and `signInAs` answered whenever `NODE_ENV`
+  was not `production`, so a bare `bun src/routes.ts` let anyone be anyone. Now, unless `dev` says,
+  they answer when `NODE_ENV` is `development` or `test` (`bun test` sets `test`), or the process
+  runs under `bun --hot` and `NODE_ENV` is not `production` (`developing()` in `./auth-link`). **To
+  move across**: run development with `bun --hot` or `NODE_ENV=development`; tests change nothing.
 - **An `owns: "ANYONE"` document says who may write it** (21 October, delta #94): `defineDoc`
   refuses one with no `accept`, since every socket, signed in or not, would write it (the hole
   the Shed's run 6 found). To move across: give it a rule, or `accept: () => false` for one nobody
@@ -145,6 +158,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A socket's limits: a message's size, and the documents it holds open** (22 October, delta #97).
+  `createWs({ maxPayloadLength })` defaults to 1 MiB, as dzql's kernel sets (Bun's was 16 MB): past
+  it Bun drops the socket, the frame unread. `createWs({ maxDocs })` defaults to 1000: one more
+  `open` is refused 429, `Too many documents open on this socket (1000): close one first`, before
+  any backend, and nothing is held for it; opens still being answered count, so a burst cannot pass
+  it. 429 joins the error table (`paths.md`). `tests/server.test.ts`.
+- **A memory document may be forgotten once nobody holds it** (22 October, delta #98, in part).
+  `registerMemory(ws, { unheld: "forget" })` lets a document go with its last holder; its next open
+  starts from `empty` at version 0. The default, `"keep"`, is as before. `tests/kinds.test.ts`.
+- **`/health` is the app's, and a stop is as soon as nothing is in flight** (22 October, delta #99).
+  `App.health` (a `HealthCheck`, `() => boolean | Promise<boolean>`) makes `/health` answer 200
+  `ok`, 503 `unhealthy` when it says false or throws, and 503 `draining` once the server is
+  stopping. `Served.stop()` takes no new connection, waits for the requests in flight, the socket
+  messages being handled and `App.idle`, then closes each socket going away (1001) and closes the
+  app's `close` list; `run`'s five seconds are the most it waits (it was always the five, a socket
+  open). `tests/serve.test.ts`.
 - **`shape` on `defineDoc`: what the server makes of a write** (21 October, the Shed's run 6,
   finding 1). A value a rule gives as the row is written (a booking's last day two weeks from its
   first) had no place on the server, so the page worked it out, never stored. `shape(op, { doc,
@@ -314,6 +343,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **"A save that fails" holds as root** (22 October, delta #105): the test made its folder read-only,
+  which blocks nothing for root (a container's user); a folder in the file's place fails the save
+  for every user.
 - **`install-skills` keeps its backups outside the skills** (21 October, the Shed's run 6, finding
   9). A page it replaced was backed up beside it, `.bak` in `.claude/skills/<skill>/`, so an app
   whose `prepare` runs it (both starters') committed the copies with its skills, and a session read

@@ -1,6 +1,6 @@
 # Sign in, with no passwords
 
-When people should be someone: their own things, a list only some may see, who wrote what. delta's link sign-in: **a link is someone**. Its tap makes a session, a cookie the page never reads, and the socket is signed in by it. Anyone signed in sends anyone their link; the first person's comes from a command. In development the page asks "Who are you?" and you pick: two windows are two people, and nobody remembers a password. People are a resource of their own, kept in SQLite with a history, as [sqlite.md](sqlite.md) keeps the order. What moves with them: every document whose rows theirs name, or that names theirs, goes to SQLite with the people, in the same step. Rows that name each other live in one store; only a document that names nobody's rows, like `message`, stays a JSON file.
+When people should be someone: their own things, a list only some may see, who wrote what. delta's link sign-in: **a link is someone**. Its tap makes a session, a cookie the page never reads, and the socket is signed in by it. Here anyone signed in sends anyone their link (`mayLink`, the app's choice: without it a person sends only their own); the first person's comes from a command. In development the page asks "Who are you?" and you pick: two windows are two people, and nobody remembers a password. People are a resource of their own, kept in SQLite with a history, as [sqlite.md](sqlite.md) keeps the order. What moves with them: every document whose rows theirs name, or that names theirs, goes to SQLite with the people, in the same step. Rows that name each other live in one store; only a document that names nobody's rows, like `message`, stays a JSON file.
 
 ```ts
 // src/resources/people/people-api.ts
@@ -34,6 +34,7 @@ export async function peopleDocs(ws: WsServer, dataDir: string) {
     store: sqliteLinkStore(db),
     personOf: (id) => db.query<Person, [number]>("SELECT id, name FROM people WHERE id = ?").get(id),
     people: () => db.query<Person, []>("SELECT id, name FROM people ORDER BY name, id").all(),
+    mayLink: () => true, // anyone here sends anyone their link: the app's choice (without it, only your own)
   });
   wireAuth(ws, auth); // me, link
   registerDocs(ws, db, schema, docs, [], { auth, shared: true });

@@ -63,6 +63,9 @@ section up.
 
 ### Fixed
 
+- **The `auth` reference passes `mayLink`** (22 October, delta #95): delta's link sign-in now lets a
+  person make only their own link unless the app says; the reference's people send each other theirs,
+  so its `linkAuth` passes `mayLink: () => true`, and its opening says that is the app's choice.
 - **The session hook uses the sandbox's own Chromium when its image has one** (22 October, root
   #145). Claude Code's cloud image carries Playwright's Chromium (`$PLAYWRIGHT_BROWSERS_PATH`,
   `/opt/pw-browsers`); the hook's shim now runs it headless and downloads nothing, and unpacks
