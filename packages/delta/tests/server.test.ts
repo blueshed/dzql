@@ -7,7 +7,8 @@ import { wireAuth, isAuthError, type DeltaAuth } from "../src/server/auth";
 import { defineDoc, defineSchema, registerDocs } from "../src/server/json";
 import { createLocal } from "../src/server/local";
 import { setLogLevel } from "../src/server/logger";
-import { mockClient } from "../src/testing";
+import { mockClient, sendAndAwait, waitFor } from "../src/testing";
+import { registerMemory } from "../src/server/kinds";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -988,5 +989,88 @@ describe("the logger", () => {
     expect(out).toContain("ERROR-VISIBLE");
     expect(out).toContain("level=info");
     expect(out).not.toContain("\x1b[");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// What one socket may send, and hold open (#97)
+// ---------------------------------------------------------------------------
+
+describe("what one socket may send and hold open (#97)", () => {
+  test("a message is at most 1 MiB (maxPayloadLength, as dzql's kernel sets), unless said", () => {
+    expect(createWs().websocket.maxPayloadLength).toBe(1024 * 1024);
+    expect(createWs({ maxPayloadLength: 4096 }).websocket.maxPayloadLength).toBe(4096);
+  });
+
+  test("a frame past it closes the socket, unanswered; one within it is answered", async () => {
+    const ws = createWs({ maxPayloadLength: 64 * 1024 });
+    registerMethod(ws, "echo", (params) => params.text.length);
+    const server = Bun.serve({ port: 0, routes: { [ws.path]: ws.upgrade }, websocket: ws.websocket });
+    ws.setServer(server);
+    try {
+      const sock = new WebSocket(`ws://localhost:${server.port}/ws`);
+      const heard: any[] = [];
+      sock.onmessage = (e) => heard.push(JSON.parse(String(e.data)));
+      const closed = new Promise<number>((done) => (sock.onclose = (e) => done(e.code)));
+      await new Promise((ok, no) => ((sock.onopen = ok), (sock.onerror = no)));
+      sock.send(JSON.stringify({ id: 1, action: "call", method: "echo", params: { text: "x".repeat(1000) } }));
+      await waitFor(() => heard.length === 1);
+      expect(heard[0]).toEqual({ id: 1, result: 1000 });
+      sock.send(JSON.stringify({ id: 2, action: "call", method: "echo", params: { text: "x".repeat(65 * 1024) } }));
+      expect([1006, 1009]).toContain(await closed);   // too big: Bun drops it (a client sees 1006, the connection gone)
+      expect(heard.map((m) => m.id)).toEqual([1]);
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  /** Memory documents `m:<id>` on a socket that may hold `maxDocs` open (unsaid: the default), and a socket on it. */
+  function holding(maxDocs?: number) {
+    const ws = createWs(maxDocs === undefined ? {} : { maxDocs });
+    registerMemory(ws, { prefix: "m:", empty: () => ({}) });
+    const sock = mockSocket();
+    ws.websocket.open(sock);
+    const ask = (msg: object) => sendAndAwait(ws, sock, msg);
+    return { sock, ask, open: (doc: string) => ask({ action: "open", doc }) };
+  }
+  const tooMany = (n: number) => ({ code: 429, message: `Too many documents open on this socket (${n}): close one first` });
+
+  test("a socket holds up to maxDocs documents open; one more is refused 429, and nothing is held for it; one it holds opens again", async () => {
+    const { open, sock } = holding(3);
+    for (const doc of ["m:1", "m:2", "m:3"]) expect((await open(doc)).error).toBeUndefined();
+    expect((await open("m:4")).error).toEqual(tooMany(3));
+    expect([...sock.subscriptions].sort()).toEqual(["m:1", "m:2", "m:3"]);
+    expect((await open("m:2")).error).toBeUndefined();
+  });
+
+  test("closing one makes room; a document refused (404) takes none", async () => {
+    const { open, ask } = holding(2);
+    await open("m:1");
+    expect((await open("nothing:1")).error.code).toBe(404);   // no backend's: never held
+    await open("m:2");
+    expect((await open("m:3")).error.code).toBe(429);
+    await ask({ action: "close", doc: "m:1" });
+    expect((await open("m:3")).error).toBeUndefined();
+  });
+
+  test("opens sent at once are counted as they start, not as they finish: no more than maxDocs get through", async () => {
+    const ws = createWs({ maxDocs: 2 });
+    // an open that takes a while, as a store's read does
+    ws.on("open", async (msg, client, respond) => {
+      await Bun.sleep(5);
+      trackSubscribe(client, msg.doc);
+      respond({ result: {} });
+    });
+    const sock = mockSocket();
+    ws.websocket.open(sock);
+    const answers = await Promise.all(["s:1", "s:2", "s:3", "s:4"].map((doc) => sendAndAwait(ws, sock, { action: "open", doc })));
+    expect(answers.map((a) => a.error?.code ?? 200)).toEqual([200, 200, 429, 429]);
+    expect(sock.subscriptions.size).toBe(2);
+  });
+
+  test("unless said, a socket holds 1000", async () => {
+    const { open } = holding();
+    for (let i = 0; i < 1000; i++) expect((await open(`m:${i}`)).error).toBeUndefined();
+    expect((await open("m:1000")).error).toEqual(tooMany(1000));
   });
 });

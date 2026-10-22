@@ -49,11 +49,15 @@ provide(WS, connectWs("/ws"));
 const me = await call<Person | null>("me");          // null: nobody: show "Who are you?"
 ```
 
-- **A link:** `call("link", { person, opens })` from anyone signed in (`mayLink` narrows it);
-  the first person's from the server, `bunx @blueshed/delta link app.db 1 --origin https://my.app`.
+- **A link:** `call("link", { person, opens })` from someone signed in: their own, unless
+  `mayLink(by, person)` lets them send another's (`mayLink: () => true`: anyone's; the lists
+  example's). A refusal is the same for someone and nobody. The first person's comes from the
+  server, `bunx @blueshed/delta link app.db 1 --origin https://my.app`.
 - **In development** `everyone()` lists people and `becomeAs(id)` signs in as one: a picker
-  instead of a password. Tests: `await auth.signInAs(id)` is a cookie header. None of these
-  answers in production.
+  instead of a password. Tests: `await auth.signInAs(id)` is a cookie header. On only where it is
+  asked for: `dev: true`, or unsaid, `NODE_ENV` development or test (`bun test` sets it), or
+  `bun --hot` (`developing()`). Never in production, nor a bare `bun src/routes.ts` with
+  `NODE_ENV` unset: start a server for people with `NODE_ENV=production`.
 - **Sign out:** `signOut()` ends the session and reloads the page.
 - **A script or test is signed in by its headers**: `connectWs(url, { headers: { cookie } })`
   sends them on every connect (Bun), then `openDoc` and `call` as a page does; a browser sends

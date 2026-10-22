@@ -2,11 +2,13 @@
  * Link sign-in (`@blueshed/delta/auth-link`) on SQLite, through a real server and real sockets: a
  * link is someone, used once by a tap from the site, and becomes a session cookie the socket is
  * signed in by; a preview uses nothing; a link used, run out, unknown or posted from another site
- * signs nobody in; sign out ends the session; anyone signed in makes anyone's link; and in
- * development the picker makes you anyone, which production refuses.
+ * signs nobody in; sign out ends the session; a person signed in makes their own link, and
+ * another's only where the app says (`mayLink`); and in development the picker makes you anyone,
+ * which production, and a process that says it is neither development nor a test, refuses.
  */
 import { Database } from "bun:sqlite";
 import { afterAll, describe, expect, test } from "bun:test";
+import { join } from "node:path";
 import { createWs } from "../src/server/server";
 import { upgradeWithAuth, wireAuth } from "../src/server/auth";
 import { hashToken, linkAuth, makeLink, sqliteLinkStore, SESSION_COOKIE } from "../src/server/auth-link";
@@ -186,14 +188,15 @@ describe("a session", () => {
 });
 
 describe("making links", () => {
-  test("anyone signed in makes anyone's link, opening where they say; nobody signed in makes none", async () => {
+  test("a person signed in makes their own link, opening where they say; another's is not theirs to send, whoever it is; nobody signed in makes none", async () => {
     const ann = await socket(live, await live.auth.signInAs(1));
     const nobody = await socket(live);
     try {
-      const made = (await ann.ask({ action: "call", method: "link", params: { person: 2, opens: "/people" } })).result;
+      const made = (await ann.ask({ action: "call", method: "link", params: { person: 1, opens: "/people" } })).result;
       expect(made.url).toStartWith(`${live.origin}/#/in/`);
-      expect(await (await tap(made.url)).json()).toMatchObject({ id: 2, name: "Bob", opens: "/people" });
-      expect((await ann.ask({ action: "call", method: "link", params: { person: 99 } })).error.code).toBe(401);
+      expect(await (await tap(made.url)).json()).toMatchObject({ id: 1, name: "Ann", opens: "/people" });
+      // Bob is someone, 99 nobody: refused alike, so a refusal says nothing of who is here
+      for (const person of [2, 99]) expect((await ann.ask({ action: "call", method: "link", params: { person } })).error).toEqual({ code: 401, message: "Not yours to send" });
       expect((await nobody.ask({ action: "call", method: "link", params: { person: 1 } })).error.code).toBe(401);
     } finally {
       ann.close();
@@ -201,18 +204,27 @@ describe("making links", () => {
     }
   });
 
-  test("an app may narrow who sends whose (mayLink)", async () => {
-    const db = new Database(":memory:");
-    const store = sqliteLinkStore(db);
-    const auth = linkAuth<Person>({ store, personOf: (id) => ({ id, name: `#${id}` }), people: () => [], mayLink: (by, person) => by.id === person });
-    const client = { data: { identity: { id: 1, name: "#1" } } };
+  /** What `link` answers #1 asking for `person`'s link, under `mayLink` (people 1 to 9 are someone): the action asked as the socket's `call` asks it. */
+  async function linkAs(mayLink: (by: Person, person: number) => boolean, person: number) {
+    const auth = linkAuth<Person>({ store: sqliteLinkStore(new Database(":memory:")), personOf: (id) => (id < 10 ? { id, name: `#${id}` } : null), people: () => [], mayLink });
     process.env.ORIGIN = "https://my.app"; // with no socket's site to name, production's ORIGIN
     try {
-      expect(await auth.actions!.link!({ person: 2 }, client)).toEqual({ error: "Not yours to send" });
-      expect(await auth.actions!.link!({ person: 1 }, client)).toMatchObject({ result: { url: expect.stringMatching(/^https:\/\/my\.app\/#\/in\//) } });
+      return await auth.actions!.link!({ person }, { data: { identity: { id: 1, name: "#1" } } });
     } finally {
       delete process.env.ORIGIN;
     }
+  }
+  const aLink = { result: { url: expect.stringMatching(/^https:\/\/my\.app\/#\/in\//) } };
+
+  test("an app says who else may send whose (mayLink): anyone's, as before 22 October, is `() => true`", async () => {
+    expect(await linkAs(() => true, 2)).toMatchObject(aLink);
+    expect(await linkAs(() => true, 12)).toEqual({ error: "Nobody of that id" });   // let, but nobody
+  });
+
+  test("an app may narrow who sends whose (mayLink), their own included", async () => {
+    expect(await linkAs((by, person) => by.id === person, 2)).toEqual({ error: "Not yours to send" });
+    expect(await linkAs((by, person) => by.id === person, 1)).toMatchObject(aLink);
+    expect(await linkAs(() => false, 1)).toEqual({ error: "Not yours to send" });
   });
 });
 
@@ -236,6 +248,27 @@ describe("development", () => {
     expect((await fetch(`${prod.origin}/api/dev/as/1`, { method: "POST", headers: { origin: prod.origin } })).status).toBe(404);
     expect(prod.auth.signInAs(1)).rejects.toThrow("development");
   });
+
+  // Unless `dev` says, development is NODE_ENV development or test (bun test sets test), or a
+  // `bun --hot` that is not production: a bare `bun src/routes.ts`, NODE_ENV unset, is not.
+  const helper = join(import.meta.dir, "helpers/link-dev.ts");
+  /** Whether a linkAuth given no `dev`, made in a process of its own under `NODE_ENV` (undefined: unset) and Bun's `flags`, is in development. */
+  async function developing(NODE_ENV: string | undefined, flags: string[] = []) {
+    const { NODE_ENV: _, ...env } = process.env;
+    const proc = Bun.spawn([process.execPath, ...flags, helper], { env: NODE_ENV === undefined ? env : { ...env, NODE_ENV }, stdout: "pipe", stderr: "pipe" });
+    const [out] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+    return out.trim();
+  }
+
+  test("is on only where it is asked for: NODE_ENV development or test, or bun --hot; never a bare start, nor production", async () => {
+    expect(await developing(undefined)).toBe("not development");
+    expect(await developing("staging")).toBe("not development");
+    expect(await developing("production")).toBe("not development");
+    expect(await developing("development")).toBe("development");
+    expect(await developing("test")).toBe("development");
+    expect(await developing(undefined, ["--hot"])).toBe("development");
+    expect(await developing("production", ["--hot"])).toBe("not development");
+  }, 20_000);
 });
 
 // The store, as every backend's answers it (dzql's Postgres runs the same)

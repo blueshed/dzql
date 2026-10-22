@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createWs } from "../src/server/server";
+import { createWs, registerMethod } from "../src/server/server";
 import { pidFile, serve, stop } from "../src/server/serve";
 
 // The one server: an app's routes and resources, served; the process around them (`run`): the pid
@@ -32,6 +32,16 @@ async function readUntil(proc: Bun.Subprocess<"ignore", "pipe", "pipe">, pattern
 const start = (env: Record<string, string> = {}) =>
   Bun.spawn([process.execPath, entry], { cwd: dir, env: { ...process.env, PORT: "0", PID_FILE: file, ...env }, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
 
+/** A socket opened on `served`, as a page opens one: what it hears, and its close code once closed. */
+async function socketOn(served: { url: URL }, path = "/ws") {
+  const sock = new WebSocket(new URL(path, served.url.href.replace("http", "ws")));
+  const heard: any[] = [];
+  sock.onmessage = (e) => heard.push(JSON.parse(String(e.data)));
+  const closed = new Promise<number>((done) => (sock.onclose = (e) => done(e.code)));
+  await new Promise((ok, no) => ((sock.onopen = ok), (sock.onerror = no)));
+  return { sock, heard, closed };
+}
+
 describe("serve", () => {
   test("serves the app's routes, delta's socket on its path, /health, and 404 for the rest", async () => {
     const ws = createWs();
@@ -54,6 +64,66 @@ describe("serve", () => {
     await served.stop(true);
     await served.close();
     expect(closed).toEqual(["listener", "pool"]);
+  });
+
+  test("/health is the app's check when it gives one: ok while it says so, 503 when it says not, or throws (#99)", async () => {
+    let says: boolean | Error = true;
+    const served = serve({ routes: {}, health: async () => { if (says instanceof Error) throw says; return says; } }, { port: 0, dev: false });
+    const health = async () => { const res = await fetch(new URL("/health", served.url)); return [res.status, await res.text()]; };
+    try {
+      expect(await health()).toEqual([200, "ok"]);
+      says = false;
+      expect(await health()).toEqual([503, "unhealthy"]);
+      says = new Error("the pool is gone");
+      expect(await health()).toEqual([503, "unhealthy"]);
+      says = true;
+      expect(await health()).toEqual([200, "ok"]);
+    } finally {
+      await served.stop(true);
+    }
+  });
+
+  test("/health is 503 once the server is stopping: a check answered while it drains (#99)", async () => {
+    let checked!: () => void;
+    const asked = Promise.withResolvers<void>();
+    const served = serve({ routes: {}, health: () => { asked.resolve(); return new Promise<boolean>((ok) => (checked = () => ok(true))); } }, { port: 0, dev: false });
+    const answer = fetch(new URL("/health", served.url));
+    await asked.promise;
+    const stopping = served.stop();
+    checked();
+    const res = await answer;
+    expect([res.status, await res.text()]).toEqual([503, "draining"]);
+    await stopping;
+  });
+
+  test("stop is as soon as nothing is in flight: an idle socket does not hold it, and is closed going away (1001) (#99)", async () => {
+    const ws = createWs();
+    const served = serve({ ws, routes: {} }, { port: 0, dev: false });
+    const { closed } = await socketOn(served);
+    const t = Date.now();
+    await served.stop();
+    expect(Date.now() - t).toBeLessThan(1000);
+    expect(await closed).toBe(1001);
+  });
+
+  test("stop waits for what is in flight: a request is answered, a socket's message too, and the app's own work (idle) is done, then it stops (#99)", async () => {
+    const ws = createWs();
+    registerMethod(ws, "slow", async () => (await Bun.sleep(200), "done"));
+    let busy = true;
+    const served = serve({
+      ws,
+      routes: { "/slow": async () => (await Bun.sleep(200), new Response("slow")) },
+      idle: async () => { await Bun.sleep(100); busy = false; },
+    }, { port: 0, dev: false });
+    const { sock, heard, closed } = await socketOn(served);
+    sock.send(JSON.stringify({ id: 1, action: "call", method: "slow" }));
+    const request = fetch(new URL("/slow", served.url)).then((r) => r.text());
+    await Bun.sleep(30);
+    await served.stop();
+    expect(await request).toBe("slow");
+    expect(heard).toEqual([{ id: 1, result: "done" }]);
+    expect(busy).toBe(false);
+    expect(await closed).toBe(1001);
   });
 
   test("an app's own route wins over delta's", async () => {
@@ -115,6 +185,17 @@ describe("run and stop", () => {
     expect(await stubborn.exited).not.toBe(0);
     expect(await Bun.file(file).exists()).toBe(false);
   });
+
+  test("SIGTERM stops it as soon as nothing is in flight, not after the grace: an open socket idle does not hold it (#99)", async () => {
+    const proc = start();
+    const url = (await readUntil(proc, /Listening on (\S+)/))[1]!;
+    const { closed } = await socketOn({ url: new URL(url) }, "/ws");
+    const t = Date.now();
+    proc.kill("SIGTERM");
+    expect(await proc.exited).toBe(0);
+    expect(Date.now() - t).toBeLessThan(2500);   // the grace is 5 s
+    expect(await closed).toBe(1001);
+  }, 15_000);
 
   test("`delta stop` is stop, at the command line", async () => {
     const proc = start();

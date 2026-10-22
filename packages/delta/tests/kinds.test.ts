@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { createLocal } from "../src/server/local";
 import { registerMemory, registerSource, registerStatic } from "../src/server/kinds";
-import { dropClientSubscriptions } from "../src/server/server";
+import { createWs, dropClientSubscriptions } from "../src/server/server";
 import { setLogLevel } from "../src/server/logger";
 import {
-  assertCopiesHold, openAll, write, type PathBackend,
+  assertCopiesHold, mockClient, openAll, sendAndAwait, write, type PathBackend,
 } from "@blueshed/delta/testing";
 
 setLogLevel("silent");
@@ -103,6 +103,53 @@ describe("memory: live documents", () => {
     expect(op).toEqual({ op: "add", path: `/people/${id}`, value: { name: "Ada", id } });
     expect(heard).toEqual([{ doc: "here:general", ops: result.ops, v: 1 }]);
     expect(here.peek("here:general")).toEqual({ people: { [id]: { name: "Ada", id } } });
+  });
+
+  describe("once nobody holds one (#98)", () => {
+    /** A socket server with `here:` memory documents (`unheld` as given), and sockets on it. */
+    function lobby(unheld?: "keep" | "forget") {
+      const ws = createWs();
+      const here = registerMemory(ws, { prefix: "here:", empty: () => ({ people: {} as Record<string, string> }), ...(unheld && { unheld }) });
+      const socket = (clientId: string) => {
+        const sock = mockClient({ clientId });
+        ws.websocket.open(sock);
+        return { sock, ask: (msg: object) => sendAndAwait(ws, sock, msg) };
+      };
+      return { ws, here, socket };
+    }
+
+    test("kept, unless the kind says: a document nobody holds is still there for the next to open", async () => {
+      const { ws, here, socket } = lobby();
+      const a = socket("a");
+      await a.ask({ action: "open", doc: "here:x" });
+      here.write("here:x", [{ op: "add", path: "/people/a", value: "Ada" }]);
+      ws.websocket.close(a.sock);
+      expect(here.peek("here:x")).toEqual({ people: { a: "Ada" } });
+      expect((await socket("b").ask({ action: "open", doc: "here:x" })).result).toEqual({ people: { a: "Ada" }, _v: 1 });
+    });
+
+    test('unheld: "forget": let go with its last holder, by a close or a socket gone; the next open starts from empty', async () => {
+      const { ws, here, socket } = lobby("forget");
+      const [a, b] = [socket("a"), socket("b")];
+      for (const s of [a, b]) await s.ask({ action: "open", doc: "here:x" });
+      here.write("here:x", [{ op: "add", path: "/people/a", value: "Ada" }]);
+      expect((await a.ask({ action: "close", doc: "here:x" })).result).toEqual({ ack: true });
+      expect(here.peek("here:x")).toEqual({ people: { a: "Ada" } });   // b holds it still
+      ws.websocket.close(b.sock);                                       // the last, gone without a close
+      expect(here.peek("here:x")).toBeUndefined();
+      expect((await socket("c").ask({ action: "open", doc: "here:x" })).result).toEqual({ people: {}, _v: 0 });
+    });
+
+    test('unheld: "forget": a session\'s own, one per session, leaves nothing behind once each has gone', async () => {
+      const { ws, here, socket } = lobby("forget");
+      for (let i = 0; i < 50; i++) {
+        const s = socket(`s${i}`);
+        await s.ask({ action: "open", doc: `here:s${i}` });
+        here.write(`here:s${i}`, [{ op: "add", path: "/people/me", value: `#${i}` }]);
+        ws.websocket.close(s.sock);
+      }
+      for (let i = 0; i < 50; i++) expect(here.peek(`here:s${i}`)).toBeUndefined();
+    });
   });
 
   test("anyone may write one that says so", async () => {

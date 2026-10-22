@@ -41,17 +41,19 @@ resources/lists/
 ## Run it
 
 ```sh
-bun examples/lists/routes.ts                    # port 3100, kept in examples/lists/lists.db
+bun --hot examples/lists/routes.ts              # port 3100, kept in examples/lists/lists.db
 ```
 
-Open <http://localhost:3100>. In development the page asks "Who are you?": pick Ann. In another
+Open <http://localhost:3100>. In development (`bun --hot`, or `NODE_ENV` development or test; not a
+bare `bun examples/lists/routes.ts`) the page asks "Who are you?": pick Ann. In another
 window (a private one, so it has its own cookie) pick Bo. Both see Shopping; only Ann sees
 Holiday. Add an item in each, then press Undo in Ann's: her item goes from both windows, Bo's
 stays. Add another in Ann's, tick it in Bo's, and press Undo in Ann's: it says someone has
 changed it since, and leaves it; Undo in Bo's takes back his tick.
 
 In production nobody is listed. The first person's link comes from a command on the server, and
-"their link" on the page makes anyone else's; each is used once:
+"their link" on the page makes anyone else's (the app lets anyone here send anyone's, `mayLink`;
+unsaid, a person sends only their own); each is used once:
 
 ```sh
 bunx @blueshed/delta link examples/lists/lists.db 1 --origin http://localhost:3100
@@ -61,7 +63,7 @@ The pieces, from the files:
 
 ```ts
 // people-api.ts: the link sign-in, and people: for anyone signed in
-const auth = linkAuth<Person>({ store: sqliteLinkStore(db), personOf, people });
+const auth = linkAuth<Person>({ store: sqliteLinkStore(db), personOf, people, mayLink: () => true });
 wireAuth(ws, auth);
 registerDocs(ws, db, schema, docs, [], { auth, shared: true });
 

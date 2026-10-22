@@ -75,12 +75,21 @@ export interface MemoryOptions<T> {
   empty: (id: string) => T;
   /** Who may write a `delta`: a caller in this process only (default), or anyone who has it open. The server writes with `write`. */
   writable?: "local" | "any";
+  /**
+   * What becomes of a document once nobody holds it (its last holder closes it, or its socket
+   * goes): kept for the life of the process (`"keep"`, the default: who is in a lobby, written by
+   * the server whoever is watching), or forgotten (`"forget"`), its next open starting again from
+   * `empty` at version 0. Forget a document only its holders read -- one per session or per socket
+   * (dzql's `told:<session>`) -- which would otherwise grow by one for every session ever seen. A
+   * write while nobody holds it is kept until its next holder lets go.
+   */
+  unheld?: "keep" | "forget";
 }
 
 /** Live documents: held in memory, gone on restart, never on a ledger. */
 export function registerMemory<T>(ws: WsServer, options: MemoryOptions<T>) {
   const docs = new Map<string, { value: T; v: number }>();
-  const f = family(ws, options.prefix);
+  const f = family(ws, options.prefix, options.unheld === "forget" ? (name) => void docs.delete(name) : undefined);
   const doc = (name: string) => {
     if (!docs.has(name)) docs.set(name, { value: options.empty(f.id(name)), v: 0 });
     return docs.get(name)!;

@@ -31,6 +31,10 @@ Who is online, cursors, a lobby. Gone on restart, never on a ledger.
 - An op that does not land changes nothing: 404 for what is not there, 400 malformed (and a
   name not of the prefix, to `write`). `write` answers as a `delta` does, never throws.
 - `add /<coll>/-` on a map of rows names the row with a uuid (path and `id`); on an array, appends.
+- Kept for the life of the process, held or not. A document only its holders read, one per
+  session or socket, says `unheld: "forget"`: let go with its last holder (a close, or its socket
+  gone), its next open from `empty` (`tests/kinds.test.ts`, "once nobody holds one"). Not for one
+  read again after its holder goes, as a page drawn after a redirect reads what it was told.
 - Open answers `{ ...value, _v }`; a write `{ ack, version, ops }`, broadcast with `v`.
 
 ## Source: the truth is outside

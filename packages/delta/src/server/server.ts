@@ -56,6 +56,8 @@ export interface WsServer {
     idleTimeout: number;
     sendPings: boolean;
     publishToSelf: boolean;
+    /** The largest message a socket may send, in bytes (`createWs({ maxPayloadLength })`): past it Bun drops the socket, the frame unread. */
+    maxPayloadLength?: number;
     open(ws: any): void;
     message(ws: any, raw: any): void;
     close(ws: any): void;
@@ -166,6 +168,22 @@ export interface WsOptions {
    * for the answer (`onConnect` does). Default 1 MiB.
    */
   maxHeldBytes?: number;
+  /**
+   * The largest message one socket may send, in bytes, as Bun counts it: a
+   * frame past it is never read, and Bun drops the socket (the client sees
+   * it close, 1006; the client reconnects). A
+   * write is small; a file goes by HTTP. Default 1 MiB, as dzql's kernel
+   * sets (Bun's own is 16 MB).
+   */
+  maxPayloadLength?: number;
+  /**
+   * How many documents one socket may hold open at once. An `open` of one
+   * more (an open still being answered counts) is refused, 429 `Too many
+   * documents open on this socket (<n>): close one first`, and nothing is
+   * held for it; a document it holds opens again, and a `close` makes room.
+   * Default 1000.
+   */
+  maxDocs?: number;
 }
 
 /**
@@ -233,6 +251,28 @@ export function createWs(opts?: WsOptions): WsServer {
   const origins = allowedOrigins(opts?.origins);
   const maxHeld = opts?.maxHeld ?? 1000;
   const maxHeldBytes = opts?.maxHeldBytes ?? 1024 * 1024;
+  const maxPayloadLength = opts?.maxPayloadLength ?? 1024 * 1024;
+  const maxDocs = opts?.maxDocs ?? 1000;
+  // The documents a socket is opening and has not yet been answered, each with how many opens of
+  // it are in flight: counted with what it holds (`data.channels`), so opens sent at once cannot
+  // pass `maxDocs` between them.
+  const opening = new WeakMap<object, Map<string, number>>();
+
+  /** Room for `ws` to open `doc`: it holds it already, or holds (and is opening) fewer than `maxDocs`. Taken until `done` is called; false, nothing taken. */
+  function makeRoom(ws: any, doc: string): (() => void) | false {
+    const held: Set<string> | undefined = ws.data?.channels;
+    if (held?.has(doc)) return () => {};
+    let mine = opening.get(ws);
+    if (!mine) opening.set(ws, (mine = new Map()));
+    const already = mine.get(doc) ?? 0;
+    if (!already && (held?.size ?? 0) + mine.size >= maxDocs) return false;
+    mine.set(doc, already + 1);
+    return () => {
+      const left = mine.get(doc)! - 1;
+      if (left) mine.set(doc, left);
+      else mine.delete(doc);
+    };
+  }
 
   // A socket's messages run side by side, as they arrive: Bun does not wait
   // for an async handler. Only a call that changes who the socket is stands
@@ -277,6 +317,7 @@ export function createWs(opts?: WsOptions): WsServer {
     let id: any;
     let action: any;
     let holds = false;
+    let roomTaken: (() => void) | undefined;
     try {
       msg = JSON.parse(String(raw));
       ({ id, action } = msg);
@@ -312,6 +353,15 @@ export function createWs(opts?: WsOptions): WsServer {
             }),
           );
         return;
+      }
+      // One document more than a socket may hold open: refused before any backend opens it
+      if (action === "open" && typeof msg.doc === "string") {
+        const room = makeRoom(ws, msg.doc);
+        if (!room) {
+          if (id) ws.send(JSON.stringify({ id, error: { code: 429, message: `Too many documents open on this socket (${maxDocs}): close one first` } }));
+          return;
+        }
+        roomTaken = room;
       }
       // A call that changes who the socket is: what comes after it waits
       // (set before the first await, so the socket's next message sees it),
@@ -352,6 +402,7 @@ export function createWs(opts?: WsOptions): WsServer {
           JSON.stringify({ id, error: failure(err) }),
         );
     } finally {
+      roomTaken?.();   // answered: held now (counted in data.channels), or not held at all
       if (holds) release(ws, line!);
       // The socket closed while this ran: what it registered for the socket
       // meanwhile (a subscriber, a watch) is let go now, as the close would have.
@@ -448,6 +499,7 @@ export function createWs(opts?: WsOptions): WsServer {
       idleTimeout: opts?.idleTimeout ?? 60,
       sendPings: opts?.sendPings ?? true,
       publishToSelf: true,
+      maxPayloadLength,
       open(ws: any) {
         if (!ws.data) ws.data = {};
         // The clientId arrives from the upgrade query string and is therefore

@@ -4,7 +4,7 @@
  * (who is here, and signing in by link) and lists (each list, who is on it and its items, on the
  * ledger). One SQLite file keeps them, each resource's tables made by its history of migrations.
  *
- *   bun examples/lists/routes.ts                       # port 3100, examples/lists/lists.db
+ *   bun --hot examples/lists/routes.ts                 # port 3100, examples/lists/lists.db; "Who are you?" in development
  *   bunx @blueshed/delta link examples/lists/lists.db 1 --origin http://localhost:3100   # Ann's link
  */
 import { Database } from "bun:sqlite";
