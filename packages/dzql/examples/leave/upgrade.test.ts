@@ -112,5 +112,5 @@ describe("Ann's requests are still there after leave is upgraded to a version th
     // the stories move and answer request 2 (and undo and redo it): it is still Ann's, and still a holiday
     expect(annsRequests(db).map((r) => [r.id, r.reason])).toEqual([["2", "holiday"], ["3", "holiday"], [week, "holiday"]]);
     db.close();
-  }, 60_000);
+  }, 180_000); // every story of leave, run again over the upgraded database: about 50 s alone, more beside the rest (root #144)
 });
