@@ -6,9 +6,10 @@ import { stories } from "../stories";
 import { app, startServer } from "../src/routes";
 
 let server: Awaited<ReturnType<typeof startServer>>;
+// PGlite starts in the process: past bun's 5 s on a slower machine, so the start has 30
 beforeAll(async () => {
   server = await startServer({ port: 0 });
-});
+}, 30_000);
 afterAll(() => {
   server.stop(true);
 });

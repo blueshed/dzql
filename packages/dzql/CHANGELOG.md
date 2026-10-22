@@ -514,6 +514,28 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **A deployment story** (22 October, the production review, #93 and #100). `bun create dzql`'s
+  starter has a `Dockerfile` (`oven/bun` at the Bun `packageManager` names, `bun install
+  --production --frozen-lockfile --ignore-scripts`, `NODE_ENV=production`, `bun start` as user
+  `bun`, the pid file in `/tmp`) and a `.dockerignore` (shipped as `dockerignore`, dotted by
+  `cli.ts` as `gitignore` is); create-dzql's test holds the `FROM` to `packageManager`. The
+  dzql-app skill has `reference/deploy.md`: the environment, TLS in the URL, a role neither
+  superuser nor `BYPASSRLS`, the pool, never a transaction-mode pooler, a proxy, backups by
+  `pg_dump` (`exportTables` is not one), pruning `_delta_ops_log`, what to watch, and Railway, Fly
+  and a VM.
+- **Patterns for what a production app needs beyond its documents** (22 October, #119): the
+  dzql-app skill's `reference/patterns.md`: email, a background or scheduled job, files, calling
+  another service, search and CSV export, each a route, a job or a hook after a write, reaching the
+  documents through `serverWrite` or `store.owner`.
+- **The app's own commands through the bin** (22 October, #120): `dzql stories [<app>]`, `dzql cli
+  <command>`, `dzql model load [<app>]` and `dzql model built [<app>] [--against-page
+  [<model.json>]]` (`src/cli/app.ts`). The starter's `stories`, `cli`, `model:load` and
+  `model:check` run them instead of files of dzql's `src/`. **To move across** (an app made before):
+  in its package.json, `"stories": "dzql stories ./src"`, `"cli": "dzql cli"`, `"model:load": "dzql
+  model load ./src"`, `"model:check": "dzql model built ./src"`.
+- **A Postgres migration, worked** (22 October, #118): the dzql-app skill's
+  `reference/migrations.md` shows a history through `openStore({ migrations })`, a file's `changes`
+  and its `up(client: PoolClient)`, run as written by `tests/readme/migrations.test.ts`.
 - **`store.owner`, the server itself, writing and reading through the documents** (21 October,
   the Shed's run 6, finding 5: a command wrote by calling `delta_apply` as the owner, so no
   document's rule asked it and no ledger kept it). `openStore` gives a caller in this process
@@ -639,6 +661,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **A new app's first test waits for PGlite to start** (22 October, root #144): the starter's
+  `tests/routes.test.ts` gives its `beforeAll` 30 s, since PGlite in the process passed bun's 5 s on
+  a slower machine and a fresh app's `bun test` failed there.
+- **The starter no longer refuses to start in a container over a pid file it left** (22 October,
+  #121). Under `NODE_ENV=production`, `src/routes.ts` removes `.server.pid` before `run`, since a
+  restarted container can reuse the pid (often 1); `bun dev` keeps the guard.
+- **PGlite is no longer worded as a place to deploy** (22 October, #92, the template's part). The
+  starter's `store.ts`, `routes.ts` and `CLAUDE.md` and the dzql-app skill no longer say "a Railway
+  volume": PGlite is for development and the tests, and production sets `DATABASE_URL`.
 - **Two servers opening one new database at once both open** (21 October, the Shed's run 6,
   finding 5: dzql locked its migrations, not the framework or the compiled SQL, so the second
   failed making a type twice, and each found the database new and seeded it). `openStore` takes its
