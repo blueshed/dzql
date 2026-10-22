@@ -428,6 +428,80 @@ END;
 $$ LANGUAGE plpgsql STABLE;
 
 -- ---------------------------------------------------------------------------
+-- A later op's name for a row an earlier op of the same write adds with "-":
+-- `$<k>`, k that op's 0-based index in the write (delta's withMinted).
+-- _delta_minted: the id `p_said` names, from `p_minted` (each such op's index
+-- to {coll, id}), refused in delta's words (22023, 400) where it names no
+-- earlier add with "-" (`p_at` is the op's own index), or a row of another
+-- collection than `p_coll` -- the path's (`p_col` null) or the column's.
+-- _delta_with_minted: the op with each `$k` it says as that id -- the row of its
+-- path, and the value of a column that names a row by its id, the parent key or
+-- a `refs` column (_delta_refs_of), in a row's value or a field's. In any
+-- other column "$0" is text. delta_apply asks it of each op of a fresh write.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _delta_minted(p_where TEXT, p_said TEXT, p_coll TEXT, p_col TEXT, p_at INT, p_minted JSONB)
+RETURNS BIGINT AS $$
+DECLARE
+  v_k   NUMERIC := substr(p_said, 2)::numeric;
+  v_row JSONB := CASE WHEN v_k < p_at THEN p_minted->(v_k::text) END;
+BEGIN
+  IF v_row IS NULL THEN
+    RAISE EXCEPTION '%: % names no row an earlier op of this write adds with "-"', p_where, p_said USING ERRCODE = '22023';
+  END IF;
+  IF v_row->>'coll' IS DISTINCT FROM p_coll THEN
+    IF p_col IS NULL THEN
+      RAISE EXCEPTION '%: % names a row of %, not of %', p_where, p_said, v_row->>'coll', p_coll USING ERRCODE = '22023';
+    END IF;
+    RAISE EXCEPTION '%: % names a row of %, and % names one of %', p_where, p_said, v_row->>'coll', p_col, p_coll USING ERRCODE = '22023';
+  END IF;
+  RETURN (v_row->>'id')::BIGINT;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- the collection each column of `p_coll` that names a row by `refs` names: generateSql writes it (compileRefs)
+CREATE OR REPLACE FUNCTION _delta_refs_of(p_coll TEXT)
+RETURNS JSONB LANGUAGE sql IMMUTABLE AS $$ SELECT '{}'::jsonb; $$;
+
+CREATE OR REPLACE FUNCTION _delta_with_minted(p_op JSONB, p_at INT, p_minted JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_parts  TEXT[];
+  v_coll   _delta_collections;
+  v_out    JSONB := p_op;
+  v_value  JSONB;
+  v_target TEXT;
+  v_k      TEXT;
+  v_v      JSONB;
+BEGIN
+  IF jsonb_typeof(p_op) IS DISTINCT FROM 'object' THEN RETURN p_op; END IF;
+  v_parts := _delta_split_path(p_op->>'path');
+  IF array_length(v_parts, 1) IS NULL OR array_length(v_parts, 1) < 2 THEN RETURN p_op; END IF;
+  v_coll := _delta_collection(v_parts[1]);
+  IF v_coll.collection_key IS NULL THEN RETURN p_op; END IF;
+  IF v_parts[2] ~ '^\$[0-9]+$' THEN
+    v_out := jsonb_set(v_out, '{path}', to_jsonb(_delta_build_path(v_parts[1], _delta_minted(p_op->>'path', v_parts[2], v_parts[1], NULL, p_at, p_minted)::text)
+      || COALESCE((SELECT string_agg('/' || replace(replace(s, '~', '~0'), '/', '~1'), '' ORDER BY n) FROM unnest(v_parts[3:]) WITH ORDINALITY AS x(s, n)), '')));
+  END IF;
+  v_value := p_op->'value';
+  IF array_length(v_parts, 1) = 2 AND jsonb_typeof(v_value) = 'object' THEN
+    FOR v_k, v_v IN SELECT key, value FROM jsonb_each(v_value) LOOP
+      CONTINUE WHEN jsonb_typeof(v_v) <> 'string' OR (v_v #>> '{}') !~ '^\$[0-9]+$';
+      v_target := CASE WHEN v_k = v_coll.parent_fk THEN v_coll.parent_collection ELSE _delta_refs_of(v_parts[1])->>v_k END;
+      CONTINUE WHEN v_target IS NULL;
+      v_out := jsonb_set(v_out, ARRAY['value', v_k], to_jsonb(_delta_minted((p_op->>'path') || '/' || v_k, v_v #>> '{}', v_target, v_k, p_at, p_minted)));
+    END LOOP;
+  ELSIF array_length(v_parts, 1) = 3 AND jsonb_typeof(v_value) = 'string' AND (v_value #>> '{}') ~ '^\$[0-9]+$' THEN
+    v_target := CASE WHEN v_parts[3] = v_coll.parent_fk THEN v_coll.parent_collection ELSE _delta_refs_of(v_parts[1])->>v_parts[3] END;
+    IF v_target IS NOT NULL THEN
+      v_out := jsonb_set(v_out, '{value}', to_jsonb(_delta_minted(p_op->>'path', v_value #>> '{}', v_target, v_parts[3], p_at, p_minted)));
+    END IF;
+  END IF;
+  RETURN v_out;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- ---------------------------------------------------------------------------
 -- delta_apply: apply delta ops to relational tables, bump version, NOTIFY
 --
 -- Handles:
@@ -498,6 +572,8 @@ DECLARE
   v_hung          JSONB;
   v_outside       BOOLEAN;           -- the op's collection is neither the root nor included: a walk's, put back or taken again
   v_passed        JSONB := '{}'::jsonb;   -- each table's highest id this write named: its serial passes it once the write is done
+  v_minted        JSONB := '{}'::jsonb;   -- the rows this write's adds with "-" were given, by the op's index: `$<k>` (_delta_with_minted)
+  v_at            INT := -1;              -- the op's index in the write
 BEGIN
   -- Guard: ops must be a JSON array
   IF p_ops IS NULL OR jsonb_typeof(p_ops) != 'array' THEN
@@ -569,6 +645,9 @@ BEGIN
 
   FOR v_op IN SELECT jsonb_array_elements(p_ops)
   LOOP
+    -- a later op's `$<k>`, the row an earlier add with "-" was given; a walk puts back what was recorded
+    v_at := v_at + 1;
+    IF NOT COALESCE(p_walk, FALSE) THEN v_op := _delta_with_minted(v_op, v_at, v_minted); END IF;
     -- A single document is its root row and what hangs from it. One whose
     -- root is not there -- taken out, through it or another, or never there --
     -- opens as not found, and takes no writes: asked before each
@@ -761,6 +840,7 @@ BEGIN
       -- Auto-generate ID from sequence if path ends with '-'
       IF v_id_text = '-' THEN
         v_id := _delta_next_id(v_coll_key, v_coll.table_name);
+        v_minted := v_minted || jsonb_build_object(v_at::text, jsonb_build_object('coll', v_coll_key, 'id', v_id));
       END IF;
       -- An add makes a new row, under an id the serial has not handed out
       --: one it has (minted, or passed for an add that named it) is

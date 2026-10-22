@@ -16,7 +16,7 @@ import { type DeltaOp, splitPath, joinPath, changedFields } from "../../core";
 import { createLogger } from "../logger";
 import { rowAt, type Ledger } from "../ledger";
 import { meets, resolveScope, rowId, sameId, type Scope } from "../scope";
-import { hangsFrom, holdsField, isServerTime, q, refusedBy, scopeEntries, shapedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { hangsFrom, holdsField, isServerTime, q, refusedBy, scopeEntries, shapedBy, showRow, withMinted, type Minted, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { isAnyone } from "../../paths";
 import { keeping, scopeValue } from "./keep";
 import { impliedDoc, readDoc } from "./read";
@@ -540,7 +540,11 @@ export function createWriter<I>(r: Registration<I>) {
     // Each op lands in the order sent: a field written and then
     // its row removed is written first, and a row removed is not there for an
     // op after it.
-    for (const op of ops) {
+    // the rows this write's adds with "-" were given, by the op's index: a later op names one `$<k>` (`withMinted`)
+    const minted: Minted = new Map();
+    for (const [at, given] of ops.entries()) {
+      // a walk puts back what was recorded, its ids the store's; a fresh write's `$k` is read first
+      const op = walk ? given : withMinted(schema, given, at, minted);
       if (op.op !== "replace") endRun();
       // A single document whose root is not there takes no writes (404), as it
       // opens: asked before each op, so one that takes its root out writes
@@ -610,6 +614,7 @@ export function createWriter<I>(r: Registration<I>) {
         // carried by the broadcast path and the row.
         const mint = op.op === "add" && parts[1] === "-";
         const id = mint ? nextId(table) : rowId(parts[1]!);
+        if (mint) minted.set(at, { coll: collKey, id });
         if (op.op === "add") {
           // An add makes a new row, under an id the serial has not handed out
           // (#71): one it has (minted, or passed for an add that named it) is

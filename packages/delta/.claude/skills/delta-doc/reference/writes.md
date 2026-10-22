@@ -24,6 +24,30 @@ item removed by its ×, through the list (`resources/lists/lists-view.tsx`).
 - A row removed earlier in the batch, or moved out of the document, is not there for a later op (404).
 - Several replaces of one row in a row are one write of it: one temporal version.
 
+## A row this write makes, named by a later op: `$<k>`
+
+An entry and its lines in one write, through a list that holds both (`mintedNameCases`,
+`src/cases/planning.ts`):
+
+```ts
+await journal.send([
+  { op: "add", path: "/entries/-", value: { memo: "a sale", day: "2026-10-22" } },
+  { op: "add", path: "/lines/-", value: { entries_id: "$0", account: 1, amount: "10.50" } },
+  { op: "add", path: "/lines/-", value: { entries_id: "$0", account: 2, amount: "-10.50" } },
+]);
+```
+
+- `$<k>` is the row op k of the same write (0-based, an earlier op) added with `-`: as a path's row
+  (`/entries/$0/memo`), and as the value of a column that names a row by its id, the parent key or
+  a `refs` column, in a row's value or a field's. In any other column `"$0"` is text.
+- The answer, every holder and the ledger carry the ids the store gave; an undo takes the whole
+  write back, and a redo puts back the same ids.
+- A `$k` that names no earlier add with `-` (none, itself, a later op, an add that named its id) is
+  400 (`/lines/-/entries_id: $5 names no row an earlier op of this write adds with "-"`), and so is
+  one of another collection than the column or path names; nothing lands.
+- A single document's own children need none: `add /lines/-` through `entry:7` takes entry 7. What
+  `$k` adds is the row the write itself makes, whose id nobody knows until the store names it.
+
 ## Moving a row
 
 - Only under a parent the document holds: through `wedding:1`,

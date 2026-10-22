@@ -4,6 +4,7 @@
  *
  *   columnTypeCases(standUp);   // a `date` (a day, no instant) and a `numeric` (an exact decimal, a string on the wire)
  *   rangeScopeCases(standUp);   // a column given several conditions (a viewport), and an instant in a name
+ *   mintedNameCases(standUp);   // a later op names a row an earlier op adds with "-" ($0): an entry and its lines
  *
  * where `standUp({ schema, docs, seed })` makes a fresh store with that schema, those documents
  * registered and those rows imported (a `CaseBackend`).
@@ -284,6 +285,122 @@ export function rangeScopeCases(backend: CaseBackend): void {
       }
       expect((await sendAndAwait(up.ws, c, { action: "open", doc: "case-slots-then:20261020T0800" })).error)
         .toEqual({ code: 400, message: `when must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "20261020T0800"` });
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Books: an entry and its lines in one write ($k)
+// ---------------------------------------------------------------------------
+
+/**
+ * A journal's entries, each with its lines (a line hangs from its entry by its parent key, and
+ * names an account: `refs`), and the chart of accounts beside them, which hangs from nothing. The
+ * journal is one list, on the ledger.
+ */
+export const booksApp: CaseApp = {
+  schema: defineSchema({
+    case_accounts: { columns: { name: "text" }, temporal: false },
+    case_entries: { columns: { memo: "text", day: "date" }, temporal: false },
+    case_lines: { columns: { account: "integer", amount: "numeric" }, parent: { collection: "case_entries", fk: "case_entries_id" }, refs: { account: "case_accounts" }, temporal: false },
+  }),
+  docs: [defineDoc("case-journal:", { root: "case_entries", include: ["case_lines", "case_accounts"] })],
+  seed: {
+    tables: {
+      case_accounts: [{ id: 1, name: "cash" }, { id: 2, name: "sales" }],
+      case_entries: [{ id: 1, memo: "opening", day: "2026-10-01" }],
+      case_lines: [{ id: 1, case_entries_id: 1, account: 1, amount: "100.00" }, { id: 2, case_entries_id: 1, account: 2, amount: "-100.00" }],
+    },
+  },
+  ledger: true,
+};
+
+/** delta's words for a `$k` that names no row an earlier op of the write adds with "-". */
+const namesNone = (at: string, k: number) => `${at}: $${k} names no row an earlier op of this write adds with "-"`;
+
+/**
+ * A row an earlier op of the same write adds with "-", named by a later op as `$<k>` (k the
+ * earlier op's 0-based index in the write), the same on every backend: as a path's row
+ * (`/case_entries/$0/memo`), and as the value of a column that names a row by its id (a parent key,
+ * a `refs` column), so an entry and its lines are one write. The answer, the holders and the ledger
+ * carry the ids the store gave; an undo takes the whole write back. A `$k` that names no such op,
+ * or a row of another collection than the column names, is refused (400) and nothing lands; in a
+ * column that names no row (text), `$0` is text.
+ */
+export function mintedNameCases(backend: CaseBackend): void {
+  describe('a later op names a row an earlier op adds with "-" ($k)', () => {
+    let up: Awaited<ReturnType<CaseBackend>>;
+    beforeEach(async () => { up = await backend(booksApp); });
+    afterEach(async () => { await up.end(); });
+    const journal = async () => fresh(up.ws, "case-journal:");
+    const asSeeded = async () => {
+      const j = await journal();
+      expect([Object.keys(j.case_entries), Object.keys(j.case_lines), Object.keys(j.case_accounts)]).toEqual([["1"], ["1", "2"], ["1", "2"]]);
+    };
+
+    test("an entry and its lines in one write: each line's parent key names the entry, and the answer carries the ids the store gave", async () => {
+      const r = await write(up.ws, "case-journal:", [
+        { op: "add", path: "/case_entries/-", value: { memo: "a sale", day: "2026-10-22" } },
+        { op: "add", path: "/case_lines/-", value: { case_entries_id: "$0", account: 1, amount: "10.50" } },
+        { op: "add", path: "/case_lines/-", value: { case_entries_id: "$0", account: 2, amount: "-10.50" } },
+      ]);
+      expect(r.error).toBeUndefined();
+      const [entry, debit, credit] = r.result.ops.map((o: any) => o.value);
+      expect(r.result.ops.map((o: any) => o.path)).toEqual([`/case_entries/${entry.id}`, `/case_lines/${debit.id}`, `/case_lines/${credit.id}`]);
+      expect([debit.case_entries_id, credit.case_entries_id]).toEqual([entry.id, entry.id]);
+      expect(JSON.stringify(r.result.inverse)).not.toContain("$");
+      const j = await journal();
+      expect(Object.values(j.case_lines).filter((l: any) => l.case_entries_id === entry.id).map((l: any) => l.amount)).toEqual(["10.50", "-10.50"]);
+    });
+
+    test("as a path's row, and as a refs column's value; the undo takes the whole write back, the redo puts back the same ids", async () => {
+      const r = await write(up.ws, "case-journal:", [
+        { op: "add", path: "/case_accounts/-", value: { name: "bank" } },
+        { op: "add", path: "/case_entries/-", value: { memo: "draft", day: "2026-10-22" } },
+        { op: "replace", path: "/case_entries/$1/memo", value: "a deposit" },
+        { op: "add", path: "/case_lines/-", value: { case_entries_id: "$1", account: "$0", amount: "5" } },
+        { op: "replace", path: "/case_lines/$3/amount", value: "5.00" },
+      ], "books");
+      expect(r.error).toBeUndefined();
+      const [bank, entry] = [r.result.ops[0].value, r.result.ops[1].value];
+      let j = await journal();
+      expect(j.case_entries[entry.id].memo).toBe("a deposit");
+      const line = Object.values(j.case_lines).find((l: any) => l.case_entries_id === entry.id) as any;
+      expect([line.account, line.amount]).toEqual([bank.id, "5.00"]);
+      const me = mockClient({ local: true });
+      expect((await sendAndAwait(up.ws, me, { action: "undo", cursor: "books" })).error).toBeUndefined();
+      await asSeeded();
+      expect((await sendAndAwait(up.ws, me, { action: "redo", cursor: "books" })).error).toBeUndefined();
+      j = await journal();
+      expect([j.case_accounts[bank.id]?.name, j.case_entries[entry.id]?.memo, j.case_lines[line.id]?.account]).toEqual(["bank", "a deposit", bank.id]);
+    });
+
+    test("a $k that names no row an earlier op adds with \"-\" is refused, 400, and nothing lands", async () => {
+      const entry = { op: "add", path: "/case_entries/-", value: { memo: "x", day: "2026-10-22" } };
+      const line = (fk: unknown) => ({ op: "add", path: "/case_lines/-", value: { case_entries_id: fk, account: 1, amount: "1" } });
+      const cases: [unknown[], string][] = [
+        [[entry, line("$5")], namesNone("/case_lines/-/case_entries_id", 5)],   // no such op
+        [[line("$0"), entry], namesNone("/case_lines/-/case_entries_id", 0)],   // itself, not an earlier one
+        [[entry, line("$2"), line("$0")], namesNone("/case_lines/-/case_entries_id", 2)],   // a later one
+        [[{ op: "add", path: "/case_entries/7", value: { memo: "x", day: "2026-10-22" } }, line("$0")], namesNone("/case_lines/-/case_entries_id", 0)],   // an add that named its row
+        [[{ op: "replace", path: "/case_entries/1/memo", value: "y" }, line("$0")], namesNone("/case_lines/-/case_entries_id", 0)],   // no add
+        [[entry, { op: "replace", path: "/case_entries/$1/memo", value: "y" }], namesNone("/case_entries/$1/memo", 1)],
+        [[entry, { op: "replace", path: "/case_lines/1/case_entries_id", value: "$3" }], namesNone("/case_lines/1/case_entries_id", 3)],
+        // a row of another collection than the column, or the path, names
+        [[{ op: "add", path: "/case_accounts/-", value: { name: "bank" } }, line("$0")], "/case_lines/-/case_entries_id: $0 names a row of case_accounts, and case_entries_id names one of case_entries"],
+        [[entry, { op: "add", path: "/case_lines/-", value: { case_entries_id: 1, account: "$0", amount: "1" } }], "/case_lines/-/account: $0 names a row of case_entries, and account names one of case_accounts"],
+        [[entry, { op: "replace", path: "/case_lines/$0/amount", value: "2" }], "/case_lines/$0/amount: $0 names a row of case_entries, not of case_lines"],
+      ];
+      for (const [ops, message] of cases) {
+        expect([ops, (await write(up.ws, "case-journal:", ops)).error]).toEqual([ops, { code: 400, message }]);
+        await asSeeded();
+      }
+    });
+
+    test("in a column that names no row, $0 is text", async () => {
+      const r = await write(up.ws, "case-journal:", [{ op: "add", path: "/case_entries/-", value: { memo: "$0", day: "2026-10-22" } }]);
+      expect(r.error).toBeUndefined();
+      expect(r.result.ops[0].value.memo).toBe("$0");
     });
   });
 }

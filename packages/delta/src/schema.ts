@@ -14,7 +14,7 @@
  * backend's codegen / default / validation helpers own the per-type
  * mappings — this module is the vocabulary only.
  */
-import { splitPath, type DeltaOp } from "./core";
+import { joinPath, splitPath, type DeltaOp } from "./core";
 import { isAnyone, parsePath } from "./paths";
 
 export type ColumnType =
@@ -154,6 +154,60 @@ export interface DocDef {
    * Every backend asks it (dzql's thin client has the same hook, `Resource.shape`, for a page's writes).
    */
   shape?: Shape;
+}
+
+/** A later op's name for a row an earlier op of the same write adds with "-": `$<k>`, k that op's 0-based index in the write. */
+const MINTED = /^\$(\d+)$/;
+
+/** The rows a write's adds with "-" were given so far, by the op's index in the write: what `$<k>` names. */
+export type Minted = Map<number, { coll: string; id: string | number }>;
+
+/**
+ * An op of a write with each `$<k>` it says as the id the store gave the row op k of the same
+ * write added with "-" (`add /<coll>/-`), as every backend reads it before it validates the op:
+ * the row of a path (`/entries/$0/memo`), and the value of a column that names a row by its id --
+ * the parent key, a `refs` column -- in a row's value or a field's (`{ entries_id: "$0" }`). Ids are
+ * numbers, so a `$` names no row else; in any other column `"$0"` is text. A `$k` that names no
+ * earlier add with "-", or a row of another collection than the path or the column names, is
+ * refused (400), in delta's words. The ops it makes are what is applied, answered and recorded.
+ */
+export function withMinted(schema: Schema, op: DeltaOp, at: number, minted: Minted): DeltaOp {
+  let parts: string[];
+  try { parts = splitPath(op.path); } catch { return op; }   // not a pointer: refused as it is
+  const named = (where: string, said: string, coll: string, why: (got: string) => string): string | number => {
+    const k = Number(MINTED.exec(said)![1]);
+    const row = k < at ? minted.get(k) : undefined;
+    if (!row) throw Object.assign(new Error(`${where}: ${said} names no row an earlier op of this write adds with "-"`), { code: 400 });
+    if (row.coll !== coll) throw Object.assign(new Error(`${where}: ${said} ${why(row.coll)}`), { code: 400 });
+    return row.id;
+  };
+  const [collKey, segment, field] = parts;
+  const table = collKey === undefined ? undefined : schema.tables[collKey];
+  if (!table) return op;
+  let out = op;
+  if (segment !== undefined && MINTED.test(segment)) {
+    const id = named(op.path, segment, collKey!, (got) => `names a row of ${got}, not of ${collKey}`);
+    out = { ...out, path: joinPath(collKey!, String(id), ...(parts.length > 2 ? parts.slice(2) : [])) } as DeltaOp;
+  }
+  // the collection a column names a row of: its parent's (the parent key), or its refs'
+  const namesOf = (col: string): string | undefined =>
+    col === table.parent?.fkColumn ? table.parent.collection : table.refs?.find((r) => r.column === col)?.collection;
+  const value = (out as { value?: unknown }).value;
+  const minting = (v: unknown): v is string => typeof v === "string" && MINTED.test(v);
+  if (parts.length === 2 && value !== null && typeof value === "object" && !Array.isArray(value)) {
+    let row: Record<string, unknown> | undefined;
+    for (const [col, v] of Object.entries(value)) {
+      const target = minting(v) ? namesOf(col) : undefined;
+      if (!target) continue;
+      row ??= { ...(value as Record<string, unknown>) };
+      row[col] = named(`${op.path}/${col}`, v as string, target, (got) => `names a row of ${got}, and ${col} names one of ${target}`);
+    }
+    if (row) out = { ...out, value: row } as DeltaOp;
+  } else if (parts.length === 3 && field !== undefined && minting(value)) {
+    const target = namesOf(field);
+    if (target) out = { ...out, value: named(op.path, value, target, (got) => `names a row of ${got}, and ${field} names one of ${target}`) } as DeltaOp;
+  }
+  return out;
 }
 
 /** A document's scope as its bindings, one by one: a column given several conditions gives each, in the order it says them. */

@@ -53,7 +53,15 @@ ${named.join("\n")}
 ${caseOf("v_t.coll", branches, "NULL;   -- a collection that names none, and none names", { indent: "    " })}
   END LOOP;`
     : "  NULL;   -- no collection names another";
-  return `CREATE OR REPLACE FUNCTION _delta_refs_hold(p_touched JSONB)
+  const refsOf = `CREATE OR REPLACE FUNCTION _delta_refs_of(p_coll TEXT)
+RETURNS JSONB AS $$
+BEGIN
+${caseOf("p_coll", Object.entries(schema.tables).filter(([, t]) => t.refs).map(([coll, t]) => `    WHEN ${lit(coll)} THEN RETURN ${lit(JSON.stringify(Object.fromEntries(t.refs!.map((r) => [r.column, r.collection]))))}::jsonb;`), "RETURN '{}'::jsonb;   -- a collection that names none by refs")}
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;`;
+  return `${refsOf}
+
+CREATE OR REPLACE FUNCTION _delta_refs_hold(p_touched JSONB)
 RETURNS void AS $$
 DECLARE
   v_t   RECORD;
