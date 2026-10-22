@@ -79,7 +79,7 @@ exact version, or the setup stops reading it).
 - **`add /<coll>/-` makes a row the server names**, on every backend, and the echo carries
   `/<coll>/<id>` (`createRowCases` in `src/cases/writes.ts`). The path's id wins over one in the value.
 - **One error-code table**: 400 malformed, 401, 403 read-only, 404 not there, 409 already
-  there, 500 the server's; `errorCodeCases` in `src/cases/writes.ts` asks every backend, each
+  there, 500 the server's (and 429, a socket holding `maxDocs` open: `createWs`'s, asked before any backend); `errorCodeCases` in `src/cases/writes.ts` asks every backend, each
   mistake's code and SQLite's words (a row not there, another root row, an id taken), and
   `refusalCases` a schema's refusals in SQLite's words, the whole sentence (the op's path, then why;
   an op wrong in several ways, every one, in one order: unknown fields, values, required fields
@@ -151,7 +151,8 @@ exact version, or the setup stops reading it).
   imports railroad's subpaths, never the root barrel.
 - `src/server/server.ts`: `createWs`, `registerMethod`, `WsServer`.
 - `src/server/serve.ts` (`./serve`): the one server. `serve` (an app's routes and resources, the
-  socket on its path, `/health`, a 404), `run` (the pid file, `bun --hot`, the signals), `stop`
+  socket on its path, `/health` (the app's `health`), a 404, a stop once nothing is in flight),
+  `run` (the pid file, `bun --hot`, the signals), `stop`
   (`delta stop`), and the `App` contract. An app never writes a `Bun.serve` of its own.
 - `src/server/sqlite.ts`: the SQLite backend (`registerDocs`, custom docs, fan-out, implied
   docs, `inverseOf`; with `{ ledger: true }`, `undo` / `redo` / `history`), and the package's

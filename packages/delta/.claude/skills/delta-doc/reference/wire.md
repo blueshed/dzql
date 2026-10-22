@@ -20,7 +20,8 @@ a refusal asked as the message itself (`client.send({ action: "open", doc })`, i
 
 ## Client to server
 
-- `open { doc }` → the document, with `_v` where the backend versions.
+- `open { doc }` → the document, with `_v` where the backend versions. A socket holds at most
+  1000 open (`createWs({ maxDocs })`): one more is 429 until it closes one.
 - `delta { doc, ops, cursor?, undoable?, inverse? }` → `{ ack: true, version? }`; with a ledger
   also `ops`, `inverse`, `entry`; asked (`inverse: true`), `ops` (and `inverse` on SQLite).
   `cursor` counts in-process only. **A connection writes only what it has opened**, on every
@@ -46,5 +47,7 @@ a refusal asked as the message itself (`client.send({ action: "open", doc })`, i
 
 - Messages from one socket run side by side, except around an identity change (`auth.md`);
   past `maxHeld` (1000) or `maxHeldBytes` (1 MiB) waiting, the socket closes with 1008.
+- A message is at most 1 MiB (`createWs({ maxPayloadLength })`): past it the socket is dropped.
+- A server stopping closes each socket with 1001 once nothing is in flight: the client reconnects.
 - Ops are three verbs on JSON Pointers (`paths.md`); a write names a document and a path,
   never a function.

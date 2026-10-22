@@ -36,6 +36,8 @@ export async function peopleApi(ws: WsServer, db: Database) {
     store: sqliteLinkStore(db),
     personOf: (id) => db.query<Person, [number]>("SELECT id, name FROM people WHERE id = ?").get(id),
     people: () => db.query<Person, []>("SELECT id, name FROM people ORDER BY name, id").all(),
+    // a few people who know each other: anyone here sends anyone their link (unsaid, one's own alone)
+    mayLink: () => true,
   });
   wireAuth(ws, auth);   // me, link
   // With auth every document says who may have it: these, anyone signed in

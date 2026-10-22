@@ -10,11 +10,13 @@
  * - **The socket is signed in by the cookie**, on upgrade (`onUpgrade`, through `upgradeWithAuth`):
  *   no token rides in its URL or in a message. A socket with no session is nobody: the gate refuses
  *   it (401) every document but those anyone's (`owns: "ANYONE"`), which it opens and hears as no one.
- * - **Anyone signed in may make anyone's link** (`call("link", { person })`), unless the app says
- *   otherwise (`mayLink`); the first person's comes from a command on the server (`makeLink`).
- * - **In development** (not `NODE_ENV=production`), `GET /api/dev/people` lists everyone and
- *   `POST /api/dev/as/:id` signs in as them: one click to be anyone. Tests sign in with `signInAs`.
- *   Neither answers in production.
+ * - **A person signed in may make their own link** (`call("link", { person })`), and another's only
+ *   where the app says (`mayLink`: `() => true` for anyone's); the first person's comes from a
+ *   command on the server (`makeLink`).
+ * - **In development** (`dev`; unless said, `NODE_ENV` development or test, or a `bun --hot` that is
+ *   not production), `GET /api/dev/people` lists everyone and `POST /api/dev/as/:id` signs in as
+ *   them: one click to be anyone. Tests sign in with `signInAs`. Neither answers otherwise: not in
+ *   production, and not in a bare `bun src/routes.ts` with `NODE_ENV` unset.
  *
  * Who people are is the app's: `personOf(id)` reads its own collection, and the identity it answers
  * is what `owns` and the ledger see. The links and sessions are kept by a `LinkStore`: SQLite's here
@@ -123,9 +125,13 @@ export interface LinkAuthOpts<P extends { id: number }> {
   personOf(id: number): P | null | Promise<P | null>;
   /** Everyone, for the development picker ("Who are you?"). */
   people(): P[] | Promise<P[]>;
-  /** Who may make `person`'s link: `by` is signed in. Anyone, for anyone, unless said otherwise. */
+  /**
+   * Who may make `person`'s link: `by` is signed in. Unless said, a person makes only their own
+   * (`by.id === person`); `() => true` lets anyone signed in send anyone theirs. Asked before
+   * `person` is looked up, so a refusal says nothing of who is here.
+   */
   mayLink?(by: P, person: number): boolean | Promise<boolean>;
-  /** Development: the picker and `signInAs`. Default: `NODE_ENV` is not production. */
+  /** Development: the picker and `signInAs`. Default: `NODE_ENV` is development or test, or the process runs under `bun --hot` and `NODE_ENV` is not production (`developing`). */
   dev?: boolean;
   /** How long a session lasts, renewed as it is used (365 days); a link (7 days). */
   sessionDays?: number;
@@ -134,10 +140,21 @@ export interface LinkAuthOpts<P extends { id: number }> {
 
 type Route = (req: Request & { params: Record<string, string> }) => Response | Promise<Response>;
 
+/**
+ * Whether this process says it is in development, as `linkAuth`'s `dev` defaults: `NODE_ENV` is
+ * development or test (`bun test` sets test), or it runs under `bun --hot` (no production start
+ * does) and `NODE_ENV` is not production. A bare `bun src/routes.ts`, `NODE_ENV` unset, is not.
+ */
+export function developing(): boolean {
+  const env = process.env.NODE_ENV;
+  return env === "development" || env === "test" || (env !== "production" && process.execArgv.includes("--hot"));
+}
+
 /** The link sign-in: the `DeltaAuth`, its routes, and what tests and commands sign in with. */
 export function linkAuth<P extends { id: number }>(opts: LinkAuthOpts<P>) {
   const { store } = opts;
-  const dev = opts.dev ?? process.env.NODE_ENV !== "production";
+  const dev = opts.dev ?? developing();
+  const mayLink = opts.mayLink ?? ((by: P, person: number) => by.id === person);
   const sessionDays = opts.sessionDays ?? 365;
 
   const refuse = (status: number, message: string) => Response.json({ error: { code: status, message } }, { status });
@@ -222,13 +239,15 @@ export function linkAuth<P extends { id: number }>(opts: LinkAuthOpts<P>) {
         const { [SESSION]: _, ...person } = me as P & { [SESSION]?: unknown };
         return { result: person };
       },
-      /** A new link to be `person`, opening at `opens`: `{ url, expires }`. */
+      /** A new link to be `person`, opening at `opens`: `{ url, expires }`; one's own, unless `mayLink` says more. */
       async link(params, client) {
         const me = client.data?.identity as (P & { [SESSION]?: Kept }) | undefined;
         if (!me) return { error: "Sign in first" };
         const person = Number(params?.person);
-        if (!Number.isInteger(person) || !(await opts.personOf(person))) return { error: "Nobody of that id" };
-        if (opts.mayLink && !(await opts.mayLink(me, person))) return { error: "Not yours to send" };
+        if (!Number.isInteger(person)) return { error: "Nobody of that id" };
+        // asked first: refused, Bob and nobody answer alike
+        if (!(await mayLink(me, person))) return { error: "Not yours to send" };
+        if (!(await opts.personOf(person))) return { error: "Nobody of that id" };
         const opens = typeof params?.opens === "string" ? params.opens : undefined;
         return { result: await makeLink(store, person, { origin: me[SESSION]?.origin, opens, days: opts.linkDays }) };
       },

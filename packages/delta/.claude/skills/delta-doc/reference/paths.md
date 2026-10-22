@@ -61,4 +61,6 @@ backend (`errorCodeCases` in `src/cases/writes.ts`):
   `refs` column names (`schema.md`).
 - **409** already there (an id taken, or a unique constraint's values: `schema.md`), or still
   named (a row a current row's `refs` column names, removed).
+- **429** too many: an `open` past what one socket may hold open (`createWs({ maxDocs })`, 1000);
+  the socket's, asked before any backend (`server.md`). Close one first.
 - **500** the server's own failure.

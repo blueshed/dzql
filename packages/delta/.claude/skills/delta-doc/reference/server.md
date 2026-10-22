@@ -19,7 +19,7 @@ answers an HTTP route; what it opens that must be closed goes in `serve`'s `clos
 `close`: the file's last save, or the database).
 
 `serve(app, { port, dev })` (`src/server/serve.ts`, `@blueshed/delta/serve`) is Bun.serve with the socket on its path (told the
-server, so a change reaches every page), `/health`, a 404, and the app's `close` list run when it stops. `run(start)` is the
+server, so a change reaches every page), `/health` (the app's `health`), a 404, and the app's `close` list run when it stops. `run(start)` is the
 process: a pid file (`.server.pid`, `PID_FILE`) refusing a second start, `bun --hot`, SIGINT/SIGTERM; `delta stop` stops it.
 An app writes no `Bun.serve` of its own. `WsOptions` and `WsServer` in `src/server/server.ts` are the socket's contract (`path`
 defaults to `/ws`).
@@ -36,6 +36,20 @@ routes, the socket and the page, the database in its `close`, and `run` around i
 - `registerMethod(ws, name, (params, client) => …)` adds a `call` method; a name starting with
   `_` is private and throws. Mark one that signs a socket in with `ws.changesIdentity(name)` (`auth.md`).
 - Port `0` lets the OS pick one (tests).
+- **`/health` is the app's check** when it gives one (`App.health`, a `HealthCheck`: `() =>
+  boolean | Promise<boolean>`, say its store's `SELECT 1`): 200 `ok` while true, 503 `unhealthy`
+  when false or it throws, 503 `draining` once stopping. Without it, ok while it serves.
+- **A stop is as soon as nothing is in flight** (`tests/serve.test.ts`): the requests being
+  answered, the socket messages being handled, then the app's `idle` (work its own socket handler
+  queued). Then each socket is closed going away (1001) and the client reconnects to what serves
+  next. An idle socket holds nothing up; `run`'s five seconds are the most it waits.
+
+## Limits on a socket
+
+`createWs({ maxPayloadLength, maxDocs })`: a message is at most 1 MiB (past it Bun drops the
+socket, the frame unread: a file goes by HTTP), and a socket holds at most 1000 documents open
+(one more `open` is 429, nothing held for it; a `close` makes room). Raise either for an app
+that needs it.
 
 ## Origins
 
