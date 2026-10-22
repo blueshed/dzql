@@ -36,14 +36,24 @@ fi
 bun install
 
 # 3. A headless Chromium for Bun.WebView. On Linux it speaks CDP to a Chrome or
-#    Chromium found through $BUN_CHROME_PATH. The sandbox has no browser, apt's
-#    chromium is a snap stub, and the browser download hosts (cdn.playwright.dev,
-#    googlechromelabs.github.io, dl.google.com, storage.googleapis.com) are blocked.
-#    npm and GitHub are not, so a real headless build is taken out of the
-#    @sparticuz/chromium tarball, which carries the binary inside it.
+#    Chromium found through $BUN_CHROME_PATH. The sandbox's image may carry
+#    Playwright's Chromium ($PLAYWRIGHT_BROWSERS_PATH/chromium): then it is the one,
+#    told to be headless, and nothing is downloaded. Without it the sandbox has no
+#    browser, apt's chromium is a snap stub, and the browser download hosts
+#    (cdn.playwright.dev, googlechromelabs.github.io, dl.google.com,
+#    storage.googleapis.com) are blocked. npm and GitHub are not, so a real headless
+#    build is taken out of the @sparticuz/chromium tarball, which carries the binary inside it.
 DEST=/opt/chromium
 SHIM="$DEST/chrome-shim.sh"
-if [ ! -x "$DEST/chromium" ]; then
+CHROME="$DEST/chromium"
+HEADLESS=""
+INSTALLED="${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}/chromium"
+if [ -x "$INSTALLED" ]; then
+  CHROME="$INSTALLED"
+  HEADLESS="--headless=new"
+  mkdir -p "$DEST"
+fi
+if [ ! -x "$CHROME" ]; then
   # Two preinstalled PPAs (deadsnakes, ondrej/php) answer 403 and abort `apt update`.
   for f in /etc/apt/sources.list.d/deadsnakes-ubuntu-ppa-*.sources \
            /etc/apt/sources.list.d/ondrej-ubuntu-php-*.sources; do
@@ -67,13 +77,13 @@ fi
 
 # The launch shim, written every time. Bun.WebView starts this over a CDP pipe;
 # a root-owned Chromium without --no-sandbox aborts ("Chrome process closed the pipe").
-cat > "$SHIM" <<'EOF'
+cat > "$SHIM" <<EOF
 #!/bin/sh
-exec /opt/chromium/chromium \
-  --no-sandbox \
-  --disable-dev-shm-usage \
-  --disable-gpu \
-  "$@"
+exec $CHROME $HEADLESS \\
+  --no-sandbox \\
+  --disable-dev-shm-usage \\
+  --disable-gpu \\
+  "\$@"
 EOF
 chmod +x "$SHIM"
 

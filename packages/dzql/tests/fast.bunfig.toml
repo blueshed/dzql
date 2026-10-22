@@ -2,3 +2,5 @@
 # no coverage gate. The whole of each tier runs in CI, and before a release.
 [test]
 coverage = false
+# A PGlite test starts a database in the process, which takes longer than bun's 5 s on a slower
+# machine (the cloud sandbox): the scripts pass `--timeout 30000`, which bunfig has no key for.

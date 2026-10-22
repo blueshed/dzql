@@ -6,6 +6,16 @@ what is open across them. Newest first.
 
 ## [Unreleased]
 
+### A production review, and what it found (22 October)
+
+- Six reviewers read dzql for production (security, Postgres operations, the rendering runtime,
+  adoption and deployment) and for four domains (calendars, planning, maps, accounting), each
+  blocker read back against the code: dzql #82-124, delta #95-104, root #142-145.
+- dzql's PGlite tests run with a 30 s timeout (`test:fast`, `test:pg`): a database started in the
+  process passed bun's 5 s on a slower machine (root #144). `test:pg` uses `DATABASE_URL` when it
+  is set, with no Docker; the session hook uses the sandbox's own Chromium when its image has one
+  (root #145).
+
 ### What the Shed's run 6 found, built (21 October)
 
 - **Breaking**, delta: a write naming a `default: "now"` column is refused (the server sets it);

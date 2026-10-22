@@ -63,6 +63,10 @@ section up.
 
 ### Fixed
 
+- **The session hook uses the sandbox's own Chromium when its image has one** (22 October, root
+  #145). Claude Code's cloud image carries Playwright's Chromium (`$PLAYWRIGHT_BROWSERS_PATH`,
+  `/opt/pw-browsers`); the hook's shim now runs it headless and downloads nothing, and unpacks
+  `@sparticuz/chromium` only where there is none.
 - **Rows that name each other live in one store** (21 October, the Shed's run 6, finding 2).
   Sign-in put the people in SQLite while the documents their rows named stayed in a JSON file, so
   nothing held the two together. evolve's `references/auth.md` says what moves with the people:

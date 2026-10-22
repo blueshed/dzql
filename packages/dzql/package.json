@@ -64,8 +64,8 @@
   ],
   "scripts": {
     "test": "bun run test:fast",
-    "test:setup": "docker compose down -v && docker compose up -d --wait",
-    "test:teardown": "docker compose down -v",
+    "test:setup": "[ -n \"$DATABASE_URL\" ] || (docker compose down -v && docker compose up -d --wait)",
+    "test:teardown": "[ -n \"$DATABASE_URL\" ] || docker compose down -v",
     "test:coverage": "bun scripts/tests.ts",
     "bench": "bun run bench/run.ts",
     "dev": "bun --watch examples/chat/routes.ts",
@@ -80,12 +80,12 @@
     "costs": "bun --env-file=.env.test src/modelling/costs.ts",
     "model:check": "LOG_LEVEL=warn bun --env-file=.env.test src/modelling/page/loader/check.ts",
     "model:load": "LOG_LEVEL=warn bun --env-file=.env.test src/modelling/page/loader/load.ts",
-    "test:fast": "bun check && bun --config=tests/fast.bunfig.toml test tests/compile/ tests/delta-pg/app-store && bun scripts/tests.ts --fast",
+    "test:fast": "bun check && bun --config=tests/fast.bunfig.toml test --timeout 30000 tests/compile/ tests/delta-pg/app-store && bun scripts/tests.ts --fast",
     "test:slow": "bun run test:pg && bun run test:coverage && bun run stories:all && bun run costs --check",
     "test:coverage:ci": "bun scripts/tests.ts --ci",
     "start": "NODE_ENV=production bun examples/chat/routes.ts",
     "stop": "delta stop",
-    "test:pg": "bun run test:setup && bun --config=tests/bunfig.toml test tests/compile tests/delta tests/delta-pg; status=$?; bun run test:teardown; exit $status"
+    "test:pg": "bun run test:setup && bun --config=tests/bunfig.toml test --timeout 30000 tests/compile tests/delta tests/delta-pg; status=$?; bun run test:teardown; exit $status"
   },
   "keywords": [
     "postgresql",
