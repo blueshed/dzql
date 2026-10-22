@@ -211,9 +211,11 @@ describe("the ticker", () => {
 
     const before = (await quotes()).DLTA!.price;
     write(ws, "ticker", [{ op: "replace", path: "/DLTA/price", value: 240.5 }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "ticker:1" });
-    expect(drawerOf(shown(await expectMessage(ws, "render")))).toContain(`<span class="move up">+${(((240.5 - before) / before) * 100).toFixed(2)}%</span>`);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "quote:4", ops: expect.arrayContaining([{ op: "replace", path: "/price", value: 240.5 }]) }); // the quote's own, which the sparkline takes
+    // the tick, then the quote it moves, each told, and the page drawn once for both (or after each): in no promised order
+    const told = await heard(ws);
+    expect(told.find((m) => m.type === "patch" && m.doc === "ticker:1")).toBeDefined();
+    expect(drawerOf(told.filter((m) => m.type === "render").map(shown).join(""))).toContain(`<span class="move up">+${(((240.5 - before) / before) * 100).toFixed(2)}%</span>`);
+    expect(told.find((m) => m.type === "patch" && m.doc === "quote:4")).toMatchObject({ ops: expect.arrayContaining([{ op: "replace", path: "/price", value: 240.5 }]) }); // the quote's own, which the sparkline takes
 
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "DLTA" }]);
     await expectMessage(ws, "patch");

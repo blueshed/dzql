@@ -11,6 +11,8 @@ that send writes are [controls.md](controls.md).
 { "type": "render", "ops": [/* parts */] }
 // or, refused
 { "type": "refused", "id": 7, "reason": "…" }
+// or, the page could not be drawn (a throw in a render: logged, and the page says so)
+{ "type": "failed" }
 ```
 
 The shapes are `src/rendering/json-patch.ts` (`WIRE`, `LONGEST_ID`) and `src/rendering/server.ts`.
@@ -37,6 +39,16 @@ id, `inspect` naming the documents a page sees.
   an id, then with the page whole. A throw goes through `failed()` (`src/rendering/failed.ts`), which fails the
   story it happened in.
 - A message in is at most 1 MiB, inflated: send a picture or a file by HTTP, never the socket.
+- A write carries at most 1,000 ops (`MOST_OPS`), its tests among them: more is refused, saying so.
+- A connection's messages are handled in order, each on its page as drawn after everything before
+  it; another connection's do not wait for them. One with more than 100 waiting (`MOST_WAITING`) is
+  closed (1008), and so is one that reads slower than it is sent to, once 1 MiB waits for it. Its
+  page connects again, after a random share of a wait that doubles, and is drawn afresh.
+- The echoes of several changes may come before the parts that show them all: a page is drawn once
+  for the changes told while it waited. A test finds what it asks about by document, not position.
+- A page the server could not draw is sent `{type: "failed"}`, and says so beside itself until the
+  next drawing. A part for something the page does not have, or a patch past the next version a
+  watching applet holds, makes the page ask for itself whole.
 - The socket is compressed, a message at a time: a big page sent whole to many at once is the cost to
   watch. Draw no secret (a code, a token) beside text others write: compressed sizes can leak it.
 

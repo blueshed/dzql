@@ -102,8 +102,8 @@ describe("app.ts in a real browser", () => {
     expect((await view.evaluate(reconnectDelay)) as number).toBe(1000);
 
     // drop the connection: the backoff scales up, then the (real, always-up) server
-    // lets the client reconnect on its own.
-    await view.evaluate(`window.eta.socket().close()`);
+    // lets the client reconnect on its own, after nearly the whole of its wait (a random share of it)
+    await view.evaluate(`(Math.random = () => 0.9, window.eta.socket().close())`);
     const escalated = await waitFor(view, reconnectDelay, (v) => v === 2000);
     expect(escalated).toBe(2000);
     await waitFor(view, socketOpen, (v) => v === true);

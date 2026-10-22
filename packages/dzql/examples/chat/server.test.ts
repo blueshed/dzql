@@ -212,8 +212,9 @@ describe("websocket write protocol", () => {
 
     const room = crypto.randomUUID();
     write(ws, "session", [{ op: "replace", path: "/room", value: room }]);
-    await expectMessage(ws, "patch"); // echo of the session's /room write
-    const message = await expectMessage(ws, "render"); // the full chat view: alone, nobody to tell
+    const { messages } = await heard(ws); // the echo of the session's /room write, who is here now, and the page
+    expect(patchFor(messages, "session")?.ops).toEqual([{ op: "replace", path: "/room", value: room }]);
+    const message = renderIn(messages)!; // the full chat view
 
     expect(htmlOf(message)).toContain(`#${room}`);
     expect(htmlOf(message)).toContain('data-write=\'{"doc":"room","op":"add","path":"/messages/-"}\'');

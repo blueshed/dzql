@@ -1414,3 +1414,47 @@ describe("a write's own answer: its echo or its refusal, by its id", () => {
     expect(await view.evaluate<boolean>(`window.__here`)).toBe(true);
   }, 15000);
 });
+
+describe("app.ts when the server falls behind, or fails", () => {
+  // A part sent for a target the page did not have was passed over, and the page stayed wrong
+  // until something sent it whole (the production review, 22 October).
+  test("a part sent for what the page does not have asks for the page whole, once until it comes; the parts it has are laid on", async () => {
+    await using view = await open();
+    await pushRender(view, `<main><p data-eta-part="a">a</p></main>`);
+    await push(view, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="gone"]', html: `<p data-eta-part="gone">?</p>` }, { op: "replace", target: '[data-eta-part="a"]', html: `<p data-eta-part="a">A</p>` }] });
+    await waitFor(view, `window.__sent.length`, (v) => v === 1);
+    await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="gone"]' }] }); // asked already
+    expect(await view.evaluate<unknown>(`[window.__sent, document.querySelector('[data-eta-part="a"]').textContent]`)).toEqual([[{ type: "page" }], "A"]);
+  });
+
+  test("a patch past the next version an applet's props hold -- one missed between -- asks for the page whole, and is not laid on", async () => {
+    await using view = await open();
+    const text = `document.getElementById('t').textContent`;
+    await pushRender(view, `<main>${part("t", `<div id="t" data-applet="tally"${appletProps({ me: "ann", rows: [{ n: 1 }] }, { doc: "list:1", under: "/rows", v: 1 })}></div>`)}</main>`);
+    await waitFor(view, text, (v) => v === "ann: 1");
+    await push(view, { type: "patch", doc: "list:1", version: 3, ops: [{ op: "add", path: "/-", value: { n: 5 } }] }); // 2 never came
+    await waitFor(view, `window.__sent.length`, (v) => v === 1);
+    expect(await view.evaluate<unknown>(`[window.__sent, ${text}]`)).toEqual([[{ type: "page" }], "ann: 1"]);
+  });
+
+  test("a page the server could not draw says so beside it, where the connection's state is said, until a drawing comes", async () => {
+    await using view = await open();
+    const status = `document.querySelector('[role=status]').textContent`;
+    await pushRender(view, `<p>general</p>`);
+    await push(view, { type: "failed" });
+    await waitFor(view, status, (v) => v === "This page could not be drawn just now.");
+    await pushRender(view, `<p>general, again</p>`);
+    await waitFor(view, status, (v) => v === "");
+  });
+
+  // Every tab waited 1 s, then 2, then 4, from the same moment: a restart closes them all at once.
+  test("a dropped connection tries again after a random share of the wait, the wait doubling to its most: no two tabs at once", async () => {
+    await using view = await open();
+    await pushRender(view, `<p>general</p>`);
+    await view.evaluate(`(Math.random = () => 0, window.__old = window.eta.socket())`);
+    const at = Date.now();
+    await view.evaluate(`window.eta.socket().close()`);
+    await reconnected(view);
+    expect(Date.now() - at).toBeLessThan(500); // at once, though the wait is a second
+  });
+});

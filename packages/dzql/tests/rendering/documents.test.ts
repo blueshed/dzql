@@ -139,6 +139,53 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     expect(await documents.history("here:x", "s1")).toEqual([]);
   });
 
+  test("a drawing that reads documents not held loads every one it read together, however many, and runs again; one named by another is loaded once that one is", async () => {
+    const { local } = laggingDelta();
+    const documents = createDocuments(local);
+    const names = Array.from({ length: 30 }, (_, i) => `slow:${i}`);
+    let runs = 0;
+    // read first, then used: the reads not held are each nothing until loaded, and what fails for it is theirs
+    const sum = () => (runs++, names.map((d) => documents.read<{ n: number }>(d)).reduce((n, d) => n + d.n + 1, 0));
+    expect(await settled(documents, sum)).toBe(30);
+    expect(runs).toBe(2);
+    // what a run drew from a document it did not hold is never the answer, though it drew something
+    runs = 0;
+    expect(await settled(documents, () => (runs++, documents.read<{ n: number }>("slow:a") ?? "not held"))).toEqual({ n: 0 });
+    expect(runs).toBe(2);
+    // a chain: the second named by what the first holds
+    runs = 0;
+    expect(await settled(documents, () => (runs++, documents.read(`slow:x${documents.read<{ n: number }>("slow:b").n}`)))).toEqual({ n: 0 });
+    expect(runs).toBe(3);
+    // outside settled, a read not held is Pending, as ever
+    expect(() => documents.read("slow:c")).toThrow(Pending);
+  });
+
+  test("a change is laid on a copy of what it touches alone: what was held before is as it was, and what it did not touch is the very same", async () => {
+    const local = createLocal();
+    registerMemory(local.server, { prefix: "here:", empty: () => ({ a: { x: 1, deep: { y: 2 } }, b: { z: [1, 2] } }) });
+    const documents = createDocuments(local);
+    const told: { ops: unknown[] }[] = [];
+    documents.onChange((c) => void told.push(c));
+    await documents.load("here:x");
+    const change = async (v: number, ops: unknown[]) => {
+      local.server.publish("here:x", { doc: "here:x", ops, v });
+      await documents.quiet();
+      return documents.read<any>("here:x");
+    };
+    const before = documents.read<any>("here:x");
+    const after = await change(1, [{ op: "replace", path: "/a/deep/y", value: 3 }, { op: "add", path: "/a/w", value: { q: 1 } }]);
+    expect(before).toEqual({ a: { x: 1, deep: { y: 2 } }, b: { z: [1, 2] } }); // as it was
+    expect(after).toEqual({ a: { x: 1, deep: { y: 3 }, w: { q: 1 } }, b: { z: [1, 2] } });
+    expect(after.b).toBe(before.b); // untouched: the very same, not a copy
+    // what a change put in is copied before a later change touches it: the change told still says what it said
+    const later = await change(2, [{ op: "replace", path: "/a/w/q", value: 2 }, { op: "add", path: "/b/z/-", value: 3 }]);
+    expect(told[0]!.ops[1]).toEqual({ op: "add", path: "/a/w", value: { q: 1 } });
+    expect([later.a.w, later.b.z, after.b.z]).toEqual([{ q: 2 }, [1, 2, 3], [1, 2]]);
+    // the document whole, in place of what was held, which is as it was
+    expect(await change(3, [{ op: "replace", path: "", value: { fresh: true } }])).toEqual({ fresh: true });
+    expect(later.a.x).toBe(1);
+  });
+
   test("settled gives up: a Pending with nothing to load it from, or one that never comes", async () => {
     await expect(settled(undefined, () => { throw new Pending("a:1"); })).rejects.toBeInstanceOf(Pending);
     const { local } = laggingDelta();

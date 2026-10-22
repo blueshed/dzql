@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { appletProps } from "../../src/rendering/html";
-import { comparable, diff, drawnValues, drawParts, part, splitTag } from "../../src/rendering/parts";
+import { comparable, diff, drawnFields, drawnValues, drawParts, drawPartsByIncludes, part, splitTag } from "../../src/rendering/parts";
 
 const draw = (render: () => string) => drawParts(render);
 const list = (key: string, rows: [string, string][]) => part(key, `<ul>${rows.map(([k, t]) => part(k, `<li>${t}</li>`)).join("")}</ul>`);
@@ -222,6 +222,64 @@ describe("diff", () => {
   });
 });
 
+describe("layout", () => {
+  // the pages this file draws, and the odd ones: each laid out from where its parts stand, as by
+  // comparing every part with every other (`drawPartsByIncludes`), which is what it was
+  const days = (tea: "mon" | "tue" | "split") => {
+    const row = (how = "") => part("tea", `<li${how}>tea</li>`);
+    const day = (d: string) => part(d, `<section><ul>${part(`${d}-walk`, `<li>walk</li>`)}${tea === d ? row() : ""}</ul></section>`);
+    return `<main>${part("split", `<div><ul>${tea === "split" ? row(' class="col"') : ""}</ul><ol>${tea === "split" ? row(' class="row"') : ""}</ol></div>`)}${day("mon")}${day("tue")}</main>`;
+  };
+  const pages: Record<string, () => string> = {
+    "a list beside a head": () => page("Hi", [["r1", "a"], ["r2", "b"], ["r3", "c"]]),
+    "an empty list": () => page("Hi", []),
+    "a row in a day": () => days("mon"),
+    "a row drawn twice, so no part": () => days("split"),
+    "a key standing for two things": () => `<main>${part("box", `<div>${part("x", `<b>1</b>`)}${part("x", `<b>2</b>`)}</div>`)}</main>`,
+    "a key drawn twice the same, used once": () => {
+      const drawer = () => part("drawer", `<aside>t</aside>`);
+      drawer();
+      return `<main>${drawer()}</main>`;
+    },
+    "a part drawn and not used": () => (part("gone", `<p>never</p>`), `<main>${part("here", `<p>here</p>`)}</main>`),
+    "a part on the same element as another, so not on the page": () => `<main>${part("outer", part("inner", `<p>x</p>`))}</main>`,
+    "parts with space before them, and a key with a quote": () => `<main>${part("a", `  <div>${part('q"k', `\n<p>x</p>`)}</div>`)}</main>`,
+    "a watching mount": () => `<main>${part("strip", `<div data-applet="strip"${appletProps({ me: "ann", trip: { a: 1 } }, { doc: "trip:1", under: "/trip", v: 2 })}><p>paint</p></div>`)}</main>`,
+    "parts deep in parts": () => part("site", `<div>${part("page", `<section>${["a", "b", "c"].map((k) => part(k, `<article>${part(`${k}-h`, `<h2>${k}</h2>`)}${part(`${k}-p`, `<p>${k}</p>`)}</article>`)).join("")}</section>`)}${part("drawers", `<div></div>`)}</div>`),
+    "a part whose HTML starts with no element": () => `<main>${part("text", "just words")}${part("p", `<p>x</p>`)}</main>`,
+    "a part whose HTML runs into the next one's": () => {
+      const b = part("b", `<p>r</p>`);
+      return part("a", `<p>q</p>${b.slice(0, b.indexOf(">") + 1)}`) + "r</p>";
+    },
+  };
+  for (const [name, render] of Object.entries(pages)) {
+    test(`laid out from where each part stands, as by comparing every part with every other: ${name}`, () => {
+      expect(drawParts(render)).toEqual(drawPartsByIncludes(render));
+    });
+  }
+
+  test("a page of a thousand parts is laid out, and compared with the next, in well under 20 ms", () => {
+    const rows = (n: number): [string, string][] => Array.from({ length: n }, (_, i) => [`r${i}`, `row ${i}, and some words for it`]);
+    // the time this process spent on it (not the clock's: a machine busy with something else
+    // does not fail it), in ms, the best of five
+    const best = (fn: () => void): number => {
+      let least = Infinity;
+      for (let i = 0; i < 5; i++) {
+        const at = process.cpuUsage();
+        fn();
+        const spent = process.cpuUsage(at);
+        least = Math.min(least, (spent.user + spent.system) / 1000);
+      }
+      return least;
+    };
+    let one = drawParts(() => page("Hi", rows(999)));
+    expect(best(() => (one = drawParts(() => page("Hi", rows(999)))))).toBeLessThan(20);
+    const two = drawParts(() => page("Hi", rows(1000)));
+    expect(diff(one, two)).toEqual([{ op: "after", target: '[data-eta-part="r998"]', html: `<li data-eta-part="r999">row 999, and some words for it</li>` }]);
+    expect(best(() => diff(one, two))).toBeLessThan(20);
+  });
+});
+
 describe("drawnValues", () => {
   test("what the fields that write a path are drawn with, as a browser reads them: an input's value, a textarea's text less its first newline", () => {
     const spec = (doc: string, path: string) => ` data-write='${JSON.stringify({ doc, op: "replace", path })}'`;
@@ -235,5 +293,7 @@ describe("drawnValues", () => {
     expect(drawnValues(page, "trip", "/notes")).toEqual(["first <line>\nsecond"]);
     expect(drawnValues(page, "trip", "/where")).toEqual([""]);
     expect(drawnValues(page, "trip", "/gone")).toEqual([]);
+    // every path of a document at once, the page read once: what a write of many tests is held against
+    expect(drawnFields(page, "trip")).toEqual(new Map([["/title", ["Tom & Jo's"]], ["/notes", ["first <line>\nsecond"]], ["/where", [""]]]));
   });
 });

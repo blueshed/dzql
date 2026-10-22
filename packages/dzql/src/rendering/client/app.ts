@@ -119,10 +119,13 @@ function mountApplets() {
  * them again (`update`) -- or, where it takes the ops itself (`patch`), given those. One at or
  * below the version its props hold is held already: the server's copy moves before its change is
  * told, so a render drawn after it can come first. One that does not land on them is drift, and
- * the page is asked for afresh, which the applet then draws.
+ * so is one past the next version, a patch missed between (a socket that fell behind is closed,
+ * and its page drawn afresh, but what it was sent before it closed may be short): the page is
+ * asked for afresh, which the applet then draws.
  */
 function watched(el: HTMLElement, held: Held, version: number, ops: PatchOp[]): void {
   if (held.v !== undefined && version <= held.v) return;
+  if (held.v !== undefined && version > held.v + 1) return askForThePage(); // one missed between: what it holds is not what the patch is laid on
   const under = el.dataset.under ?? "";
   try {
     held.props = applyPatch(held.props, ops.map((op) => ({ ...op, path: under + op.path })));
@@ -517,16 +520,21 @@ function keyboardAfter(): () => void {
 }
 
 // The page in parts: what changed since the last drawing, in HTML's terms (src/rendering/parts.ts). Each op
-// names a part; a target the page no longer has is skipped -- the next full render puts things
-// right, as it would after a reconnect. The ops keep a choice not yet drawn as one render does,
-// since a group of radios may span parts. Afterwards, the same care as a whole render.
+// names a part; one whose target the page does not have is passed over, and the page asked for
+// whole: the server works out the parts from what it sent, so the page is not what it sent. The
+// ops keep a choice not yet drawn as one render does, since a group of radios may span parts.
+// Afterwards, the same care as a whole render.
 function applyFragments(ops: HtmlOp[]) {
   drawing(() =>
     keepingChoices(() => {
       for (const op of ops) {
         const target = app.querySelector(op.target);
+        if (!target) {
+          askForThePage();
+          continue;
+        }
         // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
-        if (!target || target.parentElement?.closest("[data-applet]")) continue;
+        if (target.parentElement?.closest("[data-applet]")) continue;
         if (op.op === "replace") {
           morphElement(target, op.html, hooks);
         } else if (op.op === "tag") {
@@ -801,6 +809,9 @@ function reloadForWire(): boolean {
 app.insertAdjacentHTML("afterend", `<p role="status" class="connection"></p>`);
 const connection = app.nextElementSibling!;
 
+/** What the status says when the server could not draw the page (src/rendering/server.ts): it stays as it was until a drawing comes. */
+const UNDRAWN = "This page could not be drawn just now.";
+
 function connect() {
   // http: goes ws:, https: wss:; the URL's screen goes with it, for the server to route
   socket = new WebSocket(`${location.origin.replace("http", "ws")}${AT}/ws?at=${encodeURIComponent(pageInUrl())}`);
@@ -816,7 +827,9 @@ function connect() {
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
-    if (message.type === "render") {
+    if (message.type === "failed") connection.textContent = UNDRAWN;
+    else if (message.type === "render") {
+      if (connection.textContent === UNDRAWN) connection.textContent = "";
       if (message.ops) applyFragments(message.ops);
       else if (message.wire === WIRE || !reloadForWire()) {
         if (sending?.unanswered) handBack(); // the page drawn afresh, after its socket went
@@ -859,7 +872,9 @@ function connect() {
     app.inert = true;
     app.dataset.offline = "";
     connection.textContent = "Reconnecting…";
-    setTimeout(connect, reconnectDelay);
+    // after a random share of the wait (full jitter): a server that goes closes every tab at once,
+    // and they must not all come back at once
+    setTimeout(connect, Math.random() * reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
   });
   // a socket's error is always followed by its close

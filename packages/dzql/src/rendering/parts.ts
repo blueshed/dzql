@@ -8,7 +8,8 @@ import { applyOps } from "@blueshed/delta/core";
 // out of a list. The whole page goes only when its own outline changed -- a different page. Which
 // parts a render names is the only thing it says about delivery; what to send is worked out.
 
-type Recorded = { key: string; html: string };
+/** A part as it was named: its key, its HTML tagged, and where in that HTML its tag says its key (`data-eta-part=`), or -1 where it starts with no element and carries no key. */
+type Recorded = { key: string; html: string; at: number };
 const recordings: Recorded[][] = [];
 
 /** What a part's root element carries, as its HTML says it: `data-eta-part="<key>"`. */
@@ -16,8 +17,9 @@ const carries = (key: string): string => `data-eta-part="${key.replaceAll('"', "
 
 /** Names a region of the page: its root element is tagged `data-eta-part="<key>"`, and it is sent on its own when it alone changed. A key is unique on its page. */
 export function part(key: string, html: string): string {
-  const tagged = html.replace(/^(\s*<[a-zA-Z][\w-]*)/, `$1 ${carries(key)}`);
-  recordings.at(-1)?.push({ key, html: tagged });
+  const opening = /^\s*<[a-zA-Z][\w-]*/.exec(html)?.[0];
+  const tagged = opening === undefined ? html : `${opening} ${carries(key)}${html.slice(opening.length)}`;
+  recordings.at(-1)?.push({ key, html: tagged, at: opening === undefined ? -1 : opening.length + 1 });
   return tagged;
 }
 
@@ -169,18 +171,92 @@ const placeholder = (key: string): string => `<!--part:${key}-->`;
 
 /** Draws a page, recording the parts it names, and lays them out as a tree. */
 export function drawParts(draw: () => string): Drawn {
-  const recorded: Recorded[] = [];
-  recordings.push(recorded);
-  let html: string;
-  try {
-    html = draw();
-  } finally {
-    recordings.pop();
-  }
+  const [html, recorded] = recording(draw);
   return layout(html, recorded);
 }
 
-function layout(page: string, recorded: Recorded[]): Drawn {
+/** Draws a page as `drawParts` does, laid out by comparing every part with every other: what `drawParts` is held to (its tests). */
+export function drawPartsByIncludes(draw: () => string): Drawn {
+  const [html, recorded] = recording(draw);
+  return byIncludes(html, recorded);
+}
+
+/** A page drawn, and the parts it named as it was. */
+function recording(draw: () => string): [string, Recorded[]] {
+  const recorded: Recorded[] = [];
+  recordings.push(recorded);
+  try {
+    return [draw(), recorded];
+  } finally {
+    recordings.pop();
+  }
+}
+
+/** A page laid out as a tree of its parts: from where each stands on it, or, where that cannot say, by comparing every part with every other. */
+const layout = (page: string, recorded: Recorded[]): Drawn => byOffsets(page, recorded) ?? byIncludes(page, recorded);
+
+/** Each key a page's tags carry, as they carry it. */
+const MARKS = /data-eta-part="([^"]*)"/g;
+
+/**
+ * The tree, from where each part stands on the page, in time that grows with the page and not with
+ * its parts squared: what `byIncludes` makes, read off the page once. Every key a part carries is
+ * found on it (its tag's `data-eta-part`); a part's HTML stands, if anywhere, at a key it carries,
+ * so each part is found where it stands, and how many times; and as each holds what lies within it,
+ * the part that holds another is the smallest whose span holds its span. Undefined where offsets
+ * cannot say it so: a part whose HTML starts with no element (it carries no key), or carries its
+ * own key twice, or one that runs into another, neither holding the other.
+ */
+function byOffsets(page: string, recorded: Recorded[]): Drawn | undefined {
+  if (recorded.some((r) => r.at < 0 || r.html.includes(carries(r.key), r.at + 1))) return undefined;
+  // where each key, as its tag carries it, stands on the page
+  const marks = new Map<string, number[]>();
+  for (const m of page.matchAll(MARKS)) (marks.get(m[1]!) ?? marks.set(m[1]!, []).get(m[1]!)!).push(m.index);
+  // where a part's HTML stands on the page: at each of its key's marks that starts it
+  const found = new Map<string, number[]>();
+  const where = (r: Recorded): number[] => {
+    const known = found.get(r.html);
+    if (known) return known;
+    const starts = (marks.get(r.key.replaceAll('"', "&quot;")) ?? []).map((m) => m - r.at).filter((s) => s >= 0 && page.startsWith(r.html, s));
+    found.set(r.html, starts);
+    return starts;
+  };
+  // A part counts if it is on the page, once, as byIncludes says
+  const byKey = new Map<string, Map<string, Recorded>>();
+  for (const r of recorded) if (where(r).length > 0) byKey.set(r.key, (byKey.get(r.key) ?? new Map()).set(r.html, r));
+  const parts = [...byKey.values()].filter((rs) => rs.size === 1 && where([...rs.values()][0]!).length === 1).map((rs) => [...rs.values()][0]!);
+
+  type Span = { part: Recorded; from: number; to: number };
+  const inOrder = parts.map((part): Span => ({ part, from: where(part)[0]!, to: where(part)[0]! + part.html.length }));
+  const spans = inOrder.toSorted((a, b) => a.from - b.from || b.to - a.to);
+  const children = new Map<string | null, Span[]>([[null, []]]);
+  const open: Span[] = [];
+  for (const span of spans) {
+    while (open.length > 0 && open.at(-1)!.to <= span.from) open.pop();
+    const holder = open.at(-1);
+    if (holder && (span.to > holder.to || (holder.from === span.from && holder.to === span.to))) return undefined; // one runs into another
+    children.get(holder?.part.key ?? null)!.push(span);
+    children.set(span.part.key, []);
+    open.push(span);
+  }
+
+  const nodes = new Map<string | null, Node>();
+  const make = (key: string | null, html: string, from: number): void => {
+    const inside = children.get(key)!;
+    let skeleton = "";
+    let at = 0;
+    for (const c of inside) {
+      skeleton += html.slice(at, c.from - from) + placeholder(c.part.key);
+      at = c.to - from;
+    }
+    nodes.set(key, { key, html, skeleton: skeleton + html.slice(at), children: inside.map((c) => c.part.key) });
+  };
+  make(null, page, 0);
+  for (const span of inOrder) make(span.part.key, span.part.html, span.from);
+  return { html: page, nodes };
+}
+
+function byIncludes(page: string, recorded: Recorded[]): Drawn {
   // A part counts if it is on the page, once. A key drawn twice the same (a view that draws a thing
   // twice and uses it once) is one part; a key standing for two different things is no part: what
   // holds it is sent instead.
@@ -248,15 +324,16 @@ function settle(key: string | null, prev: Drawn, next: Drawn, ops: HtmlOp[], see
     // A list: the same outline around a run of rows. Rows gone are taken out (`goneFrom`); rows
     // kept keep their order and are settled in turn; new rows go in after the row before them, or
     // before the row after them. A list that was empty has neither, and is replaced.
-    const kept = n.children.filter((c) => p.children.includes(c));
-    if (kept.join("\n") !== p.children.filter((c) => n.children.includes(c)).join("\n")) return false;
+    const [was, is] = [new Set(p.children), new Set(n.children)];
+    const kept = n.children.filter((c) => was.has(c));
+    if (kept.join("\n") !== p.children.filter((c) => is.has(c)).join("\n")) return false;
     if (kept.length === 0 && n.children.length > 0) return false;
-    for (const gone of p.children.filter((c) => !n.children.includes(c))) ops.push({ op: "remove", target: goneFrom(key, gone, next) });
+    for (const gone of p.children.filter((c) => !is.has(c))) ops.push({ op: "remove", target: goneFrom(key, gone, next) });
     n.children.forEach((c, i) => {
-      if (p.children.includes(c)) return settleChild(c, prev, next, ops, seen);
+      if (was.has(c)) return settleChild(c, prev, next, ops, seen);
       const html = next.nodes.get(c)!.html;
       if (i > 0) ops.push({ op: "after", target: target(n.children[i - 1]!), html });
-      else ops.push({ op: "before", target: target(n.children.find((k) => p.children.includes(k))!), html });
+      else ops.push({ op: "before", target: target(kept[0]!), html });
     });
     return true;
   }
@@ -297,18 +374,23 @@ const isList = (inside: string): boolean => (inside.match(RUN) ?? []).length <= 
  * browser reads them: an input's `value`, a textarea's text, less the newline a browser drops after
  * its start tag. What a write's `test` is held against.
  */
-export function drawnValues(page: string, doc: string, path: string): string[] {
-  const values: string[] = [];
+export const drawnValues = (page: string, doc: string, path: string): string[] => drawnFields(page, doc).get(path) ?? [];
+
+/** What the fields on a page that write `doc` are drawn with, by the path each writes (`drawnValues`): the page read once, however many paths are asked of it. */
+export function drawnFields(page: string, doc: string): Map<string, string[]> {
+  const values = new Map<string, string[]>();
+  const add = (path: string, value: string) => void values.set(path, [...(values.get(path) ?? []), value]);
   let text: string | undefined;
   new HTMLRewriter()
     .on("input[data-write], textarea[data-write]", {
       element(el) {
         const spec = JSON.parse(decoded(el.getAttribute("data-write")!)) as { doc?: string; path?: string };
-        if (spec.doc !== doc || spec.path !== path) return;
-        if (el.tagName === "input") return void values.push(decoded(el.getAttribute("value") ?? ""));
+        if (spec.doc !== doc || typeof spec.path !== "string") return;
+        const path = spec.path;
+        if (el.tagName === "input") return add(path, decoded(el.getAttribute("value") ?? ""));
         text = "";
         el.onEndTag(() => {
-          values.push(decoded(text!).replace(/^\r?\n/, ""));
+          add(path, decoded(text!).replace(/^\r?\n/, ""));
           text = undefined;
         });
       },

@@ -11,8 +11,9 @@ both, for someone deciding whether it suits, or wanting to know why it is built 
 An app has one `render(sessionId, address)`: from where a tab stands, it decides which screen a person is on and draws their whole
 page as HTML, reading the documents it shows with `read(name)`
 (`packages/dzql/src/rendering/documents.ts`). Reading is how a page subscribes: whatever a page
-read, it is told of. `read` is synchronous; a document not yet held throws `Pending`, and the
-kernel loads it and draws the page again, so a render never awaits and never half-draws.
+read, it is told of. `read` is synchronous; a document not yet held is nothing while the page is
+drawn, and the kernel loads every one the drawing read together and draws the page again, so a
+render never awaits and never half-draws.
 
 There is no state in the browser beyond the page itself. HTML is the only vocabulary on the wire:
 no JSON tree of the app's data, no client-side model to keep in step.
@@ -34,6 +35,23 @@ typing; it never replaces `innerHTML`.
 
 So a message said in a room of a hundred goes to each other member as its one `<li>`, not the
 conversation again, and nobody whose page did not read the room is sent anything.
+
+## Under load
+
+Each connection's messages are handled one at a time, in the order they came, each against its
+page as drawn after everything before it; another connection's go on meanwhile, so nobody waits
+behind a busy room. Every change is told at once (its echo), and a page waits a turn before it is
+drawn again, so the changes told meanwhile are drawn together: a page is drawn at most once for
+them all, not once each. A page is laid out in parts in time that grows with the page, not with its
+parts squared: a page of 1,000 parts in well under 20 ms, which a test holds
+(`packages/dzql/tests/rendering/parts.test.ts`).
+
+What one connection may ask is bounded: a write carries at most 1,000 ops; a connection with more
+than 100 messages waiting is closed; a page that reads slower than it is sent to is closed once
+1 MiB waits for it, rather than sent less than it was told. Its page connects again, after a random
+share of a wait that doubles, so a restart does not bring every tab back at once, and is drawn
+afresh. A page that finds a part it does not have, or a patch past the next one an applet holds,
+asks for itself whole; and one the server could not draw says so beside it.
 
 ## The session, and where a tab is
 

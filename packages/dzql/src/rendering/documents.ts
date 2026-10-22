@@ -1,5 +1,5 @@
 import type { Local } from "@blueshed/delta/local";
-import { applyOps, type DeltaOp } from "@blueshed/delta/core";
+import { applyOps, splitPath, type DeltaOp } from "@blueshed/delta/core";
 import { failed } from "./failed";
 import { reading } from "./reading";
 import { scope } from "./scope";
@@ -65,15 +65,17 @@ export function createDocuments(local: Local) {
     if (data.v !== undefined) reached(doc, data.v);
   });
 
-  /** Lays `ops` on a copy of what `h` holds, and holds that; false, holding what it did, when they do not land on it (RFC 6902: a remove of what is not there). */
+  /**
+   * Lays `ops` on what `h` holds, and holds that; false, holding what it did, when they do not land
+   * on it (RFC 6902: a remove of what is not there). What is held is never changed in place: a
+   * drawing, or a change still to be told, may hold any of it. So each op is laid on a copy of what
+   * it touches alone -- the containers on its path, each copied once a change -- and the rest is
+   * shared with what was held before (`touched`).
+   */
   const lands = (h: Held, ops: DeltaOp[]): boolean => {
     if (h.value === undefined) return true;
-    const next = structuredClone(h.value);
-    try {
-      applyOps(next, ops);
-    } catch {
-      return false;
-    }
+    const next = touched(h.value, ops);
+    if (next === undefined) return false;
     h.value = next;
     return true;
   };
@@ -180,9 +182,14 @@ export function createDocuments(local: Local) {
       return () => void listeners.delete(fn);
     },
 
-    /** Resolves when every change heard so far has been told. */
+    /** Resolves when every change heard so far has been told, and every change heard meanwhile. */
     async quiet(): Promise<void> {
       while (inflight.size > 0) await Promise.all([...inflight]);
+    },
+
+    /** Resolves when every change heard so far has been told: not those heard meanwhile, which a busy app is never without. */
+    async toldSoFar(): Promise<void> {
+      await Promise.all([...inflight]);
     },
 
     /** Lets go of every held document but `keep`: closed in delta, dropped here. */
@@ -199,8 +206,11 @@ export function createDocuments(local: Local) {
   function heldAs(doc: string): Held {
     reading(doc);
     const h = held.get(doc);
-    if (!h) throw new Pending(doc);
-    return h;
+    if (h) return h;
+    const gathered = gathering.at(-1);
+    if (!gathered) throw new Pending(doc);
+    gathered.set(doc, () => load(doc)); // in a run of `settled`: nothing for now, and loaded with the rest
+    return { value: undefined };
   }
 
   /** Waits until the held copy of `doc` has reached `version` -- at once in this process, after NOTIFY over Postgres. */
@@ -211,15 +221,75 @@ export function createDocuments(local: Local) {
   }
 }
 
-/** Runs `fn`; a read of a document not held yet loads it, and `fn` runs again. */
-export async function settled<T>(documents: Documents | undefined, fn: () => T, tries = 20): Promise<T> {
-  for (let i = 0; ; i++) {
-    try {
-      return fn();
-    } catch (e) {
-      if (!(e instanceof Pending) || !documents || i >= tries) throw e;
-      await documents.load(e.doc);
+/**
+ * `value` with `ops` laid on, `value` itself left as it was: each container on an op's path copied
+ * (once, however many ops pass through it), and the rest shared. Undefined when they do not land.
+ */
+function touched(value: unknown, ops: DeltaOp[]): unknown {
+  const fresh = new Set<object>();
+  const copy = (o: object): object => {
+    const c = Array.isArray(o) ? [...o] : { ...o };
+    fresh.add(c);
+    return c;
+  };
+  const root = copy(value as object);
+  try {
+    for (const op of ops) {
+      let at: any = root;
+      for (const key of splitPath(op.path).slice(0, -1)) {
+        const inside = Object.hasOwn(at, key) ? at[key] : undefined;
+        if (inside === null || typeof inside !== "object") break; // not there: the op says so, as it fails
+        if (!fresh.has(inside)) at[key] = copy(inside);
+        at = at[key];
+      }
+      applyOps(root, [op]);
     }
+  } catch {
+    return undefined;
+  }
+  return root;
+}
+
+/**
+ * The most times `settled` loads what a drawing read and runs it again, a bound against a document
+ * that never stays held, far past what a page reads: each time loads every document the drawing
+ * read before it first used one not held (what it made of that one stops it), so a page that reads
+ * its documents and then draws them takes a round for each document named by another's contents,
+ * and one that uses each as it reads it, a round for each.
+ */
+const MOST_ROUNDS = 1000;
+
+/** The documents not held that the run of `settled` under way read, each with how to load it: a read gathers them rather than throwing. */
+const gathering: Map<string, () => Promise<void>>[] = [];
+
+/**
+ * Runs `fn`; the documents it read and did not hold are loaded, every one together, and `fn` runs
+ * again, until it reads none (at most `rounds` times). A read of one not held is nothing while it
+ * runs: whatever `fn` makes of that -- an answer, or a failure -- is not its answer, which comes
+ * from the run that read them all. So a page that reads its documents before it uses them waits for
+ * them once, and for one named by what another holds once more.
+ */
+export async function settled<T>(documents: Documents | undefined, fn: () => T, rounds = MOST_ROUNDS): Promise<T> {
+  if (!documents) return fn();
+  for (let round = 0; ; round++) {
+    const missing = new Map<string, () => Promise<void>>();
+    gathering.push(missing);
+    let ran: { value: T } | { error: unknown };
+    try {
+      ran = { value: fn() };
+    } catch (error) {
+      ran = { error };
+    } finally {
+      gathering.pop();
+    }
+    const error = "error" in ran ? ran.error : undefined;
+    if (error instanceof Pending) missing.set(error.doc, () => documents.load(error.doc)); // thrown by a copy of its own (the stories' fresh render)
+    if (missing.size === 0) {
+      if ("error" in ran) throw ran.error;
+      return ran.value;
+    }
+    if (round >= rounds) throw error instanceof Pending ? error : new Pending([...missing.keys()][0]!);
+    await Promise.all([...missing.values()].map((load) => load()));
   }
 }
 

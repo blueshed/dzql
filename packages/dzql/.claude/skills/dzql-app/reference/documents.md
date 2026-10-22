@@ -29,8 +29,10 @@ export function read(id: string): SessionDocument {
 A document is a root row and the collections it includes, maps of rows by id; two documents may
 include the same rows, and a write reaches both. `defineSchema` and `defineDoc` are delta's: its `delta-doc` skill
 (`node_modules/@blueshed/delta/.claude/skills/delta-doc/`). `read<T>(name)` (`src/rendering/documents.ts`) is
-synchronous; it throws `Pending` when the document is not held yet, and the kernel loads it and draws
-again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server.
+synchronous; a document not held yet reads as nothing while the page is drawn, and the kernel loads
+every one the drawing read together and draws again (`settled`; outside it, `read` throws `Pending`).
+So read what a page needs before using it, and make nothing of a document that is not there yet: that
+drawing is never sent. Put the pure rules beside it (`shape(doc, ops)`), tested without a server.
 
 Working: [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/store.ts), the tables said once (`store.ts`), a memory
 document (`resources/here/here-api.ts`) and a session read for the page
