@@ -66,7 +66,8 @@ functions you call stay these:
 - **What runs as the owner answers, never reads out.** The compiled reads and writes run as the
   caller, under the policies the paths make (`rls.md`). The few `SECURITY DEFINER` functions answer
   yes, no or a name: the policies' lookups (`dzql_may__`), the ownership answers (`dzql_owns__`),
-  the fan-out (`_delta_holders`, names only), and a named add (an id the writer chose), judged by
+  the fan-out (`_delta_holders`, names only), the holds a write is asked once it is done
+  (`_delta_refs_hold`, `_delta_overlaps_hold`: a refusal, never a row), and a named add (an id the writer chose), judged by
   the session's role's privileges on the table (`_delta_serial_new` / `_delta_serial_past`,
   `packages/dzql/src/compile/lookups.ts`). Each pins the path it was applied with, `pg_temp` last.
 - Never edit `001*`, nor `_delta_collections` by hand: `generateSql` fills it. `_delta_docs` is a
