@@ -1,6 +1,6 @@
 /** How a table's columns keep a scope's values, so a condition reads by one rule what an add stamps (./scope `Keep`). */
 import { decimalText, isDecimal, q, type ResolvedTable } from "../../schema";
-import { isDay, type Keep } from "../scope";
+import { isDay, nameInstant, notAnInstant, type Keep } from "../scope";
 import { encodeValue, refuse } from "./rows";
 
 /**
@@ -36,10 +36,10 @@ export function scopeValue(table: ResolvedTable, col: string, text: string): unk
     }
     case "json": try { return JSON.parse(text); } catch { return refuse(400, `${col} must be JSON, not "${text}"`); }
     case "timestamptz": {
-      // A date, YYYY-MM-DD -- a name's ":" separates its values, so it holds no time of day -- the instant midnight
-      // UTC begins it, as Postgres's resolver reads it; stamped on an add as the text, as a time is stored here.
+      // A date, YYYY-MM-DD, the instant midnight UTC begins it, as Postgres's resolver reads it; or an instant in
+      // ISO 8601's basic format (a name's ":" separates its values), as the extended one; stamped on an add as a time is.
       if (isDay(t)) return t;
-      return refuse(400, `${col} must be a date, YYYY-MM-DD, not "${text}"`);
+      return nameInstant(t) ?? refuse(400, notAnInstant(col, text));
     }
     case "date":
       if (isDay(t)) return t;
@@ -100,7 +100,8 @@ export function keeping(db: any, table: ResolvedTable): Keep {
     within: (col, op, text) => {
       if (!time(col) || op === "!=") return undefined;
       return once(bounds, `${col}:${op}:${text}`, () => {
-        const day = scopeValue(table, col, text) as string;   // a date, YYYY-MM-DD (or refused)
+        const given = scopeValue(table, col, text) as string;   // a date, YYYY-MM-DD, or an instant (or refused)
+        const day = isDay(given) ? given : new Date(given).toISOString().slice(0, 10);   // the instant's day in UTC: a stored time's own begins within a day of it
         return { from: op === "<" || op === "<=" ? undefined : dayAfter(day, -1), below: op === ">" || op === ">=" ? undefined : dayAfter(day, 1) };
       });
     },

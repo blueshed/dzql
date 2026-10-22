@@ -14,7 +14,7 @@
  * A pure function: the same definitions give the same text, byte for byte. A definition it cannot
  * compile is an error naming the document, never SQL that half works.
  */
-import { isServerTime, q, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
+import { isServerTime, q, scopeEntries, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
 import { columnSqlType, distinctNames, lit, viewOf } from "../postgres/sql";
 export { lit };
 
@@ -201,6 +201,8 @@ const REAL = String.raw`^\s*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?\s*$`;
 export const WHOLE = String.raw`^\s*[+-]?[0-9]+\s*$`;
 const SAFE = String.raw`^\s*[+-]?0*[0-9]{1,16}\s*$`;
 const DAY = String.raw`^\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\s*$`;
+/** An instant in ISO 8601's basic format, as delta's `nameInstant` reads it: a date, T, hours and minutes, perhaps seconds and a fraction, and a zone. */
+const INSTANT = String.raw`^\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\s*$`;
 /** A decimal as a scope's value: as delta's isDecimal, space about it let be (as an integer's). */
 const DECIMAL = String.raw`^\s*-?[0-9]+(\.[0-9]+)?\s*$`;
 
@@ -219,7 +221,7 @@ const raiseRefusal: Refuse = (message, value) => `RAISE EXCEPTION '${message.rep
  */
 export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefusal): CompiledScope {
   const root = need(schema, doc, doc.root);
-  const entries = Object.entries(doc.scope ?? {});
+  const entries = scopeEntries(doc.scope ?? {});
   if (entries.length === 0) {
     return {
       declare: ["v_rest TEXT;"],
@@ -344,16 +346,25 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
   };
 }
 
-/** A date, YYYY-MM-DD, that the calendar has, read as the instant midnight UTC begins it (`instant`; else the day as written); anything else refused. */
+/**
+ * A date, YYYY-MM-DD, that the calendar has: for a time (`instant`), the instant midnight UTC begins
+ * it, or an instant in ISO 8601's basic format (`20261020T0800Z`, as delta's `nameInstant` reads
+ * it: a name's ":" splits the extended one), as the extended one; for a `date`, the day as written.
+ * Anything else refused.
+ */
 function dayOf(v: string, key: string, refuse: Refuse, instant = true): string {
+  const said = instant ? `${key} must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"` : `${key} must be a date, YYYY-MM-DD, not "%"`;
   return `IF ${v} IS NOT NULL THEN
-    v_date := regexp_match(${v}, '${DAY}');
+    v_date := regexp_match(${v}, '${DAY}');${instant ? `
+    IF v_date IS NULL THEN v_date := regexp_match(${v}, '${INSTANT}'); END IF;` : ""}
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      ${refuse(`${key} must be a date, YYYY-MM-DD, not "%"`, v)}
+      ${refuse(said, v)}
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      ${refuse(`${key} must be a date, YYYY-MM-DD, not "%"`, v)}
+      ${refuse(said, v)}
     END IF;
-    ${v} := format(${instant ? "'%s-%s-%s 00:00:00+00'" : "'%s-%s-%s'"}, v_date[1], v_date[2], v_date[3]);
+    ${v} := ${instant ? `CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END` : "format('%s-%s-%s', v_date[1], v_date[2], v_date[3])"};
   END IF;`;
 }
 

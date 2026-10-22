@@ -15,7 +15,9 @@ file; dzql answers the same cases on Postgres.
 Working: [examples/lists](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/lists/resources/lists/lists-api.ts), `mine:<person>`, a list
 by its scope (`{ person: ":id" }`: every membership of that person), in
 `resources/lists/lists-api.ts`; [examples/kanban](https://github.com/blueshed/dzql/blob/main/packages/delta/examples/kanban/resources/board/board-api.ts)'s
-`board:<id>`, a single one (`{ id: ":id" }`, `resources/board/board-api.ts`).
+`board:<id>`, a single one (`{ id: ":id" }`, `resources/board/board-api.ts`); a viewport, two
+conditions on each axis, and a window of time named by two instants: `rangeScopeCases`
+(`src/cases/planning.ts`), run on every backend.
 
 ## The values
 
@@ -25,8 +27,15 @@ by its scope (`{ person: ":id" }`: every membership of that person), in
   `col = <param>`. `"=:name"` is the same, explicit.
 - `"<=:end"`, `>=`, `<`, `>`, `!=`: a range. `"like:prefix"`: starts with, any case.
 - `"at:when"`: the time the document is read at, not a condition (below).
-- `id` takes position 1; other names follow alphabetically. `venue-at:42:2026-06-16` has `id=42`
-  and the second. An empty value sets no condition.
+- **Several conditions on one column** are a list of them, each holding: a map's viewport is
+  `scope: { lat: [">=:south", "<=:north"], lng: [">=:west", "<=:east"] }`, a window of time
+  `{ starts: [">=:from", "<:until"] }`. The single string stays as it is; an `at:` is never in a list.
+- `id` takes position 1; other names follow alphabetically, wherever they are said.
+  `venue-at:42:2026-06-16` has `id=42` and the second; the viewport above is
+  `sites-in:<east>:<north>:<south>:<west>` (`sites-in:3:52:45:-1`). An empty value sets no condition.
+- **A write through it is held to every condition** (you may write what you may read): a row
+  outside one is not there to it (404); an add or a replace that would land outside one is 404
+  (`-- the add is not one <name> holds`, `-- the write would take it out of <name>`) and undone.
 - Keys must be real columns of the root (`id`, its parent key, its columns): `"items.id"`
   throws at registration.
 
@@ -55,8 +64,11 @@ by its scope (`{ person: ":id" }`: every membership of that person), in
 
 As the column takes them, on every backend: a boolean's `true`/`yes`/`on`/`1`; an integer's
 `05` is 5; a `json` column's value is the JSON it names; `text` stays as written; an id is a
-whole number. A `timestamptz` is a date, `YYYY-MM-DD`, midnight UTC (a name's `:` cannot hold a
-time). A `date` is a day, `YYYY-MM-DD`, compared by the calendar; a `numeric` a decimal (`3.50`),
+whole number. A `timestamptz` is a date, `YYYY-MM-DD` (the instant midnight UTC begins it), or
+**an instant in ISO 8601's basic format**, since a name's `:` splits the extended one: a date, `T`,
+hours and minutes, perhaps seconds and a fraction, and a zone, always (`Z`, `±hh` or `±hhmm`):
+`20261020T0800Z`, `20261020T080000+0100`, `20261020T080000.5Z`. Anything else is 400 (`starts must
+be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "20261020T0800"`); an `at:` takes either too. A `date` is a day, `YYYY-MM-DD`, compared by the calendar; a `numeric` a decimal (`3.50`),
 compared by value, so `pay-over:10` admits `"950.00"` and not `"3.5"`, and `pay-of:3.50` is `"3.5"`'s.
 A value the column cannot take (`seats-kept:maybe`) is 400.
 

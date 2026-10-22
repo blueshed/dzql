@@ -19,7 +19,7 @@
  * it builds the index then (a lock on the table while it does: on a large table, make it beforehand
  * with `CREATE INDEX CONCURRENTLY` under the same name).
  */
-import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
+import { q, scopeEntries, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { parsePath } from "@blueshed/delta/paths";
 
 /** Each [collection, column] the documents look rows up by, in order: by collection, then column. */
@@ -35,7 +35,7 @@ export function lookupColumns(schema: Schema, docs: DocDef[]): [string, string][
     for (const by of t.referencedBy) want(by.collection, by.fkColumn);
   }
   for (const d of docs) {
-    for (const [key, binding] of Object.entries(d.scope ?? {})) {
+    for (const [key, binding] of scopeEntries(d.scope ?? {})) {
       if (/^(like|at):/.test(binding)) continue;
       want(d.root, key);
     }

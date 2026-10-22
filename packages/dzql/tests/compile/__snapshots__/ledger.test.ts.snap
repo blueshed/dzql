@@ -1200,7 +1200,7 @@ exports[`on the seed, every document reads whole as the framework reads it fo-sl
 {
   "name": "fo-slots-by:notadate",
   "whole": {
-    "error": "starts must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -1209,7 +1209,7 @@ exports[`on the seed, every document reads whole as the framework reads it fo-sl
 {
   "name": "fo-slots-by:notadate",
   "shown": {
-    "error": "starts must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -1844,7 +1844,7 @@ exports[`on the seed, every document reads whole as the framework reads it fo-no
 {
   "name": "fo-notes-on:notadate",
   "whole": {
-    "error": "at must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -1853,7 +1853,7 @@ exports[`on the seed, every document reads whole as the framework reads it fo-no
 {
   "name": "fo-notes-on:notadate",
   "shown": {
-    "error": "at must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -3260,7 +3260,7 @@ exports[`after writes of every kind, still fo-slots-by:notadate 1`] = `
 {
   "name": "fo-slots-by:notadate",
   "whole": {
-    "error": "starts must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -3269,7 +3269,7 @@ exports[`after writes of every kind, still fo-slots-by:notadate 2`] = `
 {
   "name": "fo-slots-by:notadate",
   "shown": {
-    "error": "starts must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -3877,7 +3877,7 @@ exports[`after writes of every kind, still fo-notes-on:notadate 1`] = `
 {
   "name": "fo-notes-on:notadate",
   "whole": {
-    "error": "at must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -3886,7 +3886,7 @@ exports[`after writes of every kind, still fo-notes-on:notadate 2`] = `
 {
   "name": "fo-notes-on:notadate",
   "shown": {
-    "error": "at must be a date, YYYY-MM-DD, not "notadate"",
+    "error": "at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "notadate"",
   },
 }
 `;
@@ -20493,12 +20493,15 @@ BEGIN
   v_s1 := NULLIF(v_parts[1], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_slots" t WHERE (v_s1 IS NULL OR t."starts" <= v_s1::TIMESTAMPTZ);
   v_doc := jsonb_build_object('slots', v_rows);
@@ -20527,12 +20530,15 @@ BEGIN
   v_s1 := NULLIF(v_parts[1], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_slots" t WHERE (v_s1 IS NULL OR t."starts" = v_s1::TIMESTAMPTZ);
   v_doc := jsonb_build_object('slots', v_rows);
@@ -20954,12 +20960,15 @@ BEGIN
   v_s1 := NULLIF(v_parts[1], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
   SELECT COALESCE(jsonb_object_agg(t.id, (to_jsonb(t.*) - 'valid_from' - 'valid_to' - 'override')), '{}'::jsonb) INTO v_rows FROM "fo_notes" t WHERE TRUE AND (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END);
@@ -20989,12 +20998,15 @@ BEGIN
   v_s1 := NULLIF(v_parts[1], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
   SELECT COALESCE(jsonb_object_agg(t.id, to_jsonb(t.*)), '{}'::jsonb) INTO v_rows FROM "fo_courses" t WHERE TRUE;
@@ -21026,12 +21038,15 @@ BEGIN
   v_s1 := NULLIF(v_parts[2], '');
   IF v_s1 IS NOT NULL THEN
     v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL THEN v_date := regexp_match(v_s1, '^\\s*([0-9]{4})([0-9]{2})([0-9]{2})T([01][0-9]|2[0-3])([0-5][0-9])(?:([0-5][0-9])(\\.[0-9]{1,6})?)?(Z|[+-](?:0[0-9]|1[0-5])(?:[0-5][0-9])?)\\s*$'); END IF;
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
-      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
-      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "%"', v_s1 USING ERRCODE = '22P02';
     END IF;
-    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    v_s1 := CASE WHEN v_date[4] IS NULL THEN format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3])
+      ELSE format('%s-%s-%sT%s:%s:%s%s%s', v_date[1], v_date[2], v_date[3], v_date[4], v_date[5], COALESCE(v_date[6], '00'), COALESCE(v_date[7], ''),
+        CASE WHEN v_date[8] = 'Z' THEN '+00' ELSE substr(v_date[8], 1, 3) || ':' || COALESCE(NULLIF(substr(v_date[8], 4), ''), '00') END) END;
   END IF;
   IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
   v_s2 := NULLIF(v_parts[1], '');

@@ -118,7 +118,11 @@ export interface DocDef {
   prefix: string;
   root: string;
   include: string[];
-  scope: Record<string, string>;
+  /**
+   * What the document's name selects (`../server/scope.ts`): a root column to a binding, or to
+   * several, each a condition (`{ lng: [">=:west", "<=:east"] }`, a range).
+   */
+  scope: Record<string, string | string[]>;
   /** There before its root row is: opens empty, and its first write makes the row. */
   implied?: boolean;
   /**
@@ -150,6 +154,11 @@ export interface DocDef {
    * Every backend asks it (dzql's thin client has the same hook, `Resource.shape`, for a page's writes).
    */
   shape?: Shape;
+}
+
+/** A document's scope as its bindings, one by one: a column given several conditions gives each, in the order it says them. */
+export function scopeEntries(scope: Record<string, string | string[]>): [col: string, binding: string][] {
+  return Object.entries(scope).flatMap(([col, b]) => (Array.isArray(b) ? b.map((x) => [col, x] as [string, string]) : [[col, b] as [string, string]]));
 }
 
 /** A document's own rule (`DocDef.accept`): `true` takes the op; `false` or a reason refuses the write. */
@@ -385,7 +394,7 @@ export function defaultForType(type: ColumnType): unknown {
 
 export function defineDoc(
   prefix: string,
-  opts: { root: string; include: string[]; scope?: Record<string, string>; implied?: boolean; columns?: Record<string, string[]>; owns?: string; accept?: Accept; shape?: Shape },
+  opts: { root: string; include: string[]; scope?: Record<string, string | string[]>; implied?: boolean; columns?: Record<string, string[]>; owns?: string; accept?: Accept; shape?: Shape },
 ): DocDef {
   if (!DOC_PREFIX.test(prefix)) {
     throw new Error(
@@ -395,6 +404,13 @@ export function defineDoc(
   assertIdentifier(opts.root, "doc root");
   // default-deny for writing, as for opening: a document anyone may open says who may write it
   if (isAnyone(opts) && !opts.accept) throw new Error(`doc "${prefix}": owns ANYONE opens it to anyone, signed in or not: say who may write it (accept), or that nobody may (accept: () => false)`);
+  for (const [col, bindings] of Object.entries(opts.scope ?? {})) {
+    if (!Array.isArray(bindings)) continue;
+    // several conditions on one column: each a condition, so none the time the document is read at
+    if (bindings.length === 0 || bindings.some((b) => typeof b !== "string" || b.startsWith("at:"))) {
+      throw new Error(`doc "${prefix}": scope's ${col} is a list of conditions (">=:from", "<=:to"), at least one, and none "at:" (the time a document is read at names no column)`);
+    }
+  }
   if (opts.implied && opts.scope && Object.keys(opts.scope).length > 0) {
     throw new Error(`An implied doc is keyed by its root id: ${prefix} cannot also declare a scope`);
   }

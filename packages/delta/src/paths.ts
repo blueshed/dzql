@@ -33,7 +33,7 @@
  * the document); `pathSql` lowers it to a boolean SQL expression, the same on SQLite and Postgres
  * but for how the start row, the person and the time are named.
  */
-import { q, type DocDef, type ResolvedTable, type Schema } from "./schema";
+import { q, scopeEntries, type DocDef, type ResolvedTable, type Schema } from "./schema";
 import type { Scope } from "./server/scope";
 
 export type Filter = { field: string; value: string }; // value: '$', '@field', or a literal as written
@@ -150,7 +150,7 @@ function condition(part: string): Condition {
 
 /** The scope keys a document's name gives a value for by equality: where its path may start. */
 function namedKeys(def: DocDef): string[] {
-  return Object.entries(def.scope).filter(([, b]) => /^(=?:)?[A-Za-z_]\w*$/.test(b)).map(([k]) => k);
+  return scopeEntries(def.scope).filter(([, b]) => /^(=?:)?[A-Za-z_]\w*$/.test(b)).map(([k]) => k);
 }
 
 const columnType = (t: ResolvedTable, col: string): string | undefined =>

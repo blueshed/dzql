@@ -16,7 +16,7 @@ import { type DeltaOp, splitPath, joinPath, changedFields } from "../../core";
 import { createLogger } from "../logger";
 import { rowAt, type Ledger } from "../ledger";
 import { meets, resolveScope, rowId, sameId, type Scope } from "../scope";
-import { hangsFrom, holdsField, isServerTime, q, refusedBy, shapedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { hangsFrom, holdsField, isServerTime, q, refusedBy, scopeEntries, shapedBy, showRow, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { isAnyone } from "../../paths";
 import { keeping, scopeValue } from "./keep";
 import { impliedDoc, readDoc } from "./read";
@@ -240,7 +240,7 @@ export function createWriter<I>(r: Registration<I>) {
     const cols = new Set<string>();
     for (const def of r.docs) {
       if (def.root !== coll || !def.include.some((c) => hangsFrom(schema, c, coll))) continue;
-      for (const [col, binding] of Object.entries(def.scope)) if (col !== "id" && !binding.startsWith("at:")) cols.add(col);
+      for (const [col, binding] of scopeEntries(def.scope)) if (col !== "id" && !binding.startsWith("at:")) cols.add(col);
     }
     return [...cols];
   }

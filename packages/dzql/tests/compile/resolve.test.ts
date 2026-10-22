@@ -39,7 +39,7 @@ const probes = ["1", " 2 ", "+3", "-4", "0", "9007199254740992", "1.5", "abc", "
 const names = [...new Set([
   ...paths,
   ...docs.flatMap((d) => {
-    const places = Math.max(1, new Set(Object.values(d.scope ?? {}).map((b) => b.replace(/^[a-z<>=!]*:+/, ""))).size);
+    const places = Math.max(1, new Set(Object.values(d.scope ?? {}).flat().map((b) => b.replace(/^[a-z<>=!]*:+/, ""))).size);
     return probes.flatMap((p) => Array.from({ length: places }, (_, i) => d.prefix + Array.from({ length: places }, (_, j) => (i === j ? p : "1")).join(":")));
   }),
 ])];

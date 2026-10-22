@@ -148,6 +148,9 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
 ## Gotchas
 
 - `bun add pg`, and `bun add -d @types/pg` to type-check (dzql ships TS source).
+- A scope's values are compiled into each document's reads: a column given several conditions
+  (`{ lng: [">=:west", "<=:east"] }`) is a condition each, and a timestamptz's value in ISO 8601's
+  basic format (`20261020T0800Z`) is read as the instant it names, as delta's `nameInstant` reads it.
 - **A `date` is a `DATE`, a `numeric` a `NUMERIC`**, and every read gives a numeric back as its
   text (`"10.50"`, the compiled `rowJson`): `to_jsonb` would write it as a JSON number, which a
   client reads as a float. SQL of your own that hands rows on does the same: `t.amount::text`.
