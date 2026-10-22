@@ -4,7 +4,10 @@
 //
 //   bun scripts/tests.ts          every one, the browser's too, held to 100% coverage (`bun run test:coverage`)
 //   bun scripts/tests.ts --fast   no browser and no coverage gate, in parallel: the fast tier's part
-//   --ci                          the CI runner's slower machine: fewer workers, a longer timeout
+//   --ci                          the CI runner's slower machine: fewer workers
+//
+// Every run gives a test 30 s, not bun's 5: a PGlite store starts in the process, and on a slower
+// machine (the cloud sandbox, a busy laptop) that passed 5 s (root #144).
 //
 // A part of the suite cannot meet bunfig.toml's 100%, which only the whole run is held to, and Bun
 // says so only by its exit code: so the fast run passes on every test passing, and nothing else.
@@ -15,7 +18,7 @@ const ci = process.argv.includes("--ci");
 const DIRS = ["tests/rendering", "tests/modelling", "tests/readme", ...EXAMPLES.map((e) => `examples/${e}`)];
 // what needs a browser: left out of the fast run
 const BROWSER = ["tests/rendering/bento.test.ts", "tests/rendering/client-coverage.test.ts", "tests/rendering/applet.test.ts", "tests/rendering/webview.test.ts", "tests/rendering/client/**", "tests/modelling/by-hand.test.ts", "tests/modelling/costs.test.ts", "examples/*/client/**", "tests/readme/browser.test.ts"];
-const args = [...(ci ? ["--parallel=2", "--timeout=30000"] : ["--parallel"]), ...DIRS, ...(fast ? BROWSER.map((p) => `--path-ignore-patterns=${p}`) : [])];
+const args = ["--timeout=30000", ...(ci ? ["--parallel=2"] : ["--parallel"]), ...DIRS, ...(fast ? BROWSER.map((p) => `--path-ignore-patterns=${p}`) : [])];
 const extra = process.argv.slice(2).filter((a) => a !== "--fast" && a !== "--ci");
 
 if (!fast) process.exit(await Bun.spawn(["bun", "test", ...args, ...extra], { cwd: `${import.meta.dir}/..`, stdout: "inherit", stderr: "inherit" }).exited);

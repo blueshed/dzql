@@ -25,6 +25,23 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Breaking
 
+- **Sign-in links are a demo door: used once, running out, shut in production** (22 October, the
+  production review, #83). `signInLinks` keeps each link as its token's hash, used once and gone
+  after `ttl` (`signInLinks(key, sessions, people, at, { ttl })`, 15 minutes); a person's link stays
+  the same until it is used or runs out. Opening a link (GET) only asks: a page whose form posts it,
+  never framed or cached; the post, from the site's own Origin, starts the session, so a link opened
+  by another site or a chat preview signs nobody in (the login CSRF). Under `NODE_ENV=production` no
+  link is said, listed or opened: `ways()` is empty and `say()` gives one line, `DEMO_DOOR`. The
+  cafe's door lists staff only in development. The CLI's `login <link>` posts the link
+  (`signInByLink`, `dzql/rendering/cli/commands`). `signin.md` says what a production app uses.
+  **To move across**: anything that GETs a link to sign in (a test, a script) posts it instead, with
+  an `Origin` header of the link's own origin; a link is good for one sign-in, so ask `ways()` /
+  `say()` again for the next. In production, sign people in another way.
+- **A session's cookie lasts 30 days unused, renewed on every socket** (22 October, #85).
+  `sessionCookie` sets `Max-Age` (`Example.sessionDays`, default 30), and `/ws` sets the cookie on
+  every upgrade, not only a new one; the stories' browser by hand (`Hand.leave`) is a fresh one each
+  story. **To move across**: nothing, unless a test expected no `Set-Cookie` on an upgrade that sent
+  its cookie; set `sessionDays` for another lifetime.
 - **A write that names a time only the server sets is refused on Postgres, as on delta's
   backends** (21 October, the Shed's run 6, finding 4; delta's changelog). `delta_apply` asks
   `_delta_server_set` (001a) of each op of a fresh write before its fields: an add, a replace of
@@ -514,6 +531,26 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **Sessions that run out on the server** (22 October, #85). `sessionRows(delta, collection, visit,
+  { seen, days, expired })` keeps a session's last use in a `timestamptz?` column its own document
+  leaves out, renewed at most once a day: past `days` (30) unused, its cookie names a fresh session,
+  nobody's, and expired rows are let go at most once an hour through a list document the app
+  registers (`defineDoc("expired:", { root, scope: { seen: "<:before" }, include: [] })`). The cafe
+  opts in. Without it a session lasts as before.
+- **`undoable` asked of each write** (22 October, #84, in part). `Resource.undoable` may be `(ws,
+  docId, ops) => boolean`, asked once a write is shaped. The cafe's paying is never undone, and its
+  table's `permitUndo` refuses an undo or redo that would change a paid invoice ("A paid invoice
+  cannot be changed.", story `annCannotTakeBack`); un-paying over the socket is refused.
+- **`Example.screens(path)`** (22 October, #114): a path that is none of the app's screens is
+  answered 404, the page all the same; omitted, every path is a screen (200), as before. The cafe
+  says its own.
+- **`dzql/rendering/failed` exported** (22 October, #111): `onFailure(fn)` hears every failure the
+  kernel reports, for an app to send where it is watched.
+- **Security headers on the page** (22 October, #117): the shell is sent with
+  `Content-Security-Policy: frame-ancestors 'self'`, `X-Content-Type-Options: nosniff` and
+  `Referrer-Policy: same-origin`, no policy of scripts. Bun serves an HTML bundle with its own
+  headers, so the bundle sits at a path nobody knows and the page's routes fetch it from there, over
+  the server's own URL: once in production, each time in development.
 - **A deployment story** (22 October, the production review, #93 and #100). `bun create dzql`'s
   starter has a `Dockerfile` (`oven/bun` at the Bun `packageManager` names, `bun install
   --production --frozen-lockfile --ignore-scripts`, `NODE_ENV=production`, `bun start` as user
@@ -661,6 +698,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **`inspect` names a change of yours by its handle** (22 October, #115): an entry carries `change`
+  (the handle its echo gave), never delta's ledger id (`InspectEntry.id` is gone). WIRE is not
+  bumped: no page reads inspect replies, and the CLI reads only their ops.
+- **Undo after a reconnect** (22 October, #110): a session's handles are kept five minutes after its
+  last page closes.
+- **`ETA_ORIGINS` normalised** (22 October, #116): each entry is taken as its origin; one that is no
+  origin is reported, and lets nothing in.
 - **A new app's first test waits for PGlite to start** (22 October, root #144): the starter's
   `tests/routes.test.ts` gives its `beforeAll` 30 s, since PGlite in the process passed bun's 5 s on
   a slower machine and a fresh app's `bun test` failed there.
