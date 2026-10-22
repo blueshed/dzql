@@ -10,6 +10,7 @@ import { createLedgerResource } from "./ledger";
 import { createToldResource, toldAt } from "../refusal";
 import { sees, wireName, wireOps } from "./audience";
 import { createDocuments, settled, type Documents } from "../documents";
+import { scope } from "../scope";
 
 // One copy of an example's documents per example while it is served: the server and the story
 // harness assemble the same example and must see the same copy.
@@ -22,8 +23,10 @@ export function forget(example: Example): void {
 }
 
 /** A ledger entry as `inspect` tells it. A session id is a person's only credential, so it never
- * goes on the wire: `mine` says whether the asker wrote the entry, which is all a reader may ask. */
-export type InspectEntry = { id: number; doc: string; version: number; ops: PatchOp[]; inverse: PatchOp[]; at: number; mine: boolean };
+ * goes on the wire: `mine` says whether the asker wrote the entry, which is all a reader may ask;
+ * and a change of theirs is named by the handle its echo gave them (`change`), which undoes it,
+ * never by the ledger's entry, whose numbers count everyone's writes. */
+export type InspectEntry = { change?: string; doc: string; version: number; ops: PatchOp[]; inverse: PatchOp[]; at: number; mine: boolean };
 export type InspectDoc = { doc: string; version: number; entries: InspectEntry[] };
 export type Inspection = { docs: InspectDoc[] };
 
@@ -86,13 +89,15 @@ export function assemble(example: Example): Assembled {
       }
       return names;
     });
+    // the handles this session was given, by the entry each names
+    const handles = new Map([...(scope().handles.get(ws.data.sessionId) ?? [])].map(([handle, entry]) => [entry, handle]));
     const docs: InspectDoc[] = [];
     for (const name of new Set(seen)) {
       const { docType, docId } = splitDoc(name);
       const doc = wireName(docType, docId, ws); // as the wire names it: whole, or the bare type for a session's own
       const owner = byDocType.get(docType)!;
       const entries = (await documents.history(name, ws.data.sessionId, limit)).map((e) => ({
-        id: e.id, // the ledger entry's own
+        ...(e.mine && handles.has(e.id) && { change: handles.get(e.id) }),
         doc,
         version: e.version,
         ops: wireOps(owner, docId, e.ops as never),

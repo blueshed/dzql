@@ -13,7 +13,7 @@ import { menu } from "./resources/menu/menu";
 import { table } from "./resources/table/table";
 import { visit } from "./resources/visit/visit";
 import { door } from "./resources/door/door";
-import { read as visitOf, sessions } from "./resources/visit/visit-api";
+import { isScreen, read as visitOf, sessions } from "./resources/visit/visit-api";
 
 // The cafe, built from its model: a manager seats customers and opens their invoices, a cook says
 // what is on the menu and what is ready, and customers who scan their table's code order and pay.
@@ -46,6 +46,7 @@ export const app: Example = {
   render,
   active: (sessionId) => visitOf(sessionId).role !== null, // staff signed in, or a customer at a table
   address: { doc: "visit", path: "/page" }, // a tab's URL is where it stands: the visit says where it may (./resources/visit/visit.ts), the kernel moves the tab
+  screens: isScreen, // any other path is 404, the door all the same
   routes: { "/in/:token": links.route as never, "/scan": scan },
   session: sessions.of,
   store, // opened as a server starts and closed as it stops; the stories begin and end each story on it (Postgres, ./store.ts)

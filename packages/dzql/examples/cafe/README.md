@@ -57,10 +57,13 @@ write follows; `<name>.ts` is its `Resource`; `<name>-view.ts` its part of the p
 
 **5. The page and the routes: [page.ts](page.ts), [routes.ts](routes.ts).** The page is each
 person's box of the parts their resources draw. The staff come in by a link each (`signInLinks`,
-[links.ts](links.ts), printed as the server starts and shown on the door); a customer by the code
-on their table (`/scan`). `bun run dev:cafe` serves it on :3006 with the model's page at `/model`.
+[links.ts](links.ts), printed as the server starts and shown on the door), a demo door, shut in
+production, where a cafe open for real signs its staff in its own way; a customer by the code on
+their table (`/scan`). A visit lasts thirty days unused. Paying is never undone, and Undo changes
+nothing on a paid invoice ([resources/table/table.ts](resources/table/table.ts)). `bun run
+dev:cafe` serves it on :3006 with the model's page at `/model`.
 
-**6. The stories: [stories.ts](stories.ts).** 24, in the wire's words, each naming the model story
+**6. The stories: [stories.ts](stories.ts).** 25, in the wire's words, each naming the model story
 it tells (`model: 6`); one that is the app's own, such as signing out, says `model: false`.
 `ETA_EXAMPLE=cafe bun run stories` runs them.
 

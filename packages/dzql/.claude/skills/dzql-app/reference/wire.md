@@ -30,6 +30,8 @@ id, `inspect` naming the documents a page sees.
 - A `test` op (RFC 6902) is a condition, not a change: the value a field was drawn with. It never
   reaches `permit` or `shape`, and a write of tests alone is none.
 - Only the writer's echo carries `id` and `change`, the handle that undoes it (a write with no undo names none).
+  A session's handles are kept while it has a page open, and five minutes after its last closes,
+  so a reconnect undoes as before.
 - A page is sent whole as `{type: "render", html, wire}`, or in parts as `{type: "render", ops}`.
 - A write that applies nothing (refused, nothing to undo, a throw) is answered `refused` when it has
   an id, then with the page whole. A throw goes through `failed()` (`src/rendering/failed.ts`), which fails the
@@ -42,7 +44,8 @@ id, `inspect` naming the documents a page sees.
 
 - `window.eta.docs()`: the small op log, by document name.
 - `{type: "inspect", limit?}`: the documents this page sees and their latest ledger entries, each
-  `mine: true|false`, never who.
+  `mine: true|false`, never who; one of yours by its `change`, the handle its echo gave you, never
+  the ledger's entry.
 - `window.eta.inspect().lastSent`: the page's last write, `{id, doc, ops, echoed, refused, reason?,
   unanswered?}`.
 - `window.eta.send(doc, ops)` is a script's write, sent as a control's is, resolving by its id:

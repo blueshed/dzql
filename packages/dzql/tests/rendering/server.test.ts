@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { connect as tcp } from "node:net";
 import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
@@ -173,6 +173,34 @@ describe("createServer, generically (no example from the examples directory invo
     const other = await fetch(new URL("/nope", server.url));
     expect(other.status).toBe(200);
     expect(other.headers.get("content-type")).toContain("text/html");
+    expect(await other.text()).toBe(await (await fetch(new URL("/", server.url))).text());
+  });
+
+  test("the page is sent never to be framed by another site's page, never sniffed, and saying where it came from to this site alone", async () => {
+    for (const path of ["/", "/a-screen"]) {
+      const page = await fetch(new URL(path, server.url));
+      expect(page.headers.get("content-security-policy")).toBe("frame-ancestors 'self'");
+      expect(page.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(page.headers.get("referrer-policy")).toBe("same-origin");
+    }
+  });
+
+  test("an app that says which screens it has answers any other path 404, the page all the same; in production too, where its page is fixed", async () => {
+    const env = process.env.NODE_ENV;
+    const screened = await createServer({ ...makeExample("kernel-screens-test"), screens: (path) => path === "list" || path.startsWith("2026-") }, 0);
+    try {
+      for (const [path, status] of [["/", 200], ["/list", 200], ["/2026-10", 200], ["/nope", 404], ["/list/deeper", 404]] as const) {
+        const page = await fetch(new URL(path, screened.url));
+        expect([path, page.status]).toEqual([path, status]);
+        expect(await page.text()).toContain("kernel test fixture");
+      }
+      process.env.NODE_ENV = "production";
+      const [first, again] = [await (await fetch(new URL("/", screened.url))).text(), await (await fetch(new URL("/list", screened.url))).text()];
+      expect(again).toBe(first);
+    } finally {
+      process.env.NODE_ENV = env;
+      await screened.stop(true);
+    }
   });
 
   test("a socket opened from another site is refused, unless ETA_ORIGINS lists it", async () => {
@@ -184,6 +212,22 @@ describe("createServer, generically (no example from the examples directory invo
       expect((await from("https://elsewhere.example")).status).toBe(403);
     } finally {
       delete process.env.ETA_ORIGINS;
+    }
+  });
+
+  test("each of ETA_ORIGINS is taken as its origin, a last slash or a path aside; one that is no origin is reported, and lets nothing in", async () => {
+    const from = (origin: string) => fetch(new URL("/ws", server.url), { headers: { Origin: origin } });
+    const failures: string[] = [];
+    const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
+    process.env.ETA_ORIGINS = "https://allowed.example/, https://also.example:8443/app/, allowed-too.example";
+    try {
+      expect((await from("https://allowed.example")).status).toBe(400);
+      expect((await from("https://also.example:8443")).status).toBe(400);
+      expect((await from("https://allowed-too.example")).status).toBe(403);
+      expect(failures[0]).toBe('reading ETA_ORIGINS: "allowed-too.example" is not an origin (scheme://host[:port], as https://app.example.com)');
+    } finally {
+      delete process.env.ETA_ORIGINS;
+      stop();
     }
   });
 
@@ -200,9 +244,30 @@ describe("createServer, generically (no example from the examples directory invo
     const given = await answer("X-Test-Who: ada-session\r\nCookie: session_id=a-visit\r\n");
     expect(given).toStartWith("HTTP/1.1 101");
     expect(given).toMatch(/^set-cookie: session_id=ada-session;/im); // never the visit's
-    expect(await answer("X-Test-Who: ada-session\r\nCookie: session_id=ada-session\r\n")).not.toMatch(/^set-cookie:/im);
+    // the cookie set again on every socket, so it lasts thirty days unused (`Example.sessionDays`), renewed as it is used
+    expect(given).toMatch(/^set-cookie: session_id=ada-session;.*Max-Age=2592000/im);
+    expect(await answer("X-Test-Who: ada-session\r\nCookie: session_id=ada-session\r\n")).toMatch(/^set-cookie: session_id=ada-session;.*Max-Age=2592000/im);
     expect(await answer("X-Test-Who: refused\r\n")).toStartWith("HTTP/1.1 401");
-    expect(await answer("Cookie: session_id=a-visit\r\n")).not.toMatch(/^set-cookie:/im); // nobody said: the visit's own
+    expect(await answer("Cookie: session_id=a-visit\r\n")).toMatch(/^set-cookie: session_id=a-visit;/im); // nobody said: the visit's own, renewed
+  });
+
+  test("an app says how long its sessions' cookie lasts unused", async () => {
+    const briefly = await createServer({ ...makeExample("kernel-session-days-test"), sessionDays: 1 }, 0);
+    try {
+      const upgraded = await new Promise<string>((resolve) => {
+        const socket = tcp(Number(briefly.port), "127.0.0.1");
+        socket.write(`GET /ws HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nCookie: session_id=a-visit\r\n\r\n`);
+        let got = "";
+        socket.on("data", (chunk) => {
+          if (!(got += chunk.toString("latin1")).includes("\r\n\r\n")) return;
+          socket.destroy();
+          resolve(got);
+        });
+      });
+      expect(upgraded).toMatch(/^set-cookie: session_id=a-visit;.*Max-Age=86400/im);
+    } finally {
+      await briefly.stop(true);
+    }
   });
 
   test("a tab opened at an address is routed there before its page is drawn, by the example's own write of it, which moves the tab and never the session; a refused route leaves it at the page alone", async () => {
@@ -396,7 +461,7 @@ describe("createServer, generically (no example from the examples directory invo
     const ws = await open(server);
 
     write(ws, "note", [{ op: "replace", path: "/text", value: "inspect me" }]);
-    await expectMessage(ws, "patch");
+    const { change } = await expectMessage(ws, "patch");
     await expectMessage(ws, "render");
 
     ws.send(JSON.stringify({ type: "inspect" }));
@@ -406,7 +471,10 @@ describe("createServer, generically (no example from the examples directory invo
     const note = docs.find((d) => d.doc === "note");
     expect(note?.version).toBeGreaterThan(0);
     expect(note?.entries?.[0]).toMatchObject({ ops: [{ op: "replace", path: "", value: { text: "inspect me" } }] });
-    expect((note?.entries?.[0] as { id: number }).id).toBeGreaterThan(0); // the ledger entry's own id
+    // a change of mine by the handle its echo gave, which undoes it; never the ledger's entry, whose numbers count everyone's writes
+    expect(HANDLE.test(change!)).toBe(true);
+    expect(note?.entries?.[0]).toMatchObject({ change });
+    expect(note?.entries?.[0]).not.toHaveProperty("id");
     // a session id is the only credential: it never goes on the wire, not even your own. "Was this
     // write mine" is all a reader may ask.
     expect(note?.entries?.[0]).toMatchObject({ mine: true });
@@ -984,7 +1052,7 @@ describe("one socket, any documents: a document is named whole, and seen because
     b.close();
   });
 
-  test("a session's handles go with its last page: open again, the one it was given is no change of its", async () => {
+  test("a session's handles outlive its last page five minutes: open again within them, the one it was given still undoes; after, it is no change of its", async () => {
     const { ws: first, sessionId } = await showingMonths("2026-12");
     write(first, "month:2026-12", [{ op: "add", path: "/appointments/-", value: "kept" }], 1);
     const kept = await nextPatch(first);
@@ -997,10 +1065,21 @@ describe("one socket, any documents: a document is named whole, and seen because
     again.close();
     await server.idle();
     await Bun.sleep(20);
-    const later = await open(server, sessionId);
-    write(later, "ledger", [{ op: "remove", path: `/${kept.change}` }], 4);
-    expect((await heard(later)).find((m) => m.id === 4)).toEqual({ type: "refused", id: 4, reason: `No change of yours is called ${kept.change}.` });
-    later.close();
+    const back = await open(server, sessionId); // a reconnect: a network's blip, a reload
+    write(back, "ledger", [{ op: "remove", path: `/${kept.change}` }], 4);
+    expect((await heard(back)).find((m) => m.id === 4)).toMatchObject({ type: "patch", ops: [{ op: "remove" }] });
+    back.close();
+    await server.idle();
+    await Bun.sleep(20);
+    setSystemTime(new Date(Date.now() + 5 * 60_000)); // five minutes with no page open
+    try {
+      const later = await open(server, sessionId);
+      write(later, "ledger", [{ op: "add", path: `/${kept.change}` }], 5);
+      expect((await heard(later)).find((m) => m.id === 5)).toEqual({ type: "refused", id: 5, reason: `No change of yours is called ${kept.change}.` });
+      later.close();
+    } finally {
+      setSystemTime();
+    }
   });
 
   test("a bare type is the document of that type the connection is on, seen without being shown", async () => {

@@ -55,6 +55,12 @@ export type Example = {
    */
   session?(cookie: string): Promise<string>;
   /**
+   * How many days a session's cookie lasts unused (its Max-Age), set again on every socket, so it
+   * is renewed as it is used. Default 30. The browser lets it go; the server's own check is the
+   * session's row's (`sessionRows`' `kept`): say the same days to both.
+   */
+  sessionDays?: number;
+  /**
    * The write that moves a tab: the document and path a page's `data-page-write` names
    * (src/rendering/bento.ts's `site`), as `{ doc: "session", path: "/page" }`. Where a tab is, is
    * the tab's own (src/rendering/tabs.ts), its URL (`/list?request=3`): a write to this path is
@@ -65,6 +71,13 @@ export type Example = {
    * a reload opens on that screen. Omitted: a page with no address, and its URL is only "/".
    */
   address?: { doc: string; path: string };
+  /**
+   * Whether a URL's path (under the app's own, its first slash off, as the URL spells it: `tables`, `2026-10`) is one of
+   * the app's screens, where a tab may stand: any other is answered 404 -- the page all the same,
+   * which opens at the page alone -- so a monitor or a crawler is told it is not there. The page
+   * alone (`/`) always is. Omitted: every path is a screen, answered 200.
+   */
+  screens?(path: string): boolean;
   /** Who a session is, as delta sees them -- for the ledger's `who` and for row-level security. Default: the session. */
   who?(sessionId: string): unknown;
   /**

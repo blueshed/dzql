@@ -68,7 +68,8 @@ least that makes the next story pass; `bun run stories` after each.
    [controls](reference/controls.md); reference data, [derive](reference/derive.md)
 6. **The routes**, `routes.ts`: the app (its `Example`: resources, page, who is active, the
    address, its routes) on delta's one server, the model's page beside it in development. People
-   come in by a link each (`links.ts`); what is no document's is a route that writes as the server
+   come in by a link each (`links.ts`), a demo door shut in production, where the app signs them
+   in its own way ([signin](reference/signin.md)); what is no document's is a route that writes as the server
    (`serverWrite`, the cafe's `/scan`). → [example](reference/example.md), [signin](reference/signin.md)
 7. **Tests**, `routes.test.ts`: what a story cannot say, then the gate. → [tests](reference/tests.md)
 8. **Read it back**, if the stories were modelled: `bun run model:check --against-page model.json`

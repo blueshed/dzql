@@ -9,14 +9,14 @@ import { guards } from "./model/guards";
 // model made (./model/, by `dzql model` from ./model.json) comes first, by its own migrations; then
 // what the app keeps beside
 // it -- who the staff are, and what a visit holds beyond the table a customer scanned (who signed
-// in, the cookie's hash; where they are is each tab's own) -- made by the compiled SQL, which adds a missing table or
+// in, the cookie's hash, when it was last used; where they are is each tab's own) -- made by the compiled SQL, which adds a missing table or
 // column (dzql's `openStore`). Each resource registers its documents (`register`, in
 // `resources/<name>/<name>-api.ts`); the server opens the store as it starts (the app's `store`,
 // ./routes.ts) and closes it as it stops: the documents compiled, the cafe seeded, one listener.
 
 export const schema = defineSchema({
   ...tables,
-  visits: { ...tables.visits!, columns: { ...tables.visits!.columns, role: "text?", name: "text?", cookie: "text?" } },
+  visits: { ...tables.visits!, columns: { ...tables.visits!.columns, role: "text?", name: "text?", cookie: "text?", seen: "timestamptz?" } },
   staff: { table: "cafe_staff", columns: { name: "text", role: "text" }, temporal: false },
 });
 

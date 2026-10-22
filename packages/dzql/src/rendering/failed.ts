@@ -1,6 +1,7 @@
 // What fails while the kernel handles an event -- a message, a drawing, a change being told -- is
 // said here and nowhere else: logged, never silent, and heard by whoever listens (the stories
-// harness fails the story it happened in). A failure is caught where it happens, so the next event,
+// harness fails the story it happened in; an app sends it where it is watched, by `onFailure` from
+// `dzql/rendering/failed`). A failure is caught where it happens, so the next event,
 // the next connection's drawing and the next listener go ahead.
 
 const listeners = new Set<(what: string, err: unknown) => void>();

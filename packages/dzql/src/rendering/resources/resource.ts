@@ -44,8 +44,12 @@ export type Resource = {
   perSession?: true;
   /** What kind of document it is. Omitted: stored, in the example's database. */
   kind?: Kind;
-  /** Stored, on the ledger, and never undone (a price tick, a payment taken): Undo passes it by. */
-  undoable?: false;
+  /**
+   * Stored, on the ledger, and never undone (a price tick, a payment taken): Undo passes it by.
+   * `false` for every write to it; or asked of each write once shaped (its ops in the wire's paths),
+   * false for one never undone: the cafe's paying, beside ordering, which Undo takes back.
+   */
+  undoable?: false | ((ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]) => boolean);
   /**
    * Its writes are not history, so Undo skips them: where a tab is, a visit. Delta keeps its
    * documents off the ledger; saying so here too lets the kernel catch one left off by mistake.
@@ -85,7 +89,8 @@ export type Resource = {
    * each field it sets back its own replace (`replace /answer`).
    *
    * - For a rule of time or state that holds against Undo too: answers closed at a deadline.
-   * - Not `permit`: Undo may do what permit refuses (a message taken back).
+   * - Not `permit`: Undo may do what permit refuses (a message taken back). A deed never to be
+   *   taken back (a payment) is `undoable`'s to say; what Undo then reaches past it, this one's.
    * - Throw `refuse(reason)` to say why. Omitted: always.
    */
   permitUndo?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): boolean;

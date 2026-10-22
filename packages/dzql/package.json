@@ -27,6 +27,7 @@
     "./rendering/html": "./src/rendering/html.ts",
     "./rendering/bento": "./src/rendering/bento.ts",
     "./rendering/refusal": "./src/rendering/refusal.ts",
+    "./rendering/failed": "./src/rendering/failed.ts",
     "./rendering/json-patch": "./src/rendering/json-patch.ts",
     "./rendering/example": "./src/rendering/example.ts",
     "./rendering/resources/resource": "./src/rendering/resources/resource.ts",

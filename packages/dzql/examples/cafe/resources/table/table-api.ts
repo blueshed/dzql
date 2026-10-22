@@ -40,6 +40,21 @@ export function may(op: PatchOp, role: string | null): boolean {
   return op.op === "replace" && coll === "invoices" && /^\d+$/.test(id ?? "") && field === "paid" && op.value === true;
 }
 
+/** Is this write paying: a payment taken, which Undo never takes back (the table's `undoable`)? */
+export const paying = (ops: PatchOp[]): boolean => ops.some((op) => op.op === "replace" && splitPath(op.path)[0] === "invoices" && splitPath(op.path)[2] === "paid");
+
+/** Why an undo or redo of these ops may not go ahead: it would take an order off, or put one back on, an invoice already paid. */
+export function unpaidOnly(ops: PatchOp[], t: TableView): string | undefined {
+  const paid = (invoice: unknown) => t.invoices.some((i) => i.id === String(invoice) && i.paid);
+  const onPaid = ops.some((op) => {
+    const [coll, id] = splitPath(op.path);
+    if (coll !== "orders") return false;
+    const was = t.orders.find((o) => o.id === id)?.invoice ?? (op.value as { invoices_id?: unknown } | undefined)?.invoices_id;
+    return paid(was);
+  });
+  return onPaid ? "A paid invoice cannot be changed." : undefined;
+}
+
 /**
  * A table's writes as it keeps them: an invoice opened, unpaid, which seats it; an order names its
  * dish and its table, and keeps its surrogate, the dish's name and price as the menu has them now;
