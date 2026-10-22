@@ -29,12 +29,25 @@ export function setCookieIsSession(on: boolean): boolean {
   return was;
 }
 
+/** How many sockets of each session are open, by the app's set of open sockets: whether a session is live, asked at once (`wireName`). */
+const bySession = new WeakMap<Set<ServerWebSocket<ConnectionData>>, Map<string, number>>();
+const live = (): Map<string, number> => bySession.get(open()) ?? bySession.set(open(), new Map()).get(open())!;
+/** The session each open socket was counted under. */
+const countedAs = new WeakMap<ServerWebSocket<ConnectionData>, string>();
+
 export function openConnection(ws: ServerWebSocket<ConnectionData>): void {
+  if (open().has(ws)) return;
   open().add(ws);
+  countedAs.set(ws, ws.data.sessionId);
+  live().set(ws.data.sessionId, (live().get(ws.data.sessionId) ?? 0) + 1);
 }
 
 export function closeConnection(ws: ServerWebSocket<ConnectionData>): void {
-  open().delete(ws);
+  if (!open().delete(ws)) return;
+  const session = countedAs.get(ws)!;
+  const left = live().get(session)! - 1;
+  if (left > 0) live().set(session, left);
+  else live().delete(session);
 }
 
 /** Every open connection of the app, whatever it sees: the exception, for what is everyone's concern; reach for `audienceFor` first. */
@@ -58,7 +71,7 @@ export function wireName(docType: string, docId: string, ws?: ServerWebSocket<Co
   if (scope().byDocType?.get(docType)?.perSession) return docType;
   if (scope().cookieIsSession) {
     if (docId === ws?.data.sessionId) return docType;
-    if ([...open()].some((other) => other.data.sessionId === docId)) {
+    if (live().has(docId)) {
       throw new Error(`${docType} is keyed by a session id: declare its resource \`perSession\`, so the id never goes on the wire`);
     }
   }

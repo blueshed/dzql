@@ -1,6 +1,6 @@
 import { assemble, forget } from "./resources";
 import { allOpenSockets, audienceFor, closeConnection, openConnection, readersOf, resolveName, sees, setActiveResources, wireName, wireOps } from "./resources/audience";
-import { fragmentsMessage, renderMessage } from "./resources/render";
+import { drawingFailedMessage, fragmentsMessage, renderMessage } from "./resources/render";
 import type { ConnectionData } from "./connection";
 import { setActiveDocuments, settled, type Documents } from "./documents";
 import type { Example } from "./example";
@@ -8,7 +8,7 @@ import { isTest, isVerb, isWriteId, patchMessage, refusedMessage, type PatchOp, 
 import { failed } from "./failed";
 import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
-import { diff, drawnValues, type Drawn } from "./parts";
+import { diff, drawnFields, type Drawn } from "./parts";
 import { Refusal, refuse, tell } from "./refusal";
 import { handleOf, newHandle } from "./resources/ledger";
 import { refuseOrigin } from "@blueshed/delta/server";
@@ -48,9 +48,19 @@ export const seeOther = (to = "/", cookie?: string): Response =>
 // What each connection was last sent, so the next drawing sends only what differs (src/rendering/parts.ts).
 const sent = new WeakMap<Socket, Drawn>();
 
-// A connection's redraws happen one after another, so a drawing that waited for a document can
-// never land after, and undo, a later one.
-const drawingFor = new WeakMap<Socket, Promise<void>>();
+/**
+ * A connection's drawings: the last one asked for, and the one not yet begun, if there is one. Its
+ * drawings happen one after another, so a drawing that waited for a document can never land after,
+ * and undo, a later one. And one not yet begun gathers every reason to draw the page that comes
+ * before it begins -- a change, another, a tab moved -- so a page is drawn at most once for all the
+ * changes told meanwhile: it waits a turn of the event loop first, while the changes heard are
+ * told, unless its connection waits on it (`drawnFor`).
+ */
+type Drawings = { last: Promise<void>; next?: { whole: boolean; now: boolean; go?: () => void } };
+const drawingsOf = new WeakMap<Socket, Drawings>();
+
+/** A turn of the event loop: what is heard meanwhile is told before the drawings that wait on it begin. */
+const aTurn = (next: NonNullable<Drawings["next"]>): Promise<void> | undefined => (next.now ? undefined : new Promise((go) => setImmediate((next.go = go))));
 
 // Everything an event set going -- redraws, and the changes behind them -- so the event is done
 // only when all of it is.
@@ -64,25 +74,57 @@ const track = (p: Promise<unknown>): void => {
  * Draws a connection's page -- its session's, where its tab stands (./tabs.ts), until every
  * document it reads is held -- and sends what changed:
  * the parts that differ, nothing if none do, or the page whole when its outline changed (a
- * different page) or `whole` says so (a first drawing).
- * A drawing that fails is logged, and the connection's next drawing goes ahead.
+ * different page) or `whole` says so (a first drawing). Asked again before it begins, it is the same
+ * drawing (`Drawings`), whole if either asked so.
+ * A drawing that fails is logged and the page told (src/rendering/client/app.ts says so), and the
+ * connection's next drawing goes ahead.
  */
 function redraw(ws: Socket, whole = false): Promise<void> {
   const app = scope();
-  const next = (drawingFor.get(ws) ?? Promise.resolve()).then(async () => {
-    if (!app.page) return; // the app is no longer served
-    const page = app.page;
-    const drawn = await settled(app.documents, () => drawing(ws, () => page(ws.data.sessionId, addressOf(ws))));
-    const prev = sent.get(ws);
-    sent.set(ws, drawn);
-    const ops = prev && !whole ? diff(prev, drawn) : undefined;
-    if (ops === undefined) send(ws, renderMessage(drawn.html));
-    else if (ops.length > 0) send(ws, fragmentsMessage(ops));
-  });
-  const done = next.catch((err) => failed("drawing a page", err));
-  drawingFor.set(ws, done);
+  const drawings = drawingsOf.get(ws) ?? drawingsOf.set(ws, { last: Promise.resolve() }).get(ws)!;
+  if (drawings.next) {
+    drawings.next.whole ||= whole;
+    return drawings.last;
+  }
+  const next: NonNullable<Drawings["next"]> = { whole, now: false };
+  drawings.next = next;
+  const done = drawings.last
+    .then(() => aTurn(next))
+    .then(() =>
+      within(app, async () => {
+        drawings.next = undefined; // begun: what asks from now on is drawn after it
+        if (!app.page) return; // the app is no longer served
+        const page = app.page;
+        const drawn = await settled(app.documents, () => drawing(ws, () => page(ws.data.sessionId, addressOf(ws))));
+        const prev = sent.get(ws);
+        const ops = prev && !next.whole ? diff(prev, drawn) : undefined;
+        sent.set(ws, drawn);
+        if (ops === undefined) send(ws, renderMessage(drawn.html));
+        else if (ops.length > 0) send(ws, fragmentsMessage(ops));
+      }),
+    )
+    .catch((err) => {
+      failed("drawing a page", err);
+      send(ws, drawingFailedMessage());
+    });
+  drawings.last = done;
   track(done);
   return done;
+}
+
+/**
+ * Resolves once `ws`'s page is drawn after every change heard so far: each told, and the drawing it
+ * asked for done, begun at once rather than after a turn. What a connection's event is handled
+ * against -- what its page shows, what its fields were drawn with -- is its page as drawn now.
+ */
+async function drawnFor(ws: Socket, documents: Documents): Promise<void> {
+  await documents.toldSoFar();
+  const drawings = drawingsOf.get(ws);
+  if (drawings?.next) {
+    drawings.next.now = true;
+    drawings.next.go?.();
+  }
+  await drawings?.last;
 }
 
 /**
@@ -183,6 +225,19 @@ type Write = { id?: unknown; doc: string; ops: (PatchOp | Test)[] };
 /** Why a write whose `test` fails is refused, beside the field. */
 export const CHANGED_SINCE = "This was changed elsewhere as you typed: here it is now.";
 
+/** The most ops a write may carry, its tests among them: a page's control sends a handful. */
+export const MOST_OPS = 1000;
+
+/** Why a write of more is refused. */
+export const TOO_MANY_OPS = `That is too much to change at once: at most ${MOST_OPS} changes a write.`;
+
+/**
+ * The most events a connection may have waiting to be handled: past it, it is sending faster than
+ * it is answered, and its socket is closed (1008), as one that will not be held up for everyone
+ * else's sake; its page connects again, and is drawn afresh.
+ */
+export const MOST_WAITING = 100;
+
 /** The most ledger entries `inspect` gives a document: it asks delta's history, and every event waits on it. */
 const MOST_INSPECTED = 100;
 
@@ -246,15 +301,23 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
 
   const who = (ws: Socket): unknown => (example.who ? example.who(ws.data.sessionId) : ws.data.sessionId);
 
-  // Events are handled one at a time, in the order they came: each is done when what it set going
-  // is done, so an `inspect` after a write is answered after everything the write caused.
-  let queue: Promise<void> = Promise.resolve();
-  const enqueue = (fn: () => Promise<void>): void => {
-    queue = queue
+  // Each connection's events are handled one at a time, in the order they came, each on its page as
+  // drawn after every event before it (`drawnFor`); another connection's go on meanwhile, so none
+  // waits behind a busy one. An `inspect` is answered after every event that came before it, any
+  // connection's, and everything they set going. At most MOST_WAITING wait for a connection: past
+  // that, it is closed.
+  const queues = new Map<Socket, { tail: Promise<void>; waiting: number }>();
+  const enqueue = (ws: Socket, fn: () => Promise<void>, { closing = false } = {}): void => {
+    const queue = queues.get(ws) ?? queues.set(ws, { tail: Promise.resolve(), waiting: 0 }).get(ws)!;
+    if (!closing && queue.waiting >= MOST_WAITING) return void ws.close(1008, "too many messages waiting");
+    queue.waiting++;
+    queue.tail = queue.tail
       .then(fn)
-      .then(() => quiet(documents))
-      .catch((err) => failed("handling an event", err));
+      .catch((err) => failed("handling an event", err))
+      .finally(() => void queue.waiting--);
   };
+  /** Every event that came before now, on every connection but `ws`, handled. */
+  const before = (ws?: Socket): Promise<unknown> => Promise.all([...queues].filter(([other]) => other !== ws).map(([, q]) => q.tail));
 
   /**
    * A write or a walk has landed: what fails after it is the server's, not a refusal, and its writer
@@ -365,6 +428,7 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
    * something was applied.
    */
   async function write(ws: Socket, { doc, ops: all }: Write, id: WriteId | undefined): Promise<boolean> {
+    if (all.length > MOST_OPS) throw refuse(TOO_MANY_OPS);
     const ops = all.filter((op): op is PatchOp => !isTest(op));
     const target = await settled(documents, () => resolveName(byDocType, doc, ws));
     if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return false;
@@ -373,8 +437,9 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
     if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return false;
     // A field typed in says what it was drawn with as the typing began: drawn otherwise on
     // this page now, someone changed it since, unseen, and the typing would write over it.
-    const page = sent.get(ws)?.html ?? "";
-    if (all.filter(isTest).some((t) => !drawnValues(page, doc, t.path).includes(t.value))) throw refuse(CHANGED_SINCE);
+    const tests = all.filter(isTest);
+    const fields = tests.length > 0 ? drawnFields(sent.get(ws)?.html ?? "", doc) : undefined; // the page read once
+    if (tests.some((t) => !(fields!.get(t.path) ?? []).includes(t.value))) throw refuse(CHANGED_SINCE);
     return owner.docType === "ledger" ? walk(ws, ops, id) : writeDelta(ws, owner, docId, ops, id);
   }
 
@@ -418,7 +483,7 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
       if (asWrite) await tell(ws.data.sessionId, refusal && { doc: asWrite.doc, path: asWrite.ops[0]!.path, reason: refusal.reason });
       void redraw(ws, !asWrite); // a message that is no write asks for the page (src/rendering/client/app.ts)
     }
-    await quiet(documents);
+    await documents.toldSoFar();
     for (const claim of claims()) if (claim.ws === ws) claims().delete(claim); // its change told by now, or never to be
   }
 
@@ -466,12 +531,13 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
   const handlers: Bun.WebSocketHandler<ConnectionData> = {
       open: (ws) => within(app, () => {
         openConnection(ws);
-        enqueue(async () => {
+        enqueue(ws, async () => {
           try {
             for (const resource of resources) await resource.onOpen?.(ws);
             await route(ws);
           } finally {
-            await redraw(ws, true); // the page is drawn, whatever failed opening it
+            void redraw(ws, true); // the page is drawn, whatever failed opening it
+            await drawnFor(ws, documents);
           }
         });
       }),
@@ -482,16 +548,27 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
         } catch {
           message = undefined; // not JSON: no write, so the page is handed back
         }
-        enqueue(() => handle(ws, message));
+        // an inspect is answered after every event before it, any connection's, and all they set going
+        const others = isInspect(message) ? before(ws) : undefined;
+        enqueue(ws, async () => {
+          if (others) await others.then(() => quiet(documents));
+          await drawnFor(ws, documents);
+          await handle(ws, message);
+        });
       }),
       close: (ws) => within(app, () => {
         closeConnection(ws);
         if (![...allOpenSockets()].some((open) => open.data.sessionId === ws.data.sessionId)) handles().delete(ws.data.sessionId);
-        enqueue(async () => {
-          for (const resource of resources) await resource.onClose?.(ws);
-          await quiet(documents);
-          await release();
-        });
+        enqueue(
+          ws,
+          async () => {
+            for (const resource of resources) await resource.onClose?.(ws);
+            await quiet(documents);
+            await release();
+            queues.delete(ws);
+          },
+          { closing: true },
+        );
       }),
   };
 
@@ -500,7 +577,12 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
     websocket: { ...SOCKET, ...handlers },
     scope: app,
     /** Resolves when every event so far has been handled and everything it set going is done. */
-    idle: () => queue.then(() => quiet(documents)),
+    idle: async () => {
+      do {
+        await before();
+        await quiet(documents);
+      } while ([...queues.values()].some((q) => q.waiting > 0));
+    },
     // no longer served: what it draws and who sees what go with it
     close: [() => {
       if (--held.apps > 0) return;
@@ -526,6 +608,11 @@ const SOCKET = {
   // A message in is at most 1 MiB, inflated: a write is small (a picture goes by HTTP), and past
   // it the socket is closed. Bun's own 16 MB would let a 15 KB compressed frame be a 15 MB write.
   maxPayloadLength: 1 << 20,
+  // A page that reads slower than it is sent to is closed once 1 MiB waits for it, past what the
+  // system holds: its page connects again, and is drawn afresh. Bun's own is to drop what is sent
+  // past 16 MB and keep the socket open, its page wrong for good, never told it missed anything.
+  backpressureLimit: 1 << 20,
+  closeOnBackpressureLimit: true,
 } as const;
 
 /**

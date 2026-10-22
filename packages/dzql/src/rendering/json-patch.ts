@@ -6,12 +6,16 @@ import { applyOps, type DeltaOp } from "@blueshed/delta/core";
  *   3 -- a typed field's write may carry a `test` of the value it was drawn with (an older server
  *        would take it as no write);
  *   4 -- a value goes with its type: a button's `data-value` is JSON (`true`, not "true") and a
- *        number field sends a number (an older page would send text). A page that meets a server of another version loads
+ *        number field sends a number (an older page would send text);
+ *   5 -- a page the server could not draw is told so (`{type: "failed"}`), which the page says
+ *        beside it; a part for what the page does not have, or a patch past the next version an
+ *        applet holds, asks for the page whole (an older page would pass them over, wrong for
+ *        good). A page that meets a server of another version loads
  * itself again (src/rendering/client/app.ts), so the two speak alike; a page older than ids never looks, and
  * a server answers a write without an id as it always did. Here, beside the write's words, since a
  * page's bundle reads it and must reach nothing of the server's (src/client/imports.test.ts).
  */
-export const WIRE = 4;
+export const WIRE = 5;
 
 /** A single RFC 6902 JSON Patch operation. `path` is an RFC 6901 JSON Pointer. */
 export type PatchOp = {

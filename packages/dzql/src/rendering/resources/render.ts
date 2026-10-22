@@ -15,6 +15,8 @@ export type HtmlOp = { op: "replace" | "tag" | "after" | "before"; target: strin
 /** A page sent whole says the wire it speaks (`WIRE`, src/rendering/json-patch.ts). */
 export const renderMessage = (html: string): string => JSON.stringify({ type: "render", html, wire: WIRE });
 export const fragmentsMessage = (ops: HtmlOp[]): string => JSON.stringify({ type: "render", ops });
+/** The page could not be drawn: it stays as it was, and says so (src/rendering/client/app.ts), until the next drawing. */
+export const drawingFailedMessage = (): string => JSON.stringify({ type: "failed" });
 
 // A page as the browser keeps it, laid on by what the server sends: the stories harness and a
 // test's socket (test-socket.ts) hold a page so.

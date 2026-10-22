@@ -375,13 +375,14 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("a drawing that fails is logged, and the connection's next drawing goes ahead", async () => {
+  test("a drawing that fails is logged and its page told so, and the connection's next drawing goes ahead", async () => {
     const ws = await open(server);
     const failures: string[] = [];
     const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
     try {
       write(ws, "note", [{ op: "replace", path: "/text", value: "undrawable" }]);
       await expectMessage(ws, "patch"); // the write is told; its drawing fails
+      expect(await nextMessage(ws)).toEqual({ type: "failed" }); // and the page, as it was, says so (src/rendering/client/app.ts)
       write(ws, "note", [{ op: "replace", path: "/text", value: "drawn again" }]);
       await expectMessage(ws, "patch");
       expect(htmlOf(await nextMessage(ws))).toContain("drawn again");
@@ -921,7 +922,7 @@ describe("one socket, any documents: a document is named whole, and seen because
     expect((await heard(b)).filter((m) => m.type === "refused" || m.id !== undefined)).toMatchObject([{ type: "patch", id: "b-2" }]);
 
     // a write without an id -- a page from before ids, the CLI -- is echoed as it always was
-    write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "no id" }]);
+    a.send(JSON.stringify({ doc: "month:2026-08", ops: [{ op: "add", path: "/appointments/-", value: "no id" }] })); // `write` gives every write an id
     expect(await nextPatch(a)).not.toHaveProperty("id");
 
     a.close();

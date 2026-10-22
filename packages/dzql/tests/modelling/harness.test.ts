@@ -128,13 +128,13 @@ describe("stories harness", () => {
     }, 30000);
 
     test("an undo is held to the budget as the write is: Dee's attic, taken back, hands her more than it did", async () => {
-      const report = await run(example, { cast: stories.cast, budget: 4096, stories: keyed([pick("Dee names a room nobody has made")]) });
+      const report = await run(example, { cast: stories.cast, budget: 3600, stories: keyed([pick("Dee names a room nobody has made")]) });
       const [attic] = report.outcomes as [Outcome];
-      expect(attic.wire!.handed.every((h) => h.bytes <= 4096)).toBe(true); // the write is within it
-      expect(attic.failures).toEqual(failing(attic, "example's", 4096));
+      expect(attic.wire!.handed.every((h) => h.bytes <= 3600)).toBe(true); // the write is within it
+      expect(attic.failures).toEqual(failing(attic, "example's", 3600));
       expect(attic.failures).toHaveLength(1);
-      expect(attic.failures[0]).toStartWith("dee's page was handed 4,3");
-      expect(attic.failures[0]).toContain(" bytes on the undo, more than the example's budget of 4,096: the most, ");
+      expect(attic.failures[0]).toStartWith("dee's page was handed 3,7");
+      expect(attic.failures[0]).toContain(" bytes on the undo, more than the example's budget of 3,600: the most, ");
     }, 30000);
 
     test("a budget is a whole number of bytes: any other, a story's or the example's, is said, and the story is not run", async () => {
