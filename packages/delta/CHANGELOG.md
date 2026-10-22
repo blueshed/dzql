@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- **`DocDef.scope`'s type widens to `Record<string, string | string[]>`** (22 October, delta #102): a
+  column may be given a list of conditions. **To move across**: code reading a document's scope as
+  strings reads it through `scopeEntries(def.scope)` (`./backend`), or `Object.values(...).flat()`.
+- **A timestamptz scope value that is no date has new words** (22 October, delta #102): `<col> must be
+  a date, YYYY-MM-DD, or an instant, 20261020T0800Z, not "<x>"`. **To move across**: a test asserting
+  the old sentence takes the new one. (And a path segment, or a parent key's or `refs` column's
+  value, written `$<digits>` now names an earlier op's row: only a SQLite text id so spelled changes.)
 - **A person signed in makes only their own link, unless the app says** (22 October, delta #95).
   `linkAuth`'s `link` action let anyone signed in make anyone's sign-in link, an admin's included,
   unless `mayLink` said otherwise. Now, with no `mayLink`, a person makes only their own (`by.id ===
@@ -158,6 +165,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A `date` and a `numeric` column type** (22 October, the production review, delta #101). `date` is
+  a calendar day, `"2026-10-20"` on the wire; `numeric` an exact decimal, a string on the wire
+  (`"10.50"`): a number, or text that is no decimal (`"1e3"`, `"NaN"`, `"+1"`, `".5"`), is 400, so no
+  float slips in. A decimal is kept as Postgres's NUMERIC writes it, on every backend (`"007.50"` is
+  `"7.50"`); a scope compares a day by the calendar and a decimal by value (on SQLite as a REAL, so
+  exact to about 15 digits; the stored text stays exact). `date?` and `numeric?`; `addColumn` and
+  `migrations make` take both; `unique` on a numeric throws ("1.5" and "1.50" are one NUMERIC).
+  `isDate`, `isDecimal`, `decimalText` in `./backend`. Cases: `columnTypeCases`.
+- **A column given several conditions, and an instant in a name** (22 October, delta #102). `scope: {
+  lat: [">=:south", "<=:north"], lng: [">=:west", "<=:east"] }`: each condition holds, the values bound
+  alphabetically as before (`sites-in:<east>:<north>:<south>:<west>`), and a write through it is held
+  to every one. A timestamptz's value may be ISO 8601's basic format, `20261020T0800Z` or
+  `20261020T080000+0100` (`nameInstant`, `./backend`), since `:` splits a name; `at:` takes one too.
+  `scopeEntries` in `./backend`. Cases: `rangeScopeCases`.
+- **A later op names a row an earlier op of its write adds with `-`: `$<k>`** (22 October, delta
+  #103), k the 0-based index of that `add /<coll>/-` in the batch: as a path's row (`/entries/$0/memo`)
+  and as a parent key's or `refs` column's value, so an entry and its lines are one write. A `$k`
+  naming no such add, or a row of another collection, is 400; the answer, every holder and the ledger
+  carry the real ids; walks are never rewritten. Cases: `mintedNameCases`.
+- **`noOverlap`, a constraint kind beside `unique`** (22 October, delta #100, its constraint part).
+  `noOverlap: [{ range: ["starts", "ends"], same: ["room_id"], bounds?: "[)" | "[]" }]`: two current
+  rows with equal `same` columns whose ranges overlap are refused 409 on every backend (`Overlaps:
+  bookings/3 and bookings/1, of the same room_id, both hold starts to ends at once -- move or remove one
+  first`). A null bound is open on that side; a range that ends before it starts is 400. It is asked
+  once the write is done, so a batch may swap two bookings in either order; a walk that would bring a
+  clash back is a conflict. Cases: `noOverlapCases`. A rule that reads stored rows in general (no
+  cycle, a period closed) stays open (#100).
 - **A socket's limits: a message's size, and the documents it holds open** (22 October, delta #97).
   `createWs({ maxPayloadLength })` defaults to 1 MiB, as dzql's kernel sets (Bun's was 16 MB): past
   it Bun drops the socket, the frame unread. `createWs({ maxDocs })` defaults to 1000: one more

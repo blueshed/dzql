@@ -622,6 +622,23 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **delta's `date`, `numeric`, range scopes and instants, compiled** (22 October, delta #101, #102):
+  DATE and NUMERIC columns; every compiled read, and `exportTables`, gives a numeric as its text
+  (`rowJson`), never a JSON number; each condition of a column's list compiled; an instant in ISO
+  8601's basic format read as the instant it names.
+- **`$<k>` in `delta_apply`** (22 October, delta #103): `_delta_with_minted` and `_delta_minted`
+  (001d), and `_delta_refs_of` compiled.
+- **`noOverlap` on Postgres** (22 October, delta #100). `_delta_overlaps_hold` is compiled and runs
+  after `_delta_refs_hold`, SECURITY DEFINER, under an advisory lock on the constraint and the row's
+  `same` values, raising 23P01 (409). Each table also gets an `EXCLUDE USING gist` constraint,
+  `excl_<table>_<start>_<end>`, on its current rows, deferred to the commit, the database's own guard
+  against SQL written past `delta_apply`; one the definitions no longer say is dropped. `btree_gist`
+  is made where it can be (`openPglite` loads it). Rows that already overlap make `generateSql` fail
+  until they are moved. `tests/delta-pg/no-overlap.test.ts`, `tests/compile/overlaps.test.ts`.
+- **leave: a request's days are dates, and nobody holds two requests over one day** (22 October, #124,
+  in part): `starts`/`ends` are `date` columns and the requests' `noOverlap` (`person_id`, `"[]"`)
+  refuses a request over days its person already holds (story "Ann cannot ask for days she already
+  has").
 - **`/health` asks the store** (22 October, delta #99 as dzql takes it): an app's store has
   `healthy()` (`openStore`'s: open, and `SELECT 1` answers), `appOf` gives it as the app's `health`,
   and `compose` is healthy when every app it holds is and idle when every app is, so delta's
