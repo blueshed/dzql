@@ -51,7 +51,7 @@ $$;
 
 -- ---------------------------------------------------------------------------
 -- _delta_inverse: what applied ops walked back, read from the document as it
--- was. Applied ops are whole rows (/coll/id) or the root (/coll; added or
+-- was (the rows the write touched, as it found them: _delta_apply's `before`). Applied ops are whole rows (/coll/id) or the root (/coll; added or
 -- removed, /coll/id, read where the document holds it: _delta_row_at): an add is
 -- removed, a remove added back, a replace replaced by its old self. Reverse
 -- order, except that a remove and the rows its removal cascaded to (a run) come
@@ -141,9 +141,10 @@ RETURNS JSONB LANGUAGE sql IMMUTABLE AS $$ SELECT _delta_inverse(p_before, p_ops
 -- ---------------------------------------------------------------------------
 -- _delta_beside: a document with rows outside it beside it -- rows, each
 -- {coll, id, row}, of collections it neither roots nor includes -- for the
--- ledger: what a removal's cascade takes beyond the document (the schema's
--- cascade, not the include's), which its inverse puts back and a walk of it is
--- guarded by. `besides` in sqlite.ts.
+-- ledger: what a removal's cascade took beyond the document (the schema's
+-- cascade, not the include's), which a walk of its entry is guarded by
+-- (_delta_walk_plan; its inverse keeps them as _delta_apply found them, with
+-- `p_beyond`, _delta_prior_rows). `besides` in sqlite.ts.
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION _delta_beside(p_doc JSONB, p_def _delta_docs, p_rows JSONB)
@@ -159,8 +160,10 @@ $$;
 
 -- ---------------------------------------------------------------------------
 -- delta_apply_logged: delta_apply, with its ledger entry, in one transaction.
--- A lock per document keeps another writer of it from landing between the read
--- the inverse is taken from and the write. Returns delta_apply's {version, ops}
+-- A lock per document keeps another writer of it from landing between the
+-- write and its entry. The inverse is taken from the rows the write touched,
+-- each as it found them (_delta_apply's `before`): the write costs what it
+-- touches, not what its document holds. Returns delta_apply's {version, ops}
 -- with the inverse and the entry's id.
 -- ---------------------------------------------------------------------------
 
@@ -179,15 +182,11 @@ DECLARE
   v_entry   BIGINT;
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('delta:' || p_doc_name));
-  v_before  := COALESCE(_delta_open(p_doc_name, TRUE), '{}'::jsonb);   -- whole: the inverse puts back every column
-  -- the rows each removal's cascade will take beyond the document, as they are: its inverse puts them back
-  v_before  := _delta_beside(v_before, _delta_find_doc(p_doc_name), (
-    SELECT jsonb_agg(r) FROM jsonb_array_elements(p_ops) AS o,
-           LATERAL _delta_split_path(o->>'path') AS p,
-           LATERAL jsonb_array_elements(_delta_cascade_rows(p[1], p[2]::bigint)) AS r
-     WHERE o->>'op' = 'remove' AND array_length(p, 1) = 2
-       AND p[2] ~ '^[0-9]+$' AND p[2]::numeric <= 9007199254740991));
-  v_result  := delta_apply(p_doc_name, p_ops, p_undoes IS NOT NULL);   -- an entry that walks another is a walk
+  -- the write, with the rows it touched as it found them (whole: the inverse puts back every column;
+  -- and the rows a removal's cascade took beyond the document): never the whole document
+  v_result  := _delta_apply(p_doc_name, p_ops, p_undoes IS NOT NULL, TRUE);   -- an entry that walks another is a walk
+  v_before  := v_result->'before';
+  v_result  := v_result - 'before';
   v_inverse := _delta_inverse(v_before, v_result->'ops', p_ops);
   IF jsonb_array_length(v_result->'ops') > 0 THEN
     INSERT INTO _delta_ledger (doc_name, version, ops, inverse, who, cursor, undoes, undoable)

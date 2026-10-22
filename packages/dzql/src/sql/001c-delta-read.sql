@@ -53,14 +53,22 @@ BEGIN
     ON CONFLICT (doc_name) DO UPDATE SET version = _delta_versions.version + 1
     RETURNING version INTO v_version;
 
-  INSERT INTO _delta_ops_log (doc_name, version, ops, applied)
-    VALUES (p_doc, v_version, p_ops, p_applied);
-
-  PERFORM pg_notify(_delta_channel(),
-    json_build_object('doc', p_doc, 'v', v_version)::text
-  );
-
+  PERFORM _delta_log_and_notify(p_doc, v_version, p_ops, p_applied);
   RETURN v_version;
+END;
+$$ LANGUAGE plpgsql;
+
+-- _delta_log_and_notify: a document's version, bumped, logged with what it is
+-- told and told on the channel. _delta_tell bumps every document a write tells
+-- first, in one order, then logs and tells each in turn.
+CREATE OR REPLACE FUNCTION _delta_log_and_notify(p_doc TEXT, p_version BIGINT, p_ops JSONB, p_applied JSONB)
+RETURNS void AS $$
+BEGIN
+  INSERT INTO _delta_ops_log (doc_name, version, ops, applied)
+    VALUES (p_doc, p_version, p_ops, p_applied);
+  PERFORM pg_notify(_delta_channel(),
+    json_build_object('doc', p_doc, 'v', p_version)::text
+  );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -190,8 +198,9 @@ $$ LANGUAGE plpgsql STABLE;
 
 -- ---------------------------------------------------------------------------
 -- delta_open: a document as it stands, with its version -- its rows as it
--- shows them. _delta_open(name, TRUE) reads them whole: what the ledger's
--- inverse and a walk's guard read. generateSql sends each document to its own
+-- shows them. _delta_open(name, TRUE) reads them whole: what a walk's guard
+-- reads (an entry's inverse is the write's own rows: _delta_apply's `before`).
+-- generateSql sends each document to its own
 -- (compileLedger, compileOpens); before it is applied there is no document.
 -- ---------------------------------------------------------------------------
 

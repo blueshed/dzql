@@ -81,11 +81,19 @@ ${dispatch(schema, (_, t) => (t.temporal
 END;
 $$ LANGUAGE plpgsql;`;
 
-  // the sequence by its name: nextval of the text 'seq_<table>'
+  // the sequence by its name: nextval of the text 'seq_<table>'; past 2^53 - 1, no id a path can
+  // name, so none is minted: the table's serial is spent (2200H, a sequence's own limit)
   const next = `CREATE OR REPLACE FUNCTION _delta_next_id(p_coll TEXT, p_table TEXT)
 RETURNS BIGINT AS $$
+DECLARE
+  v_id BIGINT;
 BEGIN
-${dispatch(schema, (_, t) => `RETURN nextval(${lit(seqOf(t.name))});`, noCollection("p_coll"))}
+${dispatch(schema, (_, t) => `v_id := nextval(${lit(seqOf(t.name))});`, noCollection("p_coll"))}
+  IF v_id > 9007199254740991 THEN
+    RAISE EXCEPTION '%: no id is left to mint: % has handed out every id to 2^53 - 1, past which no number holds one exactly',
+      _delta_build_path(p_coll, '-'), 'seq_' || p_table USING ERRCODE = '2200H';
+  END IF;
+  RETURN v_id;
 END;
 $$ LANGUAGE plpgsql;`;
 

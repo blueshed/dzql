@@ -1024,7 +1024,7 @@ exports[`each table's serial, as the framework reads and moves it fo_weddings 7`
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -1144,7 +1144,7 @@ exports[`each table's serial, as the framework reads and moves it fo_households 
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -1264,7 +1264,7 @@ exports[`each table's serial, as the framework reads and moves it fo_courses 7`]
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -1384,7 +1384,7 @@ exports[`each table's serial, as the framework reads and moves it fo_drinks 7`] 
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -1504,7 +1504,7 @@ exports[`each table's serial, as the framework reads and moves it fo_tags 7`] = 
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -1624,7 +1624,7 @@ exports[`each table's serial, as the framework reads and moves it fo_notes 7`] =
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -1744,7 +1744,7 @@ exports[`each table's serial, as the framework reads and moves it fo_seats 7`] =
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -1864,7 +1864,7 @@ exports[`each table's serial, as the framework reads and moves it fo_slots 7`] =
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -1984,7 +1984,7 @@ exports[`each table's serial, as the framework reads and moves it fo_favours 7`]
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -2104,7 +2104,7 @@ exports[`each table's serial, as the framework reads and moves it order 7`] = `
   "past": {
     "after": {
       "c": true,
-      "v": "9007199254740991",
+      "v": "9007194959773695",
     },
     "r": "",
   },
@@ -9160,38 +9160,40 @@ END $$;
 
 CREATE OR REPLACE FUNCTION _delta_serial_past(p_table TEXT, p_id BIGINT)
 RETURNS void AS $$
+DECLARE
+  v_to BIGINT := LEAST(p_id, 9007194959773695);
 BEGIN
   CASE p_table
     WHEN 'fo_weddings' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_fo_weddings', p_id) FROM "seq_fo_weddings" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_fo_weddings', v_to) FROM "seq_fo_weddings" WHERE v_to >= last_value + is_called::int;
     WHEN 'fo_households' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_fo_households', p_id) FROM "seq_fo_households" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_fo_households', v_to) FROM "seq_fo_households" WHERE v_to >= last_value + is_called::int;
     WHEN 'fo_courses' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_fo_courses', p_id) FROM "seq_fo_courses" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_fo_courses', v_to) FROM "seq_fo_courses" WHERE v_to >= last_value + is_called::int;
     WHEN 'fo_drinks' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_fo_drinks', p_id) FROM "seq_fo_drinks" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_fo_drinks', v_to) FROM "seq_fo_drinks" WHERE v_to >= last_value + is_called::int;
     WHEN 'fo_tags' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_fo_tags', p_id) FROM "seq_fo_tags" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_fo_tags', v_to) FROM "seq_fo_tags" WHERE v_to >= last_value + is_called::int;
     WHEN 'fo_notes' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_fo_notes', p_id) FROM "seq_fo_notes" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_fo_notes', v_to) FROM "seq_fo_notes" WHERE v_to >= last_value + is_called::int;
     WHEN 'fo_seats' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_fo_seats', p_id) FROM "seq_fo_seats" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_fo_seats', v_to) FROM "seq_fo_seats" WHERE v_to >= last_value + is_called::int;
     WHEN 'fo_slots' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_fo_slots', p_id) FROM "seq_fo_slots" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_fo_slots', v_to) FROM "seq_fo_slots" WHERE v_to >= last_value + is_called::int;
     WHEN 'fo_favours' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_fo_favours', p_id) FROM "seq_fo_favours" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_fo_favours', v_to) FROM "seq_fo_favours" WHERE v_to >= last_value + is_called::int;
     WHEN 'order' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
-      PERFORM setval('seq_order', p_id) FROM "seq_order" WHERE p_id >= last_value + is_called::int;
+      PERFORM setval('seq_order', v_to) FROM "seq_order" WHERE v_to >= last_value + is_called::int;
     ELSE NULL;   -- a table there is not: nothing to move
   END CASE;
 END;

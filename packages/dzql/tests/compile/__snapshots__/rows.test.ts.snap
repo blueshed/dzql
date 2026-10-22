@@ -119,30 +119,37 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION _delta_next_id(p_coll TEXT, p_table TEXT)
 RETURNS BIGINT AS $$
+DECLARE
+  v_id BIGINT;
 BEGIN
   CASE p_coll
     WHEN 'weddings' THEN
-      RETURN nextval('seq_fo_weddings');
+      v_id := nextval('seq_fo_weddings');
     WHEN 'households' THEN
-      RETURN nextval('seq_fo_households');
+      v_id := nextval('seq_fo_households');
     WHEN 'courses' THEN
-      RETURN nextval('seq_fo_courses');
+      v_id := nextval('seq_fo_courses');
     WHEN 'drinks' THEN
-      RETURN nextval('seq_fo_drinks');
+      v_id := nextval('seq_fo_drinks');
     WHEN 'tags' THEN
-      RETURN nextval('seq_fo_tags');
+      v_id := nextval('seq_fo_tags');
     WHEN 'notes' THEN
-      RETURN nextval('seq_fo_notes');
+      v_id := nextval('seq_fo_notes');
     WHEN 'seats' THEN
-      RETURN nextval('seq_fo_seats');
+      v_id := nextval('seq_fo_seats');
     WHEN 'slots' THEN
-      RETURN nextval('seq_fo_slots');
+      v_id := nextval('seq_fo_slots');
     WHEN 'favours' THEN
-      RETURN nextval('seq_fo_favours');
+      v_id := nextval('seq_fo_favours');
     WHEN 'asks' THEN
-      RETURN nextval('seq_order');
+      v_id := nextval('seq_order');
     ELSE RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023';
   END CASE;
+  IF v_id > 9007199254740991 THEN
+    RAISE EXCEPTION '%: no id is left to mint: % has handed out every id to 2^53 - 1, past which no number holds one exactly',
+      _delta_build_path(p_coll, '-'), 'seq_' || p_table USING ERRCODE = '2200H';
+  END IF;
+  RETURN v_id;
 END;
 $$ LANGUAGE plpgsql;
 

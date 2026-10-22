@@ -343,8 +343,7 @@ export const openWholeFunction = (prefix: string): string => named("open_whole",
  * (`delta_open_at`: the time is the caller's, a root not there is null -- an implied one
  * opens with its defaults, as `open` does -- and no version).
  * `whole`: as `open`, every column of every row whatever columns the document
- * names (`_delta_open(name, TRUE)`: what the ledger's inverse and a walk's guard
- * read), with no `_as`.
+ * names (`_delta_open(name, TRUE)`: what a walk's guard reads), with no `_as`.
  */
 export function readOf(schema: Schema, given: DocDef, at: boolean, whole = false): string {
   const doc: DocDef = whole ? { ...given, columns: undefined } : given;

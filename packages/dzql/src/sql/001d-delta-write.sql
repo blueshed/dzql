@@ -94,7 +94,9 @@ RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT '[]'::jsonb; $$;
 -- one that leaves a remove -- and where the row is the document's root, a
 -- replace of the root when it arrives (null when it leaves). The
 -- writer's document is always told, and told first; each other document is
--- told only what concerns it, with a version of its own, one per write.
+-- told only what concerns it, with a version of its own, one per write. The
+-- versions are bumped in one order, by name, whoever writes: two
+-- writes through documents that hold each other's rows never deadlock.
 -- `p_applied`, the write as applied, is logged once, on the writer's entry,
 -- for the custom documents that watch the rows (001a's `applied`) -- only where
 -- it differs from what the writer is told (a row that left the writer's
@@ -125,6 +127,8 @@ DECLARE
   v_next    JSONB := '{}'::jsonb;   -- a row's holders, as its next touch found them
   v_key     TEXT;
   v_i       INT;
+  v_tells   JSONB := '[]'::jsonb;   -- each document told, in the order it is told: {doc, ops, applied}
+  v_versions JSONB := '{}'::jsonb;  -- each one's version, bumped
 BEGIN
   -- who holds each row after each touch, last touch first, and every document concerned
   FOR v_i IN REVERSE COALESCE(jsonb_array_length(p_touched), 0) - 1 .. 0 LOOP
@@ -140,26 +144,110 @@ BEGIN
       || ARRAY(SELECT jsonb_array_elements_text(v_t->'holders'));
   END LOOP;
 
+  -- what each document is told, the writer's first, then each other's by name
   FOR v_target IN
     SELECT p_writer
     UNION ALL
-    SELECT DISTINCT t FROM unnest(v_targets) AS t WHERE t IS DISTINCT FROM p_writer
+    (SELECT DISTINCT t FROM unnest(v_targets) AS t WHERE t IS DISTINCT FROM p_writer ORDER BY 1)
   LOOP
     v_def := _delta_find_doc(v_target);
     CONTINUE WHEN v_def.prefix IS NULL;
     v_told := _delta_told(v_def, v_target, v_rows);
     IF v_target = p_writer THEN
-      v_version := _delta_bump_and_notify(p_writer, v_told, CASE WHEN p_applied IS DISTINCT FROM v_told THEN p_applied END);
+      v_tells := v_tells || jsonb_build_array(jsonb_build_object('doc', p_writer, 'ops', v_told,
+        'applied', CASE WHEN p_applied IS DISTINCT FROM v_told THEN p_applied END));
     ELSIF jsonb_array_length(v_told) > 0 THEN
-      PERFORM _delta_bump_and_notify(v_target, v_told, CASE WHEN p_applied IS NOT NULL THEN '[]'::jsonb END);
+      v_tells := v_tells || jsonb_build_array(jsonb_build_object('doc', v_target, 'ops', v_told,
+        'applied', CASE WHEN p_applied IS NOT NULL THEN '[]'::jsonb END));
     END IF;
   END LOOP;
-  RETURN v_version;
+
+  -- Each told document's version bumped in one order, by name: the row each locks
+  -- until the commit is taken in the same order by every write, so two writes that tell each
+  -- other's documents wait for each other, never deadlock. Then each is logged and told, the
+  -- writer's first (_delta_log_and_notify).
+  FOR v_t IN
+    SELECT e FROM jsonb_array_elements(v_tells) AS e
+     WHERE jsonb_array_length(e->'ops') > 0 OR (jsonb_typeof(e->'applied') = 'array' AND jsonb_array_length(e->'applied') > 0)
+     ORDER BY e->>'doc' COLLATE "C"
+  LOOP
+    INSERT INTO _delta_versions (doc_name, version) VALUES (v_t->>'doc', 1)
+      ON CONFLICT (doc_name) DO UPDATE SET version = _delta_versions.version + 1
+      RETURNING version INTO v_version;
+    v_versions := v_versions || jsonb_build_object(v_t->>'doc', v_version);
+  END LOOP;
+  FOR v_t IN SELECT jsonb_array_elements(v_tells) LOOP
+    IF v_versions ? (v_t->>'doc') THEN
+      PERFORM _delta_log_and_notify(v_t->>'doc', (v_versions->>(v_t->>'doc'))::BIGINT, v_t->'ops', NULLIF(v_t->'applied', 'null'::jsonb));
+    END IF;
+  END LOOP;
+  -- the writer's version: bumped, or (nothing to tell) as it is
+  IF v_versions ? p_writer THEN RETURN (v_versions->>p_writer)::BIGINT; END IF;
+  RETURN COALESCE((SELECT version FROM _delta_versions WHERE doc_name = p_writer), 0);
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION _delta_tell(p_writer TEXT, p_touched JSONB)
 RETURNS BIGINT LANGUAGE sql AS $$ SELECT _delta_tell(p_writer, p_touched, NULL); $$;
+
+-- ---------------------------------------------------------------------------
+-- delta_touch: a row a trigger changes, told. A trigger that a
+-- write sets off (a line's insert keeping its account's balance) changes rows
+-- no op names; called from it, delta_touch(collection, id) adds the row to the
+-- write's touched set, and the write tells it as it tells its own: to every
+-- open document that held it before or holds it after, each what changed for
+-- it. Call it before the trigger changes the row: it reads the row then, and
+-- who holds it; once the write's ops are done the row is read again, and each
+-- field that changed is told. Called after, the row is as it was found, and
+-- every field of it is told. A row it is called for again keeps its first.
+-- Outside a write (a statement of the app's own) it does nothing: nothing
+-- versions, logs or tells that statement. A collection there is not is refused
+-- (22023). The touched set is the write's, kept for its transaction
+-- (`delta.touching`, the writer's document, and `delta.touched`, the rows).
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION delta_touch(p_collection TEXT, p_id BIGINT)
+RETURNS void AS $$
+DECLARE
+  v_writer TEXT := NULLIF(current_setting('delta.touching', true), '');
+  v_list   JSONB;
+  v_row    JSONB;
+BEGIN
+  IF (_delta_collection(p_collection)).collection_key IS NULL THEN
+    RAISE EXCEPTION 'delta_touch: Unknown collection: %', p_collection USING ERRCODE = '22023';
+  END IF;
+  IF v_writer IS NULL OR p_id IS NULL THEN RETURN; END IF;
+  v_list := COALESCE(NULLIF(current_setting('delta.touched', true), '')::jsonb, '[]'::jsonb);
+  IF v_list @> jsonb_build_array(jsonb_build_object('coll', p_collection, 'id', p_id)) THEN RETURN; END IF;
+  v_row := _delta_row_read(p_collection, NULL, p_id);
+  v_list := v_list || jsonb_build_array(jsonb_build_object('coll', p_collection, 'id', p_id,
+    'before', CASE WHEN v_row IS NULL THEN '[]'::jsonb ELSE to_jsonb(_delta_holders(p_collection, v_row, v_writer)) END,
+    'was', v_row));
+  PERFORM set_config('delta.touched', v_list::text, true);
+END;
+$$ LANGUAGE plpgsql;
+
+-- _delta_touched: the rows the write's triggers touched (delta_touch), each as
+-- it is now, for _delta_tell: {coll, id, before, after, was} -- `was` the row
+-- as delta_touch found it; where it is still so (it was called after the
+-- change), its id alone, so every field is told; none where it was not there.
+CREATE OR REPLACE FUNCTION _delta_touched()
+RETURNS JSONB AS $$
+DECLARE
+  v_out JSONB := '[]'::jsonb;
+  v_t   JSONB;
+  v_row JSONB;
+BEGIN
+  FOR v_t IN SELECT jsonb_array_elements(COALESCE(NULLIF(current_setting('delta.touched', true), '')::jsonb, '[]'::jsonb)) LOOP
+    v_row := _delta_row_read(v_t->>'coll', NULL, (v_t->>'id')::BIGINT);
+    v_out := v_out || jsonb_build_array(jsonb_strip_nulls(jsonb_build_object('coll', v_t->'coll', 'id', v_t->'id', 'before', v_t->'before',
+      'was', CASE WHEN jsonb_typeof(v_t->'was') <> 'object' THEN NULL
+                  WHEN v_t->'was' = v_row THEN jsonb_build_object('id', v_t->'id') ELSE v_t->'was' END))
+      || jsonb_build_object('after', COALESCE(v_row, 'null'::jsonb)));
+  END LOOP;
+  RETURN v_out;
+END;
+$$ LANGUAGE plpgsql STABLE;
 
 -- ---------------------------------------------------------------------------
 -- _delta_row_there: is row p_id of a collection there now? A parent a row is
@@ -302,6 +390,44 @@ RETURNS JSONB LANGUAGE sql IMMUTABLE AS $$
 $$;
 
 -- ---------------------------------------------------------------------------
+-- _delta_prior: a write's rows as they were before it first touched each
+-- (`p_prior`, by 'coll/id': {coll, id, row}), with row `p_id` of `p_coll`
+-- kept as `p_row` (JSON null: the document did not hold it, or it was not
+-- there) unless the write touched it before. What the ledger takes an entry's
+-- inverse from (delta_apply_logged), so a write costs the rows it touches, not
+-- the document it is written through.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _delta_prior(p_prior JSONB, p_coll TEXT, p_id BIGINT, p_row JSONB)
+RETURNS JSONB LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE WHEN p_prior ? (p_coll || '/' || p_id) THEN p_prior
+    ELSE p_prior || jsonb_build_object(p_coll || '/' || p_id, jsonb_build_object('coll', p_coll, 'id', p_id, 'row', COALESCE(p_row, 'null'::jsonb))) END;
+$$;
+
+-- _delta_prior_rows: `p_rows` ({coll, id, row}, or a carried row's `after`),
+-- read before the write changes them, kept by _delta_prior: each as it is
+-- where the document holds it (its root or an include, and in its scope), and
+-- -- `p_beyond`, a removal's cascade -- each of a collection beyond the
+-- document, as _delta_beside holds them; any other as one it did not hold.
+CREATE OR REPLACE FUNCTION _delta_prior_rows(p_prior JSONB, p_def _delta_docs, p_doc_name TEXT, p_rows JSONB, p_beyond BOOLEAN)
+RETURNS JSONB AS $$
+DECLARE
+  v_prior JSONB := p_prior;
+  v_r     JSONB;
+  v_mine  BOOLEAN;
+BEGIN
+  FOR v_r IN SELECT jsonb_array_elements(COALESCE(p_rows, '[]'::jsonb)) LOOP
+    CONTINUE WHEN v_prior ? ((v_r->>'coll') || '/' || (v_r->>'id'));
+    v_mine := v_r->>'coll' = p_def.root_collection OR v_r->>'coll' = ANY(COALESCE(p_def.include, ARRAY[]::text[]));
+    v_prior := _delta_prior(v_prior, v_r->>'coll', (v_r->>'id')::BIGINT,
+      CASE WHEN (v_mine AND _delta_row_in_scope(p_def, p_doc_name, v_r->>'coll', (v_r->>'id')::BIGINT)) OR (p_beyond AND NOT v_mine)
+           THEN COALESCE(v_r->'row', v_r->'after') END);
+  END LOOP;
+  RETURN v_prior;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- ---------------------------------------------------------------------------
 -- delta_apply: apply delta ops to relational tables, bump version, NOTIFY
 --
 -- Handles:
@@ -317,11 +443,23 @@ $$;
 -- delta_apply_logged says so for delta_walk). A single document whose root is
 -- gone takes no writes but a walk, which may put that root back, or its root's add in a write that took it out. The
 -- two-argument form is no walk.
+--
+-- `p_before` (_delta_apply; delta_apply_logged asks it): the answer carries
+-- `before` too, the document as the write found it, but only the rows it
+-- touched -- each as it was before its first touch, whole (every column), and
+-- only where the document held it (or, beyond the document, a row a removal's
+-- cascade took: _delta_beside's rows) -- in the document's own shape, which the
+-- ledger's inverse reads (_delta_inverse, _delta_row_at).
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION delta_apply(p_doc_name TEXT, p_ops JSONB, p_walk BOOLEAN)
+CREATE OR REPLACE FUNCTION _delta_apply(p_doc_name TEXT, p_ops JSONB, p_walk BOOLEAN, p_before BOOLEAN)
 RETURNS JSONB AS $$
 DECLARE
+  v_touching_was  TEXT;
+  v_touched_was   TEXT;
+  v_keep          BOOLEAN := COALESCE(p_before, FALSE);
+  v_prior         JSONB := '{}'::jsonb;   -- the rows as the write found them (_delta_prior), when v_keep
+  v_shape         JSONB;
   v_def           _delta_docs;
   v_scope         JSONB;
   v_is_list       BOOLEAN;
@@ -373,6 +511,12 @@ BEGIN
     RAISE EXCEPTION 'no doc def for: %', p_doc_name;
   END IF;
 
+  -- the rows the write's triggers touch (delta_touch): this write's own, even within another's
+  v_touching_was := current_setting('delta.touching', true);
+  v_touched_was  := current_setting('delta.touched', true);
+  PERFORM set_config('delta.touching', p_doc_name, true);
+  PERFORM set_config('delta.touched', '[]', true);
+
   v_scope   := _delta_resolve_scope(v_def, p_doc_name);
   -- a document named with a time reads it as it stood: what is written now is not its to write (403)
   IF v_scope->>'at' IS NOT NULL THEN
@@ -395,6 +539,12 @@ BEGIN
     v_exists := _delta_row_there(v_def.root_collection, v_doc_id);
     PERFORM _delta_make_implied(v_def, v_doc_id, p_ops, v_ts);
     IF NOT v_exists THEN
+      -- as the document opened before it: its root's defaults, a time only the server sets none
+      IF v_keep THEN
+        v_prior := _delta_prior(v_prior, v_def.root_collection, v_doc_id, _delta_implied_root(v_def, v_doc_id)
+          || COALESCE((SELECT jsonb_object_agg(k, 'null'::jsonb) FROM jsonb_each(_delta_cols(v_def.root_collection, v_root_coll.columns_def)) AS x(k, d)
+                        WHERE _delta_server_time(d)), '{}'::jsonb));
+      END IF;
       v_passed := jsonb_build_object(v_root_coll.table_name, v_doc_id);
       v_row := _delta_row_read(v_def.root_collection, v_root_view, v_doc_id);
       IF v_row IS NOT NULL THEN
@@ -522,6 +672,7 @@ BEGIN
       END IF;
       PERFORM _delta_assert_parent_held(v_def, p_doc_name, v_coll.parent_fk, v_coll.parent_collection, v_row, v_op->'value');
       v_before := _delta_holders(v_coll_key, _delta_strip_temporal(v_row), p_doc_name);
+      IF v_keep THEN v_prior := _delta_prior(v_prior, v_coll_key, v_doc_id, _delta_strip_temporal(v_row)); END IF;
 
       -- A root written into a list's condition, or out of one, takes the rows
       -- under it along: who holds each is asked before it changes, once a
@@ -534,6 +685,7 @@ BEGIN
         SELECT COALESCE(jsonb_agg(jsonb_build_object('coll', r->'coll', 'id', r->'id', 'after', r->'row', 'carried', TRUE,
                                     'before', to_jsonb(_delta_holders(r->>'coll', r->'row', p_doc_name))) ORDER BY n), '[]'::jsonb)
           INTO v_hung FROM jsonb_array_elements(_delta_hanging_rows(v_coll_key, v_doc_id)) WITH ORDINALITY AS e(r, n);
+        IF v_keep THEN v_prior := _delta_prior_rows(v_prior, v_def, p_doc_name, v_hung, FALSE); END IF;
       END IF;
 
       -- `/<root>` is the row whole (_delta_whole); `/<root>/<field>` that field.
@@ -643,6 +795,8 @@ BEGIN
           _delta_build_path(v_coll_key, v_id::text), _delta_build_path(v_coll_key, '-')
           USING ERRCODE = '23505';
       END IF;
+      -- (not there before it: the write made it)
+      IF v_keep THEN v_prior := _delta_prior(v_prior, v_coll_key, v_id, NULL); END IF;
       -- The path names the row, whatever the value says.
       v_new_row := (v_op->'value') || jsonb_build_object('id', v_id);
 
@@ -758,11 +912,13 @@ BEGIN
       END IF;
       -- who holds the row and every row the cascade takes, asked before any is gone
       v_befores := '{}'::jsonb;
-      FOR v_r IN SELECT jsonb_array_elements(_delta_cascade_rows(v_coll_key, v_id)) LOOP
+      v_removed := _delta_cascade_rows(v_coll_key, v_id);
+      FOR v_r IN SELECT jsonb_array_elements(v_removed) LOOP
         v_befores := v_befores || jsonb_build_object(
           (v_r->>'coll') || '/' || (v_r->>'id'), to_jsonb(_delta_holders(v_r->>'coll', v_r->'row', p_doc_name)));
         IF NOT v_is_list AND v_r->>'coll' = v_def.root_collection THEN v_root_was := v_r->'row'; END IF;
       END LOOP;
+      IF v_keep THEN v_prior := _delta_prior_rows(v_prior, v_def, p_doc_name, v_removed, TRUE); END IF;
       v_removed := _delta_cascade_remove(v_coll_key, v_id);
       -- A remove of a row that is not there is a 404, as on SQLite and ./json
       -- (the same tables, kept in a JSON file; A6): the scope gate above lets any id of a collection a
@@ -818,6 +974,7 @@ BEGIN
       END IF;
       PERFORM _delta_assert_parent_held(v_def, p_doc_name, v_coll.parent_fk, v_coll.parent_collection, v_row, v_op->'value');
       v_before := _delta_holders(v_coll_key, _delta_strip_temporal(v_row), p_doc_name);
+      IF v_keep THEN v_prior := _delta_prior(v_prior, v_coll_key, v_id, _delta_strip_temporal(v_row)); END IF;
 
       -- For single-item docs updating the root entity, broadcast as /collection
       -- so the client replaces the direct object (not a Record entry)
@@ -842,6 +999,7 @@ BEGIN
         SELECT COALESCE(jsonb_agg(jsonb_build_object('coll', r->'coll', 'id', r->'id', 'after', r->'row', 'carried', TRUE,
                                     'before', to_jsonb(_delta_holders(r->>'coll', r->'row', p_doc_name))) ORDER BY n), '[]'::jsonb)
           INTO v_hung FROM jsonb_array_elements(_delta_hanging_rows(v_coll_key, v_id)) WITH ORDINALITY AS e(r, n);
+        IF v_keep THEN v_prior := _delta_prior_rows(v_prior, v_def, p_doc_name, v_hung, FALSE); END IF;
       END IF;
 
       -- `/<coll>/<id>` is the row whole (_delta_whole); `/<coll>/<id>/<field>`
@@ -889,6 +1047,11 @@ BEGIN
     RAISE EXCEPTION '%: Invalid op: % %', v_op->>'path', v_op->>'op', v_op->>'path' USING ERRCODE = '22023';
   END LOOP;
 
+  -- the rows the write's triggers touched (delta_touch), told after its own; then the set is let go
+  v_touched := v_touched || _delta_touched();
+  PERFORM set_config('delta.touching', COALESCE(v_touching_was, ''), true);
+  PERFORM set_config('delta.touched', COALESCE(v_touched_was, ''), true);
+
   -- what names a row of another collection (refs), once the ops are applied: so a write may take a
   -- row and what names it away together, in either order (refsHold in delta's sqlite/write.ts)
   PERFORM _delta_refs_hold(v_touched);
@@ -911,9 +1074,26 @@ BEGIN
   FOR v_r IN SELECT jsonb_build_object('t', key, 'id', value) FROM jsonb_each(v_passed) LOOP
     PERFORM _delta_serial_past(v_r->>'t', (v_r->>'id')::BIGINT);
   END LOOP;
-  RETURN jsonb_build_object('version', v_version, 'ops', v_broadcast_ops);
+  IF NOT v_keep THEN
+    RETURN jsonb_build_object('version', v_version, 'ops', v_broadcast_ops);
+  END IF;
+  -- the rows as the write found them, in the document's shape: a single document's root at
+  -- /<root>, any other row at /<coll>/<id> (a single document holds no other root row)
+  v_shape := '{}'::jsonb;
+  FOR v_r IN SELECT value FROM jsonb_each(v_prior) WHERE jsonb_typeof(value->'row') = 'object' LOOP
+    IF NOT v_is_list AND v_r->>'coll' = v_def.root_collection THEN
+      IF (v_r->>'id')::BIGINT = v_doc_id THEN v_shape := v_shape || jsonb_build_object(v_r->>'coll', v_r->'row'); END IF;
+    ELSE
+      v_shape := v_shape || jsonb_build_object(v_r->>'coll',
+        COALESCE(v_shape->(v_r->>'coll'), '{}'::jsonb) || jsonb_build_object(v_r->>'id', v_r->'row'));
+    END IF;
+  END LOOP;
+  RETURN jsonb_build_object('version', v_version, 'ops', v_broadcast_ops, 'before', v_shape);
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION delta_apply(p_doc_name TEXT, p_ops JSONB, p_walk BOOLEAN)
+RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_apply(p_doc_name, p_ops, p_walk, FALSE); $$;
+
 CREATE OR REPLACE FUNCTION delta_apply(p_doc_name TEXT, p_ops JSONB)
-RETURNS JSONB LANGUAGE sql AS $$ SELECT delta_apply(p_doc_name, p_ops, FALSE); $$;
+RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_apply(p_doc_name, p_ops, FALSE, FALSE); $$;

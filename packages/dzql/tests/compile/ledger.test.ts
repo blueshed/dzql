@@ -1,7 +1,8 @@
 /**
  * Compiled ledger reads answer what the framework's answer.
  *
- * A document read whole -- what an entry's inverse and a walk's guard read:
+ * A document read whole -- what a walk's guard reads (an entry's inverse, once; now
+ * the rows its write touched, `inverse.test.ts`):
  * for every name the path cases open, `_delta_open` (the compiled document's
  * whole open) gives what the framework's `_delta_open(name, TRUE)` gave, an
  * error included, on the seed and after writes; and read shown, what
