@@ -120,7 +120,8 @@ delta's path cases, on the seed and after writes, and its text.
 | The columns a document writes | `dzql_columns__<doc>`, via `_delta_write_columns` |
 | Checking a write's fields | `_delta_assert_fields` itself, per collection and set of columns; another set (a walk's, another version's) by the columns given |
 | A write's row SQL: lock, store a replace, mint an id, clear a moment, is it there, read, store an add | `_delta_row_lock`, `_delta_row_put`, `_delta_next_id`, `_delta_row_clear_moment`, `_delta_row_there`, `_delta_row_read`, `_delta_row_add`, per collection |
-| The ledger's reads: a document whole (an entry's inverse, a walk's guard), a field the same, a row beyond the document | `dzql_open_whole__<doc>` via `_delta_open`; `_delta_same`, `_delta_row_standing`, per collection |
+| The ledger's reads: a document whole (a walk's guard), a field the same, a row beyond the document | `dzql_open_whole__<doc>` via `_delta_open`; `_delta_same`, `_delta_row_standing`, per collection. An entry's inverse is taken from the rows the write touched, as it found them (`_delta_apply`'s `before`), never the whole document |
+| An index for each column a document looks rows up by: a `refs` or `cascadeOn` column, a scope's column, an `owns` path's hop | `idx_<table>_<column>` on (column, id), beside the parent keys' and the temporal (id, valid_to) (`packages/dzql/src/compile/indexes.ts`) |
 | A collection's definition, a table's serial | `_delta_collection`, `_delta_serial_new`, `_delta_serial_past`, per collection |
 | Who may have a document (`owns` as a path), and a write that keeps it in reach | `dzql_owns__<doc>`; `_delta_keeps_reach`, asked by `delta_apply` |
 | May the person have a document that holds a row (the table's row-level security) | `dzql_may__<coll>`, the policy `dzql_owns`, put on by `_delta_govern` |
@@ -148,7 +149,13 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
 
 - `bun add pg`, and `bun add -d @types/pg` to type-check (dzql ships TS source).
 - Ids are BIGINTs from `seq_<table>`: a client id that is not a number, or past 2^53 - 1, is a
-  400; one that is moves the sequence past it.
+  400; one that is moves the sequence past it, but never past 2^53 - 1 less 2^32, so the table
+  always has ids left to mint (an id named past that is not one the sequence hands out: once its
+  row is gone, an add may name it again). A mint past 2^53 - 1 is refused (2200H), never a row no
+  number holds.
+- **A row a trigger changes is told only if the trigger says so**: `PERFORM delta_touch('accounts',
+  NEW.account_id)` in a trigger a write sets off (before it changes the row) adds the row to the
+  write, which tells every open document holding it what changed (`sql.md`).
 - Implied documents are named by number here (`room:7`).
 - **Each listener has its own types**: two servers in one process each answer for theirs. One
   prefix, one type; `listener.register(type)` replaces its prefix's type (for `bun --hot`).

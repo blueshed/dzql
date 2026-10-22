@@ -29,6 +29,8 @@ functions you call stay these:
   `app.user_id` set for that statement. `docTypeFromDef(def, pool, { auth })` uses them; no opt-in.
 - Ledger (`001g`): `delta_apply_logged`, `delta_walk`, `delta_undo`, `delta_redo`,
   `delta_history`, and their `_as` forms (delta-doc's `ledger.md`).
+- `delta_touch(collection, id)`: from a trigger a write sets off, a row it changes told as the
+  write's own (below).
 - `delta_snapshot(name, at)` / `delta_resolve_snapshot(name)`: pin a time to a label.
 - `delta_prune_ops(interval)` (`pruneOpsLog(pool)`): trims the log and forgets names nobody holds.
 
@@ -39,6 +41,25 @@ functions you call stay these:
   Bind for what the function reads, not only where `:user_id` appears.
 - **Write through `delta_apply` / `delta_apply_as`**, never `INSERT` / `UPDATE` on a delta
   table: only that path versions, logs and NOTIFYs, so subscribers stay live.
+- **A trigger's rows are told by `delta_touch`.** A trigger a write sets off may change rows no op
+  names (a line's insert keeping its account's balance); the write tells them only when the
+  trigger says so, before it changes each row:
+
+  ```sql
+  CREATE FUNCTION lines_post() RETURNS trigger LANGUAGE plpgsql AS $$
+  BEGIN
+    PERFORM delta_touch('accounts', NEW.account_id);   -- before the change: what changed is told
+    UPDATE accounts SET balance = balance + NEW.amount WHERE id = NEW.account_id;
+    RETURN NEW;
+  END $$;
+  CREATE TRIGGER lines_post AFTER INSERT ON lines FOR EACH ROW EXECUTE FUNCTION lines_post();
+  ```
+
+  Every open document that held the row before or holds it after is told what changed for it,
+  as for the write's own rows. Called after the change, it is told every field. A trigger's rows
+  are not in the ledger's entry: an undo walks back the write's ops, and the trigger runs again.
+  Outside a write (a statement of the app's own) `delta_touch` does nothing. Working:
+  `packages/dzql/tests/delta-pg/touch-pglite.test.ts`.
 - **What runs as the owner answers, never reads out.** The compiled reads and writes run as the
   caller, under the policies the paths make (`rls.md`). The few `SECURITY DEFINER` functions answer
   yes, no or a name: the policies' lookups (`dzql_may__`), the ownership answers (`dzql_owns__`),

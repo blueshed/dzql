@@ -1,6 +1,7 @@
 /**
- * Ledger reads: what the ledger reads to write an entry's inverse and to guard a walk of it (undo,
- * redo), written from the definitions.
+ * Ledger reads: what the ledger reads to guard a walk of an entry (undo, redo), written from the
+ * definitions. (An entry's inverse is taken from the rows its write touched: `_delta_apply`'s
+ * `before`.)
  *
  * `compileLedger(schema, docs)` writes:
  * - `dzql_open_whole__<slug>(name)` for each document: its open with every column of every row,

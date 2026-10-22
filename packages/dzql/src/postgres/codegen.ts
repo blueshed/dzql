@@ -5,7 +5,8 @@
  *
  * Output includes:
  *   - CREATE SEQUENCE / CREATE TABLE (+ current_* view for temporal tables)
- *   - Helper indexes
+ *   - Helper indexes: parent keys, temporal (id, valid_to), and each column a refs, cascadeOn,
+ *     scope or owns path looks rows up by (src/compile/indexes.ts)
  *   - INSERT INTO _delta_collections (columns_def, parent, temporal, cascade_on), which a listener
  *     given no schema shows by
  *   - each document and collection compiled (src/compile/), and each table's row-level security
@@ -42,6 +43,7 @@ import { compileLookups } from "../compile/lookups";
 import { compileTold } from "../compile/told";
 import { compileOwns } from "../compile/owns";
 import { compilePolicies } from "../compile/policies";
+import { compileIndexes } from "../compile/indexes";
 
 export interface GenerateSqlOptions {
   /** The module the definitions came from (`dzql sql` names it): the header says it, and how to make the file again. */
@@ -63,6 +65,7 @@ export function generateSql(
   ];
 
   for (const [key, table] of Object.entries(schema.tables)) lines.push(...tableSql(key, table));
+  lines.push(compileIndexes(schema, docs));   // each column the documents look rows up by
 
   // Collection metadata
   lines.push("-- Collection metadata");

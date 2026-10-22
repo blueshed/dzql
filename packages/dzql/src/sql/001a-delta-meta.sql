@@ -103,6 +103,11 @@ CREATE TABLE IF NOT EXISTS _delta_ops_log (
 CREATE INDEX IF NOT EXISTS idx_delta_ops_log_fetch
   ON _delta_ops_log (doc_name, version);
 
+-- pruning by age (delta_prune_ops: the entries older than what is kept) reads
+-- the oldest entries alone, not the whole log
+CREATE INDEX IF NOT EXISTS idx_delta_ops_log_created
+  ON _delta_ops_log (created_at);
+
 -- The write itself, once, for the custom documents that watch its rows (todo
 -- #44): on the writer's entry, the ops as delta_apply applied them -- each row
 -- it changed as it now is, or its remove -- so a custom document hears a write

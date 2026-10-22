@@ -1,0 +1,9 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the columns looked up by the text, the same for the same definitions, and pinned 1`] = `
+"-- each column the documents look rows up by (refs, cascadeOn, a scope, an owns path)
+CREATE INDEX IF NOT EXISTS "idx_members_org_id" ON "members" ("org_id", id);
+CREATE INDEX IF NOT EXISTS "idx_people_team_id" ON "people" ("team_id", id);
+CREATE INDEX IF NOT EXISTS "idx_venues_org_id" ON "venues" ("org_id", id);
+"
+`;

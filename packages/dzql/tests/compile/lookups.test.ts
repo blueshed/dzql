@@ -8,7 +8,9 @@
  * sequence has handed out, and past 2^53, `_delta_serial_new` answers as the
  * framework's did, and `_delta_serial_past` moves the sequence where the
  * framework's did (each from the same sequence, set back between: a sequence
- * does not roll back); a caller without the table's privilege is told no.
+ * does not roll back) -- but for 2^53 - 1, which moves it only to the bound
+ * below it (`serial.test.ts`); a caller without the
+ * table's privilege is told no.
  *
  * A document as it stood: for every name the path cases open, at times before,
  * between and after its writes, `delta_open_at` (each compiled document to its
