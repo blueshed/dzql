@@ -13,7 +13,7 @@
  * each one's rows by id.
  */
 import { q, type Schema } from "@blueshed/delta/backend";
-import { lit, named, standingRows, caseOf } from "./opens";
+import { lit, named, rowJson, standingRows, caseOf } from "./opens";
 import { distinctNames } from "../postgres/sql";
 
 /** A collection's function: `dzql_<what>__<slug>`. */
@@ -76,7 +76,7 @@ DECLARE
   v_id   BIGINT;
   v_rows JSONB;
 BEGIN
-  SELECT to_jsonb(t.*) INTO v_row FROM ${standingRows(t)} t WHERE t.id = p_id;
+  SELECT ${rowJson(t, "t")} INTO v_row FROM ${standingRows(t)} t WHERE t.id = p_id;
   IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
   v_rows := jsonb_build_array(jsonb_build_object('coll', ${lit(coll)}, 'id', p_id, 'row', _delta_strip_temporal(v_row)));
 ${walk.join("\n")}
@@ -90,7 +90,7 @@ function hangingOf(schema: Schema, coll: string): string {
   const parts = children.map(([c, fk]) => {
     const below = schema.tables[c]!.children.length ? `${fn("hanging_rows", c)}(t.id)` : "'[]'::jsonb";
     return `  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM ${standingRows(schema.tables[c]!)} t,
-         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', ${lit(c)}, 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || ${below})
+         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', ${lit(c)}, 'id', t.id, 'row', _delta_strip_temporal(${rowJson(schema.tables[c]!, "t")}))) || ${below})
            WITH ORDINALITY AS x(e, n)
    WHERE t.${q(fk)} = p_id;
   v_rows := v_rows || v_part;`;

@@ -57,6 +57,10 @@ const MUST: Record<string, [string, (v: string) => string]> = {
   boolean: ["a boolean", (v) => `jsonb_typeof(${v}) = 'boolean'`],
   timestamptz: ["an ISO-8601 time", (v) =>
     `jsonb_typeof(${v}) = 'string' AND (${v} #>> '{}') ~ '^\\d{4}-\\d{2}-\\d{2}([T ]([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d{1,6})?)?(Z|[+-](0\\d|1[0-5])(:?[0-5]\\d)?)?)?$' AND _delta_on_calendar(${v} #>> '{}')`],   // a zone timestamptz holds (to ±15:59) and a day the calendar has, as delta's isIsoTime asks it
+  // a day and nothing more, on the calendar (delta's isDate)
+  date: ["a date, YYYY-MM-DD", (v) => `jsonb_typeof(${v}) = 'string' AND (${v} #>> '{}') ~ '^\\d{4}-\\d{2}-\\d{2}$' AND _delta_on_calendar(${v} #>> '{}')`],
+  // an exact decimal, written as a string: never a number, which has been a float already (delta's isDecimal)
+  numeric: [`a decimal, written as a string ("10.50")`, (v) => `jsonb_typeof(${v}) = 'string' AND _delta_is_decimal(${v} #>> '{}')`],
 };
 
 /**

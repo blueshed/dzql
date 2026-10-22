@@ -64,6 +64,23 @@ export const standingRows = (table: ResolvedTable): string => q(table.temporal ?
 export const currentOnly = (table: ResolvedTable, alias: string): string => (table.temporal ? ` AND ${alias}.valid_to IS NULL` : "");
 
 /**
+ * A row of `table` as JSON (`to_jsonb(<alias>.*)`), its numeric columns as their text: to_jsonb
+ * writes a NUMERIC as a JSON number, which a client reads as a float, and an exact decimal is a
+ * string on the wire ("10.50", as delta's decimalText gives it). The row itself where it has none.
+ */
+export function rowJson(table: ResolvedTable, alias: string): string {
+  const exact = Object.entries(table.columns).filter(([, d]) => d.type === "numeric").map(([c]) => c);
+  const whole = `to_jsonb(${alias}.*)`;
+  return exact.length ? `(${whole} || jsonb_build_object(${exact.map((c) => `${lit(c)}, ${alias}.${q(c)}::text`).join(", ")}))` : whole;
+}
+
+/** A row of `table` given as JSON in `v` (a jsonb variable), its numeric columns as their text, as `rowJson` writes them. */
+export function rowTexts(table: ResolvedTable, v: string): string {
+  const exact = Object.entries(table.columns).filter(([, d]) => d.type === "numeric").map(([c]) => c);
+  return exact.length ? `${v} || jsonb_build_object(${exact.map((c) => `${lit(c)}, ${v}->>${lit(c)}`).join(", ")})` : v;
+}
+
+/**
  * A row as a document reads it: as stored (a temporal row without its
  * validity), so a column a later version added is there for the process that
  * declares it -- each listener shows its own schema's (the schema is the
@@ -74,9 +91,9 @@ function rowOf(table: ResolvedTable, doc: DocDef, coll: string, alias: string): 
   const held = doc.columns?.[coll];
   if (held) {
     const cols = ["id", ...(table.parent ? [table.parent.fkColumn] : []), ...Object.keys(table.columns).filter((c) => held.includes(c))];
-    return `jsonb_build_object(${cols.map((c) => `${lit(c)}, ${alias}.${q(c)}`).join(", ")})`;
+    return `jsonb_build_object(${cols.map((c) => `${lit(c)}, ${alias}.${q(c)}${table.columns[c]?.type === "numeric" ? "::text" : ""}`).join(", ")})`;
   }
-  return table.temporal ? `(to_jsonb(${alias}.*) - 'valid_from' - 'valid_to' - 'override')` : `to_jsonb(${alias}.*)`;
+  return table.temporal ? `(${rowJson(table, alias)} - 'valid_from' - 'valid_to' - 'override')` : rowJson(table, alias);
 }
 
 /** The rows of a temporal table that stand now, or at `at` (a time in the name): ` AND <condition>`; nothing for a table that is not temporal. */
@@ -98,6 +115,7 @@ export function impliedRoot(table: ResolvedTable, doc: DocDef, id = "v_id"): str
     : d.nullable ? null
     : d.type === "text" ? ""
     : d.type === "integer" || d.type === "real" ? 0
+    : d.type === "numeric" ? "0"
     : d.type === "boolean" ? false
     : null;
   const fields = Object.entries(table.columns).filter(([c]) => !held || held.includes(c)).map(([c, d]) => [c, value(d)]);
@@ -183,6 +201,8 @@ const REAL = String.raw`^\s*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?\s*$`;
 export const WHOLE = String.raw`^\s*[+-]?[0-9]+\s*$`;
 const SAFE = String.raw`^\s*[+-]?0*[0-9]{1,16}\s*$`;
 const DAY = String.raw`^\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\s*$`;
+/** A decimal as a scope's value: as delta's isDecimal, space about it let be (as an integer's). */
+const DECIMAL = String.raw`^\s*-?[0-9]+(\.[0-9]+)?\s*$`;
 
 /** What a value its column cannot take does: given the message and the value's variable, the plpgsql. */
 type Refuse = (message: string, value: string) => string;
@@ -297,6 +317,12 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
   END IF;`);
     } else if (def!.type === "timestamptz") {
       check(dayOf(v, key, refuse));
+    } else if (def!.type === "date") {
+      // a day as written, on the calendar: compared as a DATE
+      check(dayOf(v, key, refuse, false));
+    } else if (def!.type === "numeric") {
+      // a decimal as a write gives one (no exponent, no NaN), compared by value as a NUMERIC
+      check(`IF ${v} IS NOT NULL AND ${v} !~ '${DECIMAL}' THEN ${refuse(`${key} must be a decimal, not "%"`, v)} END IF;`);
     } else if (def!.type === "boolean" || def!.type === "json") {
       // as the column casts it (a boolean as Postgres reads one; JSON), in delta's words
       const what = def!.type === "boolean" ? `a boolean (true/false, yes/no, on/off, 1/0, or a prefix)` : "JSON";
@@ -318,8 +344,8 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
   };
 }
 
-/** A date, YYYY-MM-DD, that the calendar has, read as the instant midnight UTC begins it; anything else refused. */
-function dayOf(v: string, key: string, refuse: Refuse): string {
+/** A date, YYYY-MM-DD, that the calendar has, read as the instant midnight UTC begins it (`instant`; else the day as written); anything else refused. */
+function dayOf(v: string, key: string, refuse: Refuse, instant = true): string {
   return `IF ${v} IS NOT NULL THEN
     v_date := regexp_match(${v}, '${DAY}');
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
@@ -327,7 +353,7 @@ function dayOf(v: string, key: string, refuse: Refuse): string {
     ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
       ${refuse(`${key} must be a date, YYYY-MM-DD, not "%"`, v)}
     END IF;
-    ${v} := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+    ${v} := format(${instant ? "'%s-%s-%s 00:00:00+00'" : "'%s-%s-%s'"}, v_date[1], v_date[2], v_date[3]);
   END IF;`;
 }
 

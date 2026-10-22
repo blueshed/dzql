@@ -56,7 +56,9 @@ by its scope (`{ person: ":id" }`: every membership of that person), in
 As the column takes them, on every backend: a boolean's `true`/`yes`/`on`/`1`; an integer's
 `05` is 5; a `json` column's value is the JSON it names; `text` stays as written; an id is a
 whole number. A `timestamptz` is a date, `YYYY-MM-DD`, midnight UTC (a name's `:` cannot hold a
-time). A value the column cannot take (`seats-kept:maybe`) is 400.
+time). A `date` is a day, `YYYY-MM-DD`, compared by the calendar; a `numeric` a decimal (`3.50`),
+compared by value, so `pay-over:10` admits `"950.00"` and not `"3.5"`, and `pay-of:3.50` is `"3.5"`'s.
+A value the column cannot take (`seats-kept:maybe`) is 400.
 
 ## Gotchas
 

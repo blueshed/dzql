@@ -1,5 +1,5 @@
 /** How a table's columns keep a scope's values, so a condition reads by one rule what an add stamps (./scope `Keep`). */
-import { q, type ResolvedTable } from "../../schema";
+import { decimalText, isDecimal, q, type ResolvedTable } from "../../schema";
 import { isDay, type Keep } from "../scope";
 import { encodeValue, refuse } from "./rows";
 
@@ -41,6 +41,13 @@ export function scopeValue(table: ResolvedTable, col: string, text: string): unk
       if (isDay(t)) return t;
       return refuse(400, `${col} must be a date, YYYY-MM-DD, not "${text}"`);
     }
+    case "date":
+      if (isDay(t)) return t;
+      return refuse(400, `${col} must be a date, YYYY-MM-DD, not "${text}"`);
+    case "numeric":
+      // a decimal as a write gives one ("3.50"), kept as its text and compared by value (`keeping`)
+      if (isDecimal(t)) return decimalText(t);
+      return refuse(400, `${col} must be a decimal, not "${text}"`);
     case "text": return text;
     default:
       // An id or a parent key, as Postgres's resolver reads one: a whole number, signed (+5, 007 and " 5 " are 5), up
@@ -83,10 +90,13 @@ export function keeping(db: any, table: ResolvedTable): Keep {
     memo.set(key, value);
     return value;
   };
+  // an exact decimal is kept as its text and compared as a number (SQLite has no decimal type, nor a function an
+  // app may add here): by value, exact to the 15 significant digits a double holds, as Postgres compares NUMERIC exactly
+  const decimal = (col: string) => Object.hasOwn(table.columns, col) && table.columns[col]!.type === "numeric";
   keep = {
-    text: (col, text) => once(texts, `${col}:${text}`, () => (time(col) ? instant(db, scopeValue(table, col, text)) : encodeValue(table, col, scopeValue(table, col, text)))),
-    value: (col, value) => (time(col) ? instant(db, value) : encodeValue(table, col, value)),
-    column: (col) => (time(col) ? `strftime('%Y-%m-%d %H:%M:%f', ${q(col)})` : q(col)),
+    text: (col, text) => once(texts, `${col}:${text}`, () => (time(col) ? instant(db, scopeValue(table, col, text)) : decimal(col) ? Number(scopeValue(table, col, text)) : encodeValue(table, col, scopeValue(table, col, text)))),
+    value: (col, value) => (time(col) ? instant(db, value) : decimal(col) ? (value == null || Number.isNaN(Number(value)) ? null : Number(value)) : encodeValue(table, col, value)),
+    column: (col) => (time(col) ? `strftime('%Y-%m-%d %H:%M:%f', ${q(col)})` : decimal(col) ? `CAST(${q(col)} AS REAL)` : q(col)),
     within: (col, op, text) => {
       if (!time(col) || op === "!=") return undefined;
       return once(bounds, `${col}:${op}:${text}`, () => {

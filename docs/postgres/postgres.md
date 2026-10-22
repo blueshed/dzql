@@ -148,6 +148,9 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
 ## Gotchas
 
 - `bun add pg`, and `bun add -d @types/pg` to type-check (dzql ships TS source).
+- **A `date` is a `DATE`, a `numeric` a `NUMERIC`**, and every read gives a numeric back as its
+  text (`"10.50"`, the compiled `rowJson`): `to_jsonb` would write it as a JSON number, which a
+  client reads as a float. SQL of your own that hands rows on does the same: `t.amount::text`.
 - Ids are BIGINTs from `seq_<table>`: a client id that is not a number, or past 2^53 - 1, is a
   400; one that is moves the sequence past it, but never past 2^53 - 1 less 2^32, so the table
   always has ids left to mint (an id named past that is not one the sequence hands out: once its

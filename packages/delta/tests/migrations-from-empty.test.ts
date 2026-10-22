@@ -101,6 +101,16 @@ describe("the next migration, from the definitions", () => {
     expect(() => defineSchema({ t: { columns: { a: "text" }, unique: [{ columns: ["a"], whereNull: ["a"] }] } })).toThrow("never null");
     expect(() => defineSchema({ t: { columns: { a: "text" }, unique: ["a", ["a"]] } })).toThrow("named twice");
     expect(() => defineSchema({ t: { columns: { a: "text" }, unique: [[]] } })).toThrow("at least one column");
+    // 1.5 and 1.50 are one NUMERIC to Postgres and two texts to SQLite: a unique numeric is not held alike
+    expect(() => defineSchema({ t: { columns: { a: "numeric" }, unique: ["a"] } })).toThrow("a numeric column, which is not held alike");
+  });
+
+  test("make writes a date and a numeric column added, as a person would", () => {
+    const was = stateOf([{ changes: [createTable("people", { columns: { name: "text" }, temporal: false })] }]);
+    const now = defineSchema({ people: { columns: { name: "text", born: "date?", owed: { type: "numeric", default: "0.00" } }, temporal: false } });
+    const { changes, byHand } = diff(was, now);
+    expect(byHand).toEqual([]);
+    expect(writeMigration(changes)).toContain(`  addColumn("people", "born", { type: "date", nullable: true }),\n  addColumn("people", "owed", { type: "numeric", default: "0.00" }),`);
   });
 
   test("written as a file, it loads as the migration it says, and leaves nothing more to make", async () => {

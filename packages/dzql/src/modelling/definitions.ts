@@ -100,7 +100,7 @@ export function sourceOf(model: Model, from = "@blueshed/delta/json", made: Made
 //               lands in every holder's document, on SQLite
 // ---------------------------------------------------------------------------------------------
 
-const TS: Record<string, string> = { text: "string", integer: "number", real: "number", boolean: "boolean", json: "unknown", timestamptz: "string" };
+const TS: Record<string, string> = { text: "string", integer: "number", real: "number", boolean: "boolean", json: "unknown", timestamptz: "string", date: "string", numeric: "string" };
 const pascal = (key: string) => key.replace(/(^|[_-])([a-z0-9])/g, (_, __, c: string) => c.toUpperCase());
 
 /**

@@ -1,5 +1,5 @@
 /** A row as SQLite keeps it: written, closed, read back, and each value as its column stores it. */
-import { defaultForType, isoTime, isServerTime, q, utcTime, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "../../schema";
+import { decimalText, defaultForType, isoTime, isServerTime, q, utcTime, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "../../schema";
 import { rowId } from "../scope";
 
 /** The view a collection's current rows are read from. */
@@ -214,6 +214,8 @@ export function encodeValue(table: ResolvedTable, col: string, value: unknown): 
   }
   // a time kept as Postgres gives it back, in UTC, so the same document reads alike on both
   if (def.type === "timestamptz") return utcTime(value) ?? null;
+  // an exact decimal kept as its text, as Postgres's NUMERIC writes it ("007.50" is "7.50")
+  if (def.type === "numeric") return decimalText(value) ?? null;
   return value ?? null;
 }
 

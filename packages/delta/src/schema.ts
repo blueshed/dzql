@@ -9,7 +9,8 @@
  * resolution, or cascade wiring.
  *
  * Column type union: the superset of what both backends accept. SQLite maps
- * `timestamptz` to `TEXT` (ISO-8601); Postgres uses the native type. Each
+ * `timestamptz`, `date` and `numeric` to `TEXT` (ISO-8601; YYYY-MM-DD; the
+ * decimal's text); Postgres uses the native types. Each
  * backend's codegen / default / validation helpers own the per-type
  * mappings — this module is the vocabulary only.
  */
@@ -17,7 +18,7 @@ import { splitPath, type DeltaOp } from "./core";
 import { isAnyone, parsePath } from "./paths";
 
 export type ColumnType =
-  | "text" | "integer" | "real" | "boolean" | "json" | "timestamptz";
+  | "text" | "integer" | "real" | "boolean" | "json" | "timestamptz" | "date" | "numeric";
 
 export interface ColumnDef {
   type: ColumnType;
@@ -37,8 +38,8 @@ export function isServerTime(def: ColumnDef): boolean {
 
 /** Compact shorthand: `"text"` or `"text?"` (nullable). */
 export type ColumnShorthand =
-  | "text" | "integer" | "real" | "boolean" | "json" | "timestamptz"
-  | "text?" | "integer?" | "real?" | "boolean?" | "json?" | "timestamptz?";
+  | "text" | "integer" | "real" | "boolean" | "json" | "timestamptz" | "date" | "numeric"
+  | "text?" | "integer?" | "real?" | "boolean?" | "json?" | "timestamptz?" | "date?" | "numeric?";
 
 export interface TableDef {
   /** SQL table name (defaults to the schema key). */
@@ -345,6 +346,10 @@ function resolveUnique(key: string, table: string, given: string | string[] | Un
   for (const col of [...u.columns, ...(u.whereNull ?? [])]) {
     if (!Object.hasOwn(columns, col) && col !== fk) throw new Error(`${key}: unique names ${col}, which is not one of its columns`);
   }
+  for (const col of u.columns) {
+    // Postgres's NUMERIC is one value for 1.5 and 1.50, SQLite's text two: not held alike, so not held
+    if (Object.hasOwn(columns, col) && columns[col]!.type === "numeric") throw new Error(`${key}: unique names ${col}, a numeric column, which is not held alike on every backend (1.5 and 1.50 are one number, two texts): keep a unique key in an integer or text column`);
+  }
   for (const col of u.whereNull ?? []) {
     if (Object.hasOwn(columns, col) && !columns[col]!.nullable) throw new Error(`${key}: unique's whereNull names ${col}, which is never null`);
   }
@@ -369,6 +374,8 @@ export function defaultForType(type: ColumnType): unknown {
     case "boolean": return false;
     case "json": return null;
     case "timestamptz": return null;   // no sensible default — must be supplied
+    case "date": return null;          // nor for a day
+    case "numeric": return "0";        // an exact decimal is a string on the wire
   }
 }
 
@@ -544,6 +551,40 @@ export function utcTime(value: unknown): unknown {
   const t = typeof value === "string" ? value.replace(" ", "T") : "";
   const d = value instanceof Date ? value : new Date(/T/.test(t) ? (/(Z|[+-]\d{2}(:?\d{2})?)$/.test(t.slice(10)) ? t : `${t}Z`) : `${t}T00:00:00Z`);
   return d.toISOString().replace(/\.000Z$/, "+00:00").replace(/(\.\d*?)0*Z$/, "$1+00:00");
+}
+
+/**
+ * A day a write may give a `date` column: YYYY-MM-DD, on the calendar, a year from 0001 to 9999
+ * (what Postgres's DATE holds of it, written with four digits). No instant and no zone.
+ */
+export function isDate(value: unknown): boolean {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && isIsoTime(value);
+}
+
+/**
+ * An exact decimal a write may give a `numeric` column: a string, digits with an optional sign
+ * and fraction (`"10.50"`, `"-3"`), no exponent, no `+`, no space, no NaN or Infinity -- within
+ * what Postgres's NUMERIC holds (131072 digits before the point, 16383 after). A number is never
+ * one: it has been a float already (0.1 + 0.2).
+ */
+const DECIMAL = /^-?\d{1,131072}(\.\d{1,16383})?$/;
+export function isDecimal(value: unknown): boolean {
+  return typeof value === "string" && DECIMAL.test(value);
+}
+
+/**
+ * A decimal as every backend keeps and gives it back: as Postgres's NUMERIC writes it -- no
+ * leading zeros, no sign on a zero, the scale as written ("007.50" is "7.50", "-0.00" is "0.00").
+ * Anything that is no decimal stays as it is.
+ */
+export function decimalText(value: unknown): unknown {
+  if (!isDecimal(value)) return value;
+  const text = value as string;
+  const negative = text.startsWith("-");
+  const [whole, fraction] = (negative ? text.slice(1) : text).split(".");
+  const digits = whole!.replace(/^0+(?=\d)/, "");
+  const zero = /^0+$/.test(digits) && /^0*$/.test(fraction ?? "");
+  return `${negative && !zero ? "-" : ""}${digits}${fraction !== undefined ? `.${fraction}` : ""}`;
 }
 
 /** A timestamp as a snapshot carries it: ISO-8601 in UTC, or null. */

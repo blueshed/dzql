@@ -68,7 +68,7 @@ function columnSqlType(def: ColumnDef): string {
   switch (def.type) {
     // SQLite stores timestamps as TEXT (ISO-8601) — the conventional mapping
     // for `timestamptz` from the shared schema vocabulary.
-    case "text": case "json": case "timestamptz": return "TEXT";
+    case "text": case "json": case "timestamptz": case "date": case "numeric": return "TEXT";   // a decimal kept as its text, exactly
     case "integer": case "boolean": return "INTEGER";
     case "real": return "REAL";
   }
