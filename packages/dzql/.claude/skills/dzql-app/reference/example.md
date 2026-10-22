@@ -68,4 +68,5 @@ export const aliases: Aliases = {
 - With `ETA_TOKEN` set it sends `Authorization: Bearer <token>`, and the app's `identify` says who it
   is: no `login` first ([signin.md](signin.md)).
 - An app's `cli.ts` exports `aliases`, and never imports the database.
-- `ETA_EXAMPLE` says which app, `ETA_URL` which server.
+- `ETA_EXAMPLE` says which app, `ETA_URL` which server. In a project `bun run cli` is `dzql cli`
+  (dzql's bin, the app in `./src`), as `bun run stories` is `dzql stories ./src`.

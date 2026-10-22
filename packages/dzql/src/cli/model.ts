@@ -184,6 +184,10 @@ export const USAGE = `Usage: dzql model [<verb>]
   rename <doc> <name>            drop <doc>    unhold <doc> <entity>     root <doc> <entity>
   undo, redo
   site, guards, mcp              the model as a site, its guards, its verbs over MCP
+  load [<app>]                   an app that exists loaded into the page (<app>: its folder, ./src)
+  built [<app>] [--against-page [<model.json>]]   the app as built, read back; against the model as told
+
+The app's own: \`dzql stories [<app>]\` (its stories told against it), \`dzql cli <command>\` (its CLI).
 
 Stop a page started here with \`delta stop\` (\`bun run stop\` in a project).
 `;

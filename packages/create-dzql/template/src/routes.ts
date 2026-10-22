@@ -1,4 +1,5 @@
-import { run, serve } from "@blueshed/delta/serve";
+import { rmSync } from "node:fs";
+import { pidFile, run, serve } from "@blueshed/delta/serve";
 import type { Example } from "dzql/rendering/example";
 import { appOf, compose } from "dzql/rendering/server";
 import homepage from "./index.html";
@@ -31,7 +32,7 @@ export const app: Example = {
   store, // opened as a server starts, closed as it stops; the stories begin and end each story on it (./store.ts)
 };
 
-/** The server: on `PORT` (3000), its store in the data folder (`DATA_PATH`, a Railway volume, else data/), and with `--model` (`bun dev`) the model's page beside the app. */
+/** The server: on `PORT` (3000), its store at `DATABASE_URL` (in development and the tests, PGlite in the data folder: `DATA_PATH`, else data/), and with `--model` (`bun dev`) the model's page beside the app. */
 export async function startServer({ port = Number(process.env.PORT ?? 3000), model = process.argv.includes("--model"), dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data` } = {}) {
   // in development (`bun dev`), the model's page beside the app at /model; production never registers it
   const modelling = model && (await (await import("dzql/model")).modelRoute({ port: String(port) }));
@@ -45,4 +46,7 @@ export async function startServer({ port = Number(process.env.PORT ?? 3000), mod
   );
 }
 
+// `run` refuses to start over a live pid in .server.pid (a second `bun dev`); in production the
+// platform keeps one server, and a container's file can outlive it, its pid (often 1) reused: no guard
+if (import.meta.main && process.env.NODE_ENV === "production") rmSync(pidFile(), { force: true });
 if (import.meta.main) await run(startServer);

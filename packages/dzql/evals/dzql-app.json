@@ -65,5 +65,22 @@
       "Relies on the stories, which already undo every does-story and check the page comes back; adds a story only where a walk is refused (another's change in the way) and says so"
     ],
     "after": 1
+  },
+  {
+    "skills": [
+      "dzql-app"
+    ],
+    "query": "We are putting this app live on Railway next week, with Railway's Postgres (it gives us a pooled URL too). Get it ready, and tell me what to set up and how we keep the data safe.",
+    "files": [
+      "a project made with bun create dzql"
+    ],
+    "expected_behavior": [
+      "Deploys the starter's Dockerfile (bun start, NODE_ENV=production) on a Postgres server at DATABASE_URL, and never PGlite: no volume for the data, no DATA_PATH in production",
+      "Gives DATABASE_URL a direct (or session-mode) URL, never the pooled transaction-mode one, saying why: the listener's LISTEN and the session-level locks need one real session",
+      "Has the app connect as a role that is neither a superuser nor BYPASSRLS (Railway's postgres user is one), and says how to make it",
+      "Sets TLS in the URL (sslmode) where the connection leaves a private network, and leaves the health check on /health",
+      "Says backups are pg_dump (and a restore tried once), never exportTables, and prunes the catch-up log (pruneOpsLog) on a timer that stops with the server",
+      "Changes nothing in node_modules/dzql, and bun check and bun test still pass"
+    ]
   }
 ]

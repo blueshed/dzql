@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -18,7 +18,7 @@ beforeAll(async () => {
 afterAll(() => rmSync(parent, { recursive: true, force: true }));
 
 test("the app is the template, laid out as it is, named, its dotfiles dotted", () => {
-  for (const file of ["src/routes.ts", "stories.ts", "tests/routes.test.ts", "src/page.ts", "src/index.html", ".gitignore", ".env.test", "README.md", "CLAUDE.md", "CHANGELOG.md", "todo.jsonl", ".github/workflows/ci.yml"]) expect(existsSync(join(app, file))).toBe(true);
+  for (const file of ["src/routes.ts", "stories.ts", "tests/routes.test.ts", "src/page.ts", "src/index.html", ".gitignore", ".env.test", "README.md", "CLAUDE.md", "CHANGELOG.md", "todo.jsonl", ".github/workflows/ci.yml", "Dockerfile", ".dockerignore"]) expect(existsSync(join(app, file))).toBe(true);
   expect(existsSync(join(app, "src/stories.ts")) || existsSync(join(app, "src/routes.test.ts"))).toBe(false); // laid out as a paintbrush app
   const pkg = JSON.parse(readFileSync(join(app, "package.json"), "utf8"));
   expect(pkg.name).toBe("my-app"); // the template's own, dzql-starter, is the workspace's
@@ -55,6 +55,24 @@ test("the model's page starts beside the app, from dzql's modeling example", asy
   }
 }, 30_000);
 
+test("its Dockerfile runs on the Bun its package.json names, which is the workspace's", () => {
+  const from = /^FROM oven\/bun:(\d+\.\d+\.\d+)(-\w+)?$/m.exec(readFileSync(join(app, "Dockerfile"), "utf8"))?.[1];
+  expect(`bun@${from}`).toBe(JSON.parse(readFileSync(join(app, "package.json"), "utf8")).packageManager);
+  expect(`bun@${from}`).toBe(require("../../../package.json").packageManager);
+  expect(readFileSync(join(app, ".dockerignore"), "utf8")).toContain(".env\n"); // no secret goes into the image
+});
+
+test("its scripts run dzql through its bin, never a file of dzql's own: the stories are told", () => {
+  const { scripts } = JSON.parse(readFileSync(join(app, "package.json"), "utf8")) as { scripts: Record<string, string> };
+  for (const [name, line] of Object.entries(scripts)) expect(`${name}: ${line}`).not.toContain("node_modules/");
+  const told = Bun.spawnSync(["bun", "run", "stories"], { cwd: app, stdout: "pipe", stderr: "pipe" });
+  expect(told.stdout.toString()).toContain("0 passed, 0 failed");
+  expect(told.exitCode).toBe(0);
+  const read = Bun.spawnSync(["bun", "run", "model:check"], { cwd: app, stdout: "pipe", stderr: "pipe" });
+  expect(read.stdout.toString()).toContain("hjeli's predicates");
+  expect(read.exitCode).toBe(0);
+}, 30_000);
+
 test("a name that is not one is refused", () => {
   const made = Bun.spawnSync(["bun", join(import.meta.dir, "../cli.ts"), "My App"], { cwd: parent, stderr: "pipe" });
   expect(made.exitCode).toBe(1);
@@ -70,7 +88,9 @@ test("it type-checks, and its own tests pass", () => {
   expect(tested.exitCode).toBe(0);
 }, 60_000);
 
-test("it starts on delta's one server: the page, drawn over the socket, and /health", async () => {
+test("it starts on delta's one server: the page, drawn over the socket, and /health; in production over a pid file a container left", async () => {
+  // a pid file naming a live process not the server's, as a container restarted can leave (its pid reused): production starts all the same
+  writeFileSync(join(app, ".server.pid"), String(process.pid));
   const proc = Bun.spawn(["bun", "run", "start"], { cwd: app, stdout: "pipe", stderr: "inherit", env: { ...process.env, PORT: "0" } });
   try {
     let out = "";
