@@ -25,7 +25,9 @@ The fields are `Example` in `src/rendering/example.ts`.
 
 Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/leave/routes.ts), a whole `Example` (`routes.ts`: `active`, `who`,
 `address`, `identify`, `/login`, a session by its cookie); [examples/chat](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/chat/cli.ts), the
-CLI's verbs (`cli.ts`), run against a server by `cli.test.ts`.
+CLI's verbs (`cli.ts`), run against a server by `cli.test.ts`; [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/routes.ts),
+`screens` (`routes.ts`, its 404 in `routes.test.ts`) and sessions that last thirty days unused
+(`resources/visit/visit-api.ts`).
 
 - One resource per document type, the session's first; the kernel adds its ledger.
 - `active` is there because only the app knows what "signed in" means (chat: "has a name"). A tab
@@ -45,6 +47,19 @@ CLI's verbs (`cli.ts`), run against a server by `cli.test.ts`.
 - `session` finds a cookie's session: `sessionRows(delta, "sessions").of` (`dzql/rendering/sessions`)
   keeps each as a numbered row holding the cookie's hash, made on a visit's first socket and found
   through a `visit:` document scoped by that hash. Without it, the cookie is the session.
+- A session lasts while it is used. Its cookie's Max-Age is `sessionDays` (30), set again on every
+  socket. For the server's own check, give `sessionRows` a `timestamptz?` column its row keeps its
+  last use in, and a list document the rows past it are let go through:
+  `sessionRows(delta, "visits", "cookie:", { seen: "seen", expired: "expired:" })`, with
+  `defineDoc("expired:", { root: "visits", scope: { seen: "<:before" }, include: [] })` registered
+  beside `cookie:` (the cafe's `resources/visit/visit-api.ts`). Past its days, a cookie names a
+  fresh session, nobody's, and the expired rows are let go, at most once an hour.
+- `screens(path)` says which paths are the app's screens (`tables`, `2026-10`): any other is
+  answered 404, the page all the same. Omitted, every path is a screen (200), as before.
+- The page is sent with `Content-Security-Policy: frame-ancestors 'self'`, `X-Content-Type-Options:
+  nosniff` and `Referrer-Policy: same-origin`; no policy of scripts, which an applet's are the app's.
+- What fails in the kernel (a drawing, a write's handling, what follows a write) is logged, and
+  heard by `onFailure(fn)` (`dzql/rendering/failed`): send it where the app is watched.
 - `routes.ts` runs it (`bun dev`, `bun start` in a project; `bun examples/<name>/routes.ts` for an
   example). Its HTTP routes are entries in its `compose` (`{ routes: { "/api/x": { GET } } }`), or
   the app's `routes` field, which takes a handler.
@@ -61,7 +76,7 @@ export const aliases: Aliases = {
 };
 ```
 
-- `src/rendering/cli.ts` knows `login <link>` (a link the server printed as it started) or `login <email>
+- `src/rendering/cli.ts` knows `login <link>` (a link the server printed as it started, posted as its page's form is, once) or `login <email>
   <password>` (by the app's own `/login` form), the session kept in
   `.eta-session` (or `--session <file>`); `inspect`, `watch`, `undo`, `redo` and
   `write <doc> <op> <path> [value]`. A refused write prints `refused: <why>` and exits 1.

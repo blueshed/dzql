@@ -327,17 +327,17 @@ describe("modeling, served", () => {
     server.stop(true);
   });
 
-  /** Opens a keeper's sign-in link, as a browser does: the session its cookie names. */
+  /** Opens a keeper's sign-in link, as a browser does, and posts the form it asks with: the session its cookie names. */
   async function signIn(name: string): Promise<string | undefined> {
     const link = links.say(server.url.origin).find((l) => l.startsWith(`${name}: `))!.slice(`${name}: `.length);
-    const res = await fetch(link, { redirect: "manual" });
+    const res = await fetch(link, { method: "POST", headers: { origin: server.url.origin }, redirect: "manual" });
     return /session_id_model=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
   }
 
   test("signing in by a link: each keeper's, said as the server starts; one that is no link signs nobody in", async () => {
     const said = links.say(server.url.origin);
     expect(said.map((l) => l.split(":")[0])).toEqual(["Peter", "Claude"]);
-    const peter = await fetch(said[0]!.slice("Peter: ".length), { redirect: "manual" });
+    const peter = await fetch(said[0]!.slice("Peter: ".length), { method: "POST", headers: { origin: server.url.origin }, redirect: "manual" });
     expect(peter.status).toBe(303);
     expect(peter.headers.get("location")).toBe("/model");
     expect(peter.headers.get("set-cookie")).toContain("session_id_model="); // the model's own cookie, under its path

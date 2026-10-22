@@ -1,4 +1,5 @@
 import { post, story, type Stories, type Write } from "dzql/modelling/stories";
+import { walked } from "dzql/rendering/json-patch";
 import { links } from "./links";
 
 // The cafe's stories, as the app tells them: each names the model story it tells (`model`, its
@@ -60,6 +61,8 @@ export const stories = {
     // ── paying ──
     // the kitchen holds only what is still to cook or to take, paid for or not: paying changes none of it
     annPaysInvoice: story("Ann pays her invoice before her Soup comes, and Mo sees Table 1 free; Kit, still cooking it, is not told", { model: 9, premise: ordered, as: "ann", from: "invoice", does: pay("table", 1), seen: { ann: "invoice", mo: "tables" }, untold: ["kit"] }),
+    // paying is never undone (the table's `undoable`), and Undo walking past it changes nothing on the paid invoice
+    annCannotTakeBack: story("Ann cannot take back her Soup once she has paid, nor the paying", { model: false, premise: { mo: seats(1), ann: [order(1, 1), pay("table", 1)] }, as: "ann", from: "invoice", cannot: walked("undo"), told: "A paid invoice cannot be changed." }),
     annCannotAddInvoice: story("Ann cannot add to her invoice once it is paid", { model: 10, premise: { mo: seats(1), ann: [pay("table", 1)] }, as: "ann", from: "menu?item=1", cannot: order(1, 1), told: "A customer cannot add to a paid invoice" }),
 
     // ── nobody does another's job ──

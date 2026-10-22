@@ -129,6 +129,16 @@ export async function signIn(url: string, form: Record<string, string>): Promise
   return sessionIn(res.headers.get("set-cookie")); // the app's own: `session_id`, or one under a path's
 }
 
+/**
+ * Signs in by a sign-in link (`signInLinks`, which `dzql model` prints), as the page it opens on
+ * does: its form posts the link, from the link's own site. The session the answer's cookie names;
+ * none when it is no link (used already, run out, or the server has started again since).
+ */
+export async function signInByLink(link: string): Promise<string | undefined> {
+  const res = await fetch(link, { method: "POST", redirect: "manual", headers: { origin: new URL(link).origin } });
+  return sessionIn(res.headers.get("set-cookie"));
+}
+
 /** Opens the socket as the session `cookie` names, or, with a `token` (`ETA_TOKEN`), as whoever the app's `identify` says it is. */
 export function connectCli(url: string, cookie: string, token?: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {

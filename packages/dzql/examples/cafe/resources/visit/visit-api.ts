@@ -8,17 +8,20 @@ import { delta, register } from "../../store";
 // scanned, as the model says; the app adds who signed in (staff), and the cookie's hash, which is
 // never in it. Where they are is each tab's own (dzql/rendering/tabs), never the visit's. Off the ledger: coming in and moving about are not the cafe's history.
 // The session a cookie names is found by that hash, through `cookie:` (the model already names a
-// document `visit`, sessionRows' default lookup).
+// document `visit`, sessionRows' default lookup). A visit lasts thirty days unused, renewed as it
+// is used, by when it was last (`seen`, never in the visit either); past them its cookie is nobody,
+// and the visits past them are let go through `expired:`.
 register(
   [
     defineDoc("visit:", { root: "visits", include: [], implied: true, columns: { visits: ["table", "role", "name"] } }),
     defineDoc("cookie:", { root: "visits", scope: { cookie: ":cookie" }, include: [] }),
+    defineDoc("expired:", { root: "visits", scope: { seen: "<:before" }, include: [] }),
   ],
   { ledger: false },
 );
 
-/** The sessions, a visit each, named by the cookie a browser carries. */
-export const sessions = sessionRows(delta, "visits", "cookie:");
+/** The sessions, a visit each, named by the cookie a browser carries, each lasting thirty days unused. */
+export const sessions = sessionRows(delta, "visits", "cookie:", { seen: "seen", expired: "expired:" });
 
 export type Role = "manager" | "cook" | "customer";
 export type Visit = { role: Role | null; name: string | null; table: string | null };
@@ -37,6 +40,9 @@ const PLACES: Record<Role, Record<string, string[]>> = {
   cook: { "": [], orders: ["order"], menu: ["item", "new", "confirm"] },
   customer: { "": [], menu: ["item"], invoice: [] },
 };
+
+/** Is a URL's path one of the cafe's screens, a place someone may stand (`tables`, `menu`)? Any other is 404 (the app's `screens`). */
+export const isScreen = (path: string): boolean => Object.values(PLACES).some((places) => Object.hasOwn(places, path));
 
 /** An address `role` may stand at, or undefined. */
 export function placed(role: Role, value: unknown): string | undefined {

@@ -14,9 +14,10 @@ import {
   savedServer,
   serverOfLink,
   signIn,
+  signInByLink,
 } from "./cli/commands";
 import { appDir } from "./names";
-import { cookieNameForUrl, sessionIn } from "./scope";
+import { cookieNameForUrl } from "./scope";
 
 /** The app's CLI, over its socket: `bun run cli <command>` runs it; `dzql model <verb>` calls it with the model's verbs. */
 export async function main(argv: string[]): Promise<void> {
@@ -37,14 +38,14 @@ export async function main(argv: string[]): Promise<void> {
   // `login <link>` or `login <email> <password>`: signs in, and keeps the session it is given
   if (rest[0] === "login") {
     // a sign-in link (`dzql model` prints one for each keeper), or the email and password the form takes
-    const link = rest[1]?.startsWith("http") ? await fetch(rest[1], { redirect: "manual" }) : undefined;
-    const session = link ? sessionIn(link.headers.get("set-cookie")) : await signIn(url, { email: rest[1] ?? "", password: rest[2] ?? "" });
+    const link = rest[1]?.startsWith("http") ? rest[1] : undefined;
+    const session = link ? await signInByLink(link) : await signIn(url, { email: rest[1] ?? "", password: rest[2] ?? "" });
     if (!session) {
-      console.error(link ? "refused: that link is not one this server gave (it prints new ones as it starts: use the latest)" : "refused: that email and password do not match");
+      console.error(link ? "refused: that link is not one this server gave, or it is used or has run out (each signs in once: print a fresh one)" : "refused: that email and password do not match");
       process.exit(1);
     }
     writeFileSync(sessionFile, session);
-    const to = link ? serverOfLink(rest[1]!) : server;
+    const to = link ? serverOfLink(link) : server;
     if (link) writeFileSync(`${sessionFile}.url`, to); // from now on the CLI talks to the server it signed in to
     console.log(`signed in to ${to}, as ${sessionFile}`);
     process.exit(0);

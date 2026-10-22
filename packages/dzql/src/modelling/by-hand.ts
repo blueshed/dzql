@@ -216,8 +216,6 @@ const PAGE = `(() => {
 export class Hand {
   view: Bun.WebView;
   private sent = 0;
-  /** A form was posted: the route's cookie, which no script can take back, is this browser's now. */
-  private posted = false;
   /** What the page sent by itself since it was opened: before anything was pressed, or after a gesture's write. */
   readonly strays: Write[] = [];
 
@@ -304,7 +302,6 @@ export class Hand {
     const plan = await view.evaluate<Plan | { failure: string; none?: true }>(`window.__hand.posting(${JSON.stringify(path)}, ${JSON.stringify(form)})`);
     if ("failure" in plan) return plan;
     try {
-      this.posted = true;
       await this.work(plan);
     } catch (err) {
       return { failure: (err as Error).message };
@@ -378,13 +375,15 @@ export class Hand {
     if (!clicked) throw new Error(`the control for it is ${(await this.view.evaluate<string>(`window.__hand.why(${JSON.stringify(selector)})`)) || "never still"}`);
   }
 
-  /** Closes the tab: the page goes, and its socket with it. After a post, the browser goes too: the next story's is a fresh one, not signed in by the route's cookie. */
+  /**
+   * Closes the tab: the page goes, and its socket with it, and the browser too. Its socket set the
+   * session's cookie (renewed on every socket), as a route a form was posted to may have, and no
+   * script can take that back: the next story's is a fresh one, signed in by nobody's cookie.
+   */
   async leave(): Promise<void> {
     await this.view.navigate("about:blank");
-    if (!this.posted) return;
     this.view.close();
     this.view = new Bun.WebView(PHONE);
-    this.posted = false;
   }
 
   close(): void {

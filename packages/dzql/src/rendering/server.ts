@@ -24,18 +24,37 @@ type Socket = Bun.ServerWebSocket<ConnectionData>;
  */
 const send = (ws: Socket, message: string): void => void ws.send(message, true);
 
-/** Other sites whose pages may open a socket here, from `ETA_ORIGINS` (comma-separated); by default only the page's own. */
-const origins = (): string[] | undefined => process.env.ETA_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean);
+/**
+ * Other sites whose pages may open a socket here, from `ETA_ORIGINS` (comma-separated), each as
+ * its origin (`https://app.example.com/` and `https://app.example.com/app` are
+ * `https://app.example.com`); by default only the page's own. One that is no origin is reported,
+ * and lets nothing in.
+ */
+const origins = (): string[] | undefined =>
+  process.env.ETA_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean).flatMap((o) => {
+    const origin = URL.parse(o)?.origin ?? "null";
+    if (origin !== "null") return [origin];
+    failed("reading ETA_ORIGINS", new Error(`${JSON.stringify(o)} is not an origin (scheme://host[:port], as https://app.example.com)`));
+    return [];
+  });
+
+/**
+ * What the page's shell is sent with: never framed by another site's page (a click taken there
+ * would be the person's here), never sniffed for another type, and saying where it came from to
+ * this site alone. No policy of scripts: an applet's are the app's to say.
+ */
+const SHELL_HEADERS = { "Content-Security-Policy": "frame-ancestors 'self'", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin" };
 
 /**
  * The cookie that names a session -- a random token, a person's only credential (the session is
  * the row it names: `Example.session`): sent back on every request, never readable by a script,
- * never sent from another site. An example that signs people in sets a fresh one, never the one
- * the visit had before (a fixed session).
+ * never sent from another site, and lasting the app's `sessionDays` unused (30): every socket sets
+ * it again. An example that signs people in sets a fresh one, never the one the visit had before
+ * (a fixed session).
  */
 export function sessionCookie(cookie: string): string {
-  const { name, path } = scope().cookie; // the app's own, where a server holds several
-  return new Bun.Cookie(name, cookie, { path, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" }).serialize();
+  const { name, path, days } = scope().cookie; // the app's own, where a server holds several
+  return new Bun.Cookie(name, cookie, { path, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: days * 86_400 }).serialize();
 }
 
 /** This app's session cookie on the request, if it has one: what `sessions.of` turns into a session. */
@@ -124,11 +143,26 @@ function claimed<T>(ws: Socket, id: WriteId | undefined, doc: string, writing: P
  * The changes each session's writes made, by the handle its writer was given for each:
  * the echo names a change by a handle of the session's own, never by delta's entry, a serial whose
  * gaps count everyone's writes, in documents this person cannot read too. Undo by change takes a
- * handle and nothing else. Kept while the session has a page open, the last MOST_HANDLES of them.
+ * handle and nothing else. Kept while the session has a page open, and HANDLES_KEPT after its last
+ * closes, so a reconnect (a network's blip, a reload) undoes as before; the last MOST_HANDLES of them.
  */
 /** The app's sessions' handles (its scope's): two apps may each have a session "1". */
 const handles = () => scope().handles;
 const MOST_HANDLES = 100;
+const HANDLES_KEPT = 5 * 60_000;
+
+/** When each session of an app's closed its last page, while its handles are kept. */
+const leftBy = new WeakMap<Scope, Map<string, number>>();
+const left = () => leftBy.get(scope()) ?? leftBy.set(scope(), new Map()).get(scope())!;
+
+/** Lets go of the handles of every session whose last page closed HANDLES_KEPT ago, or longer. */
+function forgetLeft(): void {
+  for (const [sessionId, at] of left()) {
+    if (Date.now() - at < HANDLES_KEPT) continue;
+    left().delete(sessionId);
+    handles().delete(sessionId);
+  }
+}
 
 /** A handle for `entry`, a change `sessionId` made. */
 function handleFor(sessionId: string, entry: number): string {
@@ -233,6 +267,7 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
   const held = scopes.get(example) ?? scopes.set(example, { app: served(example.at ?? ""), apps: 0 }).get(example)!;
   held.apps++;
   const { app } = held;
+  app.cookie.days = example.sessionDays ?? 30;
   const at = example.at ?? "";
   const assembled = within(app, () => assemble(example));
   const { resources, byDocType, inspectFor, documents } = assembled;
@@ -275,13 +310,14 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
    * sent it, and the rest is written.
    */
   async function writeDelta(ws: Socket, owner: (typeof resources)[number], docId: string, ops: PatchOp[], id?: WriteId): Promise<boolean> {
-    const undoable = owner.undoable !== false;
     const shaped = owner.shape ? await settled(documents, () => owner.shape!(ws, docId, ops)) : ops;
     if (shaped.length === 0) return false;
     const going = owner.docType === example.address?.doc ? shaped.filter((op) => op.path === example.address!.path) : [];
     if (going.length > 0) ws.data.address = String(going.at(-1)!.value ?? "");
     const rest = shaped.filter((op) => !going.includes(op));
     if (rest.length === 0) return movedOnly(ws, owner, docId, id);
+    const said = owner.undoable; // false: never undone; or asked of this write
+    const undoable = typeof said === "function" ? await settled(documents, () => said(ws, docId, rest)) : said !== false;
     const at = owner.under ?? "";
     const doc = `${owner.docType}:${docId}`;
     const writing = documents.write(doc, rest.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable });
@@ -429,15 +465,34 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
     await documents.release(keep);
   }
 
+  // The page's shell, sent with the headers a page needs (SHELL_HEADERS). Bun serves an HTML bundle
+  // itself, headers and all, so the bundle is served at a path of its own that nobody else knows,
+  // and fetched from there by the routes that answer with the shell: fetched once in production,
+  // where the bundle is fixed; each time in development, where it is built again as it changes.
+  const hidden = `${at}/__shell/${crypto.randomUUID()}`;
+  const fetchShell = async (server: Bun.Server<ConnectionData>) => {
+    const res = await fetch(new URL(hidden, server.url));
+    return { type: res.headers.get("content-type") ?? "text/html;charset=utf-8", body: await res.arrayBuffer() };
+  };
+  let fixed: Awaited<ReturnType<typeof fetchShell>> | undefined; // kept once fetched, in production
+  const shell = async (req: Request, server: Bun.Server<ConnectionData>): Promise<Response> => {
+    const { type, body } = fixed ?? (await fetchShell(server));
+    if (process.env.NODE_ENV === "production") fixed = { type, body };
+    // a path that is none of the app's screens (`Example.screens`) is 404: the page alone, all the same
+    const path = new URL(req.url).pathname.slice(at.length).replace(/^\//, "");
+    const status = path === "" || !example.screens || example.screens(path) ? 200 : 404;
+    return new Response(body, { status, headers: { "Content-Type": type, "Cache-Control": "no-cache", ...SHELL_HEADERS } });
+  };
+
   // Every route the app's, in its scope; under its path, when it has one
   const inScope = (route: unknown): unknown => (typeof route === "function" ? (...args: unknown[]) => within(app, () => (route as (...a: unknown[]) => unknown)(...args)) : route);
   const own: Record<string, unknown> = {
     ...example.routes,
-    "/": example.index,
+    "/": shell,
     // A tab's address is its URL (`Example.address`): any path that is no route above is a
     // screen, served the same shell, whose socket names the address (`/ws?at=`), and the tab is
     // routed there as it opens: its first page is drawn there, for it alone.
-    "/*": example.index,
+    "/*": shell,
     "/api/health": () => Response.json({ ok: true }),
     "/ws": async (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
         // A socket is not bound by the same-origin policy: one opened from another site is refused
@@ -452,7 +507,7 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
         const token = identified ?? cookie ?? crypto.randomUUID();
         const sessionId = example.session ? await example.session(token) : token;
         const headers = new Headers();
-        if (token !== cookie) headers.append("Set-Cookie", sessionCookie(token));
+        headers.append("Set-Cookie", sessionCookie(token)); // a new one, or the one sent: renewed as it is used
 
         const at = new URL(req.url).searchParams.get("at") ?? undefined; // the screen the tab's URL names
         if (server.upgrade(req, { data: { sessionId, ...(at !== undefined && { at }), on: handlers }, headers })) return;
@@ -460,12 +515,15 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
     },
   };
   const routes = Object.fromEntries(Object.entries(own).map(([path, route]) => [path === "/" ? at || "/" : `${at}${path}`, inScope(route)]));
-  if (at) routes[`${at}/`] = example.index; // the page, with or without its last slash
+  if (at) routes[`${at}/`] = routes[at]; // the page, with or without its last slash
+  routes[hidden] = example.index; // the bundle itself, fetched by `shell`
 
   // The app's socket: what it opens, says and closes, in its scope
   const handlers: Bun.WebSocketHandler<ConnectionData> = {
       open: (ws) => within(app, () => {
         openConnection(ws);
+        forgetLeft();
+        left().delete(ws.data.sessionId); // back: its handles are its own again
         enqueue(async () => {
           try {
             for (const resource of resources) await resource.onOpen?.(ws);
@@ -486,7 +544,8 @@ export async function appOf(example: Example, { dataDir }: { dataDir?: string } 
       }),
       close: (ws) => within(app, () => {
         closeConnection(ws);
-        if (![...allOpenSockets()].some((open) => open.data.sessionId === ws.data.sessionId)) handles().delete(ws.data.sessionId);
+        if (![...allOpenSockets()].some((open) => open.data.sessionId === ws.data.sessionId)) left().set(ws.data.sessionId, Date.now()); // its handles kept a while yet
+        forgetLeft();
         enqueue(async () => {
           for (const resource of resources) await resource.onClose?.(ws);
           await quiet(documents);

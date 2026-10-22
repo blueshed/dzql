@@ -31,7 +31,9 @@ Working: [examples/leave](https://github.com/blueshed/dzql/blob/main/packages/dz
 (`resources/team/team-view.ts`), and `false` where no control sends the write (`may`,
 `resources/team/team-api.ts`); [examples/wedding](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/wedding/resources/household/household.ts),
 answers closed against Undo too (`permitUndo`) and what a walk did, told (`afterWalk`), in
-`resources/household/household.ts`.
+`resources/household/household.ts`; [examples/cafe](https://github.com/blueshed/dzql/blob/main/packages/dzql/examples/cafe/resources/table/table.ts),
+paying never undone, and nothing on a paid invoice changed by Undo (`undoable`, `permitUndo`, in
+`resources/table/table.ts`; un-paying refused over the socket in `routes.test.ts`).
 
 - `permit` returns `false` for a write no control of that person's could send: there is nowhere to
   say why, and its `cannot` story has no `told`. Throw `refuse(reason)`, from `permit` or `shape`,
@@ -70,6 +72,12 @@ answers closed against Undo too (`permitUndo`) and what a walk did, told (`after
 - It is not `permit`: Undo may do what permit refuses (a message taken back). It is for a rule of
   time or state that holds against Undo too. Its story is `cannot: walked("undo")` with the words
   as `told` ([stories.md](stories.md#undo-in-the-stories)).
+- **A deed that cannot be taken back is never undone**: a payment taken, a message sent out. Say so
+  on the resource (`undoable: false`, or `undoable(ws, docId, ops)` for the writes of it that are
+  such), or Undo takes it back, writing what no control of the person's could (the cafe's paid
+  invoice, unpaid). Undo then passes it by, to the person's write before it: where that would
+  change what the deed settled, refuse it in `permitUndo` (the cafe's: "A paid invoice cannot be
+  changed.", `resources/table/table.ts`, and its story `annCannotTakeBack`).
 - An undo that meets someone else's later write changes nothing, and says so: "Someone has changed
   that since, so it cannot be undone."
 - Why an undo or redo was refused, and what `afterWalk` tells on `{ doc: "ledger", path: "/latest" }`,

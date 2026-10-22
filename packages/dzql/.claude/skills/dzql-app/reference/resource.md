@@ -65,7 +65,9 @@ control sends the write (`may`, `resources/team/team-api.ts`).
 
 Undo and redo are delta's inverses, never shaped. Never write another resource's document from
 `shape`. `kind` is which of delta's documents it is: omitted, a stored document, the only kind written from
-the wire (`undoable: false` for one with no undo, a payment taken); `"memory"`, the server's,
+the wire (`undoable: false` for one with no undo; or `undoable(ws, docId, ops)`, asked of each
+write once shaped, false for one never undone: the cafe's paying, beside ordering, which Undo takes
+back -- [refusal.md](refusal.md#undo-is-checked-before-it-runs)); `"memory"`, the server's,
 never from the wire; `"source"` or `"static"`, read only.
 
 ## After a write

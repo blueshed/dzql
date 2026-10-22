@@ -19,8 +19,8 @@ export type Scope = {
   page?: (sessionId: string, address: string) => string;
   /** A tab moved from outside a write's own handling (./tabs.ts `moveTab`): drawn again where it is now. */
   moved?: (ws: ServerWebSocket<ConnectionData>) => void;
-  /** The cookie its sessions go by, and the path it is sent on: its own name under its own path, so two apps on one server never take each other's. */
-  cookie: { name: string; path: string };
+  /** The cookie its sessions go by, the path it is sent on, and how many days it lasts unused: its own name under its own path, so two apps on one server never take each other's. */
+  cookie: { name: string; path: string; days: number };
   /** Writes awaiting their echo, and each session's handles for the changes it made (./server.ts): the app's own. */
   claims: Set<unknown>;
   handles: Map<string, Map<string, number>>;
@@ -41,7 +41,7 @@ export const cookieNameForUrl = (url: string | URL): string => cookieNameFor(new
 const storage = new AsyncLocalStorage<Scope>();
 const serving = new Set<Scope>();
 /** What a call outside any app reads when the process serves none, or more than one. */
-const scopeAt = (at: string): Scope => ({ cookieIsSession: false, openSockets: new Set(), cookie: { name: cookieNameFor(at), path: at || "/" }, claims: new Set(), handles: new Map() });
+const scopeAt = (at: string): Scope => ({ cookieIsSession: false, openSockets: new Set(), cookie: { name: cookieNameFor(at), path: at || "/", days: 30 }, claims: new Set(), handles: new Map() });
 const nobody: Scope = scopeAt("");
 
 /** A new app's scope, served until `unserved`. */

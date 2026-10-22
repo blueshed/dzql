@@ -25,6 +25,7 @@ import {
   parseCommand,
   runCommand,
   signIn,
+  signInByLink,
   watch,
 } from "../../../src/rendering/cli/commands";
 import { appDir } from "../../../src/rendering/names";
@@ -218,6 +219,11 @@ const cliTestExample: Example = {
       if (req.headers.get("origin") !== new URL(req.url).origin || form.get("password") !== "right") return new Response(null, { status: 303, headers: { Location: "/" } });
       return new Response(null, { status: 303, headers: { Location: "/", "Set-Cookie": `session_id=signed-${form.get("email")}; Path=/` } });
     },
+    // a sign-in link, as signInLinks' is: it signs in only when posted, from the app's own origin
+    "/in/:token": async (req: Bun.BunRequest) => {
+      if (req.method !== "POST" || req.headers.get("origin") !== new URL(req.url).origin || req.params.token !== "ada-link") return new Response(null, { status: 303, headers: { Location: "/" } });
+      return new Response(null, { status: 303, headers: { Location: "/", "Set-Cookie": "session_id=linked-ada; Path=/" } });
+    },
   },
   resources: [widgetResource],
   render: (sessionId) => `<p>${read<{ widgets: { color: string } }>(`widget:${sessionId}`).widgets.color}</p>`,
@@ -273,6 +279,11 @@ describe("cli against a real server", () => {
   test("login signs in by the app's own form, from the app's own origin, and answers the session it is given; a wrong one, none", async () => {
     expect(await signIn(url(), { email: "ada", password: "right" })).toBe("signed-ada");
     expect(await signIn(url(), { email: "ada", password: "wrong" })).toBeUndefined();
+  });
+
+  test("login by a link posts it, as its page's form does, from the link's own origin, and answers the session it is given; one that is no link, none", async () => {
+    expect(await signInByLink(new URL("/in/ada-link", server.url).href)).toBe("linked-ada");
+    expect(await signInByLink(new URL("/in/not-a-link", server.url).href)).toBeUndefined();
   });
 
   test("an app is found by its name among eta's examples, or by its own folder", () => {
