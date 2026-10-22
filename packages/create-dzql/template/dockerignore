@@ -1,0 +1,11 @@
+node_modules
+.git
+.github
+.claude
+data
+.env
+.env.*
+.server.pid
+.eta-session*
+db.sqlite*
+.DS_Store

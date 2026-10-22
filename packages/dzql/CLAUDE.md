@@ -40,7 +40,8 @@ packages/
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt; cli.ts: dzql sql | init | migrate | link
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
 │   ├── src/compile/     # the compiler from delta's definitions, a module per kind of function (generateSql runs them all)
-│   ├── src/cli/         # the bin (index.ts): dzql model (model.ts, model-tools.ts), then the Postgres commands
+│   ├── src/cli/         # the bin (index.ts): an app's own (app.ts: stories, cli, model load|built), dzql model
+│   │                    #   (model.ts, model-tools.ts), then the Postgres commands
 │   ├── examples/<app>/  # the examples: cafe (the worked one, shipped beside the skills), chat, leave, ticker, wedding;
 │   │                    #   each routes and resources: routes.ts, store.ts, page.ts, resources/<name>/ (<name>-api.ts,
 │   │                    #   <name>.ts, <name>-view.ts); the cafe on Postgres, the rest on SQLite

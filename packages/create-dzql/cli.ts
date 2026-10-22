@@ -5,7 +5,7 @@
  * no resources yet, `tests/`), a workspace of blueshed/dzql tested where it lives, and published as
  * it is. This copies it, but for what running it makes (package.json's `files` leaves the same out
  * of the tarball, and this reads it there), names the app, gives it its skills on every install, a
- * changelog and a ledger, and says what to run. Then, as create-blueshed does: `bun install` (which
+ * changelog and a ledger, and says what to run. Its `Dockerfile` is how it deploys. Then, as create-blueshed does: `bun install` (which
  * installs the skills), and the app's first commit.
  *
  *   --no-install   copy only: then `bun install` in the new folder
@@ -43,6 +43,7 @@ writeFileSync(join(dest, "todo.jsonl"), "");
 // npm leaves dotfiles of a package behind: they travel without their dot
 renameSync(join(dest, "gitignore"), join(dest, ".gitignore"));
 renameSync(join(dest, "env.test"), join(dest, ".env.test"));
+renameSync(join(dest, "dockerignore"), join(dest, ".dockerignore"));
 
 // The app's package.json, as paintbrush's setup writes one: its name, and the skills its packages
 // ship, again on every install (`prepare`; the template has none, or installing the workspace would write them into it)

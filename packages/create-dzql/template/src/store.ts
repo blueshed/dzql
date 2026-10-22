@@ -2,7 +2,8 @@ import { defineSchema, openStore } from "dzql/postgres";
 
 // The store: Postgres, each document's reads and writes compiled from its definitions (dzql's
 // `openStore`): a server at DATABASE_URL, else PGlite in this process, kept in the data folder's
-// pg/ (`DATA_PATH`, a Railway volume, else data/; in memory for `bun test`: `DATA_PATH=:memory:`).
+// pg/ (`DATA_PATH`, else data/; in memory for `bun test`: `DATA_PATH=:memory:`). PGlite is for
+// development and the tests; production sets DATABASE_URL (the dzql-app skill's reference/deploy.md).
 // Once the stories are modelled, `dzql model` makes ../model/: its migrations run first, and its
 // `tables` go in the schema with the app's own beside them (`defineSchema({ ...tables, ... })`).
 // Each resource registers its documents (`register`, in `resources/<name>/<name>-api.ts`); the
