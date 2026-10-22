@@ -289,6 +289,13 @@ $$;
 CREATE OR REPLACE FUNCTION _delta_refs_hold(p_touched JSONB)
 RETURNS void LANGUAGE plpgsql STABLE AS $$ BEGIN NULL; END $$;
 
+-- _delta_overlaps_hold: no two current rows of the same values hold
+-- overlapping ranges (delta's `noOverlap`), asked after _delta_refs_hold of the
+-- rows a write changed: a range ending before it starts (22023, 400), a clash
+-- (23P01, 409). generateSql writes it (compileOverlaps); before, none is held.
+CREATE OR REPLACE FUNCTION _delta_overlaps_hold(p_touched JSONB)
+RETURNS void LANGUAGE plpgsql AS $$ BEGIN NULL; END $$;
+
 -- ---------------------------------------------------------------------------
 -- _delta_assert_parent_held: a parent key written (in `p_value`, over the row
 -- as it is, `p_row`) moves the row, and only under a parent the document holds,
@@ -1135,6 +1142,8 @@ BEGIN
   -- what names a row of another collection (refs), once the ops are applied: so a write may take a
   -- row and what names it away together, in either order (refsHold in delta's sqlite/write.ts)
   PERFORM _delta_refs_hold(v_touched);
+  -- and no two current rows overlap where a noOverlap says so, judged as the write leaves them (overlapsHold)
+  PERFORM _delta_overlaps_hold(v_touched);
 
   -- Told: the writer's document and every other that holds a row changed,
   -- each what changed for it. The answer (and the ledger) keep the ops as

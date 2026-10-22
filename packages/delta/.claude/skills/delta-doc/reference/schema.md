@@ -70,6 +70,20 @@ rows under it, and a column with a default (`done`), in `resources/lists/lists-a
   ["left"] }` holds it only among rows where `left` is null: a room in one open stay at a
   time. A table that keeps versions holds it among its current rows. A migration adds it with
   `addUnique` (`migrations.md`).
+- **Two rows that may not hold the same time** (a room booked twice, a person on leave twice) is
+  `noOverlap: [{ range: ["starts", "ends"], same: ["room_id"] }]`: two current rows with equal
+  `same` columns whose ranges overlap are refused, **409**, on every backend, naming both
+  (`Overlaps: bookings/3 and bookings/1, of the same room_id, both hold starts to ends at once --
+  move or remove one first`). A range is half open, `[starts, ends)` (a meeting until ten leaves ten
+  free), unless `bounds: "[]"` (leave from the 5th to the 9th holds the 9th); a null bound is open on
+  that side; one that ends before it starts is 400. Its columns are times, dates or numbers (of one
+  type); `same` is text, integer, boolean, date or the parent key, and may be left out (no two rows
+  at all). Asked once the write is done, in its transaction, so a batch may swap two bookings in any
+  order; a closed version holds nothing; a walk is held to it (a conflict). On Postgres it is an
+  `EXCLUDE` constraint besides (`postgres.md`); it is the definitions' alone, no migration, so rows
+  kept before it are asked only when next written there. The cases are `noOverlapCases`
+  (`src/cases/planning.ts`). A rule that reads other stored rows (no cycle in a tree, a period
+  closed) is none of these yet: a recompute document shows it.
 - **A line or a part is a row under its parent** (`lines` with `parent: "orders"`), never a
   JSON column of ids or a link column on the other row: a document includes its rows, and every
   holder is told each one that arrives or leaves. **A part goes where its whole goes**: a write

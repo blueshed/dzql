@@ -10,7 +10,8 @@ import { describe, test, expect } from "bun:test";
 import { createWs } from "../src/server/server";
 import { registerMemory } from "../src/server/kinds";
 import { setLogLevel } from "../src/server/logger";
-import { columnTypeCases, rangeScopeCases, mintedNameCases, acceptCases, shapeCases, refsCases, cursorCases, serverTimeCases, createRowCases, errorCodeCases, mockClient, refusalCases, sendAndAwait, uniqueCases, writeScopeCases } from "@blueshed/delta/testing";
+import { defineSchema } from "../src/schema";
+import { columnTypeCases, rangeScopeCases, mintedNameCases, noOverlapCases, bookedApp, acceptCases, shapeCases, refsCases, cursorCases, serverTimeCases, createRowCases, errorCodeCases, mockClient, refusalCases, sendAndAwait, uniqueCases, writeScopeCases } from "@blueshed/delta/testing";
 import { jsonBackend, sqliteBackend } from "./helpers/case-backends";
 
 setLogLevel("silent");
@@ -30,8 +31,36 @@ for (const [name, backend] of [["SQLite", sqliteBackend], ["the JSON file", json
     columnTypeCases(backend);
     rangeScopeCases(backend);
     mintedNameCases(backend);
+    noOverlapCases(backend);
+    // the sentence is the shared case's; the code, each backend's (Postgres's: dzql's own)
+    test("a noOverlap's refusal is 409", async () => {
+      const up = await backend(bookedApp);
+      try {
+        const c = mockClient({ local: true });
+        await sendAndAwait(up.ws, c, { action: "open", doc: "case-halls:" });
+        const r = await sendAndAwait(up.ws, c, { action: "delta", doc: "case-halls:", ops: [{ op: "add", path: "/case_bookings/-", value: { case_halls_id: 1, title: "x", starts: "2026-10-20T09:30:00Z", ends: null } }] });
+        expect(r.error?.code).toBe(409);
+      } finally {
+        await up.end();
+      }
+    });
   });
 }
+
+describe("a noOverlap, checked against its table", () => {
+  test("its range is two columns of one type of times, dates or numbers; its same columns what two rows share alike", () => {
+    const t = (noOverlap: any, columns: any = { a: "timestamptz", b: "timestamptz", n: "numeric", label: "text", data: "json" }) => () => defineSchema({ t: { columns, noOverlap } });
+    expect(t([{ range: ["a", "b"], same: ["label"] }])).not.toThrow();
+    expect(t([{ range: ["a"] }])).toThrow("two columns");
+    expect(t([{ range: ["a", "z"] }])).toThrow("z, which is not one of its columns");
+    expect(t([{ range: ["a", "n"] }])).toThrow("of one type");
+    expect(t([{ range: ["label", "label"] }])).toThrow("times, dates or numbers");
+    expect(t([{ range: ["a", "b"], same: ["data"] }])).toThrow("a json column");
+    expect(t([{ range: ["a", "b"], same: ["n"] }])).toThrow("a numeric column");
+    expect(t([{ range: ["a", "b"], bounds: "(]" }])).toThrow("bounds");
+    expect(t([{ range: ["a", "b"] }, { range: ["a", "b"], same: ["label"] }])).toThrow("named twice");
+  });
+});
 
 describe("the protocol's own answers", () => {
   test("a doc no backend owns is 404, an unknown action 400, a private method 403", async () => {

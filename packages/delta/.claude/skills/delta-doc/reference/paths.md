@@ -62,7 +62,8 @@ backend (`errorCodeCases` in `src/cases/writes.ts`):
 - **404** not there: a document, row or path; a document the identity does not `own`; a row a
   `refs` column names (`schema.md`).
 - **409** already there (an id taken, or a unique constraint's values: `schema.md`), or still
-  named (a row a current row's `refs` column names, removed).
+  named (a row a current row's `refs` column names, removed), or overlapping (a `noOverlap`'s range
+  another row of the same values holds).
 - **429** too many: an `open` past what one socket may hold open (`createWs({ maxDocs })`, 1000);
   the socket's, asked before any backend (`server.md`). Close one first.
 - **500** the server's own failure.

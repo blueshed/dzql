@@ -1,0 +1,117 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the text is the same for the same definitions, and pinned 1`] = `
+"DO $$
+DECLARE
+  v_c TEXT;
+BEGIN
+  -- equal columns in a gist index are btree_gist's: made where it may be (PGlite and a server's contrib have it)
+  BEGIN
+    CREATE EXTENSION IF NOT EXISTS btree_gist;
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+  FOR v_c IN SELECT conname FROM pg_constraint WHERE conrelid = to_regclass('"case_halls"') AND contype = 'x' AND conname LIKE 'excl\\_%' LOOP
+    EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', 'case_halls', v_c);
+  END LOOP;
+  FOR v_c IN SELECT conname FROM pg_constraint WHERE conrelid = to_regclass('"case_bookings"') AND contype = 'x' AND conname LIKE 'excl\\_%' AND conname NOT IN ('excl_case_bookings_starts_ends') LOOP
+    EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', 'case_bookings', v_c);
+  END LOOP;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('"case_bookings"') AND conname = 'excl_case_bookings_starts_ends') THEN
+    BEGIN
+      ALTER TABLE "case_bookings" ADD CONSTRAINT "excl_case_bookings_starts_ends" EXCLUDE USING gist ("case_halls_id" WITH =, (CASE WHEN "starts" IS NOT NULL AND "ends" IS NOT NULL AND "starts" > "ends" THEN 'empty'::tstzrange ELSE tstzrange("starts", "ends", '[)') END) WITH &&) WHERE (valid_to IS NULL) DEFERRABLE INITIALLY DEFERRED;
+    EXCEPTION WHEN undefined_object THEN
+      RAISE NOTICE '%: no btree_gist here, so the write path alone holds it', 'excl_case_bookings_starts_ends';
+    END;
+  END IF;
+  FOR v_c IN SELECT conname FROM pg_constraint WHERE conrelid = to_regclass('"case_leave"') AND contype = 'x' AND conname LIKE 'excl\\_%' AND conname NOT IN ('excl_case_leave_first_last') LOOP
+    EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', 'case_leave', v_c);
+  END LOOP;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('"case_leave"') AND conname = 'excl_case_leave_first_last') THEN
+    BEGIN
+      ALTER TABLE "case_leave" ADD CONSTRAINT "excl_case_leave_first_last" EXCLUDE USING gist ("person" WITH =, (CASE WHEN "first" IS NOT NULL AND "last" IS NOT NULL AND "first" > "last" THEN 'empty'::daterange ELSE daterange("first", "last", '[]') END) WITH &&) DEFERRABLE INITIALLY DEFERRED;
+    EXCEPTION WHEN undefined_object THEN
+      RAISE NOTICE '%: no btree_gist here, so the write path alone holds it', 'excl_case_leave_first_last';
+    END;
+  END IF;
+  FOR v_c IN SELECT conname FROM pg_constraint WHERE conrelid = to_regclass('"case_bands"') AND contype = 'x' AND conname LIKE 'excl\\_%' AND conname NOT IN ('excl_case_bands_from_qty_to_qty') LOOP
+    EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', 'case_bands', v_c);
+  END LOOP;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('"case_bands"') AND conname = 'excl_case_bands_from_qty_to_qty') THEN
+    BEGIN
+      ALTER TABLE "case_bands" ADD CONSTRAINT "excl_case_bands_from_qty_to_qty" EXCLUDE USING gist ((CASE WHEN "from_qty" IS NOT NULL AND "to_qty" IS NOT NULL AND "from_qty" > "to_qty" THEN 'empty'::numrange ELSE numrange("from_qty"::numeric, "to_qty"::numeric, '[)') END) WITH &&) DEFERRABLE INITIALLY DEFERRED;
+    EXCEPTION WHEN undefined_object THEN
+      RAISE NOTICE '%: no btree_gist here, so the write path alone holds it', 'excl_case_bands_from_qty_to_qty';
+    END;
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION _delta_overlaps_hold(p_touched JSONB)
+RETURNS void AS $$
+DECLARE
+  v_t   RECORD;
+  v_key TEXT;
+  v_by  BIGINT;
+BEGIN
+  FOR v_t IN
+    SELECT t->>'coll' AS coll, (t->>'id')::bigint AS id
+      FROM jsonb_array_elements(COALESCE(p_touched, '[]'::jsonb)) WITH ORDINALITY AS e(t, n)
+     WHERE NOT COALESCE((t->>'carried')::boolean, FALSE)
+     GROUP BY 1, 2 ORDER BY min(n)
+  LOOP
+    CASE v_t.coll
+      WHEN 'case_bookings' THEN
+        IF EXISTS (SELECT 1 FROM "current_case_bookings" r WHERE r.id = v_t.id AND r."starts" IS NOT NULL AND r."ends" IS NOT NULL AND r."starts" > r."ends") THEN
+          RAISE EXCEPTION '%/%: its % is before its % (noOverlap holds a range from % to %)', 'case_bookings', v_t.id, 'ends', 'starts', 'starts', 'ends' USING ERRCODE = '22023';
+        END IF;
+        SELECT concat_ws(',', r."case_halls_id"::text) INTO v_key FROM "current_case_bookings" r WHERE r.id = v_t.id;
+        IF FOUND THEN
+          PERFORM pg_advisory_xact_lock(hashtext('delta-overlap:excl_case_bookings_starts_ends'), hashtext(COALESCE(v_key, '')));
+          SELECT o.id INTO v_by FROM "current_case_bookings" r, "current_case_bookings" o
+           WHERE r.id = v_t.id AND o.id <> r.id AND o."case_halls_id" = r."case_halls_id" AND (CASE WHEN o."starts" IS NOT NULL AND o."ends" IS NOT NULL AND o."starts" > o."ends" THEN 'empty'::tstzrange ELSE tstzrange(o."starts", o."ends", '[)') END) && (CASE WHEN r."starts" IS NOT NULL AND r."ends" IS NOT NULL AND r."starts" > r."ends" THEN 'empty'::tstzrange ELSE tstzrange(r."starts", r."ends", '[)') END)
+           ORDER BY o.id LIMIT 1;
+          IF v_by IS NOT NULL THEN
+            RAISE EXCEPTION 'Overlaps: %/% and %/%, of the same case_halls_id, both hold % to % at once -- move or remove one first', 'case_bookings', v_t.id, 'case_bookings', v_by, 'starts', 'ends' USING ERRCODE = '23P01';
+          END IF;
+        END IF;
+      WHEN 'case_leave' THEN
+        IF EXISTS (SELECT 1 FROM "case_leave" r WHERE r.id = v_t.id AND r."first" IS NOT NULL AND r."last" IS NOT NULL AND r."first" > r."last") THEN
+          RAISE EXCEPTION '%/%: its % is before its % (noOverlap holds a range from % to %)', 'case_leave', v_t.id, 'last', 'first', 'first', 'last' USING ERRCODE = '22023';
+        END IF;
+        SELECT concat_ws(',', r."person"::text) INTO v_key FROM "case_leave" r WHERE r.id = v_t.id;
+        IF FOUND THEN
+          PERFORM pg_advisory_xact_lock(hashtext('delta-overlap:excl_case_leave_first_last'), hashtext(COALESCE(v_key, '')));
+          SELECT o.id INTO v_by FROM "case_leave" r, "case_leave" o
+           WHERE r.id = v_t.id AND o.id <> r.id AND o."person" = r."person" AND (CASE WHEN o."first" IS NOT NULL AND o."last" IS NOT NULL AND o."first" > o."last" THEN 'empty'::daterange ELSE daterange(o."first", o."last", '[]') END) && (CASE WHEN r."first" IS NOT NULL AND r."last" IS NOT NULL AND r."first" > r."last" THEN 'empty'::daterange ELSE daterange(r."first", r."last", '[]') END)
+           ORDER BY o.id LIMIT 1;
+          IF v_by IS NOT NULL THEN
+            RAISE EXCEPTION 'Overlaps: %/% and %/%, of the same person, both hold % to % at once -- move or remove one first', 'case_leave', v_t.id, 'case_leave', v_by, 'first', 'last' USING ERRCODE = '23P01';
+          END IF;
+        END IF;
+      WHEN 'case_bands' THEN
+        IF EXISTS (SELECT 1 FROM "case_bands" r WHERE r.id = v_t.id AND r."from_qty" IS NOT NULL AND r."to_qty" IS NOT NULL AND r."from_qty" > r."to_qty") THEN
+          RAISE EXCEPTION '%/%: its % is before its % (noOverlap holds a range from % to %)', 'case_bands', v_t.id, 'to_qty', 'from_qty', 'from_qty', 'to_qty' USING ERRCODE = '22023';
+        END IF;
+        SELECT '' INTO v_key FROM "case_bands" r WHERE r.id = v_t.id;
+        IF FOUND THEN
+          PERFORM pg_advisory_xact_lock(hashtext('delta-overlap:excl_case_bands_from_qty_to_qty'), hashtext(COALESCE(v_key, '')));
+          SELECT o.id INTO v_by FROM "case_bands" r, "case_bands" o
+           WHERE r.id = v_t.id AND o.id <> r.id AND (CASE WHEN o."from_qty" IS NOT NULL AND o."to_qty" IS NOT NULL AND o."from_qty" > o."to_qty" THEN 'empty'::numrange ELSE numrange(o."from_qty"::numeric, o."to_qty"::numeric, '[)') END) && (CASE WHEN r."from_qty" IS NOT NULL AND r."to_qty" IS NOT NULL AND r."from_qty" > r."to_qty" THEN 'empty'::numrange ELSE numrange(r."from_qty"::numeric, r."to_qty"::numeric, '[)') END)
+           ORDER BY o.id LIMIT 1;
+          IF v_by IS NOT NULL THEN
+            RAISE EXCEPTION 'Overlaps: %/% and %/% both hold % to % at once -- move or remove one first', 'case_bands', v_t.id, 'case_bands', v_by, 'from_qty', 'to_qty' USING ERRCODE = '23P01';
+          END IF;
+        END IF;
+      ELSE NULL;   -- a collection with no noOverlap
+    END CASE;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
+DO $$
+DECLARE
+  v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
+BEGIN
+  EXECUTE format('ALTER FUNCTION _delta_overlaps_hold(jsonb) SET search_path = %s', v_path);
+END $$;
+"
+`;

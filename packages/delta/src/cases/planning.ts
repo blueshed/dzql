@@ -5,6 +5,7 @@
  *   columnTypeCases(standUp);   // a `date` (a day, no instant) and a `numeric` (an exact decimal, a string on the wire)
  *   rangeScopeCases(standUp);   // a column given several conditions (a viewport), and an instant in a name
  *   mintedNameCases(standUp);   // a later op names a row an earlier op adds with "-" ($0): an entry and its lines
+ *   noOverlapCases(standUp);    // no two current rows of the same values hold overlapping ranges: bookings, leave
  *
  * where `standUp({ schema, docs, seed })` makes a fresh store with that schema, those documents
  * registered and those rows imported (a `CaseBackend`).
@@ -401,6 +402,131 @@ export function mintedNameCases(backend: CaseBackend): void {
       const r = await write(up.ws, "case-journal:", [{ op: "add", path: "/case_entries/-", value: { memo: "$0", day: "2026-10-22" } }]);
       expect(r.error).toBeUndefined();
       expect(r.result.ops[0].value.memo).toBe("$0");
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Bookings, leave and price bands: no two current rows overlap (noOverlap)
+// ---------------------------------------------------------------------------
+
+/**
+ * Halls and their bookings (`[starts, ends)`, an open end when it is null; the bookings keep
+ * versions), people's leave by the day (`[first, last]`: its last day held too), and price bands
+ * that no two may share (no `same` columns). Each list is a document of its own; the ledger too.
+ */
+export const bookedApp: CaseApp = {
+  schema: defineSchema({
+    case_halls: { columns: { name: "text" }, temporal: false },
+    case_bookings: {
+      columns: { title: "text", starts: "timestamptz", ends: "timestamptz?" },
+      parent: { collection: "case_halls", fk: "case_halls_id" },
+      noOverlap: [{ range: ["starts", "ends"], same: ["case_halls_id"] }],
+    },
+    case_leave: { columns: { person: "integer", first: "date", last: "date" }, temporal: false, noOverlap: [{ range: ["first", "last"], same: ["person"], bounds: "[]" }] },
+    case_bands: { columns: { from_qty: "numeric", to_qty: "numeric" }, temporal: false, noOverlap: [{ range: ["from_qty", "to_qty"] }] },
+  }),
+  docs: [
+    defineDoc("case-halls:", { root: "case_halls", include: ["case_bookings"] }),
+    defineDoc("case-leave:", { root: "case_leave", include: [] }),
+    defineDoc("case-bands:", { root: "case_bands", include: [] }),
+  ],
+  seed: {
+    tables: {
+      case_halls: [{ id: 1, name: "great" }, { id: 2, name: "small" }],
+      case_bookings: [
+        { id: 1, case_halls_id: 1, title: "talk", starts: "2026-10-20T09:00:00Z", ends: "2026-10-20T10:00:00Z", valid_from: "2026-10-01T00:00:00.000Z", valid_to: null },
+        { id: 2, case_halls_id: 1, title: "fair", starts: "2026-10-20T14:00:00Z", ends: null, valid_from: "2026-10-01T00:00:00.000Z", valid_to: null },
+      ],
+      case_leave: [{ id: 1, person: 1, first: "2026-10-05", last: "2026-10-09" }],
+      case_bands: [{ id: 1, from_qty: "0", to_qty: "10" }],
+    },
+  },
+  ledger: true,
+};
+
+/** delta's words for two rows a noOverlap holds apart. */
+const clash = (coll: string, id: number, other: number, same: string | undefined, from: string, to: string) =>
+  `Overlaps: ${coll}/${id} and ${coll}/${other}${same ? `, of the same ${same},` : ""} both hold ${from} to ${to} at once -- move or remove one first`;
+
+/**
+ * A noOverlap constraint, the same on every backend, asked once the write is done: two current rows
+ * of the same `same` values whose ranges overlap are refused (409, naming both: the row the write
+ * left first, then the first it meets by id), and nothing is written; a range touching another's
+ * end does not overlap it (half open; `"[]"`, a last day held, does); a null end is open; a closed
+ * version holds nothing; a batch is judged as it leaves the rows, in either order; a range that
+ * ends before it starts is 400; and a walk is held to it as any write is.
+ *
+ * The code is 409 on every backend; on Postgres it is the listener's for SQLSTATE 23P01 (an
+ * exclusion), which comes in beside this (delta #100): until a branch has it, the sentence is asked
+ * here and the code by each backend's own test.
+ */
+export function noOverlapCases(backend: CaseBackend): void {
+  describe("no two rows overlap (noOverlap)", () => {
+    let up: Awaited<ReturnType<CaseBackend>>;
+    beforeEach(async () => { up = await backend(bookedApp); });
+    afterEach(async () => { await up.end(); });
+    const refused = (r: any, message: string) => expect(r.error?.message).toBe(message);
+    const bookings = async () => Object.values((await fresh(up.ws, "case-halls:")).case_bookings).map((b: any) => [b.id, b.case_halls_id, b.title]);
+    const at = (h: number) => `2026-10-20T${String(h).padStart(2, "0")}:00:00Z`;
+    const book = (hall: number, from: number, to: number | null, title = "x") => ({ op: "add", path: "/case_bookings/-", value: { case_halls_id: hall, title, starts: at(from), ends: to === null ? null : at(to) } });
+    const seeded = [[1, 1, "talk"], [2, 1, "fair"]];
+
+    test("a booking over another of the same hall is refused, naming both, and nothing is written", async () => {
+      refused(await write(up.ws, "case-halls:", [book(1, 9, 11)]), clash("case_bookings", 3, 1, "case_halls_id", "starts", "ends"));
+      refused(await write(up.ws, "case-halls:", [book(1, 8, 9, "ok"), book(1, 8, 10)]), clash("case_bookings", 4, 5, "case_halls_id", "starts", "ends"));
+      // an open end: the fair runs on from two
+      refused(await write(up.ws, "case-halls:", [book(1, 20, 22)]), clash("case_bookings", 6, 2, "case_halls_id", "starts", "ends"));
+      // a row moved over another, by a field
+      refused(await write(up.ws, "case-halls:", [{ op: "replace", path: "/case_bookings/1/ends", value: at(15) }]), clash("case_bookings", 1, 2, "case_halls_id", "starts", "ends"));
+      expect(await bookings()).toEqual(seeded);
+    });
+
+    test("a range that touches another's end, another hall's, or one of its own moved, is kept", async () => {
+      const r = await write(up.ws, "case-halls:", [book(1, 10, 11, "after"), book(1, 8, 9, "before"), book(2, 9, 10, "beside"), { op: "replace", path: "/case_bookings/1/starts", value: "2026-10-20T08:30:00Z" }]);
+      refused(r, clash("case_bookings", 4, 1, "case_halls_id", "starts", "ends"));
+      expect((await write(up.ws, "case-halls:", [book(1, 10, 11, "after"), book(1, 8, 9, "before"), book(2, 9, 10, "beside"), { op: "replace", path: "/case_bookings/1/ends", value: "2026-10-20T09:30:00Z" }])).error).toBeUndefined();
+      expect((await bookings()).map(([, hall, title]) => `${hall}:${title}`).sort()).toEqual(["1:after", "1:before", "1:fair", "1:talk", "2:beside"]);
+    });
+
+    test("a batch is judged as it leaves the rows: two bookings swapped, in either order", async () => {
+      // the talk moves to ten, a new one takes nine: its add first, while the talk still holds nine
+      expect((await write(up.ws, "case-halls:", [book(1, 9, 10, "new"), { op: "replace", path: "/case_bookings/1", value: { case_halls_id: 1, title: "talk", starts: at(10), ends: at(11) } }])).error).toBeUndefined();
+      expect((await write(up.ws, "case-halls:", [{ op: "replace", path: "/case_bookings/1/starts", value: at(12) }, { op: "replace", path: "/case_bookings/1/ends", value: at(13) }, book(1, 10, 12, "newer")])).error).toBeUndefined();
+    });
+
+    test("a closed version holds nothing: a booking removed frees its time", async () => {
+      expect((await write(up.ws, "case-halls:", [{ op: "remove", path: "/case_bookings/1" }])).error).toBeUndefined();
+      expect((await write(up.ws, "case-halls:", [book(1, 9, 10, "again")])).error).toBeUndefined();
+    });
+
+    test("a range that ends before it starts is refused, 400", async () => {
+      expect((await write(up.ws, "case-halls:", [{ op: "replace", path: "/case_bookings/1/ends", value: at(8) }])).error)
+        .toEqual({ code: 400, message: "case_bookings/1: its ends is before its starts (noOverlap holds a range from starts to ends)" });
+      expect(await bookings()).toEqual(seeded);
+    });
+
+    test(`a last day held ("[]"): leave the day another ends is a clash; the day after, or another person's, is not`, async () => {
+      const leave = (person: number, first: string, last: string) => ({ op: "add", path: "/case_leave/-", value: { person, first, last } });
+      refused(await write(up.ws, "case-leave:", [leave(1, "2026-10-09", "2026-10-12")]), clash("case_leave", 2, 1, "person", "first", "last"));
+      expect((await write(up.ws, "case-leave:", [leave(1, "2026-10-10", "2026-10-12"), leave(1, "2026-10-13", "2026-10-13"), leave(2, "2026-10-05", "2026-10-09")])).error).toBeUndefined();
+      refused(await write(up.ws, "case-leave:", [leave(1, "2026-10-13", "2026-10-13")]), clash("case_leave", 6, 4, "person", "first", "last"));
+    });
+
+    test("with no same columns every row is held apart from every other: price bands, by exact value", async () => {
+      const band = (from: string, to: string) => ({ op: "add", path: "/case_bands/-", value: { from_qty: from, to_qty: to } });
+      expect((await write(up.ws, "case-bands:", [band("10", "20"), band("20.000", "20.001")])).error).toBeUndefined();
+      refused(await write(up.ws, "case-bands:", [band("9.99999999999999999", "10")]), clash("case_bands", 4, 1, undefined, "from_qty", "to_qty"));
+      refused(await write(up.ws, "case-bands:", [band("20.0005", "21")]), clash("case_bands", 5, 3, undefined, "from_qty", "to_qty"));
+    });
+
+    test("a walk is held to it as any write is: an undo that would bring back a clash is walked as a conflict", async () => {
+      expect((await write(up.ws, "case-halls:", [{ op: "remove", path: "/case_bookings/1" }], "first")).error).toBeUndefined();
+      expect((await write(up.ws, "case-halls:", [book(1, 9, 10, "taken")], "second")).error).toBeUndefined();
+      const undone = await sendAndAwait(up.ws, mockClient({ local: true }), { action: "undo", cursor: "first" });
+      expect(undone.error).toBeUndefined();
+      expect(undone.result.conflict).toEqual(["/case_bookings/1"]);
+      expect((await bookings()).map(([, , title]) => title)).toEqual(["fair", "taken"]);
     });
   });
 }

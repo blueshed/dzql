@@ -69,6 +69,34 @@ export interface TableDef {
    * (`{ columns: ["book"], whereNull: ["ended"] }`: a book is on one open hold at a time).
    */
   unique?: (string | string[] | UniqueDef)[];
+  /**
+   * Ranges two current rows may not both hold at once: `{ range: ["starts", "ends"], same: ["room_id"] }`
+   * -- two rows with equal `same` columns whose ranges overlap are refused, 409, on every backend, once
+   * the write is done (Postgres: an EXCLUDE constraint besides). Half open, `[starts, ends)`, unless
+   * `bounds: "[]"` (a last day held too); a null bound is open on that side; a range whose end is
+   * before its start is refused, 400.
+   */
+  noOverlap?: NoOverlapDef[];
+}
+
+/** A noOverlap constraint as given (`TableDef.noOverlap`). */
+export interface NoOverlapDef {
+  /** The range's two columns, its start and its end: both timestamptz, date, numeric, integer or real. */
+  range: [string, string];
+  /** The columns two rows must share to clash (a room, a person); none: every row clashes with every other. */
+  same?: string[];
+  /** Whether a range holds its end: `"[)"` (the default: a meeting from 9 until 10) or `"[]"` (leave from the 5th to the 9th). */
+  bounds?: "[)" | "[]";
+}
+
+/** A noOverlap constraint as every backend holds it, named `excl_<table>_<start>_<end>`. */
+export interface ResolvedNoOverlap {
+  name: string;
+  range: [string, string];
+  same: string[];
+  bounds: "[)" | "[]";
+  /** The range columns' type. */
+  type: ColumnType;
 }
 
 /** A unique constraint: the columns no two current rows share, among those where `whereNull` are null. */
@@ -102,6 +130,8 @@ export interface ResolvedTable {
   referencedBy: { collection: string; fkColumn: string }[];
   /** Its unique constraints (`TableDef.unique`); absent when it has none. */
   unique?: ResolvedUnique[];
+  /** Its noOverlap constraints (`TableDef.noOverlap`); absent when it has none. */
+  noOverlap?: ResolvedNoOverlap[];
   /** The columns that name a row of another collection (`TableDef.refs`), by column; absent when none. */
   refs?: ResolvedRef[];
   /** Computed: the columns of other collections that name a row of this one, by collection then column; absent when none. */
@@ -335,6 +365,12 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
       seen.add(u.name);
     }
 
+    const noOverlap = (def.noOverlap ?? []).map((n) => resolveNoOverlap(key, name, n, columns, parent?.fkColumn));
+    for (const n of noOverlap) {
+      if (seen.has(n.name)) throw new Error(`${key}: noOverlap ${JSON.stringify(n.range)} is named twice`);
+      seen.add(n.name);
+    }
+
     tables[key] = {
       name,
       docKey: key,
@@ -344,6 +380,7 @@ export function defineSchema(defs: Record<string, TableDef>): Schema {
       children: [],
       referencedBy: [],
       ...(unique.length ? { unique } : {}),
+      ...(noOverlap.length ? { noOverlap } : {}),
     };
   }
 
@@ -417,6 +454,87 @@ function resolveUnique(key: string, table: string, given: string | string[] | Un
     if (Object.hasOwn(columns, col) && !columns[col]!.nullable) throw new Error(`${key}: unique's whereNull names ${col}, which is never null`);
   }
   return { name: `idx_${table}_unique_${u.columns.join("_")}`, columns: u.columns, whereNull: u.whereNull ?? [] };
+}
+
+/** The types a noOverlap's range may be of, and those its `same` columns may (each compared alike on every backend). */
+const RANGED = new Set(["timestamptz", "date", "numeric", "integer", "real"]);
+const SAME = new Set(["text", "integer", "boolean", "date"]);
+
+/** Checked against the table's columns, and named. */
+function resolveNoOverlap(key: string, table: string, given: NoOverlapDef, columns: Record<string, ColumnDef>, fk: string | undefined): ResolvedNoOverlap {
+  const range = given?.range;
+  if (!Array.isArray(range) || range.length !== 2) throw new Error(`${key}: noOverlap's range is two columns, its start and its end: { range: ["starts", "ends"] }`);
+  const [from, to] = range;
+  for (const col of range) if (!Object.hasOwn(columns, col)) throw new Error(`${key}: noOverlap names ${col}, which is not one of its columns`);
+  const type = columns[from]!.type;
+  if (columns[to]!.type !== type) throw new Error(`${key}: noOverlap's ${from} and ${to} are of one type to make a range (${from} is ${type}, ${to} is ${columns[to]!.type})`);
+  if (!RANGED.has(type)) throw new Error(`${key}: noOverlap's range is of times, dates or numbers (${from} is ${type})`);
+  const same = [...(given.same ?? [])];
+  for (const col of same) {
+    if (col === fk) continue;
+    if (!Object.hasOwn(columns, col)) throw new Error(`${key}: noOverlap's same names ${col}, which is not one of its columns`);
+    if (!SAME.has(columns[col]!.type)) throw new Error(`${key}: noOverlap's same names ${col}, a ${columns[col]!.type} column: a value two rows share is text, an integer, a boolean, a date or the parent key`);
+  }
+  const bounds = given.bounds ?? "[)";
+  if (bounds !== "[)" && bounds !== "[]") throw new Error(`${key}: noOverlap's bounds is "[)" (its end not held) or "[]" (held)`);
+  return { name: `excl_${table}_${from}_${to}`, range: [from, to], same, bounds, type };
+}
+
+/** Two values of a range's type in order: negative, zero or positive (an instant by its time, a day by the calendar, a decimal by value). */
+export function compareIn(type: ColumnType, a: unknown, b: unknown): number {
+  if (type === "timestamptz") return Date.parse(utcTime(a) as string) - Date.parse(utcTime(b) as string);
+  if (type === "date") return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
+  if (type === "numeric") return compareDecimal(String(a), String(b));
+  return Number(a) - Number(b);
+}
+
+/** Two exact decimals (`isDecimal`) in order, by value: no float between them. */
+export function compareDecimal(a: string, b: string): number {
+  const parts = (d: string) => {
+    const negative = d.startsWith("-");
+    const [whole, fraction = ""] = (negative ? d.slice(1) : d).split(".");
+    const w = whole!.replace(/^0+/, ""), f = fraction.replace(/0+$/, "");
+    return { negative: negative && (w !== "" || f !== ""), w, f };
+  };
+  const x = parts(a), y = parts(b);
+  if (x.negative !== y.negative) return x.negative ? -1 : 1;
+  const sign = x.negative ? -1 : 1;
+  if (x.w.length !== y.w.length) return sign * (x.w.length - y.w.length);
+  if (x.w !== y.w) return sign * (x.w < y.w ? -1 : 1);
+  const n = Math.max(x.f.length, y.f.length);
+  const fx = x.f.padEnd(n, "0"), fy = y.f.padEnd(n, "0");
+  return fx === fy ? 0 : sign * (fx < fy ? -1 : 1);
+}
+
+/**
+ * How a row holds a noOverlap's range: `reversed` (its end before its start: refused), `none` (it
+ * holds nothing: an empty range, or a `same` column null), or the range, a null bound open.
+ */
+export function rangeOf(n: ResolvedNoOverlap, row: Record<string, unknown>): "reversed" | "none" | { from: unknown; to: unknown } {
+  const from = row[n.range[0]], to = row[n.range[1]];
+  if (from != null && to != null) {
+    const c = compareIn(n.type, from, to);
+    if (c > 0) return "reversed";
+    if (c === 0 && n.bounds === "[)") return "none";
+  }
+  if (n.same.some((col) => row[col] == null)) return "none";
+  return { from, to };
+}
+
+/** Do two rows' ranges (`rangeOf`) overlap: each begins before the other ends (or at its end, where it is held)? */
+export function overlap(n: ResolvedNoOverlap, a: { from: unknown; to: unknown }, b: { from: unknown; to: unknown }): boolean {
+  const before = (from: unknown, to: unknown) => from == null || to == null || (n.bounds === "[]" ? compareIn(n.type, from, to) <= 0 : compareIn(n.type, from, to) < 0);
+  return before(a.from, b.to) && before(b.from, a.to);
+}
+
+/** A noOverlap's refusal, as every backend says it (409): the row the write left, the row it clashes with. */
+export function overlapSentence(coll: string, n: ResolvedNoOverlap, id: unknown, other: unknown): string {
+  return `Overlaps: ${coll}/${id} and ${coll}/${other}${n.same.length ? `, of the same ${n.same.join(" and ")},` : ""} both hold ${n.range[0]} to ${n.range[1]} at once -- move or remove one first`;
+}
+
+/** A row whose range ends before it starts, as every backend refuses it (400). */
+export function reversedSentence(coll: string, n: ResolvedNoOverlap, id: unknown): string {
+  return `${coll}/${id}: its ${n.range[1]} is before its ${n.range[0]} (noOverlap holds a range from ${n.range[0]} to ${n.range[1]})`;
 }
 
 /**
