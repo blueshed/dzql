@@ -54,7 +54,7 @@
   "devDependencies": {
     "@blueshed/railroad": "^0.17.0",
     "@happy-dom/global-registrator": "^20.11.1",
-    "@types/bun": "^1.4.3"
+    "@types/bun": "^1.4.4"
   },
   "author": "Peter Bunyan <peter@blueshed.co.uk> (https://blueshed.co.uk)",
   "license": "MIT",

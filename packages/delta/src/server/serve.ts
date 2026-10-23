@@ -81,7 +81,7 @@ export function serve<R extends string>(app: App<R>, { port = Number(process.env
       return handler.open?.(socket);
     },
     message(socket, message) {
-      const handled = handler.message(socket, message) as unknown;
+      const handled = handler.message?.(socket, message) as unknown; // optional in Bun 1.4.4's types
       if (handled instanceof Promise) {
         handling.add(handled);
         void handled.finally(() => handling.delete(handled)).catch(() => {});

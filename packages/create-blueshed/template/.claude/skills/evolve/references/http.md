@@ -34,8 +34,8 @@ import { filesApi } from "./resources/files/files-api";
 ```
 
 ```ts
-// src/routes.ts: after dataDir = process.env.DATA_PATH
-s3 = Bun.s3,
+// src/routes.ts: in place of export async function startServer(
+export async function startServer({ port = undefined as number | undefined, dev = undefined as boolean | undefined, dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data`, s3 = Bun.s3 } = {}) {
 ```
 
 ```ts

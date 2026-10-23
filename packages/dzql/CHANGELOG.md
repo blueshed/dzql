@@ -317,6 +317,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   sends one and waits for the closing handshake); and the model's sign-out test waits for the page
   a socket opens with before its first write (on 1.4.4 it comes after `open`). Each passes on 1.4.3
   and 1.4.4.
+- **`readPage` hears the page from the socket's start** (23 October, Bun 1.4.4). It listened for
+  the page only once `connectCli`'s open had resumed it, and on 1.4.4, under load, the page could
+  come first: `told.test.ts` then waited for good, and the full parallel `test:coverage` hung (about
+  one run in two). `connectCli` takes an `onMessage`, heard from the start. The costs
+  `docs/rendering.md` quotes are as a 1.4.4 run measures them (its compressed sizes are a few bytes
+  smaller: chat 422 B, the ticker 175 B, the wedding 811 B and 729 B).
 - **A page's parts are laid out from where each stands on it** (22 October, #89): in time that grows
   with the page, not with its parts squared. 1,000 rows went from 200 ms to 6 ms; a test holds a
   1,000-part page well under 20 ms of CPU. The every-pair layout stays for what offsets cannot say

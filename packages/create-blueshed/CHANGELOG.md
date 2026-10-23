@@ -67,8 +67,10 @@ section up.
   1.4.4's coverage counts an unused default on a line of its own as not run, so `startServer`'s
   options are on one line, as create-dzql's are: `startServer({ … } = {})`, whose `= {}` only
   `run` uses, left the template at 99.47% and its `bun test` failing. The `postgres` and
-  `thin-client` references and the orders fixture write it the same way. An app made before moves
-  across by putting its `startServer` options on one line.
+  `thin-client` references and the orders fixture write it the same way, and the `http` reference's
+  `s3 = Bun.s3` is that line with `s3` added, in its place (23 October: put after a `dataDir` line
+  there no longer is, it broke the evolve walk's http step). An app made before moves across by
+  putting its `startServer` options on one line.
 - **The `postgres` reference says PGlite is never deployed** (22 October, dzql #92): under
   `NODE_ENV=production` dzql's `openStore` refuses PGlite unless `DZQL_PGLITE_IN_PRODUCTION=1` says it
   is meant.

@@ -9,10 +9,17 @@ what is open across them. Newest first.
 ### Bun 1.4.4 (22 October)
 
 - The root's `packageManager` (CI's Bun) and each template's are `bun@1.4.4`; every `engines.bun`
-  floor stays. `@types/bun` stays `^1.4.3`: npm has no 1.4.4 types yet, so `scripts/ranges.ts`
-  holds each package's `@types/bun` to the root's, a range that must hold the root's Bun and start
-  in its minor (`^1.4.3` holds 1.4.4; it would not hold 1.5.0). dzql's changelog has the three
-  socket tests 1.4.4 changed; create-blueshed's the template's coverage on 1.4.4.
+  floor stays. `scripts/ranges.ts` holds each package's `@types/bun` to the root's, a range that
+  must hold the root's Bun and start in its minor (`^1.4.3` holds 1.4.4; it would not hold 1.5.0),
+  so the types can follow a day late. They came on 23 October, and every `@types/bun` is `^1.4.4`.
+  dzql's changelog has the three socket tests 1.4.4 changed and `readPage`'s first page;
+  create-blueshed's the template's coverage on 1.4.4; delta's `serve` on 1.4.4's types.
+- The slow tier on 1.4.4 (23 October): railroad's and delta's pass; create-blueshed's evolve walk
+  passes 9 of its 11 references and dzql's `test:pg` all but one race, each of what is left
+  ledgered (create-blueshed's template #19, dzql #132). dzql's `test:coverage` passes every test and
+  is held at 99.82%: `client-coverage.ts`'s judging lines, which 1.4.3 misses too (dzql #133), and six
+  harness lines no test has ever run, which 1.4.3 counted (dzql #134). `stories:all` and
+  `costs --check` pass.
 
 ### A production review, and what it found (22 October)
 

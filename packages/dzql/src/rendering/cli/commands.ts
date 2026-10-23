@@ -139,12 +139,17 @@ export async function signInByLink(link: string): Promise<string | undefined> {
   return sessionIn(res.headers.get("set-cookie"));
 }
 
-/** Opens the socket as the session `cookie` names, or, with a `token` (`ETA_TOKEN`), as whoever the app's `identify` says it is. */
-export function connectCli(url: string, cookie: string, token?: string): Promise<WebSocket> {
+/**
+ * Opens the socket as the session `cookie` names, or, with a `token` (`ETA_TOKEN`), as whoever the app's `identify` says it is.
+ * `onMessage` hears every message from the start: the page the server sends as the socket opens can
+ * come before an awaited `open` resumes its caller (Bun 1.4.4), and a listener added then misses it.
+ */
+export function connectCli(url: string, cookie: string, token?: string, onMessage?: (event: MessageEvent) => void): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     // tsconfig's DOM lib doesn't know about Bun's runtime-only `headers` option.
     // @ts-expect-error
     const ws: WebSocket = new WebSocket(url, { headers: { Cookie: cookie, ...(token && { Authorization: `Bearer ${token}` }) } });
+    if (onMessage) ws.addEventListener("message", onMessage);
     ws.addEventListener("open", () => resolve(ws), { once: true });
     ws.addEventListener("error", () => reject(new Error(`could not connect to ${url}`)), { once: true });
   });

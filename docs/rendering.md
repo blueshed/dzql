@@ -99,14 +99,14 @@ run costs` measures every number on this page from a fresh run of the examples, 
 (`costs --check`) fails when they drift.
 
 <!-- measured:writes -->
-- **Chat**, one message in a room of 100 messages and 5 members: 423 B, compressed from 881 B, to
-  each other member (a 182 B patch and 241 B of HTML).
-- **The ticker**, one price tick with 5 viewers watching its symbol: 178 B, compressed from 203 B,
-  to each other viewer (patches of 90 B and 88 B, and no HTML). The same tick as a bare JSON feed
+- **Chat**, one message in a room of 100 messages and 5 members: 422 B, compressed from 881 B, to
+  each other member (a 182 B patch and 240 B of HTML).
+- **The ticker**, one price tick with 5 viewers watching its symbol: 175 B, compressed from 203 B,
+  to each other viewer (patches of 88 B and 87 B, and no HTML). The same tick as a bare JSON feed
   would be 41 B.
-- **The wedding**, one guest's top changed to green: 823 B, compressed from 2.1 KB, to the same
-  household's second tab, on its photo (patches of 147 B and 227 B, and 449 B of HTML); 751 B,
-  compressed from 5.3 KB, to the couple, on their photo of families (a 136 B patch and 615 B of
+- **The wedding**, one guest's top changed to green: 811 B, compressed from 2.1 KB, to the same
+  household's second tab, on its photo (patches of 143 B and 227 B, and 441 B of HTML); 729 B,
+  compressed from 5.3 KB, to the couple, on their photo of families (a 132 B patch and 597 B of
   HTML); 227 B, compressed from 315 B, to another household, on its photo (one patch and no HTML);
   and 227 B, compressed from 315 B, to another household, reading everyone (one patch and no HTML).
 <!-- /measured -->
