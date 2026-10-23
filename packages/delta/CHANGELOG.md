@@ -377,10 +377,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`serve` type-checks on Bun 1.4.4's types** (23 October; needs a release). `@types/bun` 1.4.4 makes a
-  websocket handler's `message` optional, and `serve.ts` called it as always there, so `bun check`
-  failed in delta, and in every new app, which installs the latest types beside delta 1.3.0 from
-  npm. It calls `handler.message?.(...)`; a handler with one is answered as before.
+- **`serve` type-checks on Bun 1.4.4's types** (23 October). `@types/bun` 1.4.4 makes a websocket
+  handler's `message` optional, and `serve.ts`'s wrapper (#99, above, not released) called it as
+  always there, so `bun check` failed in delta. It calls `handler.message?.(...)`; a handler with one
+  is answered as before. Released delta is not touched: 1.3.0 has no such call, and new apps made by
+  create-blueshed 0.4.0 and create-dzql 0.14.0 type-check on the 1.4.4 types.
 - **"A save that fails" holds as root** (22 October, delta #105): the test made its folder read-only,
   which blocks nothing for root (a container's user); a folder in the file's place fails the save
   for every user.
